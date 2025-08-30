@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import ProjectForm from './components/ProjectForm';
+import Settings from './components/Settings';
 import { getFullVersionInfo, getVersionDisplay } from './utils/version';
 import './App.css';
 
@@ -218,50 +219,7 @@ function App() {
           );
         case 'settings':
           console.log('Rendering Settings view');
-          return (
-            <div className="settings-container">
-              <h2>Application Settings</h2>
-                             <div className="settings-section">
-                 <h3>General Settings</h3>
-                 <div className="setting-item">
-                   <label>Application Version</label>
-                   <span>{getVersionDisplay()}</span>
-                 </div>
-                <div className="setting-item">
-                  <label>Build Date</label>
-                  <span>{new Date().toLocaleDateString()}</span>
-                </div>
-                <div className="setting-item">
-                  <label>Environment</label>
-                  <span>Electron + React</span>
-                </div>
-              </div>
-              
-              <div className="settings-section">
-                <h3>Project Settings</h3>
-                <div className="setting-item">
-                  <label>Default Save Location</label>
-                  <span>Server</span>
-                </div>
-                <div className="setting-item">
-                  <label>Auto-save Projects</label>
-                  <span>Enabled</span>
-                </div>
-              </div>
-              
-              <div className="settings-section">
-                <h3>Export Settings</h3>
-                <div className="setting-item">
-                  <label>DAS Board Integration</label>
-                  <span>Coming Soon</span>
-                </div>
-                <div className="setting-item">
-                  <label>Agile Integration</label>
-                  <span>Coming Soon</span>
-                </div>
-              </div>
-            </div>
-          );
+          return <Settings />;
         case 'welcome':
         default:
           console.log('Rendering welcome content');

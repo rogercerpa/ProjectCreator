@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import './Settings.css';
+import dropdownOptionsService from '../services/DropdownOptionsService';
 
 // Access secure electron API through contextBridge
 const { electronAPI } = window;
 
 function Settings() {
   const [settings, setSettings] = useState({
-    rfaTypes: ['BOM (No Layout)', 'BOM with Layout', 'Controls BOM - Budget', 'Controls BOM - Layout'],
+    rfaTypes: ['BOM (No Layout)', 'BOM with Layout', 'Controls BOM - Budget', 'Controls BOM - Layout', 'BUDGET', 'LAYOUT', 'SUBMITTAL', 'RELEASE', 'GRAPHICS', 'PHOTOMETRICS', 'Consultation'],
     regionalTeams: ['Region 1', 'Region 2', 'Region 3', 'Region 4', 'Region 5', 'NAVS'],
-    nationalAccounts: ['N/A', "Arby's"],
+    nationalAccounts: ['Default', 'ARBYS', 'MCDONALDS', 'WALMART', 'TARGET', 'HOMEDEPOT', 'LOWES', 'KROGER', 'CVS', 'WALGREENS'],
+    saveLocations: ['Triage', 'Desktop', 'Server'],
     complexityLevels: ['Level 1', 'Level 2', 'Level 3', 'Level 4'],
     statusOptions: ['In Progress', 'Completed', 'Inactive', 'Not Started'],
     productOptions: ['nLight Wired', 'nLight Air', 'SensorSwitch', 'Pathway', 'Fresco', 'Controls - nLight'],
@@ -40,12 +42,62 @@ function Settings() {
     loadSettings();
   }, []);
 
+
+
+  // Effect to handle component focus and reset state when returning to page
+  useEffect(() => {
+    const handleFocus = () => {
+      // Reset any stale editing state when returning to the page
+      if (editingField || editingIndex !== -1) {
+        setEditingField(null);
+        setEditingIndex(-1);
+        setNewValue('');
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // Reset state when tab becomes visible again
+        handleFocus();
+      }
+    };
+
+    const handleWindowFocus = () => {
+      handleFocus();
+    };
+
+    const handleWindowBlur = () => {
+      // Reset editing state when window loses focus
+      setEditingField(null);
+      setEditingIndex(-1);
+      setNewValue('');
+    };
+
+    // Listen for various focus and visibility events
+    window.addEventListener('focus', handleWindowFocus);
+    window.addEventListener('blur', handleWindowBlur);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Also reset state when component mounts
+    handleFocus();
+
+    return () => {
+      window.removeEventListener('focus', handleWindowFocus);
+      window.removeEventListener('blur', handleWindowBlur);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [editingField, editingIndex]);
+
   const loadSettings = async () => {
     try {
       setIsLoading(true);
-      const savedSettings = await electronAPI.settingsLoad();
-      if (savedSettings && savedSettings.success) {
-        setSettings(prev => ({ ...prev, ...savedSettings.data }));
+      if (electronAPI && electronAPI.settingsLoad) {
+        const savedSettings = await electronAPI.settingsLoad();
+        if (savedSettings && savedSettings.success) {
+          setSettings(prev => ({ ...prev, ...savedSettings.data }));
+        }
+      } else {
+        console.log('electronAPI not available, using default settings');
       }
     } catch (error) {
       console.error('Failed to load settings:', error);
@@ -57,11 +109,19 @@ function Settings() {
   const saveSettings = async () => {
     try {
       setIsLoading(true);
-      const result = await electronAPI.settingsSave(settings);
-      if (result && result.success) {
-        alert('Settings saved successfully!');
+      if (electronAPI && electronAPI.settingsSave) {
+        const result = await electronAPI.settingsSave(settings);
+        if (result && result.success) {
+          // Update the dropdown options service with new settings
+          dropdownOptionsService.updateOptions(settings);
+          alert('Settings saved successfully!');
+        } else {
+          alert('Failed to save settings. Please try again.');
+        }
       } else {
-        alert('Failed to save settings. Please try again.');
+        // In development mode, just update the service
+        dropdownOptionsService.updateOptions(settings);
+        alert('Settings updated (development mode - not persisted)');
       }
     } catch (error) {
       console.error('Failed to save settings:', error);
@@ -72,12 +132,55 @@ function Settings() {
   };
 
   const startEditing = (field, index = -1) => {
-    setEditingField(field);
-    setEditingIndex(index);
-    setNewValue(index >= 0 ? settings[field][index] : '');
+    // Force a complete state reset
+    setEditingField(null);
+    setEditingIndex(-1);
+    setNewValue('');
+    
+    // Use a longer timeout to ensure DOM is fully updated
+    setTimeout(() => {
+      setEditingField(field);
+      setEditingIndex(index);
+      setNewValue(index >= 0 ? settings[field][index] : '');
+      
+      // Force focus on the input field after a brief delay
+      setTimeout(() => {
+        const inputElement = document.querySelector(`input[key="${index >= 0 ? `edit-${field}-${index}` : `add-new-${field}`}"]`);
+        if (inputElement) {
+          inputElement.focus();
+          inputElement.click(); // Sometimes needed in Electron
+          
+          // Additional focus handling for Electron
+          if (inputElement.setSelectionRange) {
+            inputElement.setSelectionRange(0, inputElement.value.length);
+          }
+          
+          // Force the input to be interactive
+          inputElement.style.pointerEvents = 'auto';
+          inputElement.style.userSelect = 'text';
+          inputElement.style.cursor = 'text';
+        } else {
+          // Retry after a longer delay
+          setTimeout(() => {
+            const retryElement = document.querySelector(`input[key="${index >= 0 ? `edit-${field}-${index}` : `add-new-${field}`}"]`);
+            if (retryElement) {
+              retryElement.focus();
+              retryElement.click();
+            }
+          }, 100);
+        }
+      }, 50);
+    }, 10);
   };
 
   const cancelEditing = () => {
+    setEditingField(null);
+    setEditingIndex(-1);
+    setNewValue('');
+  };
+
+  const forceRefreshInput = () => {
+    // Force a complete re-render by temporarily setting state to null
     setEditingField(null);
     setEditingIndex(-1);
     setNewValue('');
@@ -99,6 +202,10 @@ function Settings() {
         // Adding new value
         newSettings[editingField] = [...prev[editingField], newValue.trim()];
       }
+      
+      // Update the dropdown options service immediately
+      dropdownOptionsService.updateOptions(newSettings);
+      
       return newSettings;
     });
 
@@ -107,10 +214,17 @@ function Settings() {
 
   const deleteItem = (field, index) => {
     if (confirm('Are you sure you want to delete this item?')) {
-      setSettings(prev => ({
-        ...prev,
-        [field]: prev[field].filter((_, i) => i !== index)
-      }));
+      setSettings(prev => {
+        const newSettings = {
+          ...prev,
+          [field]: prev[field].filter((_, i) => i !== index)
+        };
+        
+        // Update the dropdown options service immediately
+        dropdownOptionsService.updateOptions(newSettings);
+        
+        return newSettings;
+      });
     }
   };
 
@@ -123,7 +237,12 @@ function Settings() {
       const temp = newArray[fromIndex];
       newArray[fromIndex] = newArray[newIndex];
       newArray[newIndex] = temp;
-      return { ...prev, [field]: newArray };
+      const newSettings = { ...prev, [field]: newArray };
+      
+      // Update the dropdown options service immediately
+      dropdownOptionsService.updateOptions(newSettings);
+      
+      return newSettings;
     });
   };
 
@@ -131,13 +250,13 @@ function Settings() {
     <div className="settings-field">
       <div className="field-header">
         <h3>{label}</h3>
-        <button
-          type="button"
-          className="btn btn-primary btn-sm"
-          onClick={() => startEditing(field)}
-        >
-          + Add New
-        </button>
+                 <button
+           type="button"
+           className="btn btn-primary btn-sm"
+                       onClick={() => startEditing(field)}
+         >
+           + Add New
+         </button>
       </div>
       
       <div className="field-items">
@@ -146,14 +265,20 @@ function Settings() {
           <div className="field-item new-item">
             <div className="item-content">
               <div className="edit-mode">
-                <input
-                  type="text"
-                  value={newValue}
-                  onChange={(e) => setNewValue(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && saveEdit()}
-                  placeholder="Enter new value..."
-                  autoFocus
-                />
+                                 <input
+                   key={`add-new-${field}`}
+                   type="text"
+                   value={newValue}
+                                       onChange={(e) => setNewValue(e.target.value)}
+                   onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
+                                       onFocus={(e) => e.target.select()}
+                    onBlur={() => {}}
+                   placeholder="Enter new value..."
+                   autoFocus
+                   style={{ minWidth: '200px' }}
+                   data-testid="add-new-input"
+                   tabIndex={0}
+                 />
                 <div className="edit-actions">
                   <button
                     type="button"
@@ -201,13 +326,18 @@ function Settings() {
             <div className="item-content">
               {editingField === field && editingIndex === index ? (
                 <div className="edit-mode">
-                  <input
-                    type="text"
-                    value={newValue}
-                    onChange={(e) => setNewValue(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && saveEdit()}
-                    autoFocus
-                  />
+                                     <input
+                     key={`edit-${field}-${index}`}
+                     type="text"
+                     value={newValue}
+                     onChange={(e) => setNewValue(e.target.value)}
+                     onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
+                                           onFocus={(e) => e.target.select()}
+                      onBlur={() => {}}
+                     autoFocus
+                     style={{ minWidth: '200px' }}
+                     tabIndex={0}
+                   />
                   <div className="edit-actions">
                     <button
                       type="button"
@@ -265,19 +395,21 @@ function Settings() {
 
   return (
     <div className="settings-page">
-      <div className="settings-header">
-        <h1>Application Settings</h1>
-        <p>Manage dropdown options for form fields</p>
-      </div>
+             <div className="settings-header">
+         <h1>Application Settings</h1>
+         <p>Manage dropdown options for form fields</p>
+         
+       </div>
 
       <div className="settings-content">
         {renderFieldEditor('rfaTypes', 'RFA Type Options', settings.rfaTypes)}
         {renderFieldEditor('regionalTeams', 'Regional Team Options', settings.regionalTeams)}
         {renderFieldEditor('nationalAccounts', 'National Account Options', settings.nationalAccounts)}
-                 {renderFieldEditor('complexityLevels', 'Complexity Level Options', settings.complexityLevels)}
-         {renderFieldEditor('statusOptions', 'Status Options', settings.statusOptions)}
-         {renderFieldEditor('productOptions', 'Product Options', settings.productOptions)}
-         {renderFieldEditor('assignedToOptions', 'Assigned To Options', settings.assignedToOptions)}
+        {renderFieldEditor('saveLocations', 'Save Location Options', settings.saveLocations)}
+        {renderFieldEditor('complexityLevels', 'Complexity Level Options', settings.complexityLevels)}
+        {renderFieldEditor('statusOptions', 'Status Options', settings.statusOptions)}
+        {renderFieldEditor('productOptions', 'Product Options', settings.productOptions)}
+        {renderFieldEditor('assignedToOptions', 'Assigned To Options', settings.assignedToOptions)}
          
          {/* Calculation Settings */}
          <div className="settings-field">
@@ -485,31 +617,37 @@ function Settings() {
         <button
           type="button"
           className="btn btn-secondary"
-          onClick={() => setSettings({
-            rfaTypes: ['BOM (No Layout)', 'BOM with Layout', 'Controls BOM - Budget', 'Controls BOM - Layout'],
-            regionalTeams: ['Region 1', 'Region 2', 'Region 3', 'Region 4', 'Region 5', 'NAVS'],
-            nationalAccounts: ['N/A', "Arby's"],
-            complexityLevels: ['Level 1', 'Level 2', 'Level 3', 'Level 4'],
-            statusOptions: ['In Progress', 'Completed', 'Inactive', 'Not Started'],
-            productOptions: ['nLight Wired', 'nLight Air', 'SensorSwitch', 'Pathway', 'Fresco', 'Controls - nLight'],
-            assignedToOptions: ['John Doe', 'Jane Smith', 'Mike Johnson', 'Sarah Wilson', 'David Brown', 'Cerpa, Roger'],
-            calculationSettings: {
-              lmpMultipliers: { small: 15, medium: 30, large: 45 },
-              arpMultipliers: { arp8: 5, arp16: 10, arp32: 20, arp48: 25 },
-              roomMultiplier: 2,
-              riserMultiplier: 1,
-              esheetsMultiplier: 2,
-              defaultReviewSetup: 0.5,
-              defaultSOO: 0.5,
-              defaultNumOfPages: 1,
-              pageBonusThreshold: 3,
-              pageBonusMultiplier: 3,
-              selfQCHigh: 12,
-              selfQCLow: 4,
-              selfQCDefault: 0.5,
-              fluffPercentage: 10
-            }
-          })}
+          onClick={() => {
+            const defaultSettings = {
+              rfaTypes: ['BOM (No Layout)', 'BOM with Layout', 'Controls BOM - Budget', 'Controls BOM - Layout', 'BUDGET', 'LAYOUT', 'SUBMITTAL', 'RELEASE', 'GRAPHICS', 'PHOTOMETRICS', 'Consultation'],
+              regionalTeams: ['Region 1', 'Region 2', 'Region 3', 'Region 4', 'Region 5', 'NAVS'],
+              nationalAccounts: ['Default', 'ARBYS', 'MCDONALDS', 'WALMART', 'TARGET', 'HOMEDEPOT', 'LOWES', 'KROGER', 'CVS', 'WALGREENS'],
+              saveLocations: ['Triage', 'Desktop', 'Server'],
+              complexityLevels: ['Level 1', 'Level 2', 'Level 3', 'Level 4'],
+              statusOptions: ['In Progress', 'Completed', 'Inactive', 'Not Started'],
+              productOptions: ['nLight Wired', 'nLight Air', 'SensorSwitch', 'Pathway', 'Fresco', 'Controls - nLight'],
+              assignedToOptions: ['John Doe', 'Jane Smith', 'Mike Johnson', 'Sarah Wilson', 'David Brown', 'Cerpa, Roger'],
+              calculationSettings: {
+                lmpMultipliers: { small: 15, medium: 30, large: 45 },
+                arpMultipliers: { arp8: 5, arp16: 10, arp32: 20, arp48: 25 },
+                roomMultiplier: 2,
+                riserMultiplier: 1,
+                esheetsMultiplier: 2,
+                defaultReviewSetup: 0.5,
+                defaultSOO: 0.5,
+                defaultNumOfPages: 1,
+                pageBonusThreshold: 3,
+                pageBonusMultiplier: 3,
+                selfQCHigh: 12,
+                selfQCLow: 4,
+                selfQCDefault: 0.5,
+                fluffPercentage: 10
+              }
+            };
+            setSettings(defaultSettings);
+            // Also update the dropdown options service
+            dropdownOptionsService.updateOptions(defaultSettings);
+          }}
         >
           Reset to Defaults
         </button>

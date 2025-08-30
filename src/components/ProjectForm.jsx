@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './ProjectForm.css';
+import dropdownOptionsService from '../services/DropdownOptionsService';
 
 function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProjectCreated, onProjectUpdated }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -8,16 +9,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
   const [isPasting, setIsPasting] = useState(false);
   const [showPanelSchedules, setShowPanelSchedules] = useState(false);
   
-  const [dropdownOptions, setDropdownOptions] = useState({
-    rfaTypes: ['BOM (No Layout)', 'BOM with Layout', 'Controls BOM - Budget', 'Controls BOM - Layout', 'BUDGET', 'LAYOUT', 'SUBMITTAL', 'RELEASE', 'GRAPHICS', 'PHOTOMETRICS', 'Consultation'],
-    regionalTeams: ['Region 1', 'Region 2', 'Region 3', 'Region 4', 'Region 5', 'NAVS'],
-    nationalAccounts: ['Default', 'ARBYS', 'MCDONALDS', 'WALMART', 'TARGET', 'HOMEDEPOT', 'LOWES', 'KROGER', 'CVS', 'WALGREENS'],
-    saveLocations: ['Triage', 'Desktop', 'Server'],
-    complexityLevels: ['Level 1', 'Level 2', 'Level 3', 'Level 4'],
-    statusOptions: ['In Progress', 'Completed', 'Inactive', 'Not Started'],
-    productOptions: ['nLight Wired', 'nLight Air', 'SensorSwitch', 'Pathway', 'Fresco', 'Controls - nLight'],
-    assignedToOptions: ['John Doe', 'Jane Smith', 'Mike Johnson', 'Sarah Wilson', 'David Brown', 'Cerpa, Roger']
-  });
+  const [dropdownOptions, setDropdownOptions] = useState(dropdownOptionsService.getOptions());
 
   // Load project data if editing
   useEffect(() => {
@@ -25,6 +17,22 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
       onFormDataChange({ ...formData, ...project });
     }
   }, [project]);
+
+  // Load dropdown options and listen for changes
+  useEffect(() => {
+    const loadOptions = async () => {
+      await dropdownOptionsService.loadFromSettings();
+    };
+    
+    loadOptions();
+    
+    // Listen for option changes
+    const unsubscribe = dropdownOptionsService.addListener((newOptions) => {
+      setDropdownOptions(newOptions);
+    });
+    
+    return unsubscribe;
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value, type } = e.target;
@@ -606,10 +614,9 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
                 onChange={handleInputChange}
               >
                 <option value="">Select Complexity</option>
-                <option value="Level 1">Level 1</option>
-                <option value="Level 2">Level 2</option>
-                <option value="Level 3">Level 3</option>
-                <option value="Level 4">Level 4</option>
+                {dropdownOptions.complexityLevels.map(level => (
+                  <option key={level} value={level}>{level}</option>
+                ))}
               </select>
             </div>
 
@@ -634,35 +641,40 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
                 onChange={handleInputChange}
               >
                 <option value="">Select Status</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Completed">Completed</option>
-                <option value="Inactive">Inactive</option>
-                <option value="Not Started">Not Started</option>
+                {dropdownOptions.statusOptions.map(status => (
+                  <option key={status} value={status}>{status}</option>
+                ))}
               </select>
             </div>
 
             <div className="form-group">
               <label htmlFor="products">Products</label>
-              <input
-                type="text"
+              <select
                 id="products"
                 name="products"
                 value={formData.products}
                 onChange={handleInputChange}
-                placeholder="e.g., Controls - nLight"
-              />
+              >
+                <option value="">Select Products</option>
+                {dropdownOptions.productOptions.map(product => (
+                  <option key={product} value={product}>{product}</option>
+                ))}
+              </select>
             </div>
 
             <div className="form-group">
               <label htmlFor="assignedTo">Assigned To</label>
-              <input
-                type="text"
+              <select
                 id="assignedTo"
                 name="assignedTo"
                 value={formData.assignedTo}
                 onChange={handleInputChange}
-                placeholder="e.g., Cerpa, Roger"
-              />
+              >
+                <option value="">Select Assigned To</option>
+                {dropdownOptions.assignedToOptions.map(person => (
+                  <option key={person} value={person}>{person}</option>
+                ))}
+              </select>
             </div>
 
             <div className="form-group">
