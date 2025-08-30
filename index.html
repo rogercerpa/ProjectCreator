@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Project Creator - Electron</title>
-    <link rel="icon" type="image/x-icon" href="acuity_brands.ico">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
     <style>
         * {
             margin: 0;
@@ -82,10 +82,11 @@
     <div id="root">
         <!-- Loading content that will be replaced by React -->
         <div class="loading">
-            <img src="acuity.jpg" alt="Acuity Brands Logo" class="logo">
+            <img src="logo.png" alt="Project Creator Logo" class="logo">
             <h1>Project Creator</h1>
             <div class="spinner"></div>
             <p>Loading application...</p>
+            <div class="version-info" id="version-info"></div>
             <div class="error-message" id="error-message"></div>
         </div>
     </div>
@@ -132,6 +133,15 @@
                 }
             }
         }, 10000);
+
+        // Display version information (this will be replaced by React when it loads)
+        const versionInfo = document.getElementById('version-info');
+        if (versionInfo) {
+            // Note: In a real Electron app, this would be populated by the main process
+            // For now, we'll show a placeholder that React will replace
+            versionInfo.textContent = 'Loading version information...';
+            versionInfo.style.cssText = 'font-size: 0.9rem; opacity: 0.8; margin-top: 0.5rem;';
+        }
     </script>
 
     <!-- React App will be built and injected here by webpack -->

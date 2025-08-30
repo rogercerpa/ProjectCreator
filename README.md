@@ -12,7 +12,7 @@ A modern Electron-based desktop application for creating and managing projects, 
 
 ## Screenshots
 
-![Project Creator](acuity.jpg)
+![Project Creator](logo.png)
 
 ## Prerequisites
 

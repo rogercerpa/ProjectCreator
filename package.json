@@ -66,20 +66,20 @@
       "index.html",
       "dist/**/*",
       "node_modules/**/*",
-      "acuity_brands.ico",
-      "acuity.jpg"
+      "favicon.ico",
+      "logo.png"
     ],
     "win": {
       "target": "nsis",
-      "icon": "acuity_brands.ico"
+      "icon": "favicon.ico"
     },
     "mac": {
       "target": "dmg",
-      "icon": "acuity_brands.ico"
+      "icon": "favicon.ico"
     },
     "linux": {
       "target": "AppImage",
-      "icon": "acuity_brands.ico"
+      "icon": "favicon.ico"
     },
     "nsis": {
       "oneClick": false,

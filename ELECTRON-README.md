@@ -43,8 +43,8 @@ Project Creator/
 ├── webpack.config.js       # Build configuration
 ├── package.json            # Dependencies and scripts
 └── assets/                 # Images and icons
-    ├── acuity_brands.ico  # Application icon
-    └── acuity.jpg         # Company logo
+    ├── favicon.ico        # Application icon
+    └── logo.png           # Application logo
 ```
 
 ## 🚀 Getting Started

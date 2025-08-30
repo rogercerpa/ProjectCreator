@@ -120,8 +120,8 @@ ProjectCreator/
 ├── webpack.config.js       # Build configuration ✅
 ├── package.json            # Dependencies ✅
 └── assets/                 # Static assets ✅
-    ├── acuity_brands.ico  # App icon ✅
-    └── acuity.jpg         # Company logo ✅
+    ├── favicon.ico        # App icon ✅
+    └── logo.png           # Application logo ✅
 ```
 
 ## Business Logic Migration

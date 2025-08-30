@@ -60,14 +60,14 @@ module.exports = (env, argv) => {
       }),
       new CopyWebpackPlugin({
         patterns: [
-          { 
-            from: 'acuity.jpg', 
-            to: 'acuity.jpg' 
-          },
-          { 
-            from: 'acuity_brands.ico', 
-            to: 'acuity_brands.ico' 
-          }
+                  {
+          from: 'logo.png',
+          to: 'logo.png'
+        },
+        {
+          from: 'favicon.ico',
+          to: 'favicon.ico'
+        }
         ]
       })
     ],

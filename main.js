@@ -9,6 +9,9 @@ const FileService = require('./src/services/FileService');
 const ProjectPersistenceService = require('./src/services/ProjectPersistenceService');
 const ProjectCreationService = require('./src/services/ProjectCreationService');
 
+// Import package.json for version info
+const packageJson = require('./package.json');
+
 // Keep a global reference of the window object
 let mainWindow;
 
@@ -32,7 +35,7 @@ function createWindow() {
       enableRemoteModule: true,
       webSecurity: false
     },
-    icon: path.join(__dirname, 'acuity_brands.ico'),
+    icon: path.join(__dirname, 'favicon.ico'),
     title: 'Project Creator - Electron',
     show: false
   });
@@ -137,17 +140,17 @@ app.whenReady().then(() => {
     {
       label: 'Help',
       submenu: [
-        {
-          label: 'About Project Creator',
-          click: () => {
-            dialog.showMessageBox(mainWindow, {
-              type: 'info',
-              title: 'About Project Creator',
-              message: 'Project Creator',
-              detail: 'Version 5.0.0\nBuilt with Electron and React\nAcuity Brands, Inc.'
-            });
-          }
-        }
+                 {
+           label: 'About Project Creator',
+           click: () => {
+             dialog.showMessageBox(mainWindow, {
+               type: 'info',
+               title: 'About Project Creator',
+               message: 'Project Creator',
+               detail: `Version ${packageJson.version}\nBuilt with Electron and React\nAcuity Brands, Inc.`
+             });
+           }
+         }
       ]
     }
   ];

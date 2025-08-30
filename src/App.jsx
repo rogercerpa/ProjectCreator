@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import ProjectForm from './components/ProjectForm';
+import { getFullVersionInfo, getVersionDisplay } from './utils/version';
 import './App.css';
 
 function App() {
@@ -220,12 +221,12 @@ function App() {
           return (
             <div className="settings-container">
               <h2>Application Settings</h2>
-              <div className="settings-section">
-                <h3>General Settings</h3>
-                <div className="setting-item">
-                  <label>Application Version</label>
-                  <span>5.0.0</span>
-                </div>
+                             <div className="settings-section">
+                 <h3>General Settings</h3>
+                 <div className="setting-item">
+                   <label>Application Version</label>
+                   <span>{getVersionDisplay()}</span>
+                 </div>
                 <div className="setting-item">
                   <label>Build Date</label>
                   <span>{new Date().toLocaleDateString()}</span>
@@ -266,11 +267,11 @@ function App() {
           console.log('Rendering welcome content');
           return (
             <div className="welcome-container">
-              <div className="welcome-header">
-                <h1>Welcome to Project Creator</h1>
-                <p className="welcome-subtitle">Professional Project Management & Document Automation Tool</p>
-                <p className="welcome-version">Version 5.0.0 - Built with Electron & React</p>
-              </div>
+                             <div className="welcome-header">
+                 <h1>Welcome to Project Creator</h1>
+                 <p className="welcome-subtitle">Professional Project Management & Document Automation Tool</p>
+                 <p className="welcome-version">{getFullVersionInfo()}</p>
+               </div>
 
               <div className="feature-highlights">
                 <h2>🚀 Key Features</h2>
@@ -434,7 +435,7 @@ function App() {
     console.log('Rendering loading screen');
     return (
       <div className="loading-container">
-        <img src="acuity.jpg" alt="Acuity Brands" className="logo" />
+        <img src="logo.png" alt="Project Creator Logo" className="logo" />
         <h1>Project Creator</h1>
         <p>Loading modern application...</p>
         <div className="spinner"></div>
