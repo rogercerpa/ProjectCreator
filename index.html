@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Creator 2024 - Electron</title>
+    <link rel="icon" type="image/x-icon" href="acuity_brands.ico">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #root {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            color: white;
+            text-align: center;
+        }
+
+        .loading h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .loading p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 2rem 0;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 2rem;
+            filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.3));
+        }
+
+        .error-message {
+            display: none;
+            color: #ff6b6b;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div id="root">
+        <!-- Loading content that will be replaced by React -->
+        <div class="loading">
+            <img src="acuity.jpg" alt="Acuity Brands Logo" class="logo">
+            <h1>Project Creator 2024</h1>
+            <div class="spinner"></div>
+            <p>Loading application...</p>
+            <div class="error-message" id="error-message"></div>
+        </div>
+    </div>
+
+    <!-- React will replace the loading content -->
+    <script>
+        // Check if we're in Electron
+        const isElectron = window.process && window.process.type;
+        
+        if (isElectron) {
+            console.log('Running in Electron environment');
+        } else {
+            console.log('Running in browser environment');
+        }
+
+        // Handle any errors during loading
+        window.addEventListener('error', (event) => {
+            console.error('Loading error:', event.error);
+            const errorMessage = document.getElementById('error-message');
+            if (errorMessage) {
+                errorMessage.style.display = 'block';
+                errorMessage.textContent = 'Error loading application. Please restart.';
+            }
+        });
+
+        // Handle unhandled promise rejections
+        window.addEventListener('unhandledrejection', (event) => {
+            console.error('Unhandled promise rejection:', event.reason);
+            const errorMessage = document.getElementById('error-message');
+            if (errorMessage) {
+                errorMessage.style.display = 'block';
+                errorMessage.textContent = 'Error loading application. Please restart.';
+            }
+        });
+
+        // Set a timeout to show error if React doesn't load within 10 seconds
+        setTimeout(() => {
+            const root = document.getElementById('root');
+            if (root && root.children.length === 1 && root.children[0].classList.contains('loading')) {
+                const errorMessage = document.getElementById('error-message');
+                if (errorMessage) {
+                    errorMessage.style.display = 'block';
+                    errorMessage.textContent = 'Application failed to load. Please check the console for errors.';
+                }
+            }
+        }, 10000);
+    </script>
+
+    <!-- React App will be built and injected here by webpack -->
+</body>
+</html>
