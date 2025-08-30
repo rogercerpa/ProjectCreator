@@ -1,4 +1,4 @@
-# Project Creator 2024
+# Project Creator
 
 A modern Electron-based desktop application for creating and managing projects, developed for Acuity Brands, Inc.
 
@@ -12,7 +12,7 @@ A modern Electron-based desktop application for creating and managing projects, 
 
 ## Screenshots
 
-![Project Creator 2024](acuity.jpg)
+![Project Creator](acuity.jpg)
 
 ## Prerequisites
 

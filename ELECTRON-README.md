@@ -1,4 +1,4 @@
-# 🚀 Project Creator 2024 - Electron Edition
+# 🚀 Project Creator - Electron Edition
 
 ## Overview
 
@@ -29,7 +29,7 @@ This is the **Phase 2** migration of your HTA application to a modern **Electron
 ## 🏗️ Architecture
 
 ```
-Project Creator 2024/
+Project Creator/
 ├── main.js                 # Electron main process
 ├── index.html              # Main HTML template
 ├── src/                    # React source code

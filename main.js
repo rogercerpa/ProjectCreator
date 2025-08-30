@@ -33,7 +33,7 @@ function createWindow() {
       webSecurity: false
     },
     icon: path.join(__dirname, 'acuity_brands.ico'),
-    title: 'Project Creator 2024 - Electron',
+    title: 'Project Creator - Electron',
     show: false
   });
 
@@ -143,7 +143,7 @@ app.whenReady().then(() => {
             dialog.showMessageBox(mainWindow, {
               type: 'info',
               title: 'About Project Creator',
-              message: 'Project Creator 2024',
+              message: 'Project Creator',
               detail: 'Version 5.0.0\nBuilt with Electron and React\nAcuity Brands, Inc.'
             });
           }

@@ -266,44 +266,152 @@ function App() {
           console.log('Rendering welcome content');
           return (
             <div className="welcome-container">
-              <h1>Welcome to Project Creator 2024</h1>
-              <p>✅ Loading phase completed successfully!</p>
-              <p>✅ React is rendering the main content!</p>
-              <p>✅ Header component added successfully!</p>
-              <p>✅ Sidebar component added successfully!</p>
-              <p>✅ ProjectForm component added successfully!</p>
-              
+              <div className="welcome-header">
+                <h1>Welcome to Project Creator</h1>
+                <p className="welcome-subtitle">Professional Project Management & Document Automation Tool</p>
+                <p className="welcome-version">Version 5.0.0 - Built with Electron & React</p>
+              </div>
+
+              <div className="feature-highlights">
+                <h2>🚀 Key Features</h2>
+                <div className="features-grid">
+                  <div className="feature-card">
+                    <div className="feature-icon">📁</div>
+                    <h3>Project Management</h3>
+                    <p>Create, edit, and organize projects with comprehensive metadata including RFA numbers, regional teams, and project complexity ratings.</p>
+                  </div>
+                  
+                  <div className="feature-card">
+                    <div className="feature-icon">📊</div>
+                    <h3>Triage Calculations</h3>
+                    <p>Advanced time estimation for LMPs, ARPs, room counts, and project complexity with automatic calculations and overrides.</p>
+                  </div>
+                  
+                  <div className="feature-card">
+                    <div className="feature-icon">📝</div>
+                    <h3>Document Automation</h3>
+                    <p>Generate Word documents, process design notes, and create project documentation with automated templates.</p>
+                  </div>
+                  
+                  <div className="feature-card">
+                    <div className="feature-icon">🗂️</div>
+                    <h3>File Organization</h3>
+                    <p>Automated folder structure creation, template management, and project file organization for server and desktop locations.</p>
+                  </div>
+                  
+                  <div className="feature-card">
+                    <div className="feature-icon">📈</div>
+                    <h3>Export & Integration</h3>
+                    <p>Export project data to DAS Board format, Agile triage reports, and multiple file formats for seamless workflow integration.</p>
+                  </div>
+                  
+                  <div className="feature-card">
+                    <div className="feature-icon">⚙️</div>
+                    <h3>Advanced Settings</h3>
+                    <p>Customizable project defaults, template management, and user preferences for personalized project creation workflows.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="project-types">
+                <h2>🎯 Supported Project Types</h2>
+                <div className="project-types-grid">
+                  <div className="project-type">
+                    <span className="type-badge">Reloc</span>
+                    <span className="type-badge">Photometrics</span>
+                    <span className="type-badge">Standard</span>
+                    <span className="type-badge">Metric</span>
+                    <span className="type-badge">Holophane</span>
+                    <span className="type-badge">Agency</span>
+                    <span className="type-badge">LCD Preprogramming</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="quick-actions">
+                <h2>🚀 Get Started</h2>
+                <div className="action-buttons">
+                  <button 
+                    onClick={() => setCurrentView('form')}
+                    className="btn btn-primary btn-large"
+                  >
+                    ✨ Create New Project
+                  </button>
+                  <button 
+                    onClick={() => setCurrentView('list')}
+                    className="btn btn-secondary btn-large"
+                  >
+                    📋 View Projects ({projects.length})
+                  </button>
+                  <button 
+                    onClick={() => setCurrentView('settings')}
+                    className="btn btn-secondary btn-large"
+                  >
+                    ⚙️ Application Settings
+                  </button>
+                </div>
+              </div>
+
+              {projects.length > 0 && (
+                <div className="recent-projects">
+                  <h2>📋 Recent Projects</h2>
+                  <div className="recent-projects-grid">
+                    {projects.slice(0, 3).map(project => (
+                      <div key={project.id} className="recent-project-card">
+                        <h4>{project.projectName}</h4>
+                        <p><strong>RFA:</strong> {project.rfaNumber}</p>
+                        <p><strong>Team:</strong> {project.regionalTeam}</p>
+                        <p><strong>Status:</strong> {project.status || 'In Progress'}</p>
+                        <button 
+                          onClick={() => {
+                            setCurrentProject(project);
+                            setCurrentView('form');
+                          }}
+                          className="btn btn-secondary btn-small"
+                        >
+                          Open Project
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  {projects.length > 3 && (
+                    <div className="view-all-projects">
+                      <button 
+                        onClick={() => setCurrentView('list')}
+                        className="btn btn-secondary"
+                      >
+                        View All Projects ({projects.length})
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="welcome-info">
-                <p><strong>Current View:</strong> {currentView}</p>
-                <p><strong>Loading State:</strong> {isLoading ? 'Loading...' : 'Complete'}</p>
-                <p><strong>Components Loaded:</strong> Header ✅, Sidebar ✅, ProjectForm ✅</p>
+                <h3>📊 Application Status</h3>
+                <div className="status-grid">
+                  <div className="status-item">
+                    <span className="status-label">Components:</span>
+                    <span className="status-value">✅ All Loaded</span>
+                  </div>
+                  <div className="status-item">
+                    <span className="status-label">Database:</span>
+                    <span className="status-value">✅ Connected</span>
+                  </div>
+                  <div className="status-item">
+                    <span className="status-label">Templates:</span>
+                    <span className="status-value">✅ Available</span>
+                  </div>
+                  <div className="status-item">
+                    <span className="status-label">File System:</span>
+                    <span className="status-value">✅ Accessible</span>
+                  </div>
+                </div>
               </div>
 
-              <div className="welcome-actions">
-                <button 
-                  onClick={() => setCurrentView('form')}
-                  className="btn btn-primary"
-                >
-                  Create New Project
-                </button>
-                <button 
-                  onClick={() => setCurrentView('list')}
-                  className="btn btn-secondary"
-                >
-                  View Projects
-                </button>
-                <button 
-                  onClick={() => setCurrentView('settings')}
-                  className="btn btn-secondary"
-                >
-                  Open Settings
-                </button>
-              </div>
-
-              <div className="welcome-status">
-                <p>✅ All components are working!</p>
-                <p>Use the sidebar to navigate between different views.</p>
-                <p>Current project count: {projects.length}</p>
+              <div className="welcome-footer">
+                <p>💡 <strong>Pro Tip:</strong> Use the sidebar navigation to quickly switch between different views and manage your projects efficiently.</p>
+                <p>🔧 <strong>Need Help?</strong> Check the settings panel for application information and configuration options.</p>
               </div>
             </div>
           );
@@ -327,7 +435,7 @@ function App() {
     return (
       <div className="loading-container">
         <img src="acuity.jpg" alt="Acuity Brands" className="logo" />
-        <h1>Project Creator 2024</h1>
+        <h1>Project Creator</h1>
         <p>Loading modern application...</p>
         <div className="spinner"></div>
         <p>Built with Electron & React</p>

@@ -1,7 +1,7 @@
 {
-  "name": "project-creator-2024",
+  "name": "project-creator",
   "version": "5.0.0",
-  "description": "Project Creator 2024 - Modern Electron application for creating and managing projects",
+  "description": "Project Creator - Modern Electron application for creating and managing projects",
   "main": "main.js",
   "homepage": "./",
   "scripts": {
@@ -15,7 +15,11 @@
     "dist:win": "npm run build && electron-builder --win",
     "dist:mac": "npm run build && electron-builder --mac",
     "dist:linux": "npm run build && electron-builder --linux",
-    "postinstall": "electron-builder install-app-deps"
+    "postinstall": "electron-builder install-app-deps",
+    "version:patch": "npm version patch --no-git-tag-version",
+    "version:minor": "npm version minor --no-git-tag-version",
+    "version:major": "npm version major --no-git-tag-version",
+    "version:show": "node -p \"require('./package.json').version\""
   },
   "keywords": [
     "electron",
@@ -53,7 +57,7 @@
   },
   "build": {
     "appId": "com.acuitybrands.projectcreator",
-    "productName": "Project Creator 2024",
+    "productName": "Project Creator",
     "directories": {
       "output": "dist"
     },

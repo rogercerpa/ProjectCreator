@@ -8,7 +8,7 @@ function Header() {
         <div className="header-left">
           <img src="acuity.jpg" alt="Acuity Brands" className="header-logo" />
           <div className="header-title">
-            <h1>Project Creator 2024</h1>
+            <h1>Project Creator</h1>
             <span className="header-subtitle">Electron Edition</span>
           </div>
         </div>

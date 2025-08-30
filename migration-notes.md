@@ -1,7 +1,7 @@
 # HTA to Electron Migration Progress
 
 ## Project Overview
-**Original Application**: Project Creator 2024 v4_2_3.hta
+**Original Application**: Project Creator v4_2_3.hta
 **Target Platform**: Electron (Node.js + React)
 **Migration Start Date**: December 2024
 
@@ -97,7 +97,7 @@ Static layout            → Responsive design ✅
 
 ### Current HTA Structure
 ```
-Project Creator 2024 v4_2_3.hta
+Project Creator v4_2_3.hta
 ├── HTML (inline)
 ├── CSS (inline)
 ├── VBScript (inline)
