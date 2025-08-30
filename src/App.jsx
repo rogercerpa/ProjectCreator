@@ -19,7 +19,7 @@ function App() {
     rfaType: '',
     regionalTeam: '',
     ecd: '',
-    nationalAccount: '',
+    nationalAccount: 'Default',
     complexity: '',
     rfaValue: '',
     status: '',
