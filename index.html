@@ -5,6 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Project Creator - Electron</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="shortcut icon" type="image/x-icon" href="favicon.ico">
+    <link rel="apple-touch-icon" href="logo.png">
+    
+    <!-- Global polyfill - must come before any other scripts -->
+    <script>
+        // Polyfill for global object that Node.js modules expect
+        if (typeof global === 'undefined') {
+            window.global = window;
+        }
+        if (typeof process === 'undefined') {
+            window.process = { env: { NODE_ENV: 'production' } };
+        }
+    </script>
+    
     <style>
         * {
             margin: 0;

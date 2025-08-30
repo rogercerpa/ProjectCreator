@@ -1,6 +1,7 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
+const webpack = require('webpack');
 
 module.exports = (env, argv) => {
   const isProduction = argv.mode === 'production';
@@ -9,7 +10,8 @@ module.exports = (env, argv) => {
     entry: './src/index.js',
     output: {
       path: path.resolve(__dirname, 'dist'),
-      filename: 'bundle.js',
+      filename: '[name].bundle.js',
+      chunkFilename: '[name].[chunkhash].js',
       clean: true
     },
     module: {
@@ -53,21 +55,34 @@ module.exports = (env, argv) => {
       }
     },
     plugins: [
+      // Fix for "global is not defined" error
+      new webpack.DefinePlugin({
+        'global': 'globalThis',
+        'process.env.NODE_ENV': JSON.stringify(isProduction ? 'production' : 'development')
+      }),
       new HtmlWebpackPlugin({
         template: './index.html',
         filename: 'index.html',
-        inject: 'body'
-      }),
-      new CopyWebpackPlugin({
-        patterns: [
-                  {
-          from: 'logo.png',
-          to: 'logo.png'
-        },
-        {
-          from: 'favicon.ico',
-          to: 'favicon.ico'
+        inject: 'body',
+        // SECURITY: Add security headers
+        meta: {
+          'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';"
         }
+      }),
+            new CopyWebpackPlugin({
+        patterns: [
+          {
+            from: 'assets/images/logo.png',
+            to: 'logo.png'
+          },
+          {
+            from: 'assets/icons/favicon.ico',
+            to: 'favicon.ico'
+          },
+          {
+            from: 'preload.js',
+            to: 'preload.js'
+          }
         ]
       })
     ],
@@ -75,6 +90,28 @@ module.exports = (env, argv) => {
     target: 'electron-renderer',
     externals: {
       'electron': 'commonjs electron'
+    },
+    // SECURITY: Add security optimizations
+    optimization: {
+      minimize: isProduction,
+      splitChunks: {
+        chunks: 'all',
+        cacheGroups: {
+          vendor: {
+            test: /[\\/]node_modules[\\/]/,
+            name: 'vendors',
+            chunks: 'all',
+            priority: 10
+          },
+          common: {
+            name: 'common',
+            minChunks: 2,
+            chunks: 'all',
+            priority: 5,
+            reuseExistingChunk: true
+          }
+        }
+      }
     }
   };
 };

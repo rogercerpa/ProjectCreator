@@ -1,13 +1,10 @@
 // Version utility for Project Creator
-// This file reads the version from package.json and provides it to components
+// This file provides version information to components
 
-// Import package.json version
-const packageJson = require('../../package.json');
-
-// Export version information
-export const APP_VERSION = packageJson.version;
-export const APP_NAME = packageJson.name;
-export const APP_DESCRIPTION = packageJson.description;
+// Version information - hardcoded for reliability
+export const APP_VERSION = '5.0.8';
+export const APP_NAME = 'project-creator';
+export const APP_DESCRIPTION = 'Professional Project Management & Document Automation Tool';
 
 // Version display helpers
 export const getVersionDisplay = () => `v${APP_VERSION}`;
@@ -19,7 +16,7 @@ export const BUILD_INFO = {
   name: APP_NAME,
   description: APP_DESCRIPTION,
   buildDate: new Date().toISOString(),
-  environment: process.env.NODE_ENV || 'development'
+  environment: 'production'
 };
 
 export default {

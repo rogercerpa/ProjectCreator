@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import './Settings.css';
 
-// Access ipcRenderer from the global scope (available due to nodeIntegration: true)
-const { ipcRenderer } = window.require('electron');
+// Access secure electron API through contextBridge
+const { electronAPI } = window;
 
 function Settings() {
   const [settings, setSettings] = useState({
@@ -43,7 +43,7 @@ function Settings() {
   const loadSettings = async () => {
     try {
       setIsLoading(true);
-      const savedSettings = await ipcRenderer.invoke('settings-load');
+      const savedSettings = await electronAPI.settingsLoad();
       if (savedSettings && savedSettings.success) {
         setSettings(prev => ({ ...prev, ...savedSettings.data }));
       }
@@ -57,7 +57,7 @@ function Settings() {
   const saveSettings = async () => {
     try {
       setIsLoading(true);
-      const result = await ipcRenderer.invoke('settings-save', settings);
+      const result = await electronAPI.settingsSave(settings);
       if (result && result.success) {
         alert('Settings saved successfully!');
       } else {

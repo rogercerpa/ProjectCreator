@@ -1,4 +1,4 @@
-const { ipcRenderer } = require('electron');
+// ProjectService runs in main process - no need for ipcRenderer
 const fs = require('fs-extra');
 const path = require('path');
 const officegen = require('officegen');

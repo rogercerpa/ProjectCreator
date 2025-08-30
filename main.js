@@ -8,6 +8,7 @@ const WordService = require('./src/services/WordService');
 const FileService = require('./src/services/FileService');
 const ProjectPersistenceService = require('./src/services/ProjectPersistenceService');
 const ProjectCreationService = require('./src/services/ProjectCreationService');
+const SecurityLoggingService = require('./src/services/SecurityLoggingService');
 
 // Import package.json for version info
 const packageJson = require('./package.json');
@@ -21,6 +22,7 @@ const wordService = new WordService();
 const fileService = new FileService();
 const projectPersistenceService = new ProjectPersistenceService();
 const projectCreationService = new ProjectCreationService();
+const securityLoggingService = new SecurityLoggingService();
 
 function createWindow() {
   // Create the browser window
@@ -30,12 +32,14 @@ function createWindow() {
     minWidth: 800,
     minHeight: 600,
     webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
-      enableRemoteModule: true,
-      webSecurity: false
+      nodeIntegration: false, // SECURITY: Disable Node.js integration
+      contextIsolation: true, // SECURITY: Enable context isolation
+      enableRemoteModule: false, // SECURITY: Disable deprecated remote module
+      webSecurity: true, // SECURITY: Enable web security
+      sandbox: false, // Required for file system access in Electron
+      preload: path.join(__dirname, 'preload.js') // SECURITY: Use preload script for secure IPC
     },
-    icon: path.join(__dirname, 'favicon.ico'),
+    icon: path.join(__dirname, 'assets/icons/favicon.ico'),
     title: 'Project Creator - Electron',
     show: false
   });
@@ -201,8 +205,16 @@ ipcMain.handle('save-file', async (event, options = {}) => {
 // File system operations
 ipcMain.handle('fs-read-file', async (event, filePath) => {
   try {
+    // SECURITY: Log file access
+    await securityLoggingService.logFileAccess(filePath, process.env.USERNAME || 'unknown', 'READ');
     return await fs.readFile(filePath, 'utf8');
   } catch (error) {
+    // SECURITY: Log failed file access
+    await securityLoggingService.logSecurityEvent('FILE_ACCESS_FAILED', {
+      filePath,
+      error: error.message,
+      user: process.env.USERNAME || 'unknown'
+    }, 'WARNING');
     throw error;
   }
 });
