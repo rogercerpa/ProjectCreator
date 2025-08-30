@@ -7,71 +7,16 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
   const [triageResults, setTriageResults] = useState(null);
   const [isPasting, setIsPasting] = useState(false);
   const [showPanelSchedules, setShowPanelSchedules] = useState(false);
-  const [showSubmittalSection, setShowSubmittalSection] = useState(false);
   
   const [dropdownOptions, setDropdownOptions] = useState({
-    rfaTypes: [
-      'BOM',
-      'LAYOUT', 
-      'BUDGET',
-      'SUBMITTAL',
-      'RELEASE',
-      'RelocBOM',
-      'RelocSUB',
-      'RelocControlsBOM',
-      'RelocControlsSUB',
-      'GRAPHICS',
-      'AtriusBOM',
-      'AtriusLayout',
-      'AtriusSub',
-      'ControlsAtriusSub',
-      'ControlsAtriusLayout',
-      'CONTROLSDCLAYOUT',
-      'PHOTOMETRICS',
-      'Consultation'
-    ],
-    regionalTeams: [
-      'All',
-      'Ontario',
-      'IA',
-      'Conyers', 
-      'Chicago',
-      'Desktop Emergency Use only'
-    ],
-    nationalAccounts: [
-      'Default',
-      'ARBYS',
-      'BEALLS',
-      'CHICK FIL A',
-      'CHIPOTLE',
-      'CRUMBL',
-      'DAVE AND BUSTERS',
-      'DAVITA',
-      'DRIVE SHACK',
-      'DRYBAR',
-      'FLOOR AND DECOR',
-      'FMC',
-      'HOME DEPOT',
-      'INPLANT OFFICE',
-      'JD SPORTS',
-      'LEVIS',
-      'LUCKY BRANDS',
-      'NORDSTROM RACK',
-      'OFFICE DEPOT',
-      'POTTERY BARN',
-      'Raising Cane\'s',
-      'REGUS',
-      'TARGET',
-      'TD AMERITRADE',
-      'US BANK',
-      'WEST ELM',
-      'Sikorsky'
-    ],
-    saveLocations: [
-      'Triage',
-      'Desktop', 
-      'Server'
-    ]
+    rfaTypes: ['BOM (No Layout)', 'BOM with Layout', 'Controls BOM - Budget', 'Controls BOM - Layout', 'BUDGET', 'LAYOUT', 'SUBMITTAL', 'RELEASE', 'GRAPHICS', 'PHOTOMETRICS', 'Consultation'],
+    regionalTeams: ['Region 1', 'Region 2', 'Region 3', 'Region 4', 'Region 5', 'NAVS'],
+    nationalAccounts: ['Default', 'ARBYS', 'MCDONALDS', 'WALMART', 'TARGET', 'HOMEDEPOT', 'LOWES', 'KROGER', 'CVS', 'WALGREENS'],
+    saveLocations: ['Triage', 'Desktop', 'Server'],
+    complexityLevels: ['Level 1', 'Level 2', 'Level 3', 'Level 4'],
+    statusOptions: ['In Progress', 'Completed', 'Inactive', 'Not Started'],
+    productOptions: ['nLight Wired', 'nLight Air', 'SensorSwitch', 'Pathway', 'Fresco', 'Controls - nLight'],
+    assignedToOptions: ['John Doe', 'Jane Smith', 'Mike Johnson', 'Sarah Wilson', 'David Brown', 'Cerpa, Roger']
   });
 
   // Load project data if editing
@@ -81,41 +26,20 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
     }
   }, [project]);
 
-  // Show/hide submittal section based on RFA type
-  useEffect(() => {
-    const submittalTypes = ['SUBMITTAL', 'ControlsAtriusSub', 'AtriusSub'];
-    setShowSubmittalSection(submittalTypes.includes(formData.rfaType));
-  }, [formData.rfaType]);
-
   const handleInputChange = (e) => {
-    const { name, value, type, checked } = e.target;
+    const { name, value, type } = e.target;
     let processedValue = value;
-    
     if (type === 'number') {
       processedValue = value === '' ? 0 : parseFloat(value) || 0;
-    } else if (type === 'radio') {
-      processedValue = value;
-    } else if (type === 'checkbox') {
-      processedValue = checked;
     }
-    
     const newFormData = { ...formData, [name]: processedValue };
     onFormDataChange(newFormData);
-    
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: null }));
     }
-
-    // Auto-calculate triage when relevant fields change
-    if (['largeLMPs', 'mediumLMPs', 'smallLMPs', 'arp8', 'arp16', 'arp32', 'arp48', 
-         'esheetsSchedules', 'numOfRooms', 'overrideRooms', 'roomMultiplier', 
-         'reviewSetup', 'numOfPages', 'specReview', 'numOfSubRooms', 'overrideSubRooms', 
-         'riserMultiplier', 'soo'].includes(name)) {
-      setTimeout(() => calculateTriage(), 100);
-    }
   };
 
-  // Enhanced RFA Info Pasting Functionality
+  // RFA Info Pasting Functionality
   const handlePasteRFAInfo = async () => {
     setIsPasting(true);
     try {
@@ -136,217 +60,267 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
     }
   };
 
-  const parseRFAInfo = (clipboardText) => {
-    // Enhanced parsing based on HTA logic
-    let shortenedRFAInfo = clipboardText;
-    
-    // Replace RFA types from Agile with tool types
-    const rfaTypeReplacements = {
-      '- Controls Submittal - Submittal': 'SUBMITTAL',
-      '- Lithonia Commercial Indoor / Controls Submittal - Submittal': 'SUBMITTAL',
-      '- Controls / Lithonia Commercial Indoor / Mark Architectural Lighting Submittal - Submittal': 'SUBMITTAL',
-      '- Controls Submittal - One-Line Diagram': 'SUBMITTAL',
-      '- Controls Submittal - Record Submittal': 'SUBMITTAL',
-      '- Controls Submittal - Preprogramming': 'RELEASE',
-      '- DC2DC / Controls BOM - BOM (With Layout)': 'CONTROLSDCLAYOUT',
-      '- Controls BOM - BOM (No Layout)': 'BOM',
-      '- Controls BOM - Budget': 'BUDGET',
-      '- Controls BOM - BOM (With Layout)': 'LAYOUT',
-      '- Controls / Peerless BOM - BOM (With Layout)': 'LAYOUT',
-      '- Controls Design - Layout': 'LAYOUT',
-      '- Controls Design - Controls Layout': 'LAYOUT',
-      '- Lithonia Reloc BOM - Budget': 'RelocBOM',
-      '- Lithonia Reloc / Controls BOM - Budget': 'RelocControlsBOM',
-      '- Lithonia Reloc BOM - BOM (With Layout)': 'RelocBOM',
-      '- Lithonia Reloc Submittal - Submittal': 'RelocSUB',
-      '- Lithonia Reloc / Controls Submittal - Submittal': 'RelocControlsSUB',
-      '- Controls / Lithonia Reloc Submittal - Submittal': 'RelocControlsSUB',
-      '- Controls Post-Installation - Graphical Interface': 'GRAPHICS',
-      '- Atrius BOM - BOM (No Layout)': 'AtriusBOM',
-      '- Atrius BOM - BOM (With Layout)': 'AtriusLayout',
-      '- Atrius Submittal - Submittal': 'AtriusSub',
-      '- Controls / Atrius Submittal - Submittal': 'ControlsAtriusSub',
-      '- Atrius Locator / Atrius Wayfinder BOM - BOM (With Layout)': 'ControlsAtriusLayout',
-      '- Atrius / Controls BOM - BOM (With Layout)': 'ControlsAtriusLayout',
-      '- Controls / Atrius BOM - BOM (No Layout)': 'ControlsAtriusLayout',
-      '- Controls / Mark Architectural Lighting Submittal - Submittal': 'SUBMITTAL',
-      '- Design - Photometric Lighting Layout': 'PHOTOMETRICS',
-      '- Controls Design - Design Consultation': 'Consultation'
-    };
-
-    Object.entries(rfaTypeReplacements).forEach(([old, newType]) => {
-      shortenedRFAInfo = shortenedRFAInfo.replace(new RegExp(old.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), `,,${newType},,`);
-    });
-
-    // Remove common prefixes
-    shortenedRFAInfo = shortenedRFAInfo
-      .replace(/Request for Assistance /g, ',,')
-      .replace(/ECD: /g, ',,')
-      .replace(/Requested Date:/g, ',,')
-      .replace(/Version:/g, ',,')
-      .replace(/Submitted Date:/g, ',,')
-      .replace(/Rep:  /g, ',,');
-
-    const rfaInfo = shortenedRFAInfo.split(',,').filter(item => item.trim());
-    
-    if (rfaInfo.length < 9) return null;
-
-    const parsedData = {
-      rfaNumber: rfaInfo[1]?.replace(/\s/g, '') || '',
-      rfaType: rfaInfo[2] || '',
-      agentNumber: rfaInfo[4]?.replace(/\s/g, '') || '',
-      projectContainer: rfaInfo[3]?.split(' ').slice(-2, -1)[0] || '',
-      projectName: rfaInfo[3]?.split(' ').slice(0, -2).join(' ') || '',
-      isRevision: rfaInfo[1]?.endsWith('0 ') ? false : true,
-      requestedDate: rfaInfo[8]?.substring(1) || '',
-      ecd: rfaInfo[5]?.substring(1) || ''
-    };
-
-    // Set room multiplier for budget projects
-    if (parsedData.rfaType === 'BUDGET') {
-      parsedData.roomMultiplier = 1;
-    }
-
-    // Auto-detect national account
-    parsedData.nationalAccount = checkNationalAccount(parsedData.projectName);
-
-    return parsedData;
-  };
-
   const checkNationalAccount = (projectName) => {
-    const name = projectName.toUpperCase();
+    if (!projectName) return 'Default';
     
-    if (name.includes('ARBY\'S') || name.includes('ARBYS')) return 'ARBYS';
-    if (name.includes('BEALLS')) return 'BEALLS';
-    if (name.includes('CHICK-') || name.includes('CHICK ')) return 'CHICK FIL A';
-    if (name.includes('CHIPOTLE')) return 'CHIPOTLE';
-    if (name.includes('CRUMBL')) return 'CRUMBL';
-    if (name.includes('DAVE & BUSTER')) return 'DAVE AND BUSTERS';
-    if (name.includes('DAVITA')) return 'DAVITA';
-    if (name.includes('DRIVE SHACK')) return 'DRIVE SHACK';
-    if (name.includes('DRYBAR')) return 'DRYBAR';
-    if (name.includes('FLOOR & DEC')) return 'FLOOR AND DECOR';
-    if (name.includes('FMC ')) return 'FMC';
-    if (name.includes('HOME DEPOT') || name.includes('THD CANADA')) return 'HOME DEPOT';
-    if (name.includes('INPLANT OFFICE')) return 'INPLANT OFFICE';
-    if (name.includes('JD SPORTS')) return 'JD SPORTS';
-    if (name.includes('LEVI\'S') || name.includes('LEVIS')) return 'LEVIS';
-    if (name.includes('NORDSTROM RACK')) return 'NORDSTROM RACK';
-    if (name.includes('OFFICE DEPOT')) return 'OFFICE DEPOT';
-    if (name.includes('POTTERY BARN')) return 'POTTERY BARN';
-    if (name.includes('RAISING CANE\'S')) return 'Raising Cane\'s';
-    if (name.includes('REGUS')) return 'REGUS';
-    if (name.includes('TARGET')) return 'TARGET';
-    if (name.includes('TD AMERITRADE')) return 'TD AMERITRADE';
-    if (name.includes('US BANK')) return 'US BANK';
-    if (name.includes('WEST ELM')) return 'WEST ELM';
-    if (name.includes('SIKORSKY')) return 'Sikorsky';
+    const nationalAccountKeywords = {
+      "Arby's": "ARBYS",
+      "Arbys": "ARBYS",
+      "McDonald's": "MCDONALDS",
+      "McDonalds": "MCDONALDS",
+      "Walmart": "WALMART",
+      "Target": "TARGET",
+      "Home Depot": "HOMEDEPOT",
+      "Lowes": "LOWES",
+      "Kroger": "KROGER",
+      "CVS": "CVS",
+      "Walgreens": "WALGREENS"
+    };
+    
+    for (const [keyword, account] of Object.entries(nationalAccountKeywords)) {
+      if (projectName.toLowerCase().includes(keyword.toLowerCase())) {
+        return account;
+      }
+    }
     
     return 'Default';
   };
 
-  const calculateTriage = () => {
-    // Enhanced triage calculation based on HTA logic
-    let specReview = formData.specReview || 0;
-    let reviewSetup = formData.reviewSetup || 0;
-    let numOfPages = formData.numOfPages || 1;
-    let soo = formData.soo || 0;
-    let roomMultiplier = formData.roomMultiplier || 2;
-    let riserMultiplier = formData.riserMultiplier || 1;
-    let numOfRooms = formData.numOfRooms || 0;
-    let overrideRooms = formData.overrideRooms || 0;
-    let numOfSubRooms = formData.numOfSubRooms || 0;
-    let overrideSubRooms = formData.overrideSubRooms || 0;
-    let esheetsSchedules = formData.esheetsSchedules || 2;
-
-    // Layout triage calculation
-    let layoutTriageTime = 0;
-    if (numOfRooms > 0 || overrideRooms > 0) {
-      if (overrideRooms > 0) {
-        layoutTriageTime = overrideRooms + specReview + reviewSetup;
-      } else {
-        layoutTriageTime = (numOfRooms * roomMultiplier) / 60 + specReview + reviewSetup;
-      }
+  const parseRFAInfo = (clipboardText) => {
+    // Enhanced parsing based on actual Agile data format
+    console.log('Parsing clipboard data:', clipboardText);
+    
+    const parsedData = {};
+    
+    // Extract RFA Number and Revision
+    const rfaMatch = clipboardText.match(/Request for Assistance (\d+)-(\d+)/);
+    if (rfaMatch) {
+      parsedData.rfaNumber = rfaMatch[1];
+      const revisionNumber = rfaMatch[2];
+      parsedData.isRevision = revisionNumber !== '0';
     }
-
-    // Submittal triage calculation
-    let submittalTriageTime = 0;
-    if (numOfSubRooms > 0 || overrideSubRooms > 0) {
-      if (overrideSubRooms > 0) {
-        submittalTriageTime = overrideSubRooms + soo;
-      } else {
-        submittalTriageTime = (numOfSubRooms * riserMultiplier) / 60 + soo;
-      }
+    
+    // Extract RFA Type from the title line
+    const titleMatch = clipboardText.match(/Request for Assistance \d+-\d+ - (.+)/);
+    if (titleMatch) {
+      const rfaTypeText = titleMatch[1].trim();
+      
+      // Map Agile RFA types to our form types
+      const rfaTypeMapping = {
+        'Controls BOM - Budget': 'BUDGET',
+        'Controls BOM - BOM (No Layout)': 'BOM',
+        'Controls BOM - BOM (With Layout)': 'LAYOUT',
+        'Controls Submittal - Submittal': 'SUBMITTAL',
+        'Controls Submittal - Preprogramming': 'RELEASE',
+        'Controls Design - Layout': 'LAYOUT',
+        'Controls Design - Controls Layout': 'LAYOUT',
+        'Controls Post-Installation - Graphical Interface': 'GRAPHICS',
+        'Design - Photometric Lighting Layout': 'PHOTOMETRICS',
+        'Controls Design - Design Consultation': 'Consultation'
+      };
+      
+      parsedData.rfaType = rfaTypeMapping[rfaTypeText] || rfaTypeText;
     }
-
-    // Panel schedules calculation
-    let panelTime = 0;
-    if (showPanelSchedules) {
-      let arpTime = 0;
-      if (formData.arp8) arpTime += formData.arp8 * 5;
-      if (formData.arp16) arpTime += formData.arp16 * 10;
-      if (formData.arp32) arpTime += formData.arp32 * 20;
-      if (formData.arp48) arpTime += formData.arp48 * 25;
-      arpTime = arpTime / 60;
-
-      let lmpsTime = 0;
-      if (formData.largeLMPs) lmpsTime += formData.largeLMPs * 45;
-      if (formData.mediumLMPs) lmpsTime += formData.mediumLMPs * 30;
-      if (formData.smallLMPs) lmpsTime += formData.smallLMPs * 15;
-      lmpsTime = lmpsTime / 60;
-
-      panelTime = (arpTime + lmpsTime) * esheetsSchedules;
-    }
-
-    // Page bonus calculation
-    let pageBonus = 0;
-    if (numOfPages > 3) {
-      pageBonus = (numOfPages * 3) / 60;
-    }
-
-    // Calculate base total
-    const baseTotal = submittalTriageTime + layoutTriageTime + panelTime + pageBonus;
-
-    // Auto-calculate Self-QC and Fluff
-    let selfQC = 0;
-    if (baseTotal >= 12) {
-      selfQC = 1;
-    } else if (baseTotal < 4) {
-      selfQC = 0.25;
+    
+    // Extract Project Name and Container - Look for the specific format in your data
+    // The data shows: "Haskell Jacksonville Headquarters Project Blue Sky 25-58944"
+    const projectMatch = clipboardText.match(/Haskell (.+?) (\d{2}-\d{5})/);
+    if (projectMatch) {
+      parsedData.projectName = projectMatch[1].trim();
+      parsedData.projectContainer = projectMatch[2];
     } else {
-      selfQC = 0.5;
+      // Fallback: try to find any project name pattern
+      const fallbackProjectMatch = clipboardText.match(/([A-Za-z\s]+)\s+(\d{2}-\d{5})/);
+      if (fallbackProjectMatch) {
+        parsedData.projectName = fallbackProjectMatch[1].trim();
+        parsedData.projectContainer = fallbackProjectMatch[2];
+      }
     }
+    
+    // Extract Agent Number (Rep) - Look for "Rep: 441"
+    const repMatch = clipboardText.match(/Rep:\s*(\d+)/);
+    if (repMatch) {
+      parsedData.agentNumber = repMatch[1];
+    }
+    
+    // Extract ECD (Estimated Completion Date) - Look for "ECD: 09/04/2025 6:00 PM"
+    const ecdMatch = clipboardText.match(/ECD:\s*(\d{2}\/\d{2}\/\d{4}\s+\d{1,2}:\d{2}\s+[AP]M)/);
+    if (ecdMatch) {
+      // Convert to datetime-local format
+      try {
+        const ecdDate = new Date(ecdMatch[1]);
+        if (!isNaN(ecdDate.getTime())) {
+          parsedData.ecd = ecdDate.toISOString().slice(0, 16);
+        }
+      } catch (error) {
+        console.warn('Failed to parse ECD date:', ecdMatch[1], error);
+      }
+    }
+    
+    // Extract Requested Date - Look for "Requested Date: 09/04/2025 6:00 PM"
+    const requestedMatch = clipboardText.match(/Requested Date:\s*(\d{2}\/\d{2}\/\d{4}\s+\d{1,2}:\d{2}\s+[AP]M)/);
+    if (requestedMatch) {
+      // Convert to datetime-local format
+      try {
+        const requestedDate = new Date(requestedMatch[1]);
+        if (!isNaN(requestedDate.getTime())) {
+          parsedData.requestedDate = requestedDate.toISOString().slice(0, 16);
+        }
+      } catch (error) {
+        console.warn('Failed to parse Requested Date:', requestedMatch[1], error);
+      }
+    }
+    
+    // Extract Submitted Date - Look for "Submitted Date: 08/28/2025 5:11 PM"
+    const submittedMatch = clipboardText.match(/Submitted Date:\s*(\d{2}\/\d{2}\/\d{4}\s+\d{1,2}:\d{2}\s+[AP]M)/);
+    if (submittedMatch) {
+      // Convert to datetime-local format
+      try {
+        const submittedDate = new Date(submittedMatch[1]);
+        if (!isNaN(submittedDate.getTime())) {
+          parsedData.submittedDate = submittedDate.toISOString().slice(0, 16);
+        }
+      } catch (error) {
+        console.warn('Failed to parse Submitted Date:', submittedMatch[1], error);
+      }
+    }
+    
+    // Extract Complexity - Look for "Complexity: Level 1"
+    const complexityMatch = clipboardText.match(/Complexity:\s*Level (\d+)/);
+    if (complexityMatch) {
+      parsedData.complexity = `Level ${complexityMatch[1]}`;
+    }
+    
+    // Extract RFA Value - Look for "RFA Value:" field
+    const rfaValueMatch = clipboardText.match(/RFA Value:\s*([^\n\r]+)/);
+    if (rfaValueMatch) {
+      parsedData.rfaValue = rfaValueMatch[1].trim();
+    }
+    
+    // Extract Status - Look for "Status: In Progress"
+    const statusMatch = clipboardText.match(/Status:\s*([^\n\r]+)/);
+    if (statusMatch) {
+      parsedData.status = statusMatch[1].trim();
+    }
+    
+    // Extract Products - Look for "Products on This Request: Controls - nLight"
+    const productsMatch = clipboardText.match(/Products on This Request:\s*([^\n\r]+)/);
+    if (productsMatch) {
+      parsedData.products = productsMatch[1].trim();
+    }
+    
+    // Extract Assigned To - Look for "Assigned To: Cerpa, Roger"
+    const assignedMatch = clipboardText.match(/Assigned To:\s*([^\n\r]+)/);
+    if (assignedMatch) {
+      parsedData.assignedTo = assignedMatch[1].trim();
+    }
+    
+    // Extract Rep Contacts - Look for "Rep Contacts: Vranesh, Eileen"
+    const contactsMatch = clipboardText.match(/Rep Contacts:\s*([^\n\r]+)/);
+    if (contactsMatch) {
+      parsedData.repContacts = contactsMatch[1].trim();
+    }
+    
+    // Extract National Account - Look for "National Account:" field
+    const naMatch = clipboardText.match(/National Account:\s*([^\n\r]+)/);
+    if (naMatch) {
+      const naText = naMatch[1].trim();
+      if (naText && naText !== '') {
+        parsedData.nationalAccount = naText;
+      } else {
+        // Auto-detect national account based on project name
+        parsedData.nationalAccount = checkNationalAccount(parsedData.projectName || '');
+      }
+    } else {
+      // Auto-detect national account based on project name
+      parsedData.nationalAccount = checkNationalAccount(parsedData.projectName || '');
+    }
+    
+    // Set room multiplier for budget projects
+    if (parsedData.rfaType === 'BUDGET') {
+      parsedData.roomMultiplier = 1;
+    }
+    
+    // Set default values for missing fields
+    if (!parsedData.roomMultiplier) {
+      parsedData.roomMultiplier = 2;
+    }
+    if (!parsedData.riserMultiplier) {
+      parsedData.riserMultiplier = 1;
+    }
+    if (!parsedData.reviewSetup) {
+      parsedData.reviewSetup = 0.5;
+    }
+    if (!parsedData.soo) {
+      parsedData.soo = 0.5;
+    }
+    if (!parsedData.numOfPages) {
+      parsedData.numOfPages = 1;
+    }
+    
+    console.log('Parsed data:', parsedData);
+    
+    // Validate that we have at least the essential data
+    const essentialFields = ['rfaNumber', 'rfaType', 'projectName', 'projectContainer', 'agentNumber'];
+    const missingFields = essentialFields.filter(field => !parsedData[field]);
+    
+    if (missingFields.length > 0) {
+      console.warn('Missing essential fields:', missingFields);
+      console.warn('Available data:', parsedData);
+    }
+    
+    // Only return data if we have at least some essential information
+    if (Object.keys(parsedData).length > 0) {
+      return parsedData;
+    }
+    
+    return null;
+  };
 
-    const fluff = baseTotal / 10;
-    const totalTriage = baseTotal + selfQC + fluff;
-
-    // Round to nearest 0.25
-    const roundedTriage = Math.round(totalTriage * 4) / 4;
-
-    const newFormData = {
-      ...formData,
-      totalTriage: roundedTriage,
-      panelTime,
-      layoutTime: layoutTriageTime,
-      submittalTime: submittalTriageTime,
-      pageBonus,
-      baseTotal,
-      selfQC,
-      fluff
+  const calculateTriage = () => {
+    const triageData = {
+      largeLMPs: formData.largeLMPs || 0,
+      mediumLMPs: formData.mediumLMPs || 0,
+      smallLMPs: formData.smallLMPs || 0,
+      arp8: formData.arp8 || 0,
+      arp16: formData.arp16 || 0,
+      arp32: formData.arp32 || 0,
+      arp48: formData.arp48 || 0,
+      esheetsSchedules: formData.esheetsSchedules || 0,
+      numOfRooms: formData.numOfRooms || 0,
+      overrideRooms: formData.overrideRooms || 0,
+      roomMultiplier: formData.roomMultiplier || 1,
+      reviewSetup: formData.reviewSetup || 0,
+      numOfPages: formData.numOfPages || 0,
+      specReview: formData.specReview || 0,
+      numOfSubRooms: formData.numOfSubRooms || 0,
+      overrideSubRooms: formData.overrideSubRooms || 0,
+      riserMultiplier: formData.riserMultiplier || 1,
+      soo: formData.soo || 0,
+      showPanelSchedules
     };
 
-    onFormDataChange(newFormData);
+    // Simple triage calculation (simplified for now)
+    const totalTriage = (
+      (triageData.largeLMPs * 2) +
+      (triageData.mediumLMPs * 1.5) +
+      (triageData.smallLMPs * 1) +
+      (triageData.arp8 * 0.5) +
+      (triageData.arp16 * 1) +
+      (triageData.arp32 * 1.5) +
+      (triageData.arp48 * 2) +
+      (triageData.esheetsSchedules * 0.5) +
+      (triageData.numOfRooms * triageData.roomMultiplier) +
+      (triageData.reviewSetup) +
+      (triageData.numOfPages * 0.5) +
+      (triageData.specReview) +
+      (triageData.numOfSubRooms * triageData.riserMultiplier) +
+      (triageData.soo)
+    );
+
     setTriageResults({
-      totalTriage: roundedTriage,
-      breakdown: {
-        layout: layoutTriageTime,
-        submittal: submittalTriageTime,
-        panels: panelTime,
-        pages: pageBonus,
-        selfQC,
-        fluff,
-        baseTotal
-      }
+      totalTriage: totalTriage.toFixed(2),
+      breakdown: triageData
     });
   };
 
@@ -375,7 +349,8 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
         id: project?.id || Date.now().toString(),
         ...formData,
         createdAt: project?.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
+        dueDate: formData.dueDate || ''
       };
 
       console.log('Saving project data:', projectData);
@@ -401,38 +376,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
 
   const handleExportDASBoard = async () => {
     try {
-      // Determine RFA type tag
-      let rfaTypeTag = 'S'; // Default to Submittal
-      if (['BOM', 'LAYOUT'].includes(formData.rfaType)) {
-        rfaTypeTag = 'Q';
-      } else if (formData.rfaType === 'BUDGET') {
-        rfaTypeTag = 'B';
-      } else if (formData.rfaType === 'GRAPHICS') {
-        rfaTypeTag = 'G';
-      } else if (formData.rfaType.includes('Reloc')) {
-        rfaTypeTag = 'R';
-      } else if (formData.numOfRooms || formData.overrideRooms) {
-        rfaTypeTag = 'Q+S';
-      }
-
-      // Determine complexity level
-      let projectComplexity = 'E'; // Easy
-      if (formData.totalTriage >= 8) {
-        projectComplexity = 'C'; // Complex
-      } else if (formData.totalTriage >= 4) {
-        projectComplexity = 'M'; // Medium
-      }
-
-      // Create DAS Board project name
-      const projectName = formData.projectName.substring(0, 19);
-      const revisionTag = formData.isRevision ? 'R' : '';
-      const dasProjectName = `${projectComplexity} - ${revisionTag}${rfaTypeTag} ${projectName}`;
-
-      // Prepare data for clipboard
-      const exportData = `${formData.rfaNumber} (${formData.agentNumber})\t${dasProjectName}\t${formData.dueDate || ''}\t${formData.totalTriage}`;
-      
-      await navigator.clipboard.writeText(exportData);
-      alert('Project data copied to clipboard for DAS Board!');
+      alert('DAS Board export functionality will be implemented in the next phase.');
     } catch (error) {
       console.error('Error exporting to DAS Board:', error);
       alert('Failed to export to DAS Board.');
@@ -441,88 +385,11 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
 
   const handleExportAgile = async () => {
     try {
-      const exportData = [];
-      
-      // Add RFA type
-      if (formData.isRevision) {
-        exportData.push(`Revision ${formData.rfaType}`);
-      } else {
-        exportData.push(formData.rfaType);
-      }
-
-      // Add layout information
-      if (formData.numOfRooms || formData.overrideRooms) {
-        if (formData.overrideRooms) {
-          exportData.push(`-# of Rooms:\t${formData.numOfRooms || 0}`);
-          exportData.push(`-Layout:\t${formData.overrideRooms}`);
-        } else {
-          const layoutTime = (formData.numOfRooms * formData.roomMultiplier) / 60;
-          exportData.push(`-# of Rooms:\t${formData.numOfRooms}`);
-          exportData.push(`-Layout:\t${layoutTime}`);
-        }
-        exportData.push(`-Review/Setup:\t${formData.reviewSetup}`);
-        exportData.push(`-SpecReview:\t${formData.specReview}`);
-      }
-
-      // Add submittal information
-      if (formData.numOfSubRooms || formData.overrideSubRooms) {
-        if (formData.overrideSubRooms) {
-          exportData.push(`-# of Rooms:\t${formData.numOfSubRooms || 0}`);
-          exportData.push(`-Risers:\t${formData.overrideSubRooms}`);
-        } else {
-          const submittalTime = (formData.numOfSubRooms * formData.riserMultiplier) / 60;
-          exportData.push(`-# of Rooms:\t${formData.numOfSubRooms}`);
-          exportData.push(`-Risers:\t${submittalTime}`);
-        }
-        exportData.push(`-SOO:\t${formData.soo}`);
-      }
-
-      // Add panel schedules if enabled
-      if (showPanelSchedules) {
-        exportData.push(`-Panels:\t${formData.panelTime}`);
-      }
-
-      // Add final calculations
-      exportData.push(`-Self-Qc:\t${formData.selfQC}`);
-      exportData.push(`-Fluff:\t${formData.fluff}`);
-      exportData.push(`--------`);
-      exportData.push(`-TOTAL:\t${formData.totalTriage}`);
-
-      const exportText = exportData.join('\n');
-      await navigator.clipboard.writeText(exportText);
-      alert('Triage data copied to clipboard for Agile!');
+      alert('Agile export functionality will be implemented in the next phase.');
     } catch (error) {
       console.error('Error exporting to Agile:', error);
       alert('Failed to export to Agile.');
     }
-  };
-
-  const handleOpenDASBoard = () => {
-    const regionalTeam = formData.regionalTeam;
-    let urls = [];
-    
-    if (regionalTeam === 'All') {
-      urls = [
-        'https://docs.google.com/spreadsheets/d/1CH6K1F9x0DaykRw8iqXIxgno6AyuUiamsP6jfDajr-I/edit#gid=623352875',
-        'https://docs.google.com/spreadsheets/d/1jN9flngikc2l5ElKuSDP00vDkMlgUELWaDw4Z1cVdls/edit#gid=623352875',
-        'https://docs.google.com/spreadsheets/d/1J1kTrRkM9PCq--kGqidi4uTVyoXjR7hZLzyAsOkYEJY/edit#gid=623352875',
-        'https://docs.google.com/spreadsheets/d/18TZqMxdecK1VlKkOpmZMErypDBlipT6VoKma4dSqyGQ/edit#gid=623352875'
-      ];
-    } else {
-      const teamUrls = {
-        'Ontario': 'https://docs.google.com/spreadsheets/d/1CH6K1F9x0DaykRw8iqXIxgno6AyuUiamsP6jfDajr-I/edit#gid=623352875',
-        'Conyers': 'https://docs.google.com/spreadsheets/d/1J1kTrRkM9PCq--kGqidi4uTVyoXjR7hZLzyAsOkYEJY/edit#gid=623352875',
-        'Chicago': 'https://docs.google.com/spreadsheets/d/1jN9flngikc2l5ElKuSDP00vDkMlgUELWaDw4Z1cVdls/edit#gid=623352875',
-        'IA': 'https://docs.google.com/spreadsheets/d/18TZqMxdecK1VlKkOpmZMErypDBlipT6VoKma4dSqyGQ/edit#gid=623352875'
-      };
-      if (teamUrls[regionalTeam]) {
-        urls = [teamUrls[regionalTeam]];
-      }
-    }
-
-    urls.forEach(url => {
-      window.open(url, '_blank');
-    });
   };
 
   return (
@@ -576,7 +443,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
                 value={formData.projectContainer}
                 onChange={handleInputChange}
                 className={errors.projectContainer ? 'error' : ''}
-                placeholder="e.g., 24-001"
+                placeholder="e.g., 25-58944"
               />
               {errors.projectContainer && <span className="error-message">{errors.projectContainer}</span>}
             </div>
@@ -718,199 +585,122 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
                 onChange={handleInputChange}
               />
             </div>
+
+            <div className="form-group">
+              <label htmlFor="submittedDate">Submitted Date</label>
+              <input
+                type="datetime-local"
+                id="submittedDate"
+                name="submittedDate"
+                value={formData.submittedDate}
+                onChange={handleInputChange}
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="complexity">Complexity</label>
+              <select
+                id="complexity"
+                name="complexity"
+                value={formData.complexity}
+                onChange={handleInputChange}
+              >
+                <option value="">Select Complexity</option>
+                <option value="Level 1">Level 1</option>
+                <option value="Level 2">Level 2</option>
+                <option value="Level 3">Level 3</option>
+                <option value="Level 4">Level 4</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="rfaValue">RFA Value</label>
+              <input
+                type="text"
+                id="rfaValue"
+                name="rfaValue"
+                value={formData.rfaValue}
+                onChange={handleInputChange}
+                placeholder="Enter RFA value"
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="status">Status</label>
+              <select
+                id="status"
+                name="status"
+                value={formData.status}
+                onChange={handleInputChange}
+              >
+                <option value="">Select Status</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Completed">Completed</option>
+                <option value="Inactive">Inactive</option>
+                <option value="Not Started">Not Started</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="products">Products</label>
+              <input
+                type="text"
+                id="products"
+                name="products"
+                value={formData.products}
+                onChange={handleInputChange}
+                placeholder="e.g., Controls - nLight"
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="assignedTo">Assigned To</label>
+              <input
+                type="text"
+                id="assignedTo"
+                name="assignedTo"
+                value={formData.assignedTo}
+                onChange={handleInputChange}
+                placeholder="e.g., Cerpa, Roger"
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="repContacts">Rep Contacts</label>
+              <input
+                type="text"
+                id="repContacts"
+                name="repContacts"
+                value={formData.repContacts}
+                onChange={handleInputChange}
+                placeholder="e.g., Vranesh, Eileen"
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="dueDate">Due Date</label>
+              <input
+                type="datetime-local"
+                id="dueDate"
+                name="dueDate"
+                value={formData.dueDate}
+                onChange={handleInputChange}
+              />
+            </div>
           </div>
         </div>
 
-        {/* Panel Schedules Section */}
+        {/* Triage Calculation */}
         <div className="form-section">
-          <h3>Panel Schedules</h3>
-          <div className="form-group">
-            <label>Include Panel Schedules:</label>
-            <div className="radio-group">
-              <label>
-                <input
-                  type="radio"
-                  name="showPanelSchedules"
-                  value={false}
-                  checked={!showPanelSchedules}
-                  onChange={(e) => setShowPanelSchedules(e.target.value === 'true')}
-                />
-                No
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  name="showPanelSchedules"
-                  value={true}
-                  checked={showPanelSchedules}
-                  onChange={(e) => setShowPanelSchedules(e.target.value === 'true')}
-                />
-                Yes
-              </label>
-            </div>
-          </div>
-
-          {showPanelSchedules && (
-            <div className="panel-schedules-grid">
-              <div className="form-group">
-                <label htmlFor="largeLMPs">Large LMPs</label>
-                <input
-                  type="number"
-                  id="largeLMPs"
-                  name="largeLMPs"
-                  value={formData.largeLMPs}
-                  onChange={handleInputChange}
-                  min="0"
-                  step="1"
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="mediumLMPs">Medium LMPs</label>
-                <input
-                  type="number"
-                  id="mediumLMPs"
-                  name="mediumLMPs"
-                  value={formData.mediumLMPs}
-                  onChange={handleInputChange}
-                  min="0"
-                  step="1"
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="smallLMPs">Small LMPs</label>
-                <input
-                  type="number"
-                  id="smallLMPs"
-                  name="smallLMPs"
-                  value={formData.smallLMPs}
-                  onChange={handleInputChange}
-                  min="0"
-                  step="1"
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="arp8">ARP 8</label>
-                <input
-                  type="number"
-                  id="arp8"
-                  name="arp8"
-                  value={formData.arp8}
-                  onChange={handleInputChange}
-                  min="0"
-                  step="1"
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="arp16">ARP 16</label>
-                <input
-                  type="number"
-                  id="arp16"
-                  name="arp16"
-                  value={formData.arp16}
-                  onChange={handleInputChange}
-                  min="0"
-                  step="1"
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="arp32">ARP 32</label>
-                <input
-                  type="number"
-                  id="arp32"
-                  name="arp32"
-                  value={formData.arp32}
-                  onChange={handleInputChange}
-                  min="0"
-                  step="1"
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="arp48">ARP 48</label>
-                <input
-                  type="number"
-                  id="arp48"
-                  name="arp48"
-                  value={formData.arp48}
-                  onChange={handleInputChange}
-                  min="0"
-                  step="1"
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="esheetsSchedules">E-Sheets Schedules</label>
-                <div className="radio-group">
-                  <label>
-                    <input
-                      type="radio"
-                      name="esheetsSchedules"
-                      value={2}
-                      checked={formData.esheetsSchedules === 2}
-                      onChange={handleInputChange}
-                    />
-                    No
-                  </label>
-                  <label>
-                    <input
-                      type="radio"
-                      name="esheetsSchedules"
-                      value={1}
-                      checked={formData.esheetsSchedules === 1}
-                      onChange={handleInputChange}
-                    />
-                    Yes
-                  </label>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Layout Section */}
-        <div className="form-section">
-          <h3>Layouts</h3>
+          <h3>Triage Calculation</h3>
           <div className="form-grid">
             <div className="form-group">
-              <label htmlFor="numOfRooms"># of Rooms</label>
+              <label htmlFor="largeLMPs">Large LMPs</label>
               <input
                 type="number"
-                id="numOfRooms"
-                name="numOfRooms"
-                value={formData.numOfRooms}
-                onChange={handleInputChange}
-                min="0"
-                step="1"
-                placeholder="Quantity of rooms"
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="overrideRooms">Override (hr)</label>
-              <input
-                type="number"
-                id="overrideRooms"
-                name="overrideRooms"
-                value={formData.overrideRooms}
-                onChange={handleInputChange}
-                min="0"
-                step="0.25"
-                placeholder="Override hours"
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="roomMultiplier">Room Multiplier (min/room)</label>
-              <input
-                type="number"
-                id="roomMultiplier"
-                name="roomMultiplier"
-                value={formData.roomMultiplier}
+                id="largeLMPs"
+                name="largeLMPs"
+                value={formData.largeLMPs}
                 onChange={handleInputChange}
                 min="0"
                 step="0.5"
@@ -918,148 +708,62 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
             </div>
 
             <div className="form-group">
-              <label htmlFor="reviewSetup">Review/Setup Time (hr)</label>
+              <label htmlFor="mediumLMPs">Medium LMPs</label>
               <input
                 type="number"
-                id="reviewSetup"
-                name="reviewSetup"
-                value={formData.reviewSetup}
+                id="mediumLMPs"
+                name="mediumLMPs"
+                value={formData.mediumLMPs}
                 onChange={handleInputChange}
                 min="0"
-                step="0.25"
+                step="0.5"
               />
             </div>
 
             <div className="form-group">
-              <label htmlFor="numOfPages"># of Lighting Pages</label>
+              <label htmlFor="smallLMPs">Small LMPs</label>
               <input
                 type="number"
-                id="numOfPages"
-                name="numOfPages"
-                value={formData.numOfPages}
+                id="smallLMPs"
+                name="smallLMPs"
+                value={formData.smallLMPs}
                 onChange={handleInputChange}
-                min="1"
-                step="1"
+                min="0"
+                step="0.5"
               />
             </div>
 
             <div className="form-group">
-              <label htmlFor="specReview">Spec Review (hr)</label>
+              <label htmlFor="numOfRooms">Number of Rooms</label>
               <input
                 type="number"
-                id="specReview"
-                name="specReview"
-                value={formData.specReview}
+                id="numOfRooms"
+                name="numOfRooms"
+                value={formData.numOfRooms}
                 onChange={handleInputChange}
                 min="0"
-                step="0.25"
+                step="0.5"
               />
             </div>
           </div>
+
+          <div className="triage-actions">
+            <button
+              type="button"
+              onClick={calculateTriage}
+              className="btn btn-primary"
+            >
+              Calculate Triage
+            </button>
+          </div>
+
+          {triageResults && (
+            <div className="triage-results">
+              <h4>Triage Results</h4>
+              <p><strong>Total Triage Time:</strong> {triageResults.totalTriage} hours</p>
+            </div>
+          )}
         </div>
-
-        {/* Submittal Section */}
-        {showSubmittalSection && (
-          <div className="form-section">
-            <h3>Submittals</h3>
-            <div className="form-grid">
-              <div className="form-group">
-                <label htmlFor="numOfSubRooms"># of Rooms</label>
-                <input
-                  type="number"
-                  id="numOfSubRooms"
-                  name="numOfSubRooms"
-                  value={formData.numOfSubRooms}
-                  onChange={handleInputChange}
-                  min="0"
-                  step="1"
-                  placeholder="Quantity of rooms"
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="overrideSubRooms">Override (hr)</label>
-                <input
-                  type="number"
-                  id="overrideSubRooms"
-                  name="overrideSubRooms"
-                  value={formData.overrideSubRooms}
-                  onChange={handleInputChange}
-                  min="0"
-                  step="0.25"
-                  placeholder="Override hours"
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="riserMultiplier">Riser Multiplier (min/room)</label>
-                <input
-                  type="number"
-                  id="riserMultiplier"
-                  name="riserMultiplier"
-                  value={formData.riserMultiplier}
-                  onChange={handleInputChange}
-                  min="0"
-                  step="0.5"
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="soo">SOO (hr)</label>
-                <input
-                  type="number"
-                  id="soo"
-                  name="soo"
-                  value={formData.soo}
-                  onChange={handleInputChange}
-                  min="0"
-                  step="0.25"
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Triage Results */}
-        {triageResults && (
-          <div className="form-section triage-results">
-            <h3>Triage Results</h3>
-            <div className="triage-grid">
-              <div className="triage-item">
-                <label>Layout Time:</label>
-                <span>{triageResults.breakdown.layout.toFixed(2)} hr</span>
-              </div>
-              <div className="triage-item">
-                <label>Submittal Time:</label>
-                <span>{triageResults.breakdown.submittal.toFixed(2)} hr</span>
-              </div>
-              <div className="triage-item">
-                <label>Panel Time:</label>
-                <span>{triageResults.breakdown.panels.toFixed(2)} hr</span>
-              </div>
-              <div className="triage-item">
-                <label>Page Bonus:</label>
-                <span>{triageResults.breakdown.pages.toFixed(2)} hr</span>
-              </div>
-              <div className="triage-item">
-                <label>Base Total:</label>
-                <span>{triageResults.breakdown.baseTotal.toFixed(2)} hr</span>
-              </div>
-              <div className="triage-item">
-                <label>Self-QC:</label>
-                <span>{triageResults.breakdown.selfQC.toFixed(2)} hr</span>
-              </div>
-              <div className="triage-item">
-                <label>Fluff:</label>
-                <span>{triageResults.breakdown.fluff.toFixed(2)} hr</span>
-              </div>
-              <div className="triage-item total">
-                <label>Total Triage Time:</label>
-                <span>{triageResults.totalTriage} hr</span>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Form Actions */}
         <div className="form-actions">
@@ -1076,7 +780,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
             onClick={handleExportDASBoard}
             className="btn btn-secondary"
           >
-            Copy to DAS Board
+            Export to DAS Board
           </button>
           
           <button
@@ -1084,15 +788,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
             onClick={handleExportAgile}
             className="btn btn-secondary"
           >
-            Copy to Agile
-          </button>
-
-          <button
-            type="button"
-            onClick={handleOpenDASBoard}
-            className="btn btn-secondary"
-          >
-            Open DAS Board
+            Export to Agile
           </button>
         </div>
       </form>
