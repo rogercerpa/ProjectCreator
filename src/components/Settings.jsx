@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './Settings.css';
 import dropdownOptionsService from '../services/DropdownOptionsService';
+import triageCalculationService from '../services/TriageCalculationService';
 
 // Access secure electron API through contextBridge
 const { electronAPI } = window;
@@ -114,13 +115,16 @@ function Settings() {
         if (result && result.success) {
           // Update the dropdown options service with new settings
           dropdownOptionsService.updateOptions(settings);
+          // Update the triage calculation service with new settings
+          triageCalculationService.updateSettings(settings);
           alert('Settings saved successfully!');
         } else {
           alert('Failed to save settings. Please try again.');
         }
       } else {
-        // In development mode, just update the service
+        // In development mode, just update the services
         dropdownOptionsService.updateOptions(settings);
+        triageCalculationService.updateSettings(settings);
         alert('Settings updated (development mode - not persisted)');
       }
     } catch (error) {
@@ -645,8 +649,9 @@ function Settings() {
               }
             };
             setSettings(defaultSettings);
-            // Also update the dropdown options service
+            // Update both services
             dropdownOptionsService.updateOptions(defaultSettings);
+            triageCalculationService.updateSettings(defaultSettings);
           }}
         >
           Reset to Defaults

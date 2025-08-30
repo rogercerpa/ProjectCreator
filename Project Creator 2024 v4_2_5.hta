@@ -1,0 +1,1706 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+	<title>New Project Creator</title>
+	<HTA:APPLICATION 
+		 APPLICATIONNAME="Project Creator"
+		 ID="PCreator"
+		 ICON="acuity_brands.ico"
+		 VERSION="3"
+		 SCROLL="auto"
+		 SINGLEINSTANCE="yes"
+		 WINDOWSTATE="normal"
+	>
+	<meta http-equiv="x-ua-compatible" content="ie=9" />
+</head>
+
+<style type="text/css">
+.btn {
+	transition-duration: 0.4s;
+	padding: .4rem .75rem;
+    border-radius: 10rem;
+}
+body{
+	background-image: url("acuity.jpg");
+}
+.btn:hover {
+	background-color: #808080; /* Gray */
+	color: white;
+}
+/* Style the tab buttons */
+.tablink {
+  background-color: #555;
+  color: white;
+  float: left;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  padding: 14px 16px;
+  font-size: 17px;
+  width: 25%;
+}
+
+/* Change background color of buttons on hover */
+.tablink:hover {
+  background-color: #777;
+}
+
+/* Set default styles for tab content */
+.tabcontent {
+  color: white;
+  display: none;
+  padding: 50px;
+  text-align: left;
+}
+
+</style>
+
+<script type="text/javascript">
+function openPhase(phaseName) {
+  // Hide all elements with class="tabcontent" by default */
+  var i, tabcontent, tablinks;
+  tabcontent = document.getElementsByClassName("tabcontent");
+  for (i = 0; i < tabcontent.length; i++) {
+    tabcontent[i].style.display = "none";
+  }
+
+
+  // Show the specific tab content
+  document.getElementById(phaseName).style.display = "block";
+
+}
+
+function hideshowTriage() {
+  
+  var tasktype, task;
+  tasktype = RFAType.value;
+
+	task = "SUBMITTAL";
+	if (tasktype=="SUBMITTAL") {
+		// Show the Submittal section
+		document.getElementById("subtriage").style.display = "block";
+	} else if (tasktype=="ControlsAtriusSub")	{
+		document.getElementById("subtriage").style.display = "block";
+	} else if (tasktype=="AtriusSub")	{
+		document.getElementById("subtriage").style.display = "block";
+	} else {
+		// Hide the Submittal section
+		document.getElementById("subtriage").style.display = "none";
+		
+	}
+	if (tasktype=="PHOTOMETRICS") {
+		// Show the Photometric triage section
+		document.getElementById("Photometrics").style.display = "block";
+	} else {
+		// Hide the Photometric triage section
+		document.getElementById("Photometrics").style.display = "none";
+	}
+}
+
+function changeBackground(IMAGE) {
+	var imageURL = IMAGE
+	document.body.style.backgroundImage= "url('"+IMAGE+"')";
+}
+
+function hideshowPanels() {
+var selectedValue, selection, rbs;
+  var ele = document.getElementsByName('PanelSchedules'); 
+            for(i = 0; i < ele.length; i++) { 
+                if(ele[i].checked) 
+                selectedValue=ele[i].value; 
+            } 
+	selection = "1";
+	if (selectedValue==selection){
+		// Show the Panel section
+		document.getElementById("Panels").style.display = "block";
+		
+	} else {
+		// Hide the Panel section
+		document.getElementById("Panels").style.display = "none";
+		
+	}
+}
+
+function setupscreens() {
+	hideshowPanels();
+	openPhase('ProjectCreation');
+}
+
+</script>
+<script language="VBScript">
+
+	'-----This Sub runs as soon as you open the HTA
+	Sub window_onLoad
+		window.resizeTo 900,850
+	End Sub
+
+	Sub SearchAndRep(searchTerm, replaceTerm, app)
+		app.Selection.GoTo 0
+		With app.Selection.Find
+			.ClearFormatting
+			.Replacement.ClearFormatting
+			.MatchWholeWord = True
+			.Text = searchTerm
+			.Execute ,,,,,,,,,replaceTerm
+		End With
+	End Sub
+
+	Sub SearchAndRepHeader(searchTerm, replaceTerm, app)
+		app.ActiveWindow.ActivePane.View.SeekView = 9
+		app.Selection.find.text = searchTerm
+		app.Selection.find.replacement.text = replaceTerm
+		app.Selection.find.Execute,,,,,,,,,,2
+	End Sub
+
+	Sub ServerSettings
+	End Sub
+
+	Sub ResetHTA
+		ProjectName.value = ""
+		ProjectContainer.value = ""
+		RFANumber.Value = ""
+		Revision(0).checked = false
+		Revision(1).checked = false
+		AgentNum.Value = ""
+		RFAType.Value = null
+		RD.value = ""
+		ECD.value = ""
+		numOfRooms.value = ""
+		numOfSubRooms.value = ""
+		roomMultiplier.value = "2"
+		riserMultiplier.value = "1"
+		OverideRooms.value = ""
+		OverideSubRooms.value = ""
+		SelfQC.value = ""
+		Fluff.value = ""
+		TriagedTime.value = ""
+		reviewSetup.value = "0.5"
+		specReview.value = "0.0"
+		SOO.value = "0.5"
+		ARP8.value = ""
+		ARP16.value = ""
+		ARP32.value = ""
+		ARP48.value = ""
+		PhotoSW.value = ""
+		numofpages.value="1"
+		SmallLMPs.value = ""
+		MediumLMPs.value = ""
+		LargeLMPs.value = ""
+		PanelSchedules(0).checked = true
+		RFASettings.style.visibility="visible"
+		SaveSettings.style.visibility="visible"
+		DesiredTab = "ProjectCreation"
+		openPhase(DesiredTab)
+		hideshowPanels()
+		changeBackground("Acuity.jpg")
+	End Sub
+
+	Function PickFolder(strStartDir, prompt)
+		Dim SA, F
+		Set SA = CreateObject("Shell.Application")
+		Set F = SA.BrowseForFolder(0, prompt, 0, strStartDir)
+		If (Not F Is Nothing) Then
+		  PickFolder = F.Items.Item.path
+		End If
+		Set F = Nothing
+		Set SA = Nothing
+	End Function
+	
+	Function CheckReadMe(serverlocation)
+		Set objFSO = CreateObject("Scripting.FileSystemObject")
+		If objFSO.FileExists(serverlocation & "\ReadMe.docx") then 
+			Set appWord = CreateObject("Word.Application")  
+				appWord.Visible = True 
+				appWord.Documents.Add
+				appWord.Documents.Open(serverlocation & "\ReadMe.docx")
+		Else
+		end if
+	End Function
+
+	Sub RunBatch2
+		SaveSettings.style.visibility="hidden"
+		RFASettings.style.visibility="hidden"
+		Dim FSO
+		Dim UserName
+		Dim strFolder 
+		Dim d
+
+		Set objFSO = CreateObject("Scripting.FileSystemObject")
+		Set objNetwork = CreateObject("WScript.Network")
+		userName = objNetwork.userName
+		
+		Year1 = Year(Now)
+		Month1 = Month(Now)
+		Day1 = Day(Now)
+		If len(Month1)=1 Then
+			Month1 = "0" & Month1
+		end if
+		If len(Day1)=1 Then
+			Day1 = "0" & Day1
+		end if
+		d = (Month1 & Day1 & Year1)
+		
+		ProjectName.Value = Replace(ProjectName.Value, "\", " ")             'Replace backslash and forward slash from project names
+		ProjectName.Value = Replace(ProjectName.Value, "/", " ")
+		ProjectName.Value = Replace(ProjectName.Value, ":", " ")             'Replace semicolon from project names
+		ProjectName.Value = Replace(ProjectName.Value, "_", " ")             'Replace _ from project names
+		ProjectName.Value = UCase(ProjectName.Value)                         'Make the project name all caps
+		
+		FirstLetter = Left(ProjectName.Value, 1)
+		If instr(1, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", FirstLetter, 1) = 0 Then
+			FirstLetter = "#"
+		end if
+		
+		Select Case RegionalTeam.value 
+		Case "Desktop Emergency Use only"
+			MasterTemplateFolder = "C:\Users\" & userName & "\Desktop\1) Triage\!!!Templates For Project Creator"
+			CurrentYearFolder = "C:\Users\" & userName & "\Desktop\"
+			PrevYearFolder = "C:\Users\" & userName & "\Desktop\"
+			secyrFolder =  "C:\Users\" & userName & "\Desktop\"
+			NationalAccountSave = "C:\Users\" & userName & "\Desktop\"
+			FileDirectory = "C:\Users\" & userName & "\Desktop\"
+		Case Else
+			MasterTemplateFolder = "\\10.3.10.30\DAS\DAS References\!!!Templates For Project Creator"
+			CurrentYearFolder = "\\10.3.10.30\DAS\"& Year1 & " Projects\"
+			PrevYearFolder = "\\10.3.10.30\DAS\"& Year1 -1 & " Projects\"
+			secyrFolder = "\\10.3.10.30\DAS\"& Year1 -2 & " Projects\"
+			NationalAccountSave = CurrentYearFolder
+			FileDirectory = "\\10.3.10.30\DAS\"
+		end Select
+
+		RelocTemplateFolder = "\RELOC-RFA#_TYPE_MMDDYYYY"
+		RelocProjectTemplate = MasterTemplateFolder & RelocTemplateFolder
+		PhotometricsTemplateFolder = "\PHOTOMETRICS-RFA#_TYPE_MMDDYYYY"
+		PhotometricsProjectTemplate = MasterTemplateFolder & PhotometricsTemplateFolder
+		LCDPreprogrammingTemplate = MasterTemplateFolder & "\LCD"
+		RFAAuditLog = MasterTemplateFolder & "\RFA Audit Log.docx"
+		ControlsProjectTemplate = MasterTemplateFolder & "\RFA#_TYPE_MMDDYYYY"
+		NATemplates = "\\10.3.10.30\DAS\Corporate Accounts\"
+		if RegionalTeam.value =  "Desktop Emergency Use only" then
+			AgencyRequirements = "C:\Users\" & userName & "\Desktop\1) Triage\!!!Templates For Project Creator\Agent Requirements\"
+		else
+			AgencyRequirements = "\\10.3.10.30\DAS\Agent Requirements\"	
+		end if
+		
+		if NOT NA.Value = "Default" then
+			NAControlsProjectTemplate = NATemplates & NA.Value & "\!" & NA.Value & " - Template Folder" & "\RFA#_TYPE_MMDDYYYY"
+			If objFSO.FolderExists(NAControlsProjectTemplate) then
+				ControlsProjectTemplate = NAControlsProjectTemplate
+			end if
+			NARelocProjectTemplate = NATemplates & NA.Value & "\!" & NA.Value & " - Template Folder" & "\RELOC-RFA#_TYPE_MMDDYYYY"
+			If objFSO.FolderExists(NARelocProjectTemplate) then
+				RelocProjectTemplate = NARelocProjectTemplate
+			end if	
+		end if
+
+		If NOT objFSO.FolderExists(ControlsProjectTemplate) then   
+			alert "Error: Template folder location does not exist: " & ControlsProjectTemplate
+			exit sub
+			
+		
+		end if
+
+		For Each objButton in Revision 
+				If objButton.Checked Then 
+					newold = objButton.Value 
+				End If 
+			Next
+
+		Select Case SaveLocation.value
+		Case "Triage"
+			IF objFSO.FolderExists("C:\Users\" & userName & "\Desktop\1) Triage") = FALSE THEN
+				objFSO.CreateFolder "C:\Users\" & userName & "\Desktop\1) Triage"
+			end if
+			BaseSave = "C:\Users\" & userName & "\Desktop\1) Triage\"
+			
+		Case "Server"
+			ProjectYear = "20" & Left(ProjectContainer.Value, 2)
+					Yearselect = ProjectYear - Year1 
+					Select Case Yearselect
+					Case "-1"
+						BaseSave = PrevYearFolder & FirstLetter & "\"
+					Case "-2"
+						BaseSave = secyrFolder & FirstLetter & "\"
+					Case else
+						BaseSave = CurrentYearFolder & FirstLetter & "\"
+					end select
+					
+			if NOT NA.Value = "Default" then
+			
+				IF objFSO.FolderExists(BaseSave & NA.Value) = FALSE THEN
+					objFSO.CreateFolder BaseSave & "\" & NA.Value
+				end if
+				
+				BaseSave1 = BaseSave & NA.Value & "\"
+				BaseSave = BaseSave1
+			end if
+			
+		Case else
+			BaseSave = "C:\Users\" & userName & "\Desktop\"
+		end Select
+
+		strFolder = BaseSave & ProjectName.value & "_" & ProjectContainer.Value
+			
+				
+	'------Creates a Revision--------------	
+		If "2" = newold then
+			'------Creates a Revision on Server--------------
+			If "Server" = SaveLocation.value then
+				
+				If objFSO.FolderExists(strFolder) = False then
+					If objFSO.FolderExists(PrevYearFolder & FirstLetter & "\" & ProjectName.value & "_" & ProjectContainer.Value) = False then
+						If objFSO.FolderExists(secyrFolder & FirstLetter & "\" & ProjectName.value & "_" & ProjectContainer.Value) = False then
+							Alert "Error: Previous revision folder not found. Manually select RFA folder."
+							strStartDir = FileDirectory
+							userselections = PickFolder(strStartDir, "Choose previous RFA Folder")
+							Do Until instr(userselections,"RFA#")<>0
+								msgbox "The selected folder is not a RFA folder. Please select the most recent RFA folder"
+								userselections = PickFolder(FileDirectory, "Choose previous RFA Folder")
+							Loop
+							msgresponse = msgbox ("Would you like to update the folder name as current name and server selection do not match?", 4)
+							if msgresponse = 6 Then
+								DriveString = Split(userselections, "\", -1)
+								DriveArray = UBound(DriveString)
+								for counter = 0 to DriveArray-1 Step 1
+									ServerArray = ServerArray & DriveString(counter)
+									if counter = DriveArray-1 Then
+									else
+									ServerArray = ServerArray & "\"
+									end if
+								Next
+								
+								objFSO.MoveFolder ServerArray , strFolder
+								userselections = strFolder
+
+							end if
+							if userselections = "" then
+								alert "No folder selected. No new folder has been created."
+								Exit sub
+							else
+								strFolder = userselections
+							end if
+						else
+							strfolder = secyrFolder & FirstLetter & "\" & ProjectName.value & "_" & ProjectContainer.Value
+						end if
+					else
+						strfolder = PrevYearFolder & FirstLetter & "\" & ProjectName.value & "_" & ProjectContainer.Value
+					end if
+				end if
+
+				IF objFSO.FolderExists(strFolder & "\RFA#" & RFANumber.Value & "_" & RFAType.value & "_" & d) = FALSE Then
+					objFSO.CreateFolder (strFolder & "\RFA#" & RFANumber.Value & "_" & RFAType.value & "_" & d)
+					objFSO.CreateFolder (strFolder & "\RFA#" & RFANumber.Value & "_" & RFAType.value & "_" & d & "\!Agent Files")
+					objFSO.CreateFolder (strFolder & "\RFA#" & RFANumber.Value & "_" & RFAType.value & "_" & d & "\!!Request Output")
+					objFSO.CopyFolder ControlsProjectTemplate & "\BOM CHECK", strFolder & "\RFA#" & RFANumber.Value & "_" & RFAType.value & "_" & d & "\"
+					if userselections = "" then
+						workingdoclocation = PickFolder(strStartDir, "Choose previous RFA Folder")
+						Do Until instr(userselections,"RFA#")<>0
+							msgbox "The selected folder is not a RFA folder. Please select the most recent RFA folder"
+							userselections = PickFolder(FileDirectory, "Choose previous RFA Folder")
+						Loop
+					else
+						workingdoclocation = userselections & "\" & DriveString(DriveArray)
+						'msgbox workingdoclocation & "else"
+					end if
+					
+					IF objFSO.FolderExists(workingdoclocation & "\AE Markups") = TRUE Then
+						objFSO.CopyFolder workingdoclocation & "\AE Markups", strFolder & "\RFA#" & RFANumber.Value & "_" & RFAType.value & "_" & d & "\"
+					end if
+						
+					IF objFSO.FolderExists(workingdoclocation & "\XREF") = TRUE Then
+						objFSO.CopyFolder workingdoclocation & "\XREF", strFolder & "\RFA#" & RFANumber.Value & "_" & RFAType.value & "_" & d & "\"
+					end if
+						
+					IF objFSO.FolderExists(workingdoclocation & "\LCD") = TRUE Then
+						objFSO.CopyFolder workingdoclocation & "\LCD", strFolder & "\RFA#" & RFANumber.Value & "_" & RFAType.value & "_" & d & "\"
+					end if
+					CheckReadMe(strFolder)	
+						set oFldr = objFSO.getfolder(workingdoclocation)
+						for each ofile in oFldr.Files
+							if lcase(objFSO.GetExtensionName(ofile.Name)) = "vsp" then
+									objFSO.CopyFile ofile.Path, strFolder & "\RFA#" & RFANumber.Value & "_" & RFAType.value & "_" & d & "\"		
+							end if
+							if lcase(objFSO.GetExtensionName(ofile.Name)) = "dwg" then
+									objFSO.CopyFile ofile.Path, strFolder & "\RFA#" & RFANumber.Value & "_" & RFAType.value & "_" & d & "\"	
+							end if
+						Next
+						
+					
+				Else
+					Alert "Error: Revision folder exists on the Server for this RFA"
+				end if
+
+				
+			'------Creates a Revision on Desktop or Triage Folder--------------
+			else
+				IF objFSO.FolderExists(BaseSave & ProjectName.value & "_" & ProjectContainer.Value) = FALSE Then
+					objFSO.CreateFolder (BaseSave & ProjectName.value & "_" & ProjectContainer.Value)
+						BaseSave = BaseSave & ProjectName.value & "_" & ProjectContainer.Value & "\"
+					objFSO.CreateFolder (BaseSave & "RFA#" & RFANumber.Value & "_" & RFAType.value & "_" & d)
+					objFSO.CreateFolder (BaseSave & "RFA#" & RFANumber.Value & "_" & RFAType.value & "_" & d & "\!Agent Files")
+					objFSO.CreateFolder (BaseSave & "RFA#" & RFANumber.Value & "_" & RFAType.value & "_" & d & "\!!Request Output")
+					objFSO.CopyFolder ControlsProjectTemplate & "\BOM CHECK", BaseSave & "RFA#" & RFANumber.Value & "_" & RFAType.value & "_" & d & "\"
+		
+		
+		
+				
+				ServerSave = CurrentYearFolder & FirstLetter & "\"
+				ProjectYear = "20" & Left(ProjectContainer.Value, 2)
+				Yearselect = ProjectYear - Year1 
+				Select Case Yearselect
+					Case "-1"
+						ServerSave = PrevYearFolder & FirstLetter & "\"
+					Case "-2"
+						ServerSave = secyrFolder & FirstLetter & "\"
+					Case else
+						ServerSave = CurrentYearFolder & FirstLetter & "\"
+				end select
+				ServerDocs = ServerSave & ProjectName.value & "_" & ProjectContainer.Value
+				IF objFSO.FolderExists(ServerDocs) = FALSE Then
+					userselections = PickFolder(FileDirectory, "Choose previous RFA Folder")
+					
+					Do Until instr(userselections,"RFA#")<>0
+						msgbox ("The selected folder is not a RFA folder. Please select the most recent RFA folder")
+						userselections = PickFolder(FileDirectory, "Choose previous RFA Folder")
+						if userselections = "" Then
+							msgbox "Project folder creation was cancelled"
+							exit sub
+						end if
+					Loop
+
+					
+					msgresponse = msgbox ("Would you like to update the folder name as current name and server selection do not match?", 4)
+						if msgresponse = 6 Then
+							DriveString = Split(userselections, "\", -1)
+							DriveArray = UBound(DriveString)
+							for counter = 0 to DriveArray-1 Step 1
+								ServerArray = ServerArray & DriveString(counter)
+								if counter = DriveArray-1 Then
+								else
+								ServerArray = ServerArray & "\"
+								end if
+							Next
+							objFSO.MoveFolder ServerArray , ServerDocs
+							userselections = ServerDocs & "\" & DriveString(DriveArray)
+
+						end if
+					
+				else
+					userselections = PickFolder(ServerDocs, "Choose previous RFA Folder")
+					Do Until instr(userselections,"RFA#")<>0
+						msgbox "The selected folder is not a RFA folder. Please select the most recent RFA folder"
+						userselections = PickFolder(FileDirectory, "Choose previous RFA Folder")
+					Loop
+				End if
+					if userselections = "" then
+						alert "Working Documents not moved. please manually move them if desired."
+						Exit sub
+					else
+						workingdoclocation = userselections
+						IF objFSO.FolderExists(workingdoclocation & "\AE Markups") = TRUE Then
+							objFSO.CopyFolder workingdoclocation & "\AE Markups", BaseSave & "RFA#" & RFANumber.Value & "_" & RFAType.value & "_" & d & "\"
+						end if
+						
+						IF objFSO.FolderExists(workingdoclocation & "\XREF") = TRUE Then
+							objFSO.CopyFolder workingdoclocation & "\XREF", BaseSave & "RFA#" & RFANumber.Value & "_" & RFAType.value & "_" & d & "\"
+						end if
+						
+						IF objFSO.FolderExists(workingdoclocation & "\LCD") = TRUE Then
+							objFSO.CopyFolder workingdoclocation & "\LCD", BaseSave & "RFA#" & RFANumber.Value & "_" & RFAType.value & "_" & d & "\"
+						end if
+						
+						set oFldr = objFSO.getfolder(workingdoclocation)
+						for each ofile in oFldr.Files
+							if lcase(objFSO.GetExtensionName(ofile.Name)) = "vsp" then
+									objFSO.CopyFile ofile.Path, BaseSave & "RFA#" & RFANumber.Value & "_" & RFAType.value & "_" & d & "\"
+							end if
+							if lcase(objFSO.GetExtensionName(ofile.Name)) = "dwg" then
+									objFSO.CopyFile ofile.Path, BaseSave & "RFA#" & RFANumber.Value & "_" & RFAType.value & "_" & d & "\"
+							end if
+						Next
+						
+						number = Instr(workingdoclocation,"RFA#") - 1
+						revshortcut = Left(workingdoclocation,number)
+						CheckReadMe(revshortcut)
+						IF strfolder <> CurrentYearFolder & FirstLetter & "\" & ProjectName.value & "_" & ProjectContainer.Value then
+							Set shortcut = CreateObject("WScript.Shell").CreateShortcut(CurrentYearFolder & FirstLetter & "\" & ProjectName.value & "_" & ProjectContainer.Value & ".lnk")
+							shortcut.Description = "Shortcut to initial revision"
+							shortcut.TargetPath = revshortcut
+							shortcut.Save
+						end if
+						
+					end if
+				
+				Else
+					Alert "Error: Revision folder exists"
+				end if
+			end if
+			
+		else
+	'------Creates a New Blank Project Folder--------------		
+			
+			ProjectYear = "20" & Left(ProjectContainer.Value, 2)
+			
+			Select Case RegionalTeam.value
+				Case "Desktop Emergency Use only"
+					ServerLocation = "0"
+				Case Else
+					ServerLocation = "\\10.3.10.30\DAS\"& ProjectYear & " Projects\"
+			end Select
+			
+			If ServerLocation = "0" THEN
+			else
+				If objFSO.FolderExists(ServerLocation & FirstLetter & "\" & ProjectName.value & "_" & ProjectContainer.Value) = true Then
+					msgresponse = msgbox ("Project appears to be a revision as project already exists on the server. Would you like to change this to a revision?", 4)
+					if msgresponse = 6 Then
+						Revision(0).checked = false
+						Revision(1).checked = true
+						exit Sub
+					end if
+				end if
+			end if
+			
+			
+			IF objFSO.FolderExists(strFolder) = FALSE THEN
+				objFSO.CreateFolder strFolder
+				If "RelocBOM" = RFAType.value or "RelocSUB" = RFAType.value or "RelocControlsSUB" = RFAType.value or "RelocControlsBOM" = RFAType.value then                                                                           'create reloc folders
+					If objFSO.FolderExists(RelocProjectTemplate) Then
+						objFSO.CopyFolder RelocProjectTemplate, strfolder & "\"
+						if "RelocControlsSUB" = RFAType.value or "RelocControlsBOM" = RFAType.value then
+						objFSO.MoveFolder strfolder & RelocTemplateFolder, strfolder & "\RFA#" & RFANumber.Value & "_(Reloc Portion) " & RFAType.value & "_" & d
+						else
+						objFSO.MoveFolder strfolder & RelocTemplateFolder, strfolder & "\RFA#" & RFANumber.Value & "_" & RFAType.value & "_" & d
+						end if
+					end if
+				elseif "PHOTOMETRICS" = RFAType.value then
+					If objFSO.FolderExists(PhotometricsProjectTemplate) Then
+						objFSO.CopyFolder PhotometricsProjectTemplate, strfolder & "\"
+						objFSO.MoveFolder strfolder & PhotometricsTemplateFolder, strfolder & "\RFA#" & RFANumber.Value & "_" & RFAType.value & "_" & d
+					end if
+				end if
+				If "RelocBOM" = RFAType.value or "RelocSUB" = RFAType.value or "PHOTOMETRICS" = RFAType.value then
+					set oFldr = objFSO.getfolder(strfolder & "\RFA#" & RFANumber.Value & "_" & RFAType.value & "_" & d)
+						for each ofile in oFldr.Files
+							if lcase(objFSO.GetExtensionName(ofile.Name)) = "vsl" then
+									objFSO.MoveFile ofile.Path, ofile.ParentFolder & "\" & RFANumber.value & " A1.vsl"
+									Exit for
+							end if
+						Next
+				else
+					If objFSO.FolderExists(ControlsProjectTemplate) Then 					'create all other folders
+						
+						objFSO.CopyFolder ControlsProjectTemplate, strfolder & "\"
+						
+						objFSO.MoveFolder strfolder & "\RFA#_TYPE_MMDDYYYY", strfolder & "\RFA#" & RFANumber.Value & "_" & RFAType.value & "_" & d
+						set oFldr = objFSO.getfolder(strfolder & "\RFA#" & RFANumber.Value & "_" & RFAType.value & "_" & d)
+						for each ofile in oFldr.Files
+							if lcase(objFSO.GetExtensionName(ofile.Name)) = "vsp" then
+									objFSO.MoveFile ofile.Path, ofile.ParentFolder & "\ABC_" & ProjectName.value & "_" & RFAType.value & " ORIG_" & d & ".vsp"
+									Exit for
+							end if
+						Next
+						
+						
+					else
+						msgbox ("Template is Missing. Please Ensure Server Connectivity")
+					end if
+					
+	'------------Adds Metric Visual Controls File--------	
+					Select Case AgentNum.Value
+						case 563,584,903,904,905,906,909,912,915,926,968
+						
+							If objFSO.FileExists(MasterTemplateFolder & "\(Metric).vsp") Then
+								objFSO.CopyFile MasterTemplateFolder & "\(Metric).vsp", oFldr & "\ABC_" & ProjectName.value & "_" & RFAType.value & " ORIG_" & d & " (Metric).vsp"
+							else
+								msgbox "Metric Template is not available, Please verify"
+							end if
+						
+						end select
+						
+	'------------Adds Holophane Visual Controls File--------			
+					if Len(AgentNum.Value)=4 then	
+						HolophaneVCFile = AgencyRequirements & "Holophane.vsp"
+						If objFSO.FileExists(HolophaneVCFile) Then
+							objFSO.CopyFile HolophaneVCFile, oFldr & "\ABC_" & ProjectName.value & "_" & RFAType.value & " ORIG_" & d & ".vsp"
+						else
+							msgbox "Holophane Template is not available, Please verify"
+						end if
+					end if		
+				
+	'------------Adds Agency Specific Visual Controls File--------				
+					AgencyVCFile = AgencyRequirements & AgentNum.Value & ".vsp"
+					If objFSO.FileExists(AgencyVCFile) Then
+						objFSO.CopyFile AgencyVCFile, oFldr & "\ABC_" & ProjectName.value & "_" & RFAType.value & " ORIG_" & d & ".vsp"
+					end if
+				end if
+	'------------Adds additional documents for Preprogramming--------
+				
+				If "RELEASE" = RFAType.value and LCDPreprogrammingTemplate <> "NA" then									
+					If objFSO.FolderExists(LCDPreprogrammingTemplate) Then
+						objFSO.CopyFolder LCDPreprogrammingTemplate, oFldr & "\"
+					else
+						Alert "Error: LC&D Template not found. Please manually add pertinent documentation"
+					end if
+				End If			
+			ELSE
+				Alert "Error: Previous Folder already created. This should be a revision."
+				exit sub
+			END IF
+		END IF
+		
+		Set openFolderShell = CreateObject("Shell.Application")	
+		If "PHOTOMETRICS" = RFAType.value then
+			openFolderShell.ShellExecute strfolder & "\RFA#" & RFANumber.Value & "_" & RFAType.value & "_" & d
+		else
+			If "Server" = SaveLocation.value then
+				openFolderShell.ShellExecute strfolder & "\RFA#" & RFANumber.Value & "_" & RFAType.value & "_" & d & "\!Agent Files"
+			else
+				If "2" = newold then
+					openFolderShell.ShellExecute BaseSave & "RFA#" & RFANumber.Value & "_" & RFAType.value & "_" & d & "\!Agent Files"
+				else
+					openFolderShell.ShellExecute strfolder & "\RFA#" & RFANumber.Value & "_" & RFAType.value & "_" & d & "\!Agent Files"
+				end if
+			end if
+		end if
+	'----------Create Shortcuts if not in the most recent folder------------
+		If SaveLocation.value = "Server" then
+			IF strfolder <> CurrentYearFolder & FirstLetter & "\" & ProjectName.value & "_" & ProjectContainer.Value then
+				Set shortcut = CreateObject("WScript.Shell").CreateShortcut(CurrentYearFolder & FirstLetter & "\" & ProjectName.value & "_" & ProjectContainer.Value & ".lnk")
+				shortcut.Description = "Shortcut to initial revision"
+				shortcut.TargetPath = strfolder & "\"
+				shortcut.Save
+			end if
+		end if
+
+	'----------Open/ Edit Design Notes and Assumptions document.--------
+		IF "2" <> newold THEN
+			If objFSO.FileExists(strfolder & "\RFA#" & RFANumber.Value & "_" & RFAType.value & "_" & d & "\AE Markups\Design Notes and Assumptions.docx")then
+				Set appWord = CreateObject("Word.Application")  
+				appWord.Visible = False 
+				appWord.Documents.Add
+				appWord.Documents.Open(strfolder & "\RFA#" & RFANumber.Value & "_" & RFAType.value & "_" & d & "\AE Markups\Design Notes and Assumptions.docx")
+			   
+				strprojectname = "PROJECT NAME: " & ProjectName.value
+				strprojectcont = "PROJECT CONTAINER: " & ProjectContainer.Value
+				strrfa = "RFA #: " & RFANumber.Value
+				Const wdStory = 6
+				Const wdMove = 0 
+				agentrequire = AgencyRequirements & AgentNum.Value & ".docx"
+				Set objSelection = appword.Selection
+				'objSelection.EndKey wdStory, wdMove
+				objSelection.TypeParagraph()
+				If objFSO.FileExists(agentrequire) Then
+					objSelection.InsertFile(agentrequire)
+				else
+					objSelection.InsertFile(AgencyRequirements & "General.docx")
+				end if
+
+				SearchAndRepHeader "PROJECT NAME:", strprojectname, appWord
+				SearchAndRepHeader "PROJECT CONTAINER:", strprojectcont, appWord
+				SearchAndRepHeader "RFA #:", strrfa, appWord
+
+				SearchAndRep "PROJECT NAME:", strprojectname, appWord
+				SearchAndRep "PROJECT CONTAINER:", strprojectcont, appWord
+				SearchAndRep "RFA #:", strrfa, appWord    
+				appword.Application.Quit(-1)
+			elseif objFSO.FileExists(strfolder & "\RFA#" & RFANumber.Value & "_" & RFAType.value & "_" & d & "\AE Markups\PROJECT NOTES (TEMPLATE).docx")then
+			elseif objFSO.FileExists(strfolder & "\RFA#" & RFANumber.Value & "_" & RFAType.value & "_" & d & "\References\Agent Requirements.docx")then
+				Set appWord = CreateObject("Word.Application")  
+				appWord.Visible = False 
+				appWord.Documents.Add
+				appWord.Documents.Open(strfolder & "\RFA#" & RFANumber.Value & "_" & RFAType.value & "_" & d & "\References\Agent Requirements.docx")
+			   
+				strprojectname = "PROJECT NAME: " & ProjectName.value
+				strprojectcont = "PROJECT CONTAINER: " & ProjectContainer.Value
+				strrfa = "RFA #: " & RFANumber.Value
+				Const wdStory1 = 6
+				Const wdMove1 = 0 
+				agentrequire = AgencyRequirements & AgentNum.Value & ".docx"
+				Set objSelection = appword.Selection
+				'objSelection.EndKey wdStory1, wdMove1
+				objSelection.TypeParagraph()
+				
+
+				SearchAndRepHeader "PROJECT NAME:", strprojectname, appWord
+				SearchAndRepHeader "PROJECT CONTAINER:", strprojectcont, appWord
+				SearchAndRepHeader "RFA #:", strrfa, appWord
+
+				SearchAndRep "PROJECT NAME:", strprojectname, appWord
+				SearchAndRep "PROJECT CONTAINER:", strprojectcont, appWord
+				SearchAndRep "RFA #:", strrfa, appWord    
+				appword.Application.Quit(-1)
+			else
+				Alert "Error: Design and Assumption notes are missing. Please Manually add them in."	
+			end if
+			
+		END IF
+	
+
+		
+	'-----Move to the triage tab--------------	
+		 
+		
+			DesiredTab = "Triage"
+			openPhase(DesiredTab)
+		
+
+	End Sub
+	
+	Sub OpenProjectFolder()
+	
+		If ProjectContainer.Value = "" then
+			msgbox "Please add a Project Container number to allow for a project search"
+			exit Sub
+		end if
+		
+		If ProjectName.value = "" then
+			msgbox "Please add a Project Name to allow for a project search"
+			exit Sub
+		end if
+		ProjectName.Value = Replace(ProjectName.Value, "\", " ")             'Replace backslash and forward slash from project names
+		ProjectName.Value = Replace(ProjectName.Value, "/", " ")
+		ProjectName.Value = Replace(ProjectName.Value, "|", "")
+		ProjectName.Value = Replace(ProjectName.Value, ":", " ")             'Replace semicolon from project names
+		ProjectName.Value = Replace(ProjectName.Value, "_", " ")             'Replace _ from project names
+		ProjectName.Value = UCase(ProjectName.Value)                         'Make the project name all caps
+		
+		ProjectYear = "20" & Left(ProjectContainer.Value, 2)
+		
+		FirstLetter = Left(ProjectName.Value, 1)
+		If instr(1, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", FirstLetter, 1) = 0 Then
+			FirstLetter = "#"
+		end if
+		
+		Set objFSO = CreateObject("Scripting.FileSystemObject")	
+		Set openFolderShell = CreateObject("Shell.Application")
+		
+		Select Case RegionalTeam.value
+			Case "Desktop Emergency Use only"
+				ServerLocation = "0"
+			Case Else
+				ServerLocation = "\\10.3.10.30\DAS\"& ProjectYear & " Projects\"
+		end Select
+		
+		ProjectServerLocation = ServerLocation & FirstLetter & "\" & ProjectName.value & "_" & ProjectContainer.Value
+		
+		If ServerLocation = "0" THEN
+			msgbox "Please select a regional team to narrow the search"
+		else
+			If objFSO.FolderExists(ProjectServerLocation) = true Then
+				openFolderShell.ShellExecute ProjectServerLocation
+				
+			else
+				msgbox "Project Folder not found based on that Project Name and Project Container number. Opening " & ProjectYear & " Project Folder"
+				openFolderShell.ShellExecute ServerLocation
+			end if
+		end if	
+	End Sub
+	
+	Sub DASBoardExport()
+		
+		If RFAType.value = "LAYOUT" or RFAType.value = "BOM" then
+			rfatypetag = "Q"
+		elseif RFAType.value = "BUDGET" then
+			rfatypetag = "B"
+		elseif RFAType.value = "GRAPHICS" then
+			rfatypetag = "G"
+		elseif RFAType.value = "PHOTOMETRICS" then
+			if PhotoSW.value = "" then
+				rfatypetag = "VL"
+			else
+				rfatypetag = PhotoSW.value
+			end if
+		elseif RFAType.value = "RelocBOM" or RFAType.value = "RelocSUB" then
+			rfatypetag = "R"
+		else
+			if numOfRooms.value = "" and OverideRooms.value = "" then 
+				rfatypetag = "S"
+			else
+				rfatypetag = "Q+S"
+			end if
+		end if
+		
+		Set objExcel = CreateObject("Excel.Application")
+        objExcel.Visible = False
+		
+		testcase = Split(RD.value, "/", -1)
+		RDYear = Split(testcase(2)," ", -1)
+	
+		
+		testcase2 = Split(ECD.value, "/", -1)
+		ECDYear = Split(testcase2(2)," ", -1)
+		
+		If 	RDYear(0)> ECDYear(0) then
+			DueDate=ECD.value
+			RDECDtag= " [ECD] "
+		elseif RDYear(0)< ECDYear(0) then
+			DueDate=RD.value
+			RDECDtag= " [RD] "
+		else
+			If RD.value> ECD.value Then
+				DueDate=ECD.value
+				RDECDtag= " [ECD] "
+			Else
+				DueDate=RD.value
+				RDECDtag= " [RD] "
+			End If
+		end if
+		
+		complexitylevel=TriagedTime.value
+		
+		For Each objButton in FirstAvail 
+				If objButton.Checked Then 
+					FirstAvailable = objButton.Value 
+				End If 
+		Next
+		if FirstAvailable = "1" then
+			RDECDtag= RDECDtag & "{" & DueDate & "}"
+			DueDate = ""
+		end if
+		
+		If len(ProjectName.Value)<1 Then
+			msgbox "No project name has been inputted, please fill out the header and try again"
+			Exit Sub
+		Else
+			If complexitylevel <4 then
+				ProjectComplexity="E"
+			elseif complexitylevel <8 and complexitylevel >=4 then
+				ProjectComplexity="M"
+			else
+				ProjectComplexity="C"
+			End If
+			dasboardname = left(ProjectName.Value,19)
+			For Each objButton in Revision 
+				If objButton.Checked Then 
+					newold = objButton.Value 
+				End If 
+			Next
+			if newold = 2 then
+				DASProjectName = ProjectComplexity & " - " & "R" & rfatypetag & " " & dasboardname & RDECDtag
+			else
+				DASProjectName = ProjectComplexity & " - " & rfatypetag & " " & dasboardname & RDECDtag
+			end if
+		End If
+		
+		If len(RFANumber.Value)<1 Then
+			msgbox "No RFA # has been inputted, please fill out the header and try again"
+			Exit Sub
+		End If
+		
+		FirstColumn = RFANumber.Value & " (" & AgentNum.Value & ")"
+        Set objWorkbook = objExcel.Workbooks.Add()
+        Set objWorksheet = objWorkbook.Worksheets(1)
+        objWorksheet.Cells(1,1).Value = FirstColumn
+        objWorksheet.Cells(1,2).Value = DASProjectName
+        objWorksheet.Cells(1,3).Value = DueDate
+        objWorksheet.Cells(1,4).Value = TriagedTime.value
+		set dataset=objWorksheet.Range("A1:D1")
+		dataset.copy
+		objExcel.Application.DisplayAlerts = False
+		objWorkbook.Close
+		objExcel.Quit
+		
+	End Sub
+	
+	Sub OpenDASBoard
+		Dim URL,URL2,WshShell,i
+		Set WshShell = CreateObject("WScript.shell")
+		
+		Select Case RegionalTeam.value 
+			'---------All DAS Board URLS ---------
+			Case "All" 
+			URL = "https://docs.google.com/spreadsheets/d/1CH6K1F9x0DaykRw8iqXIxgno6AyuUiamsP6jfDajr-I/edit#gid=623352875"
+			WshShell.run "CMD /C start chrome.exe " & URL & "",0,False
+			URL = "https://docs.google.com/spreadsheets/d/1jN9flngikc2l5ElKuSDP00vDkMlgUELWaDw4Z1cVdls/edit#gid=623352875"
+			WshShell.run "CMD /C start chrome.exe " & URL & "",0,False
+			'---------NAVS DAS Board URL ---------
+			Case "NAVS" 
+			URL = "https://docs.google.com/spreadsheets/d/1CH6K1F9x0DaykRw8iqXIxgno6AyuUiamsP6jfDajr-I/edit#gid=623352875"
+			WshShell.run "CMD /C start chrome.exe " & URL & "",0,False
+			'---------C&I DAS Board URL ---------
+			Case "C&I"
+			URL = "https://docs.google.com/spreadsheets/d/1jN9flngikc2l5ElKuSDP00vDkMlgUELWaDw4Z1cVdls/edit#gid=623352875"
+			WshShell.run "CMD /C start chrome.exe " & URL & "",0,False
+		end select
+				
+		set WshShell = nothing
+	End Sub
+	
+	Sub DownloadRegionTemplate
+		Set objFSO = CreateObject("Scripting.FileSystemObject")
+			Set objNetwork = CreateObject("WScript.Network")
+			Year1 = Year(Now)
+			Month1 = Month(Now)
+			Day1 = Day(Now)
+			d = (Month1 & Day1 & Year1)
+			userName = objNetwork.userName
+		Select Case RegionalTeam.value 
+			Case "Desktop Emergency Use only"
+				alert "No Template available, please select a regional team"
+			Case Else
+				MasterTemplateFolder = "\\10.3.10.30\DAS\DAS References\!!!Templates For Project Creator"
+			end Select
+						
+			Templatestoragelocation = "C:\Users\" & userName & "\Desktop\1) Triage\!!!Templates For Project Creator"
+			
+			If objFSO.FolderExists(Templatestoragelocation) Then 					
+						
+				objFSO.DeleteFolder Templatestoragelocation
+			else
+				If objFSO.FolderExists("C:\Users\" & userName & "\Desktop\1) Triage") Then
+				else
+					objFSO.CreateFolder ("C:\Users\" & userName & "\Desktop\1) Triage")
+				end if
+				
+					
+			end if	
+			objFSO.CopyFolder MasterTemplateFolder, Templatestoragelocation
+			objFSO.CopyFolder "\\10.3.10.30\DAS\Agent Requirements", Templatestoragelocation & "\Agent Requirements"
+			objFSO.CopyFolder "\\10.3.10.30\DAS\DAS References\Images", Templatestoragelocation & "\Images"
+	End Sub
+	
+	Sub UploadTriages
+		Set objFSO = CreateObject("Scripting.FileSystemObject")
+		Set objNetwork = CreateObject("WScript.Network")
+		
+		Year1 = Year(Now)
+		userName = objNetwork.userName
+		
+		
+		If objFSO.FolderExists("C:\Users\" & userName & "\Desktop\1) Triage") Then
+			
+					set oFldr = objFSO.getfolder("C:\Users\" & userName & "\Desktop\1) Triage")
+						
+					For Each objFolder In objFSO.GetFolder(oFldr).SubFolders
+						FolderPath = objFolder.path
+						PProjectnumber = Split(FolderPath, "\", -1)
+						proj = UBound(PProjectnumber)
+						Name = PProjectnumber(proj)
+						If Name = "Uploaded Projects" or Name ="!!!Templates For Project Creator" then
+							
+						else
+						
+						PProject = Split(Name, "_", -1)
+						PjtName =(PProject(0))
+						PjtNumber =(PProject(1))
+						FirstLetter = Left(PjtName, 1)
+						If instr(1, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", FirstLetter, 1) = 0 Then
+							FirstLetter = "#"
+						end if
+						ProjectYear = "20" & Left(PjtNumber, 2)
+						CurrentYearFolder = "\\10.3.10.30\DAS\"& ProjectYear & " Projects\"
+						ServerSave = CurrentYearFolder & FirstLetter & "\"
+						Nationalact = CheckNA(PjtName)
+						if Nationalact = "Default" then
+							ServerDocs = ServerSave & PjtName & "_" & PjtNumber
+						else
+							If Not objFSO.FolderExists(ServerSave & Nationalact) Then
+								objFSO.createfolder (ServerSave & Nationalact)
+							end if
+							ServerDocs = ServerSave & Nationalact & "\" & PjtName & "_" & PjtNumber
+						end if
+						objFSO.CopyFolder FolderPath, ServerDocs
+						If objFSO.FolderExists("C:\Users\" & userName & "\Desktop\1) Triage\Uploaded Projects") Then
+						else
+							objFSO.createfolder ("C:\Users\" & userName & "\Desktop\1) Triage\Uploaded Projects")
+						end if
+						objFSO.MoveFolder FolderPath, "C:\Users\" & userName & "\Desktop\1) Triage\Uploaded Projects\"
+						end if
+					Next
+				else
+					msgbox ("Triage Folder Doesn't exist")
+				end if
+				
+				set oFldr1 = objFSO.getfolder("C:\Users\" & userName & "\Desktop\1) Triage\Uploaded Projects")
+				
+				For Each objFolder In objFSO.GetFolder(oFldr1).SubFolders
+					count = count + 1	
+				Next
+				
+				if count > 50 then
+					msgresponse = msgbox ("Would you like to clear your uploaded projects folder as it has more than 50 projects? This can not be undone", 4)
+					if msgresponse = 6 Then
+						For Each objFolder In objFSO.GetFolder(oFldr1).SubFolders
+							FolderPath = objFolder.path
+							objFSO.DeleteFolder FolderPath
+						Next
+					end if
+				end if
+	End Sub
+
+	Sub AgileTriageExport
+	Set objExcel = CreateObject("Excel.Application")
+    objExcel.Visible = False
+	Set objWorkbook = objExcel.Workbooks.Add()
+    Set objWorksheet = objWorkbook.Worksheets(1)
+	i = 1
+	For Each objButton in Revision 
+			If objButton.Checked Then 
+				newold = objButton.Value 
+			End If 
+		Next
+	if newold = 2 then
+		revisiontag = "Revision " & RFAType.value
+		objWorksheet.Cells(i,1).Value = revisiontag
+	else
+		objWorksheet.Cells(i,1).Value = RFAType.value
+	end if
+	i = i+1
+	If  numOfRooms.value = "" AND OverideRooms.value = "" then
+	else
+		if OverideRooms.value = "" then
+			PrintLayout = numOfRooms.value * roomMultiplier.value / 60
+			objWorksheet.Cells(i,1).Value = "-# of Rooms:"
+			objWorksheet.Cells(i,2).Value = numOfRooms.value
+			i = i+1
+		else
+			PrintLayout = OverideRooms.value
+		end if
+		objWorksheet.Cells(i,1).Value = "-Layout:"
+        objWorksheet.Cells(i,2).Value = PrintLayout
+		i = i+1
+        objWorksheet.Cells(i,1).Value = "-Review/Setup:"
+        objWorksheet.Cells(i,2).Value = reviewSetup.value
+		i = i+1
+        objWorksheet.Cells(i,1).Value = "-SpecReview:"
+		objWorksheet.Cells(i,2).Value = specReview.value
+		i = i+1
+		
+	end if	
+	
+	If numOfSubRooms.value = "" AND OverideSubRooms.value = "" then
+	else
+		if OverideSubRooms.value = "" then
+			PrintSub = numOfSubRooms.value * riserMultiplier.value / 60
+			objWorksheet.Cells(i,1).Value = "-# of Rooms:"
+			objWorksheet.Cells(i,2).Value = numOfSubRooms.value
+			i = i+1
+		else
+			PrintSub = OverideSubRooms.value
+		end if
+		
+		
+		objWorksheet.Cells(i,1).Value = "-Risers:"
+        objWorksheet.Cells(i,2).Value = PrintSub
+		i = i+1
+		objWorksheet.Cells(i,1).Value = "-SOO:"
+        objWorksheet.Cells(i,2).Value = SOO.value
+		i = i+1
+		
+	end if
+		For Each objButton in PanelSchedules 
+				If objButton.Checked Then 
+					panelstate = objButton.Value 
+				End If 
+		Next
+		if panelstate = "1" then
+			objWorksheet.Cells(i,1).Value = "-Panels:"
+			objWorksheet.Cells(i,2).Value = PanelTriage
+			i = i+1
+		end if
+		objWorksheet.Cells(i,1).Value = "-Self-Qc:"
+		objWorksheet.Cells(i,2).Value = SelfQC.value
+		i = i+1
+		objWorksheet.Cells(i,1).Value = "-Fluff:"
+		objWorksheet.Cells(i,2).Value = Fluff.value
+		i = i+1
+		objWorksheet.Cells(i,1).Value = "--------"
+		i = i+1
+		objWorksheet.Cells(i,1).Value = "-TOTAL:"
+		objWorksheet.Cells(i,2).Value = TriagedTime.value
+		i = i+1
+		set dataset=objWorksheet.Range("A1:B" & i)
+		dataset.copy
+		objExcel.Application.DisplayAlerts = False
+		objWorkbook.Close
+		objExcel.Quit
+	
+	End Sub
+	
+	Sub ImportRFAInfo
+		
+		Result = Clipboard(Null)
+		ShortenedRFAInfo = Result
+		ShortenedRFAInfo = Replace(ShortenedRFAInfo, "Rep:  ", ",,")
+
+	'RFA Types from Agile replaced into the RFA types shown in the tool
+		ShortenedRFAInfo = Replace(ShortenedRFAInfo, "- Controls Submittal - Submittal", ",,SUBMITTAL,,")
+		ShortenedRFAInfo = Replace(ShortenedRFAInfo, "- Lithonia Commercial Indoor / Controls Submittal - Submittal", ",,SUBMITTAL,,")
+		ShortenedRFAInfo = Replace(ShortenedRFAInfo, "- Controls / Lithonia Commercial Indoor / Mark Architectural Lighting Submittal - Submittal", ",,SUBMITTAL,,")
+		ShortenedRFAInfo = Replace(ShortenedRFAInfo, "- Controls Submittal - One-Line Diagram", ",,SUBMITTAL,,")
+		ShortenedRFAInfo = Replace(ShortenedRFAInfo, "- Controls Submittal - Record Submittal", ",,SUBMITTAL,,")
+		ShortenedRFAInfo = Replace(ShortenedRFAInfo, "- Controls Submittal - Preprogramming", ",,RELEASE,,")
+		ShortenedRFAInfo = Replace(ShortenedRFAInfo, "- DC2DC / Controls BOM - BOM (With Layout)", ",,CONTROLSDCLAYOUT,,")
+		ShortenedRFAInfo = Replace(ShortenedRFAInfo, "- Controls BOM - BOM (No Layout)", ",,BOM,,")
+		ShortenedRFAInfo = Replace(ShortenedRFAInfo, "- Controls BOM - Budget", ",,BUDGET,,")
+		ShortenedRFAInfo = Replace(ShortenedRFAInfo, "- Controls BOM - BOM (With Layout)", ",,LAYOUT,,")
+		ShortenedRFAInfo = Replace(ShortenedRFAInfo, "- Controls / Peerless BOM - BOM (With Layout)", ",,LAYOUT,,")
+		ShortenedRFAInfo = Replace(ShortenedRFAInfo, "- Controls Design - Layout", ",,LAYOUT,,")
+		ShortenedRFAInfo = Replace(ShortenedRFAInfo, "- Controls Design - Controls Layout", ",,LAYOUT,,")
+		ShortenedRFAInfo = Replace(ShortenedRFAInfo, "- Lithonia Reloc BOM - Budget", ",,RelocBOM,,")
+		ShortenedRFAInfo = Replace(ShortenedRFAInfo, "- Lithonia Reloc / Controls BOM - Budget", ",,RelocControlsBOM,,")
+		ShortenedRFAInfo = Replace(ShortenedRFAInfo, "- Lithonia Reloc BOM - BOM (With Layout)", ",,RelocBOM,,")
+		ShortenedRFAInfo = Replace(ShortenedRFAInfo, "- Lithonia Reloc Submittal - Submittal", ",,RelocSUB,,")
+		ShortenedRFAInfo = Replace(ShortenedRFAInfo, "- Lithonia Reloc / Controls Submittal - Submittal", ",,RelocControlsSUB,,")
+		ShortenedRFAInfo = Replace(ShortenedRFAInfo, "- Controls / Lithonia Reloc Submittal - Submittal", ",,RelocControlsSUB,,")
+		ShortenedRFAInfo = Replace(ShortenedRFAInfo, "- Controls Post-Installation - Graphical Interface", ",,GRAPHICS,,")
+		ShortenedRFAInfo = Replace(ShortenedRFAInfo, "- Atrius BOM - BOM (No Layout)", ",,AtriusBOM,,")
+		ShortenedRFAInfo = Replace(ShortenedRFAInfo, "- Atrius BOM - BOM (With Layout)", ",,AtriusLayout,,")
+		ShortenedRFAInfo = Replace(ShortenedRFAInfo, "- Atrius Submittal - Submittal", ",,AtriusSub,,")
+		ShortenedRFAInfo = Replace(ShortenedRFAInfo, "- Controls / Atrius Submittal - Submittal", ",,ControlsAtriusSub,,")
+		ShortenedRFAInfo = Replace(ShortenedRFAInfo, "- Atrius Locator / Atrius Wayfinder BOM - BOM (With Layout)", ",,ControlsAtriusLayout,,")
+		ShortenedRFAInfo = Replace(ShortenedRFAInfo, "- Atrius / Controls BOM - BOM (With Layout)", ",,ControlsAtriusLayout,,")
+		ShortenedRFAInfo = Replace(ShortenedRFAInfo, "- Controls / Atrius BOM - BOM (No Layout)", ",,ControlsAtriusLayout,,")
+		ShortenedRFAInfo = Replace(ShortenedRFAInfo, "- Controls / Mark Architectural Lighting Submittal - Submittal", ",,SUBMITTAL,,")
+		ShortenedRFAInfo = Replace(ShortenedRFAInfo, "- Design - Photometric Lighting Layout", ",,PHOTOMETRICS,,")
+		ShortenedRFAInfo = Replace(ShortenedRFAInfo, "- Lithonia Outdoor / Other Design - Photometric Lighting Layout", ",,PHOTOMETRICS,,")
+		ShortenedRFAInfo = Replace(ShortenedRFAInfo, "- Other / Lithonia Outdoor Design - Photometric Lighting Layout", ",,PHOTOMETRICS,,")
+		ShortenedRFAInfo = Replace(ShortenedRFAInfo, "- Controls Design - Design Consultation", ",,Consultation,,")
+
+		ShortenedRFAInfo = Replace(ShortenedRFAInfo, "Request for Assistance ", ",,")
+		ShortenedRFAInfo = Replace(ShortenedRFAInfo, "ECD: ", ",,")
+		ShortenedRFAInfo = Replace(ShortenedRFAInfo, "Requested Date:", ",,")
+		ShortenedRFAInfo = Replace(ShortenedRFAInfo, "Version:", ",,")
+		ShortenedRFAInfo = Replace(ShortenedRFAInfo, "Submitted Date:", ",,")
+
+		'RFANumber.Value = ShortenedRFAInfo
+		RFAInfo = Split(ShortenedRFAInfo, ",,", -1)
+		RFANumber.Value = Replace(RFAInfo(1)," ","",1,-1)
+		RFAType.Value = RFAInfo(2)
+		AgentNum.Value = Replace(RFAInfo(4)," ","",1,-1)
+		'AgentNum.Value = RFAInfo(4)
+		Name = RFAInfo(3) 'Both Project Name/ Project Container
+		
+		PProjectnumber = Split(Name, " ", -1)
+		proj = UBound(PProjectnumber)
+		ProjectContainer.Value = PProjectnumber(proj-2)
+		x = proj-3
+		For a = 3 to x
+			Projectnam = Projectnam + " " + PProjectnumber(a)
+		Next
+		Projectnam = Right(Projectnam, Len(Projectnam)-1)
+		ProjectName.Value = Projectnam
+		Rev = Right(RFAInfo(1), 2)
+		if Rev = "0 " then
+			Revision(0).checked = true
+		else
+			Revision(1).checked = true
+		end if
+		ProjectRD = RFAInfo(8)
+		RD.value = Right(ProjectRD, Len(ProjectRD)-1)
+		ProjectECD = RFAInfo(5)
+		ECD.value = Right(ProjectECD, Len(ProjectECD)-1)
+		NA.Value = CheckNA(Projectnam)
+		if RFAType.Value = "BUDGET" then
+			roomMultiplier.value = 1
+		end if
+		hideshowTriage()
+	End Sub
+
+	Sub TriageCalc
+	if specReview.value = "" then
+		specReview.value = 0
+	end if
+	if reviewSetup.value = "" then
+		reviewSetup.value = 0
+	end if
+	if numofpages.value = "" then
+		reviewSetup.value = 0
+	end if
+	if SOO.value = "" then
+		SOO.value = 0
+	end if
+	if roomMultiplier.value = "" then
+		roomMultiplier.value = 0
+	end if
+	if riserMultiplier.value = "" then
+		riserMultiplier.value = 0
+	end if
+	if numOfRooms.value = "" and OverideRooms.value = "" then
+	else
+		if OverideRooms.value = "" then
+			LayoutTriageTime = numOfRooms.value * roomMultiplier.value
+			LayoutTriageTime = LayoutTriageTime/60 + specReview.value + reviewSetup.value
+		else	
+			LayoutTriageTime = OverideRooms.value *1
+			LayoutTriageTime= LayoutTriageTime + specReview.value + reviewSetup.value
+		end if
+	end if
+	if numOfSubRooms.value = "" and OverideSubRooms.value = "" then
+			SubmittalTriageTime = 0
+	else
+		if OverideSubRooms.value = "" then
+			SubmittalTriageTime = numOfSubRooms.value * riserMultiplier.value /60
+			SubmittalTriageTime = SubmittalTriageTime + SOO.value
+		else
+			SubmittalTriageTime = OverideSubRooms.value *1
+			SubmittalTriageTime = SubmittalTriageTime + SOO.value
+		end if
+	end if
+	
+		For Each objButton in PanelSchedules 
+				If objButton.Checked Then 
+					panelstate = objButton.Value 
+				End If 
+		Next
+		if panelstate = "1" then
+			if ARP8.value="" then
+				ARP8time = 0
+			else
+				ARP8time = ARP8.value * 5
+			end if
+			if ARP16.value="" then
+				ARP16time = 0
+			else
+				ARP16time = ARP16.value * 10
+			end if
+			if ARP32.value="" then
+				ARP32time = 0
+			else
+				ARP32time = ARP32.value * 20
+			end if
+			if ARP48.value="" then
+				ARP48time = 0
+			else
+				ARP48time = ARP48.value * 25
+			end if
+			ARPTime = (ARP8time + ARP16time + ARP32time + ARP48time)
+			ARPTime = ARPTime/60
+			
+			
+			if SmallLMPs.value="" then
+				LMPStime = 0
+			else
+				LMPStime = SmallLMPs.value * 15
+			end if
+			if MediumLMPs.value="" then
+				LMPMtime = 0
+			else
+				LMPMtime = MediumLMPs.value * 30
+			end if
+			if LargeLMPs.value="" then
+				LMPLtime = 0
+			else
+				LMPLtime = LargeLMPs.value * 45
+			end if
+			LMPTime = LMPStime + LMPMtime + LMPLtime
+			LMPTime = LMPTime/60
+		else
+			ARPTime = 0
+			LMPTime = 0
+		end if
+		For Each objButton in esheetsSchedules 
+				If objButton.Checked Then 
+					panelmultiplier = objButton.Value 
+				End If 
+		Next
+		PanelTime = ARPTime + LMPTime
+		PanelTime = PanelTime * panelmultiplier
+		if numofpages.Value > 3 Then
+			pageadder = numofpages.Value *3 /60
+		else
+			pageadder = 0
+		end if
+		
+	FinalTriageTime = SubmittalTriageTime + LayoutTriageTime + PanelTime + pageadder
+	
+	If FinalTriageTime>=12 then
+		SelfQC.value = 1
+	elseif FinalTriageTime<4 then
+		SelfQC.value = .25
+	else
+		SelfQC.value = .5
+	end if
+	Fluff.value = FinalTriageTime/10
+	FinalTriageTime = FinalTriageTime + SelfQC.value + Fluff.value
+	
+	'Block of code to make every easy automatically assigned as first available
+	'if FinalTriageTime <4 and SubmittalTriageTime = "0" then
+	'	FirstAvail(1).checked = true
+	'else
+	'	FirstAvail(0).checked = true
+	'end if
+		
+	TriagedTime.value = RoundMe(FinalTriageTime, .25)
+	If FinalTriageTime > 20 Then
+		Set objFSO = CreateObject("Scripting.FileSystemObject")
+		Set objNetwork = CreateObject("WScript.Network")
+		userName = objNetwork.userName
+		Set os = GetObject("winmgmts:root\cimv2:Win32_OperatingSystem=@")
+			Year1 = Left(os.LocalDateTime, 4)' year
+			Month1 = Mid(os.LocalDateTime, 5, 2)' month
+			Day1 = Mid(os.LocalDateTime, 7, 2)' day
+			d = (Month1 & Day1 & Year1)
+			userName = objNetwork.userName
+		Select Case RegionalTeam.value 
+			Case "Desktop Emergency Use only"
+				alert "No Template available, please select a regional team"
+			Case Else
+				MasterTemplateFolder = "\\10.3.10.30\DAS\DAS References\!!!Templates For Project Creator"
+			end Select
+		
+		Templatestoragelocation = "C:\Users\" & userName & "\Desktop\1) Triage\!!!Templates For Project Creator"
+			
+			If objFSO.FolderExists(Templatestoragelocation & "\Images") Then 					
+							
+			else
+				If objFSO.FolderExists(Templatestoragelocation) Then 							
+					objFSO.DeleteFolder Templatestoragelocation
+				
+				else
+					If objFSO.FolderExists("C:\Users\" & userName & "\Desktop\1) Triage") Then
+					else
+						objFSO.CreateFolder ("C:\Users\" & userName & "\Desktop\1) Triage")
+					end if
+					objFSO.CopyFolder MasterTemplateFolder, Templatestoragelocation
+					objFSO.CopyFolder "\\10.3.10.30\DAS\Agent Requirements", Templatestoragelocation & "\Agent Requirements"
+					objFSO.CopyFolder "\\10.3.10.30\DAS\DAS References\Images", Templatestoragelocation & "\Images"
+				end if	
+			end if	
+			
+		image = "1) Triage\\!!!Templates For Project Creator\\Images\\acuity20.jpg"
+		changeBackground(image)
+	end if
+	End Sub
+
+	function PanelTriage
+		For Each objButton in PanelSchedules 
+				If objButton.Checked Then 
+					panelstate = objButton.Value 
+				End If 
+		Next
+		if panelstate = "1" then
+			if ARP8.value="" then
+				ARP8time = 0
+			else
+				ARP8time = ARP8.value * 5
+			end if
+			if ARP16.value="" then
+				ARP16time = 0
+			else
+				ARP16time = ARP16.value * 10
+			end if
+			if ARP32.value="" then
+				ARP32time = 0
+			else
+				ARP32time = ARP32.value * 20
+			end if
+			if ARP48.value="" then
+				ARP48time = 0
+			else
+				ARP48time = ARP48.value * 25
+			end if
+			ARPTime = (ARP8time + ARP16time + ARP32time + ARP48time)
+			ARPTime = ARPTime/60
+			
+			
+			if SmallLMPs.value="" then
+				LMPStime = 0
+			else
+				LMPStime = SmallLMPs.value * 15
+			end if
+			if MediumLMPs.value="" then
+				LMPMtime = 0
+			else
+				LMPMtime = MediumLMPs.value * 30
+			end if
+			if LargeLMPs.value="" then
+				LMPLtime = 0
+			else
+				LMPLtime = LargeLMPs.value * 45
+			end if
+			LMPTime = LMPStime + LMPMtime + LMPLtime
+			LMPTime = LMPTime/60
+		else
+			ARPTime = 0
+			LMPTime = 0
+		end if
+		For Each objButton in esheetsSchedules 
+				If objButton.Checked Then 
+					panelmultiplier = objButton.Value 
+				End If 
+		Next
+		PanelTime = ARPTime + LMPTime
+		PanelTime = PanelTime * panelmultiplier
+		PanelTriage = Paneltime
+	end function
+	
+	function CheckNA(name)
+		CheckNA = "Default"
+		' all checks are case insensitive
+		if (instr(1, name, "Arby's", 1) or instr(1, name, "Arbys", 1))  then
+			CheckNA = "ARBYS"
+		elseif instr(1, name, "Bealls", 1) then
+			CheckNA = "BEALLS"
+		elseif (instr(1, name, "Chick-", 1) or instr(1, name, "Chick ", 1)) then
+			CheckNA = "CHICK FIL A"
+		elseif instr(1, name, "CHIPOTLE", 1) then
+			CheckNA = "CHIPOTLE"
+		elseif instr(1, name, "CRUMBL", 1) then
+			CheckNA = "CRUMBL"
+		elseif instr(1, name, "Dave & buster", 1) then
+			CheckNA = "DAVE AND BUSTERS"
+		elseif instr(1, name, "Davita", 1) then
+			CheckNA = "DAVITA"
+		elseif instr(1, name, "Drive Shack", 1) then
+			CheckNA = "DRIVE SHACK"
+		elseif instr(1, name, "Drybar", 1) then
+			CheckNA = "DRYBAR"
+		elseif instr(1, name, "Floor & Dec", 1) then
+			CheckNA = "FLOOR AND DECOR"
+		elseif instr(1, name, "FMC ", 1) then
+			CheckNA = "FMC"
+		elseif (instr(1, name, "Home Depot", 1) or instr(1, name, "THD Canada", 1)) then
+			CheckNA = "HOME DEPOT"
+		elseif instr(1, name, "Inplant office", 1) then
+			CheckNA = "INPLANT OFFICE"
+		elseif instr(1, name, "JD SPORTS", 1) then
+			CheckNA = "JD SPORTS"
+		elseif (instr(1, name, "Levi's", 1) or instr(1, name, "Levis", 1)) then
+			CheckNA = "LEVIS"
+		elseif instr(1, name, "NORDSTROM RACK", 1) then
+			CheckNA = "NORDSTROM RACK"
+		elseif instr(1, name, "Office Depot", 1) then
+			CheckNA = "OFFICE DEPOT"
+		elseif instr(1, name, "Pottery Barn", 1) then
+			CheckNA = "POTTERY BARN"
+		elseif instr(1, name, "Raisin", 1) then
+			CheckNA = "Raising Cane's"
+		elseif instr(1, name, "Regus", 1) then
+			CheckNA = "REGUS"
+		elseif (instr(1, name, "Target", 1)>0) then
+			CheckNA = "TARGET"
+		elseif instr(1, name, "Bealls", 1) then
+			CheckNA = "TD AMERITRADE"
+		elseif instr(1, name, "US BANK", 1) then
+			CheckNA = "US BANK"
+		elseif instr(1, name, "West Elm", 1) then
+			CheckNA = "WEST ELM"
+		elseif instr(1, name, "Sikorsky", 1) then
+			CheckNA = "Sikorsky"
+			
+		end if
+		
+	end function
+
+	Function ClipBoard(input)
+		If IsNull(input) Then
+			ClipBoard = CreateObject("HTMLFile").parentWindow.clipboardData.getData("Text")
+			If IsNull(ClipBoard) Then ClipBoard = ""
+		Else
+			CreateObject("WScript.Shell").Run _
+			"mshta.exe javascript:eval(""document.parentWindow.clipboardData.setData('text','" _
+			& Replace(Replace(Replace(input, "'", "\\u0027"), """","\\u0022"),Chr(13),"\\r\\n") & "');window.close()"")", _
+			0,True
+		End If
+	End Function
+	
+	Function RoundMe(num, roundto)
+		num = num - .1
+		roundto = 1 / roundto
+		RoundMe = (clng(Num * Roundto) / Roundto)+.25
+	end function
+	
+</script>
+
+
+
+<body onload="setupscreens()" >
+	
+	<input type="button" class="btn" value="RESET" style="position: absolute; right: 0;" onClick="vbscript:ResetHTA()"/>
+	<p>
+		<INPUT TYPE="Button" class="btn" NAME="ImportAgile" VALUE="Import From Agile" onClick="vbscript:ImportRFAInfo()"/>
+	</p>
+	<table style="position: absolute; right: 0;">
+	<tr><td>RD: </td><td><input type="datetime" name="RD" size="20"><br></td></tr>
+	<tr><td>ECD: </td><td><input type="datetime" name="ECD" size="20"></td></tr><br>
+	</table>
+	<table>
+		<tr>
+			<td> Project Name: </td>
+			<td colspan = "2"><input type="text" name="ProjectName" size="50"><br></td>
+		</tr>
+		<tr>
+			<td> Project Container: </td>
+			<td> <input type="text" name="ProjectContainer" size="20"><br></td>
+		</tr>
+		<tr>
+			<td>RFA #: </td>
+			<td><input type="text" name="RFANumber" size="20"></td>
+			<td><input type="radio" name="Revision" value="1">New Project <input type="radio" name="Revision" value="2">Revision </td>
+		</tr>
+		<tr>
+			<td>RFA Type: </td>
+			<td><select size="1" name="RFAType" onchange="hideshowTriage()">
+				<option value="BOM">BOM (No Layout)</option>
+				<option value="LAYOUT">BOM (With Layout)</option>
+				<option value="BUDGET">Budget BOM</option>
+				<option value="SUBMITTAL">Submittal</option>
+				<option value="RELEASE">Release/ Preprogramming</option>
+				<option value="RelocBOM">Reloc BOM</option>
+				<option value="RelocSUB">Reloc Submittal</option>
+				<option value="RelocControlsBOM">Reloc Controls BOM</option>
+				<option value="RelocControlsSUB">Reloc Controls Submittal</option>
+				<option value="GRAPHICS">Graphics</option>
+				<option value="AtriusBOM">Atrius BOM (No Layout)</option>
+				<option value="AtriusLAYOUT">Atrius BOM (With Layout)</option>
+				<option value="AtriusSub">Atrius Submittal</option>
+				<option value="ControlsAtriusSub">Controls Atrius Submittal</option>
+				<option value="ControlsAtriusLayout">Controls Atrius Layout</option>
+				<option value="CONTROLSDCLAYOUT">Controls DC2DC Layout</option>
+				<option value="PHOTOMETRICS">Photometrics</option>
+				<option value="Consultation">Consultation</option>
+				
+				
+			</select></td>
+		</tr>
+		<tr>
+			<td>Agency #: </td>
+			<td><input type="text" name="AgentNum" size="20"></td>
+		</tr>
+	</table>
+	
+	<button class="tablink" onclick="openPhase('ProjectCreation')" id="defaultOpen">Project Creation</button>
+	<button class="tablink" onclick="openPhase('Triage')">Triage</button>
+	<div id="ProjectCreation" class="tabcontent">
+  <h1>Project Creation</h1>
+	<span id="SaveSettings">
+	<p> 
+	National Account: <select size="1" name="NA" >
+		<option value="Default">N/A</option>
+		<option value="ARBYS">Arby's</option>
+		<option value="BEALLS">Bealls</option>
+		<option value="CHICK FIL A">Chick Fil A</option>
+		<option value="CHIPOTLE">CHIPOTLE</option>
+		<option value="CRUMBL">CRUMBL Cookies</option>
+		<option value="DAVE AND BUSTERS">Dave & Busters</option>
+		<option value="DAVITA">Davita</option>
+		<option value="DRIVE SHACK">Drive Shack</option>
+		<option value="DRYBAR">Drybar</option>
+		<option value="FLOOR AND DECOR">Floor and Decor</option>
+		<option value="FMC">FMC</option>
+		<option value="HOME DEPOT">Home Depot</option>
+		<option value="INPLANT OFFICE">Inplant Office</option>
+		<option value="JD SPORTS">JD SPORTS</option>
+		<option value="LEVIS">Levis</option>
+		<option value="LUCKY BRANDS">Lucky Brands</option>
+		<option value="NORDSTROM RACK">NORDSTROM RACK</option>
+		<option value="OFFICE DEPOT">Office Depot</option>
+		<option value="POTTERY BARN">Pottery Barn</option>
+		<option value="Raising Cane's">Raising Cane's</option>
+		<option value="REGUS">Regus</option>
+		<option value="TARGET">Target</option>
+		<option value="TD AMERITRADE">TD Ameritrade</option>
+		<option value="US BANK">US BANK</option>
+		<option value="WEST ELM">West Elm</option>
+		<option value="Sikorsky">Sikorsky</option>
+	</select>
+	</p>
+	<p>
+	Save Location: <select size="1" name="SaveLocation" >
+		<option value="Triage">Triage Folder</option>
+		<option value="Desktop">Desktop</option>
+		<option value="Server">Server</option>
+		    
+	</select>
+	</p>
+	
+	</span>
+	<p>
+	<INPUT TYPE="Button" class="btn" NAME="CreateFolder & Triage" VALUE="Create Folder & Triage" onClick="vbscript:RunBatch2()"/>
+	<input type="Button" class="btn" NAME="Download Region Template" VALUE="Download Region Template" style="position: absolute; right: 0;" onClick="vbscript:DownloadRegionTemplate()"/>
+	<input type="Button" class="btn" NAME="Upload Triages" VALUE="Upload Triages" style="position: absolute; right: 60;" onClick="vbscript:UploadTriages()"/>
+	</P>
+	<p>
+	<input type="Button" class="btn" NAME="Open Project Folder" VALUE="Open Project Folder" style="position: absolute; right: 0;" onClick="vbscript:OpenProjectFolder()"/>
+	</p>
+	<span id="RFASettings">
+
+
+	
+	</span>
+	
+  
+</div>
+
+	<div id="Triage" class="tabcontent">
+	  <h1>Triage</h1>
+	  <table id="Panels" style="position: absolute; right: 75px;">
+		<tr><td> LMP's:</td></tr>
+		<tr><td>Large</td><td><input type="number" name="LargeLMPs" size="5" onchange="vbscript:TriageCalc()"></td></tr>
+		<tr><td>Medium</td><td><input type="number" name="MediumLMPs" size="5" onchange="vbscript:TriageCalc()"></td></tr>
+		<tr><td>Small</td><td><input type="number" name="SmallLMPs" size="5" onchange="vbscript:TriageCalc()"></td></tr>
+		<tr><td> nLight:</td></tr>
+		<tr><td>ARP 8</td><td><input type="number" name="ARP8" size="5" onchange="vbscript:TriageCalc()"></td></tr>
+		<tr><td>ARP 16</td><td><input type="number" name="ARP16" size="5" onchange="vbscript:TriageCalc()"></td></tr>
+		<tr><td>ARP 32</td><td><input type="number" name="ARP32" size="5" onchange="vbscript:TriageCalc()"></td></tr>
+		<tr><td>ARP 48</td><td><input type="number" name="ARP48" size="5" onchange="vbscript:TriageCalc()"></td></tr>
+		<tr><td>Panel Schedules: </td><td><input checked type="radio" name="esheetsSchedules"  onchange="vbscript:TriageCalc()" value="2">No <input type="radio" name="esheetsSchedules" onchange="vbscript:TriageCalc()" value="1">Yes</td></tr>
+		<tr><td> (Shown on E-Sheets)</td></tr>
+		</table>
+	  		
+	  <table style="position: relative;">
+		<tr><td colspan="2" >Layouts:</td><td>Override:</td></tr>
+		<tr><td># of Rooms:</td><td><input type="number" name="numOfRooms" size="5" onchange="vbscript:TriageCalc()">(qty of rooms)</td><td><input type="number" name="OverideRooms" size="5" onchange="vbscript:TriageCalc()">(hr)</td></tr>
+		<tr><td>Room Multiplier:</td><td><input type="number" name="roomMultiplier" value="2" size="5" onchange="vbscript:TriageCalc()">(min/room)</td></tr>
+		<tr><td>Review/ Setup Time:</td><td><input type="number" name="reviewSetup" value="0.5" min="0" size="5" onchange="vbscript:TriageCalc()">(hr)</td><td><input type="number" name="numofpages" value="1" min="0" size="5" onchange="vbscript:TriageCalc()">(# of lighting pages)</td></tr>
+		<tr><td>Spec Review:</td><td><input type="number" name="specReview" value="0.0" min="0" size="5" onchange="vbscript:TriageCalc()">(hr)</td></tr>
+	  </table>
+	  
+	  <table id="subtriage">
+		<tr><td colspan="2" >Submittals:</td><td>Override:</td></tr>
+		<tr><td># of Rooms:</td><td><input type="number" name="numOfSubRooms" size="5" onchange="vbscript:TriageCalc()">(qty. of rooms)</td><td><input type="number" name="OverideSubRooms" size="5" onchange="vbscript:TriageCalc()">(hr)</td></tr>
+		<tr><td>Riser Multiplier:</td><td><input type="number" name="riserMultiplier" value="1" size="5" onchange="vbscript:TriageCalc()"> (min/room)</td></tr>
+		<tr><td>SOO:</td><td><input type="number" name="SOO" value="0.5" min="0" size="5" onchange="vbscript:TriageCalc()">(hr)</td></tr>
+	  </table>
+	  <table id="Photometrics">
+		<tr><td colspan="4">
+		<select size="4" name="PhotoSW" >
+		<option value="VL">Visual Lighting (VL)</option>
+		<option value="AGI">AGI</option>
+		<option value="M3">M3 AI</option>
+		<option value="M3+VL">M3 AI + VL</option>
+		</td></tr>
+		</table>
+	<br>
+	Panel Schedules: 
+			<input checked type="radio" name="PanelSchedules" onchange="hideshowPanels()" value="2">No
+			<input type="radio" name="PanelSchedules" onchange="hideshowPanels()" value="1">Yes
+	<br>
+	
+		<table name="Totaltriage">
+		<tr><td>Self Qc:</td><td><input type="number" name="SelfQC" size="5">(hr)</td></tr>
+		<tr><td>Fluff:</td><td><input type="number" name="Fluff" size="5">(hr)</td></tr>
+		<tr><td>Total Triage Time:</td><td><input type="number" name="TriagedTime" step="0.01" min="1" size="5"> (hr)</input></td></tr>
+		</table>
+	<br>
+			<input checked type="radio" name="FirstAvail" value="2">No
+			<input type="radio" name="FirstAvail"  value="1">Yes
+			 : Assign to first available (Do this last)
+			 <br>
+			
+			 <br>
+		<input type="Button" class="btn" NAME="Copy to DAS Board" VALUE="Copy to DAS Board" onClick="vbscript:DASBoardExport()"/>
+		<input type="Button" class="btn" NAME="Copy to Agile" VALUE="Copy to Agile" onClick="vbscript:AgileTriageExport()"/>
+
+	 
+
+		<input type="Button" class="btn" NAME="Open DAS Board" VALUE="Open DAS Board" style="position: absolute; right: 0;" onClick="vbscript:OpenDASBoard()"/>
+		<br>
+	<select size="1" name="RegionalTeam" style="position: absolute; right: 0;">
+		<option value="All">All</option>
+		<option value="C&I">C&I</option>
+		<option value="NAVS">NAVS</option>
+
+		
+		
+		<option value="Desktop Emergency Use only">Desktop Emergency Use only</option>
+    
+			    
+	</select>	
+	</div>
+
+
+</body>
+</html>
+			

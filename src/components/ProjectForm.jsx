@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './ProjectForm.css';
 import dropdownOptionsService from '../services/DropdownOptionsService';
+import triageCalculationService from '../services/TriageCalculationService';
 
 function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProjectCreated, onProjectUpdated }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -36,16 +37,66 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
 
   const handleInputChange = (e) => {
     const { name, value, type } = e.target;
+    console.log('handleInputChange called:', { name, value, type }); // Debug log
+    
     let processedValue = value;
     if (type === 'number') {
       processedValue = value === '' ? 0 : parseFloat(value) || 0;
     }
+    
+    console.log('Processed value:', processedValue); // Debug log
+    
     const newFormData = { ...formData, [name]: processedValue };
+    
+    // Handle RFA type changes to show/hide triage sections
+    if (name === 'rfaType') {
+      newFormData.showPanelSchedules = shouldShowPanelSchedules(value);
+      newFormData.showSubmittalTriage = shouldShowSubmittalTriage(value);
+      newFormData.showPhotometrics = value === 'PHOTOMETRICS';
+      
+      // Set default values for new RFA types
+      if (value && !formData.rfaType) {
+        const defaults = getTriageDefaults();
+        newFormData.roomMultiplier = defaults.roomMultiplier;
+        newFormData.riserMultiplier = defaults.riserMultiplier;
+        newFormData.reviewSetup = defaults.reviewSetup;
+        newFormData.soo = defaults.soo;
+        newFormData.numOfPages = defaults.numOfPages;
+      }
+    }
+    
+    console.log('Updating form data:', newFormData); // Debug log
     onFormDataChange(newFormData);
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: null }));
     }
   };
+
+  // Determine if panel schedules should be shown based on RFA type
+  const shouldShowPanelSchedules = (rfaType) => {
+    return ['BOM (No Layout)', 'BOM (With Layout)', 'BUDGET', 'LAYOUT', 'SUBMITTAL', 'RELEASE'].includes(rfaType);
+  };
+
+  // Determine if submittal triage should be shown based on RFA type
+  const shouldShowSubmittalTriage = (rfaType) => {
+    return ['SUBMITTAL', 'ControlsAtriusSub', 'AtriusSub'].includes(rfaType);
+  };
+
+  // Get default values from triage calculation service
+  const getTriageDefaults = () => {
+    const triageSettings = triageCalculationService.getSettings();
+    console.log('Triage settings:', triageSettings); // Debug log
+    return {
+      roomMultiplier: triageSettings.roomMultiplier,
+      riserMultiplier: triageSettings.riserMultiplier,
+      reviewSetup: triageSettings.defaultReviewSetup,
+      soo: triageSettings.defaultSOO,
+      numOfPages: triageSettings.defaultNumOfPages
+    };
+  };
+
+  // Debug: Log current form data
+  console.log('Current form data in ProjectForm:', formData);
 
   // RFA Info Pasting Functionality
   const handlePasteRFAInfo = async () => {
@@ -116,15 +167,36 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
       // Map Agile RFA types to our form types
       const rfaTypeMapping = {
         'Controls BOM - Budget': 'BUDGET',
-        'Controls BOM - BOM (No Layout)': 'BOM',
-        'Controls BOM - BOM (With Layout)': 'LAYOUT',
+        'Controls BOM - BOM (No Layout)': 'BOM (No Layout)',
+        'Controls BOM - BOM (With Layout)': 'BOM (With Layout)',
         'Controls Submittal - Submittal': 'SUBMITTAL',
         'Controls Submittal - Preprogramming': 'RELEASE',
-        'Controls Design - Layout': 'LAYOUT',
-        'Controls Design - Controls Layout': 'LAYOUT',
+        'Controls Design - Layout': 'BOM (With Layout)',
+        'Controls Design - Controls Layout': 'BOM (With Layout)',
         'Controls Post-Installation - Graphical Interface': 'GRAPHICS',
         'Design - Photometric Lighting Layout': 'PHOTOMETRICS',
-        'Controls Design - Design Consultation': 'Consultation'
+        'Controls Design - Design Consultation': 'Consultation',
+        'Lithonia Reloc BOM - Budget': 'RelocBOM',
+        'Lithonia Reloc / Controls BOM - Budget': 'RelocControlsBOM',
+        'Lithonia Reloc BOM - BOM (With Layout)': 'RelocBOM',
+        'Lithonia Reloc Submittal - Submittal': 'RelocSUB',
+        'Lithonia Reloc / Controls Submittal - Submittal': 'RelocControlsSUB',
+        'Controls / Lithonia Reloc Submittal - Submittal': 'RelocControlsSUB',
+        'Atrius BOM - BOM (No Layout)': 'AtriusBOM',
+        'Atrius BOM - BOM (With Layout)': 'AtriusLAYOUT',
+        'Atrius Submittal - Submittal': 'AtriusSub',
+        'Controls / Atrius Submittal - Submittal': 'ControlsAtriusSub',
+        'Atrius Locator / Atrius Wayfinder BOM - BOM (With Layout)': 'ControlsAtriusLayout',
+        'Atrius / Controls BOM - BOM (With Layout)': 'ControlsAtriusLayout',
+        'Controls / Atrius BOM - BOM (No Layout)': 'ControlsAtriusLayout',
+        'Controls / Lithonia Commercial Indoor / Controls Submittal - Submittal': 'SUBMITTAL',
+        'Controls / Lithonia Commercial Indoor / Mark Architectural Lighting Submittal - Submittal': 'SUBMITTAL',
+        'Controls Submittal - One-Line Diagram': 'SUBMITTAL',
+        'Controls Submittal - Record Submittal': 'SUBMITTAL',
+        'Controls / Peerless BOM - BOM (With Layout)': 'BOM (With Layout)',
+        'Controls DC2DC / Controls BOM - BOM (With Layout)': 'CONTROLSDCLAYOUT',
+        'Lithonia Outdoor / Other Design - Photometric Lighting Layout': 'PHOTOMETRICS',
+        'Other / Lithonia Outdoor Design - Photometric Lighting Layout': 'PHOTOMETRICS'
       };
       
       parsedData.rfaType = rfaTypeMapping[rfaTypeText] || rfaTypeText;
@@ -286,50 +358,25 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
   };
 
   const calculateTriage = () => {
-    const triageData = {
-      largeLMPs: formData.largeLMPs || 0,
-      mediumLMPs: formData.mediumLMPs || 0,
-      smallLMPs: formData.smallLMPs || 0,
-      arp8: formData.arp8 || 0,
-      arp16: formData.arp16 || 0,
-      arp32: formData.arp32 || 0,
-      arp48: formData.arp48 || 0,
-      esheetsSchedules: formData.esheetsSchedules || 0,
-      numOfRooms: formData.numOfRooms || 0,
-      overrideRooms: formData.overrideRooms || 0,
-      roomMultiplier: formData.roomMultiplier || 1,
-      reviewSetup: formData.reviewSetup || 0,
-      numOfPages: formData.numOfPages || 0,
-      specReview: formData.specReview || 0,
-      numOfSubRooms: formData.numOfSubRooms || 0,
-      overrideSubRooms: formData.overrideSubRooms || 0,
-      riserMultiplier: formData.riserMultiplier || 1,
-      soo: formData.soo || 0,
-      showPanelSchedules
+    // Use the triage calculation service to get accurate results
+    const triageResults = triageCalculationService.calculateTriage(formData);
+    
+    // Update form data with calculated values
+    const updatedFormData = {
+      ...formData,
+      totalTriage: triageResults.totalTriage,
+      panelTime: triageResults.panelTime,
+      layoutTime: triageResults.layoutTime,
+      submittalTime: triageResults.submittalTime,
+      pageBonus: triageResults.pageBonus,
+      baseTotal: triageResults.baseTotal,
+      selfQC: triageResults.selfQC,
+      fluff: triageResults.fluff
     };
-
-    // Simple triage calculation (simplified for now)
-    const totalTriage = (
-      (triageData.largeLMPs * 2) +
-      (triageData.mediumLMPs * 1.5) +
-      (triageData.smallLMPs * 1) +
-      (triageData.arp8 * 0.5) +
-      (triageData.arp16 * 1) +
-      (triageData.arp32 * 1.5) +
-      (triageData.arp48 * 2) +
-      (triageData.esheetsSchedules * 0.5) +
-      (triageData.numOfRooms * triageData.roomMultiplier) +
-      (triageData.reviewSetup) +
-      (triageData.numOfPages * 0.5) +
-      (triageData.specReview) +
-      (triageData.numOfSubRooms * triageData.riserMultiplier) +
-      (triageData.soo)
-    );
-
-    setTriageResults({
-      totalTriage: totalTriage.toFixed(2),
-      breakdown: triageData
-    });
+    
+    onFormDataChange(updatedFormData);
+    
+    setTriageResults(triageResults);
   };
 
   const handleSubmit = async (e) => {
@@ -705,57 +752,460 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
         {/* Triage Calculation */}
         <div className="form-section">
           <h3>Triage Calculation</h3>
-          <div className="form-grid">
-            <div className="form-group">
-              <label htmlFor="largeLMPs">Large LMPs</label>
-              <input
-                type="number"
-                id="largeLMPs"
-                name="largeLMPs"
-                value={formData.largeLMPs}
-                onChange={handleInputChange}
-                min="0"
-                step="0.5"
-              />
+          
+          {/* Current Settings Display */}
+          <div className="triage-subsection">
+            <h4>Current Calculation Settings</h4>
+            <div className="settings-display">
+              <div className="settings-grid">
+                <div className="setting-item">
+                  <strong>LMP Multipliers:</strong>
+                  <span>Small: {triageCalculationService.getSettings().lmpMultipliers.small} min</span>
+                  <span>Medium: {triageCalculationService.getSettings().lmpMultipliers.medium} min</span>
+                  <span>Large: {triageCalculationService.getSettings().lmpMultipliers.large} min</span>
+                </div>
+                <div className="setting-item">
+                  <strong>ARP Multipliers:</strong>
+                  <span>ARP8: {triageCalculationService.getSettings().arpMultipliers.arp8} min</span>
+                  <span>ARP16: {triageCalculationService.getSettings().arpMultipliers.arp16} min</span>
+                  <span>ARP32: {triageCalculationService.getSettings().arpMultipliers.arp32} min</span>
+                  <span>ARP48: {triageCalculationService.getSettings().arpMultipliers.arp48} min</span>
+                </div>
+                <div className="setting-item">
+                  <strong>Room Multipliers:</strong>
+                  <span>Layout: {triageCalculationService.getSettings().roomMultiplier} min/room</span>
+                  <span>Riser: {triageCalculationService.getSettings().riserMultiplier} min/room</span>
+                </div>
+                <div className="setting-item">
+                  <strong>Defaults:</strong>
+                  <span>Review Setup: {triageCalculationService.getSettings().defaultReviewSetup} hr</span>
+                  <span>SOO: {triageCalculationService.getSettings().defaultSOO} hr</span>
+                  <span>Pages: {triageCalculationService.getSettings().defaultNumOfPages}</span>
+                </div>
+              </div>
+              <div className="settings-note">
+                <small>💡 These values can be adjusted in the Settings page</small>
+              </div>
             </div>
-
-            <div className="form-group">
-              <label htmlFor="mediumLMPs">Medium LMPs</label>
-              <input
-                type="number"
-                id="mediumLMPs"
-                name="mediumLMPs"
-                value={formData.mediumLMPs}
-                onChange={handleInputChange}
-                min="0"
-                step="0.5"
-              />
+          </div>
+          
+          {/* Panel Schedules Section */}
+          <div className="triage-subsection">
+            <h4>Panel Schedules</h4>
+            <div className="form-grid">
+              <div className="form-group">
+                <label>
+                  <input
+                    type="radio"
+                    name="showPanelSchedules"
+                    value={false}
+                    checked={!formData.showPanelSchedules}
+                    onChange={() => onFormDataChange({ ...formData, showPanelSchedules: false })}
+                  />
+                  No
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="showPanelSchedules"
+                    value={true}
+                    checked={formData.showPanelSchedules}
+                    onChange={() => onFormDataChange({ ...formData, showPanelSchedules: true })}
+                  />
+                  Yes
+                </label>
+              </div>
             </div>
+            
+            {formData.showPanelSchedules && (
+              <div className="panel-schedules-grid">
+                <div className="lmp-section">
+                  <h5>LMPs:</h5>
+                  <div className="form-grid">
+                    <div className="form-group">
+                      <label htmlFor="largeLMPs">Large</label>
+                      <input
+                        type="number"
+                        id="largeLMPs"
+                        name="largeLMPs"
+                        value={formData.largeLMPs}
+                        onChange={handleInputChange}
+                        min="0"
+                        step="1"
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="mediumLMPs">Medium</label>
+                      <input
+                        type="number"
+                        id="mediumLMPs"
+                        name="mediumLMPs"
+                        value={formData.mediumLMPs}
+                        onChange={handleInputChange}
+                        min="0"
+                        step="1"
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="smallLMPs">Small</label>
+                      <input
+                        type="number"
+                        id="smallLMPs"
+                        name="smallLMPs"
+                        value={formData.smallLMPs}
+                        onChange={handleInputChange}
+                        min="0"
+                        step="1"
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="nlight-section">
+                  <h5>nLight:</h5>
+                  <div className="form-grid">
+                    <div className="form-group">
+                      <label htmlFor="arp8">ARP 8</label>
+                      <input
+                        type="number"
+                        id="arp8"
+                        name="arp8"
+                        value={formData.arp8}
+                        onChange={handleInputChange}
+                        min="0"
+                        step="1"
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="arp16">ARP 16</label>
+                      <input
+                        type="number"
+                        id="arp16"
+                        name="arp16"
+                        value={formData.arp16}
+                        onChange={handleInputChange}
+                        min="0"
+                        step="1"
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="arp32">ARP 32</label>
+                      <input
+                        type="number"
+                        id="arp32"
+                        name="arp32"
+                        value={formData.arp32}
+                        onChange={handleInputChange}
+                        min="0"
+                        step="1"
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="arp48">ARP 48</label>
+                      <input
+                        type="number"
+                        id="arp48"
+                        name="arp48"
+                        value={formData.arp48}
+                        onChange={handleInputChange}
+                        min="0"
+                        step="1"
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="esheets-section">
+                  <h5>Panel Schedules (Shown on E-Sheets):</h5>
+                  <div className="form-group">
+                    <label>
+                      <input
+                        type="radio"
+                        name="esheetsSchedules"
+                        value={2}
+                        checked={formData.esheetsSchedules === 2}
+                        onChange={(e) => {
+                          console.log('E-sheets radio changed:', e.target.value); // Debug log
+                          onFormDataChange({ ...formData, esheetsSchedules: parseInt(e.target.value) });
+                        }}
+                      />
+                      No
+                    </label>
+                    <label>
+                      <input
+                        type="radio"
+                        name="esheetsSchedules"
+                        value={1}
+                        checked={formData.esheetsSchedules === 1}
+                        onChange={(e) => {
+                          console.log('E-sheets radio changed:', e.target.value); // Debug log
+                          onFormDataChange({ ...formData, esheetsSchedules: parseInt(e.target.value) });
+                        }}
+                      />
+                      Yes
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
 
-            <div className="form-group">
-              <label htmlFor="smallLMPs">Small LMPs</label>
-              <input
-                type="number"
-                id="smallLMPs"
-                name="smallLMPs"
-                value={formData.smallLMPs}
-                onChange={handleInputChange}
-                min="0"
-                step="0.5"
-              />
+          {/* Layout Section */}
+          <div className="triage-subsection">
+            <h4>Layouts:</h4>
+            <div className="form-grid">
+              <div className="form-group">
+                <label htmlFor="numOfRooms"># of Rooms:</label>
+                <input
+                  type="number"
+                  id="numOfRooms"
+                  name="numOfRooms"
+                  value={formData.numOfRooms}
+                  onChange={handleInputChange}
+                  min="0"
+                  step="1"
+                  placeholder="0"
+                />
+                <span className="field-hint">(qty of rooms)</span>
+              </div>
+              <div className="form-group">
+                <label htmlFor="overrideRooms">Override:</label>
+                <input
+                  type="number"
+                  id="overrideRooms"
+                  name="overrideRooms"
+                  value={formData.overrideRooms}
+                  onChange={handleInputChange}
+                  min="0"
+                  step="0.25"
+                  placeholder="0"
+                />
+                <span className="field-hint">(hr)</span>
+              </div>
+              <div className="form-group">
+                <label htmlFor="roomMultiplier">Room Multiplier:</label>
+                <input
+                  type="number"
+                  id="roomMultiplier"
+                  name="roomMultiplier"
+                  value={formData.roomMultiplier}
+                  onChange={handleInputChange}
+                  min="0"
+                  step="0.5"
+                  placeholder="2"
+                />
+                <span className="field-hint">(min/room)</span>
+              </div>
+              <div className="form-group">
+                <label htmlFor="reviewSetup">Review/Setup Time:</label>
+                <input
+                  type="number"
+                  id="reviewSetup"
+                  name="reviewSetup"
+                  value={formData.reviewSetup}
+                  onChange={handleInputChange}
+                  min="0"
+                  step="0.25"
+                  placeholder="0.5"
+                />
+                <span className="field-hint">(hr)</span>
+              </div>
+              <div className="form-group">
+                <label htmlFor="numOfPages"># of Lighting Pages:</label>
+                <input
+                  type="number"
+                  id="numOfPages"
+                  name="numOfPages"
+                  value={formData.numOfPages}
+                  onChange={handleInputChange}
+                  min="1"
+                  step="1"
+                  placeholder="1"
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="specReview">Spec Review:</label>
+                <input
+                  type="number"
+                  id="specReview"
+                  name="specReview"
+                  value={formData.specReview}
+                  onChange={handleInputChange}
+                  min="0"
+                  step="0.25"
+                  placeholder="0.0"
+                />
+                <span className="field-hint">(hr)</span>
+              </div>
             </div>
+          </div>
 
+          {/* Submittal Section */}
+          {formData.showSubmittalTriage && (
+            <div className="triage-subsection">
+              <h4>Submittals:</h4>
+              <div className="form-grid">
+                <div className="form-group">
+                  <label htmlFor="numOfSubRooms"># of Rooms:</label>
+                  <input
+                    type="number"
+                    id="numOfSubRooms"
+                    name="numOfSubRooms"
+                    value={formData.numOfSubRooms}
+                    onChange={handleInputChange}
+                    min="0"
+                    step="1"
+                    placeholder="0"
+                  />
+                  <span className="field-hint">(qty. of rooms)</span>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="overrideSubRooms">Override:</label>
+                  <input
+                    type="number"
+                    id="overrideSubRooms"
+                    name="overrideSubRooms"
+                    value={formData.overrideSubRooms}
+                    onChange={handleInputChange}
+                    min="0"
+                    step="0.25"
+                    placeholder="0"
+                  />
+                  <span className="field-hint">(hr)</span>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="riserMultiplier">Riser Multiplier:</label>
+                  <input
+                    type="number"
+                    id="riserMultiplier"
+                    name="riserMultiplier"
+                    value={formData.riserMultiplier}
+                    onChange={handleInputChange}
+                    min="0"
+                    step="0.5"
+                    placeholder="1"
+                  />
+                  <span className="field-hint">(min/room)</span>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="soo">SOO:</label>
+                  <input
+                    type="number"
+                    id="soo"
+                    name="soo"
+                    value={formData.soo}
+                    onChange={handleInputChange}
+                    min="0"
+                    step="0.25"
+                    placeholder="0.5"
+                  />
+                  <span className="field-hint">(hr)</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Photometrics Section */}
+          {formData.showPhotometrics && (
+            <div className="triage-subsection">
+              <h4>Photometrics:</h4>
+              <div className="form-group">
+                <label htmlFor="photoSoftware">Photo Software:</label>
+                <select
+                  id="photoSoftware"
+                  name="photoSoftware"
+                  value={formData.photoSoftware}
+                  onChange={handleInputChange}
+                >
+                  {dropdownOptions.photoSoftware.map(software => (
+                    <option key={software} value={software}>{software}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+
+          {/* Triage Results */}
+          <div className="triage-subsection">
+            <h4>Triage Results:</h4>
+            <div className="form-grid">
+              <div className="form-group">
+                <label htmlFor="selfQC">Self QC:</label>
+                <input
+                  type="number"
+                  id="selfQC"
+                  name="selfQC"
+                  value={formData.selfQC}
+                  onChange={handleInputChange}
+                  min="0"
+                  step="0.25"
+                  placeholder="0.0"
+                />
+                <span className="field-hint">(hr) - Auto-calculated, can be overridden</span>
+              </div>
+              <div className="form-group">
+                <label htmlFor="fluff">Fluff:</label>
+                <input
+                  type="number"
+                  id="fluff"
+                  name="fluff"
+                  value={formData.fluff}
+                  onChange={handleInputChange}
+                  min="0"
+                  step="0.25"
+                  placeholder="0.0"
+                />
+                <span className="field-hint">(hr) - Auto-calculated, can be overridden</span>
+              </div>
+              <div className="form-group">
+                <label htmlFor="totalTriage">Total Triage Time:</label>
+                <input
+                  type="number"
+                  id="totalTriage"
+                  name="totalTriage"
+                  value={formData.totalTriage}
+                  onChange={handleInputChange}
+                  min="0"
+                  step="0.25"
+                  placeholder="0.0"
+                />
+                <span className="field-hint">(hr) - Auto-calculated, can be overridden</span>
+              </div>
+            </div>
+          </div>
+
+          {/* First Available Section */}
+          <div className="triage-subsection">
+            <h4>Assignment:</h4>
             <div className="form-group">
-              <label htmlFor="numOfRooms">Number of Rooms</label>
-              <input
-                type="number"
-                id="numOfRooms"
-                name="numOfRooms"
-                value={formData.numOfRooms}
-                onChange={handleInputChange}
-                min="0"
-                step="0.5"
-              />
+              <label>
+                <input
+                  type="radio"
+                  name="firstAvailable"
+                  value={false}
+                  checked={!formData.firstAvailable}
+                  onChange={() => onFormDataChange({ ...formData, firstAvailable: false })}
+                />
+                No
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="firstAvailable"
+                  value={true}
+                  checked={formData.firstAvailable}
+                  onChange={() => onFormDataChange({ ...formData, firstAvailable: true })}
+                />
+                Yes
+              </label>
+              <span className="field-hint">: Assign to first available (Do this last)</span>
             </div>
           </div>
 
@@ -771,8 +1221,33 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
 
           {triageResults && (
             <div className="triage-results">
-              <h4>Triage Results</h4>
-              <p><strong>Total Triage Time:</strong> {triageResults.totalTriage} hours</p>
+              <h4>Detailed Triage Breakdown</h4>
+              <div className="triage-breakdown">
+                <div className="breakdown-item">
+                  <strong>Layout Time:</strong> {triageResults.layoutTime} hours
+                </div>
+                <div className="breakdown-item">
+                  <strong>Submittal Time:</strong> {triageResults.submittalTime} hours
+                </div>
+                <div className="breakdown-item">
+                  <strong>Panel Time:</strong> {triageResults.panelTime} hours
+                </div>
+                <div className="breakdown-item">
+                  <strong>Page Bonus:</strong> {triageResults.pageBonus} hours
+                </div>
+                <div className="breakdown-item">
+                  <strong>Base Total:</strong> {triageResults.baseTotal} hours
+                </div>
+                <div className="breakdown-item">
+                  <strong>Self QC:</strong> {triageResults.selfQC} hours
+                </div>
+                <div className="breakdown-item">
+                  <strong>Fluff:</strong> {triageResults.fluff} hours
+                </div>
+                <div className="breakdown-item total">
+                  <strong>Total Triage Time:</strong> {triageResults.totalTriage} hours
+                </div>
+              </div>
             </div>
           )}
         </div>

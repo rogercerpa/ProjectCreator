@@ -2,14 +2,40 @@
 class DropdownOptionsService {
   constructor() {
     this.defaultOptions = {
-      rfaTypes: ['BOM (No Layout)', 'BOM with Layout', 'Controls BOM - Budget', 'Controls BOM - Layout', 'BUDGET', 'LAYOUT', 'SUBMITTAL', 'RELEASE', 'GRAPHICS', 'PHOTOMETRICS', 'Consultation'],
-      regionalTeams: ['Region 1', 'Region 2', 'Region 3', 'Region 4', 'Region 5', 'NAVS'],
-      nationalAccounts: ['Default', 'ARBYS', 'MCDONALDS', 'WALMART', 'TARGET', 'HOMEDEPOT', 'LOWES', 'KROGER', 'CVS', 'WALGREENS'],
+      rfaTypes: [
+        'BOM (No Layout)',
+        'BOM (With Layout)', 
+        'BUDGET',
+        'SUBMITTAL',
+        'RELEASE',
+        'RelocBOM',
+        'RelocSUB',
+        'RelocControlsBOM',
+        'RelocControlsSUB',
+        'GRAPHICS',
+        'AtriusBOM',
+        'AtriusLAYOUT',
+        'AtriusSub',
+        'ControlsAtriusSub',
+        'ControlsAtriusLayout',
+        'CONTROLSDCLAYOUT',
+        'PHOTOMETRICS',
+        'Consultation'
+      ],
+      regionalTeams: ['All', 'C&I', 'NAVS', 'Desktop Emergency Use only'],
+      nationalAccounts: [
+        'Default', 'ARBYS', 'BEALLS', 'CHICK FIL A', 'CHIPOTLE', 'CRUMBL', 
+        'DAVE AND BUSTERS', 'DAVITA', 'DRIVE SHACK', 'DRYBAR', 'FLOOR AND DECOR',
+        'FMC', 'HOME DEPOT', 'INPLANT OFFICE', 'JD SPORTS', 'LEVIS', 'LUCKY BRANDS',
+        'NORDSTROM RACK', 'OFFICE DEPOT', 'POTTERY BARN', 'Raising Cane\'s', 'REGUS',
+        'TARGET', 'TD AMERITRADE', 'US BANK', 'WEST ELM', 'Sikorsky'
+      ],
       saveLocations: ['Triage', 'Desktop', 'Server'],
       complexityLevels: ['Level 1', 'Level 2', 'Level 3', 'Level 4'],
       statusOptions: ['In Progress', 'Completed', 'Inactive', 'Not Started'],
       productOptions: ['nLight Wired', 'nLight Air', 'SensorSwitch', 'Pathway', 'Fresco', 'Controls - nLight'],
-      assignedToOptions: ['John Doe', 'Jane Smith', 'Mike Johnson', 'Sarah Wilson', 'David Brown', 'Cerpa, Roger']
+      assignedToOptions: ['John Doe', 'Jane Smith', 'Mike Johnson', 'Sarah Wilson', 'David Brown', 'Cerpa, Roger'],
+      photoSoftware: ['VL', 'AGI', 'M3', 'M3+VL']
     };
     
     this.options = { ...this.defaultOptions };

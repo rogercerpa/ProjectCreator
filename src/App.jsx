@@ -30,6 +30,7 @@ function App() {
     repContacts: '',
     requestedDate: '',
     submittedDate: '',
+    // Panel Schedule Fields
     largeLMPs: 0,
     mediumLMPs: 0,
     smallLMPs: 0,
@@ -37,17 +38,23 @@ function App() {
     arp16: 0,
     arp32: 0,
     arp48: 0,
-    esheetsSchedules: 2,
+    esheetsSchedules: 2, // 1 = Yes, 2 = No
+    showPanelSchedules: false,
+    // Layout Fields
     numOfRooms: 0,
     overrideRooms: 0,
     roomMultiplier: 2,
     reviewSetup: 0.5,
     numOfPages: 1,
     specReview: 0,
+    // Submittal Fields
     numOfSubRooms: 0,
     overrideSubRooms: 0,
     riserMultiplier: 1,
     soo: 0.5,
+    // Photometrics Fields
+    photoSoftware: 'VL',
+    // Triage Results
     saveLocation: 'Server',
     isRevision: false,
     dueDate: '',
@@ -58,7 +65,9 @@ function App() {
     pageBonus: 0,
     baseTotal: 0,
     selfQC: 0,
-    fluff: 0
+    fluff: 0,
+    // Additional Fields
+    firstAvailable: false
   });
 
   useEffect(() => {
