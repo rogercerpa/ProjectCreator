@@ -35,16 +35,46 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
     return unsubscribe;
   }, []);
 
+  // Fix input field interactivity issue - ensure fields are properly initialized and interactive
+  useEffect(() => {
+    // Force a re-render and ensure input fields are interactive after component mounts
+    const timer = setTimeout(() => {
+      // Trigger a small state update to ensure proper rendering
+      const updatedFormData = { ...formData };
+      onFormDataChange(updatedFormData);
+      
+      // Focus and blur the first input field to ensure it's interactive
+      const firstInput = document.querySelector('input[name="numOfRooms"]');
+      if (firstInput) {
+        firstInput.focus();
+        firstInput.blur(); // Remove focus but ensure field is interactive
+      }
+    }, 100);
+
+    // Additional timer for Electron-specific focus issues
+    const electronTimer = setTimeout(() => {
+      // Force all input fields to be interactive
+      const allInputs = document.querySelectorAll('input[type="number"], input[type="text"]');
+      allInputs.forEach(input => {
+        // Force the input to be interactive by triggering focus/blur
+        input.focus();
+        input.blur();
+      });
+    }, 500);
+
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(electronTimer);
+    };
+  }, []); // Empty dependency array - only run once on mount
+
   const handleInputChange = (e) => {
     const { name, value, type } = e.target;
-    console.log('handleInputChange called:', { name, value, type }); // Debug log
     
     let processedValue = value;
     if (type === 'number') {
       processedValue = value === '' ? 0 : parseFloat(value) || 0;
     }
-    
-    console.log('Processed value:', processedValue); // Debug log
     
     const newFormData = { ...formData, [name]: processedValue };
     
@@ -65,7 +95,6 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
       }
     }
     
-    console.log('Updating form data:', newFormData); // Debug log
     onFormDataChange(newFormData);
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: null }));
@@ -85,7 +114,6 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
   // Get default values from triage calculation service
   const getTriageDefaults = () => {
     const triageSettings = triageCalculationService.getSettings();
-    console.log('Triage settings:', triageSettings); // Debug log
     return {
       roomMultiplier: triageSettings.roomMultiplier,
       riserMultiplier: triageSettings.riserMultiplier,
@@ -94,9 +122,6 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
       numOfPages: triageSettings.defaultNumOfPages
     };
   };
-
-  // Debug: Log current form data
-  console.log('Current form data in ProjectForm:', formData);
 
   // RFA Info Pasting Functionality
   const handlePasteRFAInfo = async () => {
@@ -788,6 +813,9 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
               </div>
             </div>
           </div>
+
+
+
           
           {/* Panel Schedules Section */}
           <div className="triage-subsection">
@@ -932,7 +960,6 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
                         value={2}
                         checked={formData.esheetsSchedules === 2}
                         onChange={(e) => {
-                          console.log('E-sheets radio changed:', e.target.value); // Debug log
                           onFormDataChange({ ...formData, esheetsSchedules: parseInt(e.target.value) });
                         }}
                       />
@@ -945,7 +972,6 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
                         value={1}
                         checked={formData.esheetsSchedules === 1}
                         onChange={(e) => {
-                          console.log('E-sheets radio changed:', e.target.value); // Debug log
                           onFormDataChange({ ...formData, esheetsSchedules: parseInt(e.target.value) });
                         }}
                       />
@@ -967,7 +993,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
                   type="number"
                   id="numOfRooms"
                   name="numOfRooms"
-                  value={formData.numOfRooms}
+                  value={formData.numOfRooms || 0}
                   onChange={handleInputChange}
                   min="0"
                   step="1"
@@ -995,7 +1021,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
                   type="number"
                   id="roomMultiplier"
                   name="roomMultiplier"
-                  value={formData.roomMultiplier}
+                  value={formData.roomMultiplier || 2}
                   onChange={handleInputChange}
                   min="0"
                   step="0.5"
@@ -1142,7 +1168,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
                   type="number"
                   id="selfQC"
                   name="selfQC"
-                  value={formData.selfQC}
+                  value={formData.selfQC || 0}
                   onChange={handleInputChange}
                   min="0"
                   step="0.25"
@@ -1217,6 +1243,8 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
             >
               Calculate Triage
             </button>
+            
+
           </div>
 
           {triageResults && (

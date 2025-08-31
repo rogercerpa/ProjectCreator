@@ -7,7 +7,6 @@ import { getFullVersionInfo, getVersionDisplay } from './utils/version';
 import './App.css';
 
 function App() {
-  console.log('App component is initializing...');
   
   const [isLoading, setIsLoading] = useState(true);
   const [currentView, setCurrentView] = useState('welcome');
@@ -71,17 +70,44 @@ function App() {
   });
 
   useEffect(() => {
-    console.log('App useEffect running...');
-    
     const initializeApp = async () => {
       try {
-        console.log('Starting app initialization...');
         setIsLoading(true);
         
         // Simulate app initialization
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        console.log('App initialization complete, setting loading to false');
+        // Ensure form data is properly initialized with default values
+        setFormData(prevFormData => ({
+          ...prevFormData,
+          // Ensure all numeric fields are properly initialized as numbers
+          largeLMPs: 0,
+          mediumLMPs: 0,
+          smallLMPs: 0,
+          arp8: 0,
+          arp16: 0,
+          arp32: 0,
+          arp48: 0,
+          numOfRooms: 0,
+          overrideRooms: 0,
+          roomMultiplier: 2,
+          reviewSetup: 0.5,
+          numOfPages: 1,
+          specReview: 0,
+          numOfSubRooms: 0,
+          overrideSubRooms: 0,
+          riserMultiplier: 1,
+          soo: 0.5,
+          totalTriage: 0,
+          panelTime: 0,
+          layoutTime: 0,
+          submittalTime: 0,
+          pageBonus: 0,
+          baseTotal: 0,
+          selfQC: 0,
+          fluff: 0
+        }));
+        
         setIsLoading(false);
       } catch (err) {
         console.error('Failed to initialize app:', err);
@@ -92,17 +118,15 @@ function App() {
     initializeApp();
   }, []);
 
-  console.log('App render - isLoading:', isLoading, 'currentView:', currentView);
+
 
   const handleProjectCreated = (project) => {
-    console.log('Project created:', project);
     setProjects(prev => [project, ...prev]);
     setCurrentProject(project);
     setCurrentView('welcome');
   };
 
   const handleProjectUpdated = (updatedProject) => {
-    console.log('Project updated:', updatedProject);
     setProjects(prev => 
       prev.map(p => p.id === updatedProject.id ? updatedProject : p)
     );
@@ -110,12 +134,10 @@ function App() {
   };
 
   const handleFormDataChange = (newFormData) => {
-    console.log('Form data changed:', newFormData);
     setFormData(newFormData);
   };
 
   const handleFormReset = () => {
-    console.log('Form reset');
     setFormData({
       projectName: '',
       rfaNumber: '',
@@ -124,7 +146,7 @@ function App() {
       rfaType: '',
       regionalTeam: '',
       ecd: '',
-      nationalAccount: '',
+      nationalAccount: 'Default',
       complexity: '',
       rfaValue: '',
       status: '',
@@ -133,6 +155,7 @@ function App() {
       repContacts: '',
       requestedDate: '',
       submittedDate: '',
+      // Panel Schedule Fields
       largeLMPs: 0,
       mediumLMPs: 0,
       smallLMPs: 0,
@@ -140,17 +163,23 @@ function App() {
       arp16: 0,
       arp32: 0,
       arp48: 0,
-      esheetsSchedules: 2,
+      esheetsSchedules: 2, // 1 = Yes, 2 = No
+      showPanelSchedules: false,
+      // Layout Fields
       numOfRooms: 0,
       overrideRooms: 0,
       roomMultiplier: 2,
       reviewSetup: 0.5,
       numOfPages: 1,
       specReview: 0,
+      // Submittal Fields
       numOfSubRooms: 0,
       overrideSubRooms: 0,
       riserMultiplier: 1,
       soo: 0.5,
+      // Photometrics Fields
+      photoSoftware: 'VL',
+      // Triage Results
       saveLocation: 'Server',
       isRevision: false,
       dueDate: '',
@@ -161,23 +190,21 @@ function App() {
       pageBonus: 0,
       baseTotal: 0,
       selfQC: 0,
-      fluff: 0
+      fluff: 0,
+      // Additional Fields
+      firstAvailable: false
     });
   };
 
   const handleViewChange = (view) => {
-    console.log('Changing view to:', view);
     setCurrentView(view);
   };
 
   // Render main content based on current view
   const renderMainContent = () => {
     try {
-      console.log('Rendering main content for view:', currentView);
-      
       switch (currentView) {
         case 'form':
-          console.log('Rendering ProjectForm component');
           return (
             <ProjectForm
               project={currentProject}
@@ -189,7 +216,6 @@ function App() {
             />
           );
         case 'list':
-          console.log('Rendering ProjectList view');
           return (
             <div className="projects-list-container">
               <h2>Projects List</h2>
@@ -227,11 +253,9 @@ function App() {
             </div>
           );
         case 'settings':
-          console.log('Rendering Settings view');
           return <Settings />;
         case 'welcome':
         default:
-          console.log('Rendering welcome content');
           return (
             <div className="welcome-container">
                              <div className="welcome-header">
@@ -399,7 +423,6 @@ function App() {
 
   // Show loading screen while initializing
   if (isLoading) {
-    console.log('Rendering loading screen');
     return (
       <div className="loading-container">
         <img src="logo.png" alt="Project Creator Logo" className="logo" />
@@ -411,9 +434,7 @@ function App() {
     );
   }
 
-  console.log('Rendering main app content with all components');
-  
-  return (
+    return (
     <div className="app">
       <Header />
       <div className="app-container">

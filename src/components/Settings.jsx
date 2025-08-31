@@ -89,6 +89,22 @@ function Settings() {
     };
   }, [editingField, editingIndex]);
 
+  // Fix input field interactivity issue - ensure fields are properly initialized and interactive
+  useEffect(() => {
+    // Force input fields to be interactive after component mounts
+    const timer = setTimeout(() => {
+      // Find any input fields and ensure they're interactive
+      const inputs = document.querySelectorAll('input[type="text"], input[type="number"]');
+      inputs.forEach(input => {
+        // Force the input to be interactive by triggering focus/blur
+        input.focus();
+        input.blur();
+      });
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, []); // Empty dependency array - only run once on mount
+
   const loadSettings = async () => {
     try {
       setIsLoading(true);
