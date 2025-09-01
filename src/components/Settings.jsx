@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import './Settings.css';
 import dropdownOptionsService from '../services/DropdownOptionsService';
 import triageCalculationService from '../services/TriageCalculationService';
+import { getFullVersionInfo, getVersionDisplay, BUILD_INFO } from '../utils/version';
 
 // Access secure electron API through contextBridge
 const { electronAPI } = window;
 
 function Settings() {
+  const [activeTab, setActiveTab] = useState('app-info');
   const [settings, setSettings] = useState({
     rfaTypes: ['BOM (No Layout)', 'BOM with Layout', 'Controls BOM - Budget', 'Controls BOM - Layout', 'BUDGET', 'LAYOUT', 'SUBMITTAL', 'RELEASE', 'GRAPHICS', 'PHOTOMETRICS', 'Consultation'],
     regionalTeams: ['Region 1', 'Region 2', 'Region 3', 'Region 4', 'Region 5', 'NAVS'],
@@ -43,13 +45,21 @@ function Settings() {
     loadSettings();
   }, []);
 
+  // Reset editing state when tab changes
+  useEffect(() => {
+    setEditingField(null);
+    setEditingIndex(-1);
+    setNewValue('');
+  }, [activeTab]);
+
 
 
   // Effect to handle component focus and reset state when returning to page
   useEffect(() => {
     const handleFocus = () => {
       // Reset any stale editing state when returning to the page
-      if (editingField || editingIndex !== -1) {
+      // Only reset if we're editing an existing item (index >= 0), not when adding new (index = -1)
+      if (editingField && editingIndex >= 0) {
         setEditingField(null);
         setEditingIndex(-1);
         setNewValue('');
@@ -152,45 +162,21 @@ function Settings() {
   };
 
   const startEditing = (field, index = -1) => {
-    // Force a complete state reset
-    setEditingField(null);
-    setEditingIndex(-1);
-    setNewValue('');
+    // Set the editing state immediately
+    setEditingField(field);
+    setEditingIndex(index);
+    setNewValue(index >= 0 ? settings[field][index] : '');
     
-    // Use a longer timeout to ensure DOM is fully updated
+    // Focus on the input field after DOM update
     setTimeout(() => {
-      setEditingField(field);
-      setEditingIndex(index);
-      setNewValue(index >= 0 ? settings[field][index] : '');
+      const selector = `input[data-key="${index >= 0 ? `edit-${field}-${index}` : `add-new-${field}`}"]`;
+      const inputElement = document.querySelector(selector);
       
-      // Force focus on the input field after a brief delay
-      setTimeout(() => {
-        const inputElement = document.querySelector(`input[key="${index >= 0 ? `edit-${field}-${index}` : `add-new-${field}`}"]`);
-        if (inputElement) {
-          inputElement.focus();
-          inputElement.click(); // Sometimes needed in Electron
-          
-          // Additional focus handling for Electron
-          if (inputElement.setSelectionRange) {
-            inputElement.setSelectionRange(0, inputElement.value.length);
-          }
-          
-          // Force the input to be interactive
-          inputElement.style.pointerEvents = 'auto';
-          inputElement.style.userSelect = 'text';
-          inputElement.style.cursor = 'text';
-        } else {
-          // Retry after a longer delay
-          setTimeout(() => {
-            const retryElement = document.querySelector(`input[key="${index >= 0 ? `edit-${field}-${index}` : `add-new-${field}`}"]`);
-            if (retryElement) {
-              retryElement.focus();
-              retryElement.click();
-            }
-          }, 100);
-        }
-      }, 50);
-    }, 10);
+      if (inputElement) {
+        inputElement.focus();
+        inputElement.select();
+      }
+    }, 100);
   };
 
   const cancelEditing = () => {
@@ -273,7 +259,7 @@ function Settings() {
                  <button
            type="button"
            className="btn btn-primary btn-sm"
-                       onClick={() => startEditing(field)}
+           onClick={() => startEditing(field)}
          >
            + Add New
          </button>
@@ -287,6 +273,7 @@ function Settings() {
               <div className="edit-mode">
                                  <input
                    key={`add-new-${field}`}
+                   data-key={`add-new-${field}`}
                    type="text"
                    value={newValue}
                                        onChange={(e) => setNewValue(e.target.value)}
@@ -348,6 +335,7 @@ function Settings() {
                 <div className="edit-mode">
                                      <input
                      key={`edit-${field}-${index}`}
+                     data-key={`edit-${field}-${index}`}
                      type="text"
                      value={newValue}
                      onChange={(e) => setNewValue(e.target.value)}
@@ -413,226 +401,308 @@ function Settings() {
     );
   }
 
+  const tabs = [
+    {
+      id: 'app-info',
+      label: 'App Info',
+      icon: 'ℹ️',
+      fullLabel: 'Application Info & Settings'
+    },
+    {
+      id: 'project-form',
+      label: 'Form Settings',
+      icon: '📝',
+      fullLabel: 'Project Form Settings'
+    },
+    {
+      id: 'triage-calc',
+      label: 'Triage Calc',
+      icon: '🧮',
+      fullLabel: 'Triage Calculation Settings'
+    }
+  ];
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'app-info':
+        return (
+          <div className="tab-content">
+            <div className="app-info-section">
+              <h2>Application Information</h2>
+              <div className="app-info-grid">
+                <div className="app-info-item">
+                  <span className="app-info-label">Version:</span>
+                  <span className="app-info-value">{getVersionDisplay()}</span>
+                </div>
+                <div className="app-info-item">
+                  <span className="app-info-label">Full Version:</span>
+                  <span className="app-info-value">{getFullVersionInfo()}</span>
+                </div>
+                <div className="app-info-item">
+                  <span className="app-info-label">Build Date:</span>
+                  <span className="app-info-value">{new Date(BUILD_INFO.buildDate).toLocaleDateString()}</span>
+                </div>
+                <div className="app-info-item">
+                  <span className="app-info-label">Environment:</span>
+                  <span className="app-info-value">{BUILD_INFO.environment}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'project-form':
+        return (
+          <div className="tab-content">
+            <div className="settings-content">
+              {renderFieldEditor('rfaTypes', 'RFA Type Options', settings.rfaTypes)}
+              {renderFieldEditor('regionalTeams', 'Regional Team Options', settings.regionalTeams)}
+              {renderFieldEditor('nationalAccounts', 'National Account Options', settings.nationalAccounts)}
+              {renderFieldEditor('saveLocations', 'Save Location Options', settings.saveLocations)}
+              {renderFieldEditor('complexityLevels', 'Complexity Level Options', settings.complexityLevels)}
+              {renderFieldEditor('statusOptions', 'Status Options', settings.statusOptions)}
+              {renderFieldEditor('productOptions', 'Product Options', settings.productOptions)}
+              {renderFieldEditor('assignedToOptions', 'Assigned To Options', settings.assignedToOptions)}
+            </div>
+          </div>
+        );
+
+      case 'triage-calc':
+        return (
+          <div className="tab-content">
+            <div className="settings-field">
+              <h3>Calculation Settings</h3>
+              <p className="field-description">Configure multipliers and thresholds for triage calculations</p>
+              
+              <div className="calculation-settings">
+                <div className="setting-group">
+                  <h4>LMP Multipliers (minutes)</h4>
+                  <div className="setting-row">
+                    <label>Small:</label>
+                    <input
+                      type="number"
+                      value={settings.calculationSettings.lmpMultipliers.small}
+                      onChange={(e) => setSettings(prev => ({
+                        ...prev,
+                        calculationSettings: {
+                          ...prev.calculationSettings,
+                          lmpMultipliers: {
+                            ...prev.calculationSettings.lmpMultipliers,
+                            small: parseInt(e.target.value) || 0
+                          }
+                        }
+                      }))}
+                      min="0"
+                      step="1"
+                    />
+                  </div>
+                  <div className="setting-row">
+                    <label>Medium:</label>
+                    <input
+                      type="number"
+                      value={settings.calculationSettings.lmpMultipliers.medium}
+                      onChange={(e) => setSettings(prev => ({
+                        ...prev,
+                        calculationSettings: {
+                          ...prev.calculationSettings,
+                          lmpMultipliers: {
+                            ...prev.calculationSettings.lmpMultipliers,
+                            medium: parseInt(e.target.value) || 0
+                          }
+                        }
+                      }))}
+                      min="0"
+                      step="1"
+                    />
+                  </div>
+                  <div className="setting-row">
+                    <label>Large:</label>
+                    <input
+                      type="number"
+                      value={settings.calculationSettings.lmpMultipliers.large}
+                      onChange={(e) => setSettings(prev => ({
+                        ...prev,
+                        calculationSettings: {
+                          ...prev.calculationSettings,
+                          lmpMultipliers: {
+                            ...prev.calculationSettings.lmpMultipliers,
+                            large: parseInt(e.target.value) || 0
+                          }
+                        }
+                      }))}
+                      min="0"
+                      step="1"
+                    />
+                  </div>
+                </div>
+                
+                <div className="setting-group">
+                  <h4>ARP Multipliers (minutes)</h4>
+                  <div className="setting-row">
+                    <label>ARP 8:</label>
+                    <input
+                      type="number"
+                      value={settings.calculationSettings.arpMultipliers.arp8}
+                      onChange={(e) => setSettings(prev => ({
+                        ...prev,
+                        calculationSettings: {
+                          ...prev.calculationSettings,
+                          arpMultipliers: {
+                            ...prev.calculationSettings.arpMultipliers,
+                            arp8: parseInt(e.target.value) || 0
+                          }
+                        }
+                      }))}
+                      min="0"
+                      step="1"
+                    />
+                  </div>
+                  <div className="setting-row">
+                    <label>ARP 16:</label>
+                    <input
+                      type="number"
+                      value={settings.calculationSettings.arpMultipliers.arp16}
+                      onChange={(e) => setSettings(prev => ({
+                        ...prev,
+                        calculationSettings: {
+                          ...prev.calculationSettings,
+                          arpMultipliers: {
+                            ...prev.calculationSettings.arpMultipliers,
+                            arp16: parseInt(e.target.value) || 0
+                          }
+                        }
+                      }))}
+                      min="0"
+                      step="1"
+                    />
+                  </div>
+                  <div className="setting-row">
+                    <label>ARP 32:</label>
+                    <input
+                      type="number"
+                      value={settings.calculationSettings.arpMultipliers.arp32}
+                      onChange={(e) => setSettings(prev => ({
+                        ...prev,
+                        calculationSettings: {
+                          ...prev.calculationSettings,
+                          arpMultipliers: {
+                            ...prev.calculationSettings.arpMultipliers,
+                            arp32: parseInt(e.target.value) || 0
+                          }
+                        }
+                      }))}
+                      min="0"
+                      step="1"
+                    />
+                  </div>
+                  <div className="setting-row">
+                    <label>ARP 48:</label>
+                    <input
+                      type="number"
+                      value={settings.calculationSettings.arpMultipliers.arp48}
+                      onChange={(e) => setSettings(prev => ({
+                        ...prev,
+                        calculationSettings: {
+                          ...prev.calculationSettings,
+                          arpMultipliers: {
+                            ...prev.calculationSettings.arpMultipliers,
+                            arp48: parseInt(e.target.value) || 0
+                          }
+                        }
+                      }))}
+                      min="0"
+                      step="1"
+                    />
+                  </div>
+                </div>
+                
+                <div className="setting-group">
+                  <h4>Room Multipliers</h4>
+                  <div className="setting-row">
+                    <label>Room Multiplier (min/room):</label>
+                    <input
+                      type="number"
+                      value={settings.calculationSettings.roomMultiplier}
+                      onChange={(e) => setSettings(prev => ({
+                        ...prev,
+                        calculationSettings: {
+                          ...prev.calculationSettings,
+                          roomMultiplier: parseInt(e.target.value) || 0
+                        }
+                      }))}
+                      min="0"
+                      step="1"
+                    />
+                  </div>
+                  <div className="setting-row">
+                    <label>Riser Multiplier (min/room):</label>
+                    <input
+                      type="number"
+                      value={settings.calculationSettings.riserMultiplier}
+                      onChange={(e) => setSettings(prev => ({
+                        ...prev,
+                        calculationSettings: {
+                          ...prev.calculationSettings,
+                          riserMultiplier: parseInt(e.target.value) || 0
+                        }
+                      }))}
+                      min="0"
+                      step="1"
+                    />
+                  </div>
+                  <div className="setting-row">
+                    <label>E-Sheets Multiplier:</label>
+                    <input
+                      type="number"
+                      value={settings.calculationSettings.esheetsMultiplier}
+                      onChange={(e) => setSettings(prev => ({
+                        ...prev,
+                        calculationSettings: {
+                          ...prev.calculationSettings,
+                          esheetsMultiplier: parseFloat(e.target.value) || 0
+                        }
+                      }))}
+                      min="0"
+                      step="0.1"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="settings-page">
-             <div className="settings-header">
-         <h1>Application Settings</h1>
-         <p>Manage dropdown options for form fields</p>
-         
-       </div>
-
-      <div className="settings-content">
-        {renderFieldEditor('rfaTypes', 'RFA Type Options', settings.rfaTypes)}
-        {renderFieldEditor('regionalTeams', 'Regional Team Options', settings.regionalTeams)}
-        {renderFieldEditor('nationalAccounts', 'National Account Options', settings.nationalAccounts)}
-        {renderFieldEditor('saveLocations', 'Save Location Options', settings.saveLocations)}
-        {renderFieldEditor('complexityLevels', 'Complexity Level Options', settings.complexityLevels)}
-        {renderFieldEditor('statusOptions', 'Status Options', settings.statusOptions)}
-        {renderFieldEditor('productOptions', 'Product Options', settings.productOptions)}
-        {renderFieldEditor('assignedToOptions', 'Assigned To Options', settings.assignedToOptions)}
-         
-         {/* Calculation Settings */}
-         <div className="settings-field">
-           <h3>Calculation Settings</h3>
-           <p className="field-description">Configure multipliers and thresholds for triage calculations</p>
-           
-           <div className="calculation-settings">
-             <div className="setting-group">
-               <h4>LMP Multipliers (minutes)</h4>
-               <div className="setting-row">
-                 <label>Small:</label>
-                 <input
-                   type="number"
-                   value={settings.calculationSettings.lmpMultipliers.small}
-                   onChange={(e) => setSettings(prev => ({
-                     ...prev,
-                     calculationSettings: {
-                       ...prev.calculationSettings,
-                       lmpMultipliers: {
-                         ...prev.calculationSettings.lmpMultipliers,
-                         small: parseInt(e.target.value) || 0
-                       }
-                     }
-                   }))}
-                   min="0"
-                   step="1"
-                 />
-               </div>
-               <div className="setting-row">
-                 <label>Medium:</label>
-                 <input
-                   type="number"
-                   value={settings.calculationSettings.lmpMultipliers.medium}
-                   onChange={(e) => setSettings(prev => ({
-                     ...prev,
-                     calculationSettings: {
-                       ...prev.calculationSettings,
-                       lmpMultipliers: {
-                         ...prev.calculationSettings.lmpMultipliers,
-                         medium: parseInt(e.target.value) || 0
-                       }
-                     }
-                   }))}
-                   min="0"
-                   step="1"
-                 />
-               </div>
-               <div className="setting-row">
-                 <label>Large:</label>
-                 <input
-                   type="number"
-                   value={settings.calculationSettings.lmpMultipliers.large}
-                   onChange={(e) => setSettings(prev => ({
-                     ...prev,
-                     calculationSettings: {
-                       ...prev.calculationSettings,
-                       lmpMultipliers: {
-                         ...prev.calculationSettings.lmpMultipliers,
-                         large: parseInt(e.target.value) || 0
-                       }
-                     }
-                   }))}
-                   min="0"
-                   step="1"
-                 />
-               </div>
-             </div>
-             
-             <div className="setting-group">
-               <h4>ARP Multipliers (minutes)</h4>
-               <div className="setting-row">
-                 <label>ARP 8:</label>
-                 <input
-                   type="number"
-                   value={settings.calculationSettings.arpMultipliers.arp8}
-                   onChange={(e) => setSettings(prev => ({
-                     ...prev,
-                     calculationSettings: {
-                       ...prev.calculationSettings,
-                       arpMultipliers: {
-                         ...prev.calculationSettings.arpMultipliers,
-                         arp8: parseInt(e.target.value) || 0
-                       }
-                     }
-                   }))}
-                   min="0"
-                   step="1"
-                 />
-               </div>
-               <div className="setting-row">
-                 <label>ARP 16:</label>
-                 <input
-                   type="number"
-                   value={settings.calculationSettings.arpMultipliers.arp16}
-                   onChange={(e) => setSettings(prev => ({
-                     ...prev,
-                     calculationSettings: {
-                       ...prev.calculationSettings,
-                       arpMultipliers: {
-                         ...prev.calculationSettings.arpMultipliers,
-                         arp16: parseInt(e.target.value) || 0
-                       }
-                     }
-                   }))}
-                   min="0"
-                   step="1"
-                 />
-               </div>
-               <div className="setting-row">
-                 <label>ARP 32:</label>
-                 <input
-                   type="number"
-                   value={settings.calculationSettings.arpMultipliers.arp32}
-                   onChange={(e) => setSettings(prev => ({
-                     ...prev,
-                     calculationSettings: {
-                       ...prev.calculationSettings,
-                       arpMultipliers: {
-                         ...prev.calculationSettings.arpMultipliers,
-                         arp32: parseInt(e.target.value) || 0
-                       }
-                     }
-                   }))}
-                   min="0"
-                   step="1"
-                 />
-               </div>
-               <div className="setting-row">
-                 <label>ARP 48:</label>
-                 <input
-                   type="number"
-                   value={settings.calculationSettings.arpMultipliers.arp48}
-                   onChange={(e) => setSettings(prev => ({
-                     ...prev,
-                     calculationSettings: {
-                       ...prev.calculationSettings,
-                       arpMultipliers: {
-                         ...prev.calculationSettings.arpMultipliers,
-                         arp48: parseInt(e.target.value) || 0
-                       }
-                     }
-                   }))}
-                   min="0"
-                   step="1"
-                 />
-               </div>
-             </div>
-             
-             <div className="setting-group">
-               <h4>Room Multipliers</h4>
-               <div className="setting-row">
-                 <label>Room Multiplier (min/room):</label>
-                 <input
-                   type="number"
-                   value={settings.calculationSettings.roomMultiplier}
-                   onChange={(e) => setSettings(prev => ({
-                     ...prev,
-                     calculationSettings: {
-                       ...prev.calculationSettings,
-                       roomMultiplier: parseInt(e.target.value) || 0
-                     }
-                   }))}
-                   min="0"
-                   step="1"
-                 />
-               </div>
-               <div className="setting-row">
-                 <label>Riser Multiplier (min/room):</label>
-                 <input
-                   type="number"
-                   value={settings.calculationSettings.riserMultiplier}
-                   onChange={(e) => setSettings(prev => ({
-                     ...prev,
-                     calculationSettings: {
-                       ...prev.calculationSettings,
-                       riserMultiplier: parseInt(e.target.value) || 0
-                     }
-                   }))}
-                   min="0"
-                   step="1"
-                 />
-               </div>
-               <div className="setting-row">
-                 <label>E-Sheets Multiplier:</label>
-                 <input
-                   type="number"
-                   value={settings.calculationSettings.esheetsMultiplier}
-                   onChange={(e) => setSettings(prev => ({
-                     ...prev,
-                     calculationSettings: {
-                       ...prev.calculationSettings,
-                       esheetsMultiplier: parseFloat(e.target.value) || 0
-                     }
-                   }))}
-                   min="0"
-                   step="0.1"
-                 />
-               </div>
-             </div>
-           </div>
-         </div>
+      <div className="settings-header">
+        <h1>Application Settings</h1>
+        <p>Manage application configuration and form options</p>
       </div>
 
+      {/* Tab Navigation */}
+      <div className="settings-tabs">
+        {tabs.map(tab => (
+          <button
+            key={tab.id}
+            className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
+            onClick={() => setActiveTab(tab.id)}
+            title={tab.fullLabel}
+          >
+            <span className="tab-icon">{tab.icon}</span>
+            <span className="tab-label">{tab.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Tab Content */}
+      {renderTabContent()}
+
+      {/* Settings Actions */}
       <div className="settings-actions">
         <button
           type="button"

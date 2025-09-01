@@ -26,6 +26,145 @@
   margin: 0;
 }
 
+/* Tab Navigation */
+.settings-tabs {
+  display: flex;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 2rem;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.tab-button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  background: transparent;
+  border: none;
+  color: #4a5568;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  min-height: 60px;
+}
+
+.tab-button:hover {
+  background: #edf2f7;
+  color: #2d3748;
+}
+
+.tab-button.active {
+  background: white;
+  color: #667eea;
+  font-weight: 600;
+  box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.tab-button.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: #667eea;
+}
+
+.tab-icon {
+  font-size: 1.125rem;
+  line-height: 1;
+}
+
+.tab-label {
+  font-size: 0.875rem;
+  line-height: 1;
+}
+
+/* Tab Content */
+.tab-content {
+  min-height: 400px;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Application Information Section */
+.app-info-section {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e2e8f0;
+  margin-bottom: 2rem;
+  overflow: hidden;
+}
+
+.app-info-section h2 {
+  margin: 0;
+  padding: 1rem 1.25rem;
+  background: #f8fafc;
+  color: #1a202c;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.app-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+  padding: 1.25rem;
+}
+
+.app-info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: #f7fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.app-info-item:hover {
+  background: #edf2f7;
+  border-color: #cbd5e0;
+  transform: translateY(-1px);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.app-info-label {
+  font-weight: 600;
+  color: #4a5568;
+  font-size: 0.875rem;
+}
+
+.app-info-value {
+  font-weight: 500;
+  color: #2d3748;
+  font-size: 0.875rem;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  background: #edf2f7;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+
 .settings-content {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
@@ -336,6 +475,38 @@
     padding: 1rem;
   }
   
+  /* Tab responsive styles */
+  .settings-tabs {
+    flex-direction: column;
+    border-radius: 8px;
+  }
+  
+  .tab-button {
+    padding: 0.75rem 1rem;
+    min-height: 50px;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  
+  .tab-button:last-child {
+    border-bottom: none;
+  }
+  
+  .tab-button.active {
+    box-shadow: none;
+  }
+  
+  .tab-button.active::after {
+    display: none;
+  }
+  
+  .tab-label {
+    font-size: 0.8rem;
+  }
+  
+  .tab-icon {
+    font-size: 1rem;
+  }
+  
   .settings-content {
     grid-template-columns: 1fr;
     gap: 1.5rem;
@@ -384,11 +555,26 @@
 
 @media (max-width: 480px) {
   .settings-header h1 {
-    font-size: 2rem;
+    font-size: 1.5rem;
   }
   
   .settings-header p {
-    font-size: 1rem;
+    font-size: 0.9rem;
+  }
+  
+  /* Very small screen tab styles */
+  .tab-button {
+    padding: 0.5rem 0.75rem;
+    min-height: 45px;
+    gap: 0.25rem;
+  }
+  
+  .tab-label {
+    font-size: 0.75rem;
+  }
+  
+  .tab-icon {
+    font-size: 0.9rem;
   }
   
   .field-header {

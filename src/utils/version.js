@@ -1,10 +1,13 @@
 // Version utility for Project Creator
 // This file provides version information to components
 
-// Version information - hardcoded for reliability
-export const APP_VERSION = '5.0.8';
-export const APP_NAME = 'project-creator';
-export const APP_DESCRIPTION = 'Professional Project Management & Document Automation Tool';
+// Import version from package.json
+import packageJson from '../../package.json';
+
+// Version information - dynamically loaded from package.json
+export const APP_VERSION = packageJson.version;
+export const APP_NAME = packageJson.name;
+export const APP_DESCRIPTION = packageJson.description;
 
 // Version display helpers
 export const getVersionDisplay = () => `v${APP_VERSION}`;
