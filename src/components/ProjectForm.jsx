@@ -84,6 +84,19 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
       newFormData.showSubmittalTriage = shouldShowSubmittalTriage(value);
       newFormData.showPhotometrics = value === 'PHOTOMETRICS';
       
+      // Set unified triage control fields based on RFA type
+      newFormData.hasPanelSchedules = shouldShowPanelSchedules(value);
+      newFormData.hasSubmittals = shouldShowSubmittalTriage(value);
+      
+      // For RFA types that traditionally include both submittal and layout (like BOM with Layout)
+      // set needsLayoutBOM to true by default
+      const includesBothSubmittalAndLayout = ['BOM (With Layout)', 'LAYOUT'].includes(value);
+      if (shouldShowSubmittalTriage(value) && includesBothSubmittalAndLayout) {
+        newFormData.needsLayoutBOM = true;
+      } else if (shouldShowSubmittalTriage(value)) {
+        newFormData.needsLayoutBOM = false; // Submittal only by default
+      }
+      
       // Set default values for new RFA types
       if (value && !formData.rfaType) {
         const defaults = getTriageDefaults();
@@ -817,38 +830,99 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
 
 
           
-          {/* Panel Schedules Section */}
+          {/* Unified Triage Calculation Section */}
           <div className="triage-subsection">
-            <h4>Panel Schedules</h4>
-            <div className="form-grid">
+            <h4>Triage Configuration</h4>
+            
+            {/* Panel Schedules Question */}
+            <div className="form-group">
+              <h5>Panel Schedules (YES or NO):</h5>
+              <label>
+                <input
+                  type="radio"
+                  name="hasPanelSchedules"
+                  value="false"
+                  checked={!formData.hasPanelSchedules}
+                  onChange={() => onFormDataChange({ ...formData, hasPanelSchedules: false })}
+                />
+                No
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="hasPanelSchedules"
+                  value="true"
+                  checked={formData.hasPanelSchedules}
+                  onChange={() => onFormDataChange({ ...formData, hasPanelSchedules: true })}
+                />
+                Yes
+              </label>
+            </div>
+
+            {/* Submittal Section Question */}
+            <div className="form-group">
+              <h5>Submittal Section (YES or NO):</h5>
+              <label>
+                <input
+                  type="radio"
+                  name="hasSubmittals"
+                  value="false"
+                  checked={!formData.hasSubmittals}
+                  onChange={() => onFormDataChange({ ...formData, hasSubmittals: false, needsLayoutBOM: false })}
+                />
+                No
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="hasSubmittals"
+                  value="true"
+                  checked={formData.hasSubmittals}
+                  onChange={() => onFormDataChange({ ...formData, hasSubmittals: true })}
+                />
+                Yes
+              </label>
+            </div>
+
+            {/* Conditional Layout/BOM Question */}
+            {formData.hasSubmittals && (
               <div className="form-group">
+                <h5>Needs Layout/BOM created (YES or NO):</h5>
                 <label>
                   <input
                     type="radio"
-                    name="showPanelSchedules"
-                    value={false}
-                    checked={!formData.showPanelSchedules}
-                    onChange={() => onFormDataChange({ ...formData, showPanelSchedules: false })}
+                    name="needsLayoutBOM"
+                    value="false"
+                    checked={!formData.needsLayoutBOM}
+                    onChange={() => onFormDataChange({ ...formData, needsLayoutBOM: false })}
                   />
                   No
                 </label>
                 <label>
                   <input
                     type="radio"
-                    name="showPanelSchedules"
-                    value={true}
-                    checked={formData.showPanelSchedules}
-                    onChange={() => onFormDataChange({ ...formData, showPanelSchedules: true })}
+                    name="needsLayoutBOM"
+                    value="true"
+                    checked={formData.needsLayoutBOM}
+                    onChange={() => onFormDataChange({ ...formData, needsLayoutBOM: true })}
                   />
                   Yes
                 </label>
               </div>
-            </div>
+            )}
+          </div>
+
+          {/* Dynamic Triage Fields Section */}
+          <div className="triage-subsection">
+            <h4>Triage Calculation Fields</h4>
             
-            {formData.showPanelSchedules && (
-              <div className="panel-schedules-grid">
+            {/* Panel Schedule Fields - Show only when hasPanelSchedules = true */}
+            {formData.hasPanelSchedules && (
+              <div className="panel-fields">
+                <h5>Panel Schedule Fields:</h5>
+                
                 <div className="lmp-section">
-                  <h5>LMPs:</h5>
+                  <h6>LMPs:</h6>
                   <div className="form-grid">
                     <div className="form-group">
                       <label htmlFor="largeLMPs">Large</label>
@@ -893,7 +967,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
                 </div>
                 
                 <div className="nlight-section">
-                  <h5>nLight:</h5>
+                  <h6>nLight ARPs:</h6>
                   <div className="form-grid">
                     <div className="form-group">
                       <label htmlFor="arp8">ARP 8</label>
@@ -951,7 +1025,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
                 </div>
                 
                 <div className="esheets-section">
-                  <h5>Panel Schedules (Shown on E-Sheets):</h5>
+                  <h6>Panel Schedules (Shown on E-Sheets):</h6>
                   <div className="form-group">
                     <label>
                       <input
@@ -981,162 +1055,150 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
                 </div>
               </div>
             )}
-          </div>
 
-          {/* Layout Section */}
-          <div className="triage-subsection">
-            <h4>Layouts:</h4>
-            <div className="form-grid">
-              <div className="form-group">
-                <label htmlFor="numOfRooms"># of Rooms:</label>
-                <input
-                  type="number"
-                  id="numOfRooms"
-                  name="numOfRooms"
-                  value={formData.numOfRooms || 0}
-                  onChange={handleInputChange}
-                  min="0"
-                  step="1"
-                  placeholder="0"
-                />
-                <span className="field-hint">(qty of rooms)</span>
+            {/* Layout Fields - Show when hasSubmittals = false OR (hasSubmittals = true AND needsLayoutBOM = true) */}
+            {(!formData.hasSubmittals || (formData.hasSubmittals && formData.needsLayoutBOM)) && (
+              <div className="layout-fields">
+                <h5>Layout Fields:</h5>
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label htmlFor="numOfRooms"># of Rooms:</label>
+                    <input
+                      type="number"
+                      id="numOfRooms"
+                      name="numOfRooms"
+                      value={formData.numOfRooms || 0}
+                      onChange={handleInputChange}
+                      min="0"
+                      step="1"
+                      placeholder="0"
+                    />
+                    <span className="field-hint">(qty of rooms)</span>
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="overrideRooms">Override:</label>
+                    <input
+                      type="number"
+                      id="overrideRooms"
+                      name="overrideRooms"
+                      value={formData.overrideRooms}
+                      onChange={handleInputChange}
+                      min="0"
+                      step="0.25"
+                      placeholder="0"
+                    />
+                    <span className="field-hint">(hr)</span>
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="roomMultiplier">Room Multiplier:</label>
+                    <input
+                      type="number"
+                      id="roomMultiplier"
+                      name="roomMultiplier"
+                      value={formData.roomMultiplier || 2}
+                      onChange={handleInputChange}
+                      min="0"
+                      step="0.5"
+                      placeholder="2"
+                    />
+                    <span className="field-hint">(min/room)</span>
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="reviewSetup">Review/Setup Time:</label>
+                    <input
+                      type="number"
+                      id="reviewSetup"
+                      name="reviewSetup"
+                      value={formData.reviewSetup}
+                      onChange={handleInputChange}
+                      min="0"
+                      step="0.25"
+                      placeholder="0.5"
+                    />
+                    <span className="field-hint">(hr)</span>
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="numOfPages"># of Lighting Pages:</label>
+                    <input
+                      type="number"
+                      id="numOfPages"
+                      name="numOfPages"
+                      value={formData.numOfPages}
+                      onChange={handleInputChange}
+                      min="1"
+                      step="1"
+                      placeholder="1"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="specReview">Spec Review:</label>
+                    <input
+                      type="number"
+                      id="specReview"
+                      name="specReview"
+                      value={formData.specReview}
+                      onChange={handleInputChange}
+                      min="0"
+                      step="0.25"
+                      placeholder="0.0"
+                    />
+                    <span className="field-hint">(hr)</span>
+                  </div>
+                </div>
               </div>
-              <div className="form-group">
-                <label htmlFor="overrideRooms">Override:</label>
-                <input
-                  type="number"
-                  id="overrideRooms"
-                  name="overrideRooms"
-                  value={formData.overrideRooms}
-                  onChange={handleInputChange}
-                  min="0"
-                  step="0.25"
-                  placeholder="0"
-                />
-                <span className="field-hint">(hr)</span>
-              </div>
-              <div className="form-group">
-                <label htmlFor="roomMultiplier">Room Multiplier:</label>
-                <input
-                  type="number"
-                  id="roomMultiplier"
-                  name="roomMultiplier"
-                  value={formData.roomMultiplier || 2}
-                  onChange={handleInputChange}
-                  min="0"
-                  step="0.5"
-                  placeholder="2"
-                />
-                <span className="field-hint">(min/room)</span>
-              </div>
-              <div className="form-group">
-                <label htmlFor="reviewSetup">Review/Setup Time:</label>
-                <input
-                  type="number"
-                  id="reviewSetup"
-                  name="reviewSetup"
-                  value={formData.reviewSetup}
-                  onChange={handleInputChange}
-                  min="0"
-                  step="0.25"
-                  placeholder="0.5"
-                />
-                <span className="field-hint">(hr)</span>
-              </div>
-              <div className="form-group">
-                <label htmlFor="numOfPages"># of Lighting Pages:</label>
-                <input
-                  type="number"
-                  id="numOfPages"
-                  name="numOfPages"
-                  value={formData.numOfPages}
-                  onChange={handleInputChange}
-                  min="1"
-                  step="1"
-                  placeholder="1"
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="specReview">Spec Review:</label>
-                <input
-                  type="number"
-                  id="specReview"
-                  name="specReview"
-                  value={formData.specReview}
-                  onChange={handleInputChange}
-                  min="0"
-                  step="0.25"
-                  placeholder="0.0"
-                />
-                <span className="field-hint">(hr)</span>
-              </div>
-            </div>
-          </div>
+            )}
 
-          {/* Submittal Section */}
-          {formData.showSubmittalTriage && (
-            <div className="triage-subsection">
-              <h4>Submittals:</h4>
-              <div className="form-grid">
-                <div className="form-group">
-                  <label htmlFor="numOfSubRooms"># of Rooms:</label>
-                  <input
-                    type="number"
-                    id="numOfSubRooms"
-                    name="numOfSubRooms"
-                    value={formData.numOfSubRooms}
-                    onChange={handleInputChange}
-                    min="0"
-                    step="1"
-                    placeholder="0"
-                  />
-                  <span className="field-hint">(qty. of rooms)</span>
-                </div>
-                <div className="form-group">
-                  <label htmlFor="overrideSubRooms">Override:</label>
-                  <input
-                    type="number"
-                    id="overrideSubRooms"
-                    name="overrideSubRooms"
-                    value={formData.overrideSubRooms}
-                    onChange={handleInputChange}
-                    min="0"
-                    step="0.25"
-                    placeholder="0"
-                  />
-                  <span className="field-hint">(hr)</span>
-                </div>
-                <div className="form-group">
-                  <label htmlFor="riserMultiplier">Riser Multiplier:</label>
-                  <input
-                    type="number"
-                    id="riserMultiplier"
-                    name="riserMultiplier"
-                    value={formData.riserMultiplier}
-                    onChange={handleInputChange}
-                    min="0"
-                    step="0.5"
-                    placeholder="1"
-                  />
-                  <span className="field-hint">(min/room)</span>
-                </div>
-                <div className="form-group">
-                  <label htmlFor="soo">SOO:</label>
-                  <input
-                    type="number"
-                    id="soo"
-                    name="soo"
-                    value={formData.soo}
-                    onChange={handleInputChange}
-                    min="0"
-                    step="0.25"
-                    placeholder="0.5"
-                  />
-                  <span className="field-hint">(hr)</span>
+            {/* Submittal Fields - Show only when hasSubmittals = true */}
+            {formData.hasSubmittals && (
+              <div className="submittal-fields">
+                <h5>Submittal Fields:</h5>
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label htmlFor="numOfSubRooms"># of Rooms:</label>
+                    <input
+                      type="number"
+                      id="numOfSubRooms"
+                      name="numOfSubRooms"
+                      value={formData.numOfSubRooms}
+                      onChange={handleInputChange}
+                      min="0"
+                      step="1"
+                      placeholder="0"
+                    />
+                    <span className="field-hint">(qty. of rooms)</span>
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="riserMultiplier">Riser Multiplier:</label>
+                    <input
+                      type="number"
+                      id="riserMultiplier"
+                      name="riserMultiplier"
+                      value={formData.riserMultiplier}
+                      onChange={handleInputChange}
+                      min="0"
+                      step="0.5"
+                      placeholder="1"
+                    />
+                    <span className="field-hint">(min/room)</span>
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="soo">Sequence of Operation:</label>
+                    <input
+                      type="number"
+                      id="soo"
+                      name="soo"
+                      value={formData.soo}
+                      onChange={handleInputChange}
+                      min="0"
+                      step="0.25"
+                      placeholder="0.5"
+                    />
+                    <span className="field-hint">(hr)</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Photometrics Section */}
           {formData.showPhotometrics && (
@@ -1250,19 +1312,43 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
           {triageResults && (
             <div className="triage-results">
               <h4>Detailed Triage Breakdown</h4>
+              <div className="triage-configuration-summary">
+                <h5>Active Sections:</h5>
+                <ul>
+                  <li>Panel Schedules: {formData.hasPanelSchedules ? 'YES' : 'NO'}</li>
+                  <li>Submittal Section: {formData.hasSubmittals ? 'YES' : 'NO'}</li>
+                  {formData.hasSubmittals && (
+                    <li>Needs Layout/BOM: {formData.needsLayoutBOM ? 'YES' : 'NO'}</li>
+                  )}
+                </ul>
+                <p><strong>Sections Contributing to Calculation:</strong></p>
+                <ul>
+                  {triageResults.showPanelFields && <li>✓ Panel Schedule Fields</li>}
+                  {triageResults.showLayoutFields && <li>✓ Layout Fields</li>}
+                  {triageResults.showSubmittalFields && <li>✓ Submittal Fields</li>}
+                </ul>
+              </div>
               <div className="triage-breakdown">
-                <div className="breakdown-item">
-                  <strong>Layout Time:</strong> {triageResults.layoutTime} hours
-                </div>
-                <div className="breakdown-item">
-                  <strong>Submittal Time:</strong> {triageResults.submittalTime} hours
-                </div>
-                <div className="breakdown-item">
-                  <strong>Panel Time:</strong> {triageResults.panelTime} hours
-                </div>
-                <div className="breakdown-item">
-                  <strong>Page Bonus:</strong> {triageResults.pageBonus} hours
-                </div>
+                {triageResults.showLayoutFields && (
+                  <div className="breakdown-item">
+                    <strong>Layout Time:</strong> {triageResults.layoutTime} hours
+                  </div>
+                )}
+                {triageResults.showSubmittalFields && (
+                  <div className="breakdown-item">
+                    <strong>Submittal Time:</strong> {triageResults.submittalTime} hours
+                  </div>
+                )}
+                {triageResults.showPanelFields && (
+                  <div className="breakdown-item">
+                    <strong>Panel Time:</strong> {triageResults.panelTime} hours
+                  </div>
+                )}
+                {triageResults.showLayoutFields && (
+                  <div className="breakdown-item">
+                    <strong>Page Bonus:</strong> {triageResults.pageBonus} hours
+                  </div>
+                )}
                 <div className="breakdown-item">
                   <strong>Base Total:</strong> {triageResults.baseTotal} hours
                 </div>

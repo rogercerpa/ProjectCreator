@@ -117,6 +117,60 @@
   color: #495057;
 }
 
+/* Unified Triage Section Styles */
+.panel-fields, .layout-fields, .submittal-fields {
+  margin: 20px 0;
+  padding: 15px;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  background-color: #f8f9fa;
+}
+
+.panel-fields h5, .layout-fields h5, .submittal-fields h5 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: #495057;
+  font-weight: 600;
+}
+
+.panel-fields h6 {
+  margin-top: 15px;
+  margin-bottom: 10px;
+  color: #6c757d;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.triage-configuration-summary {
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: #e7f3ff;
+  border: 1px solid #b3d4fc;
+  border-radius: 8px;
+}
+
+.triage-configuration-summary h5 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: #0056b3;
+}
+
+.triage-configuration-summary ul {
+  margin: 10px 0;
+  padding-left: 20px;
+}
+
+.triage-configuration-summary li {
+  margin: 5px 0;
+  color: #495057;
+}
+
+.triage-configuration-summary p {
+  margin: 15px 0 5px 0;
+  font-weight: 600;
+  color: #0056b3;
+}
+
 .radio-group input[type="radio"] {
   margin: 0;
   cursor: pointer;

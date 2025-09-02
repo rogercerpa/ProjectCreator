@@ -29,6 +29,10 @@ function App() {
     repContacts: '',
     requestedDate: '',
     submittedDate: '',
+    // Unified Triage Control Fields
+    hasPanelSchedules: false, // Panel Schedules YES/NO
+    hasSubmittals: false, // Submittal Section YES/NO
+    needsLayoutBOM: false, // Needs Layout/BOM created YES/NO (only shown when hasSubmittals = true)
     // Panel Schedule Fields
     largeLMPs: 0,
     mediumLMPs: 0,
@@ -38,7 +42,7 @@ function App() {
     arp32: 0,
     arp48: 0,
     esheetsSchedules: 2, // 1 = Yes, 2 = No
-    showPanelSchedules: false,
+    showPanelSchedules: false, // Keep for backward compatibility
     // Layout Fields
     numOfRooms: 0,
     overrideRooms: 0,

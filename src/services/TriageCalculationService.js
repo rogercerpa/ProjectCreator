@@ -44,22 +44,27 @@ class TriageCalculationService {
     return { ...this.currentSettings };
   }
 
-  // Main triage calculation function - replicates TriageCalc() from HTA
+  // Main triage calculation function - replicates TriageCalc() from HTA with unified logic
   calculateTriage(formData) {
     // Initialize default values if empty (matching HTA logic)
     const data = this.initializeDefaults(formData);
     
-    // Calculate layout triage time
-    const layoutTime = this.calculateLayoutTime(data);
+    // Determine which sections should be included based on the unified logic
+    const showPanelFields = data.hasPanelSchedules;
+    const showLayoutFields = !data.hasSubmittals || (data.hasSubmittals && data.needsLayoutBOM);
+    const showSubmittalFields = data.hasSubmittals;
     
-    // Calculate submittal triage time
-    const submittalTime = this.calculateSubmittalTime(data);
+    // Calculate layout triage time (only if layout fields should be shown)
+    const layoutTime = showLayoutFields ? this.calculateLayoutTime(data) : 0;
     
-    // Calculate panel time
-    const panelTime = this.calculatePanelTime(data);
+    // Calculate submittal triage time (only if submittal fields should be shown)
+    const submittalTime = showSubmittalFields ? this.calculateSubmittalTime(data) : 0;
     
-    // Calculate page bonus
-    const pageBonus = this.calculatePageBonus(data.numOfPages);
+    // Calculate panel time (only if panel fields should be shown)
+    const panelTime = showPanelFields ? this.calculatePanelTime(data) : 0;
+    
+    // Calculate page bonus (always calculated if layout fields are shown)
+    const pageBonus = showLayoutFields ? this.calculatePageBonus(data.numOfPages) : 0;
     
     // Calculate base total
     const baseTotal = layoutTime + submittalTime + panelTime + pageBonus;
@@ -85,19 +90,25 @@ class TriageCalculationService {
       selfQC: this.roundToQuarterHours(selfQC),
       fluff: this.roundToQuarterHours(fluff),
       totalTriage: roundedTriageTime,
+      // Include visibility flags for UI
+      showPanelFields: showPanelFields,
+      showLayoutFields: showLayoutFields,
+      showSubmittalFields: showSubmittalFields,
       breakdown: {
         layout: {
           rooms: data.numOfRooms,
           roomMultiplier: data.roomMultiplier,
           reviewSetup: data.reviewSetup,
           specReview: data.specReview,
-          overrideRooms: data.overrideRooms
+          overrideRooms: data.overrideRooms,
+          visible: showLayoutFields
         },
         submittal: {
           rooms: data.numOfSubRooms,
           riserMultiplier: data.riserMultiplier,
           soo: data.soo,
-          overrideSubRooms: data.overrideSubRooms
+          overrideSubRooms: data.overrideSubRooms,
+          visible: showSubmittalFields
         },
         panel: {
           largeLMPs: data.largeLMPs,
@@ -108,7 +119,8 @@ class TriageCalculationService {
           arp32: data.arp32,
           arp48: data.arp48,
           esheetsSchedules: data.esheetsSchedules,
-          showPanelSchedules: data.showPanelSchedules
+          showPanelSchedules: data.showPanelSchedules,
+          visible: showPanelFields
         },
         pages: data.numOfPages
       }
@@ -118,12 +130,23 @@ class TriageCalculationService {
   // Initialize default values (matching HTA logic)
   initializeDefaults(formData) {
     return {
+      // Unified Triage Control Fields
+      hasPanelSchedules: formData.hasPanelSchedules || false,
+      hasSubmittals: formData.hasSubmittals || false,
+      needsLayoutBOM: formData.needsLayoutBOM || false,
+      // Layout Fields
       specReview: formData.specReview || 0,
       reviewSetup: formData.reviewSetup || this.currentSettings.defaultReviewSetup,
       numOfPages: formData.numOfPages || this.currentSettings.defaultNumOfPages,
-      soo: formData.soo || this.currentSettings.defaultSOO,
       roomMultiplier: formData.roomMultiplier || this.currentSettings.roomMultiplier,
+      numOfRooms: formData.numOfRooms || 0,
+      overrideRooms: formData.overrideRooms || 0,
+      // Submittal Fields
+      soo: formData.soo || this.currentSettings.defaultSOO,
       riserMultiplier: formData.riserMultiplier || this.currentSettings.riserMultiplier,
+      numOfSubRooms: formData.numOfSubRooms || 0,
+      overrideSubRooms: formData.overrideSubRooms || 0,
+      // Panel Fields
       largeLMPs: formData.largeLMPs || 0,
       mediumLMPs: formData.mediumLMPs || 0,
       smallLMPs: formData.smallLMPs || 0,
@@ -132,11 +155,7 @@ class TriageCalculationService {
       arp32: formData.arp32 || 0,
       arp48: formData.arp48 || 0,
       esheetsSchedules: formData.esheetsSchedules || 2,
-      showPanelSchedules: formData.showPanelSchedules || false,
-      numOfRooms: formData.numOfRooms || 0,
-      overrideRooms: formData.overrideRooms || 0,
-      numOfSubRooms: formData.numOfSubRooms || 0,
-      overrideSubRooms: formData.overrideSubRooms || 0
+      showPanelSchedules: formData.showPanelSchedules || false // Keep for backward compatibility
     };
   }
 
@@ -182,7 +201,7 @@ class TriageCalculationService {
 
   // Calculate panel time (matching HTA logic)
   calculatePanelTime(data) {
-    if (!data.showPanelSchedules) {
+    if (!data.hasPanelSchedules && !data.showPanelSchedules) {
       return 0;
     }
     
