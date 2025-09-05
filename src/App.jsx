@@ -22,7 +22,7 @@ function App() {
   const [currentView, setCurrentView] = useState('welcome');
   const [currentProject, setCurrentProject] = useState(null);
   const [projects, setProjects] = useState([]);
-  const [settingsTab, setSettingsTab] = useState('triage-calc');
+  const [settingsTab, setSettingsTab] = useState('app-info');
   
   // Draft recovery state
   const [showDraftRecovery, setShowDraftRecovery] = useState(false);

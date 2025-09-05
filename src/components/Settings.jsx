@@ -33,6 +33,18 @@ function Settings({ initialTab = 'app-info' }) {
       selfQCLow: 4,
       selfQCDefault: 0.5,
       fluffPercentage: 10
+    },
+    pathSettings: {
+      templates: {
+        primaryPath: '\\\\10.3.10.30\\DAS\\DAS References\\!!!Templates For Project Creator',
+        fallbackPath: '{userHome}\\Desktop\\1) Triage\\!!!Templates For Project Creator',
+        agentRequirementsPath: '\\\\10.3.10.30\\DAS\\Agent Requirements'
+      },
+      projectOutput: {
+        defaultLocation: 'desktop', // 'desktop', 'triage', 'custom'
+        customPath: '{userHome}\\Desktop',
+        triagePath: '{userHome}\\Desktop\\1) Triage'
+      }
     }
   });
 
@@ -404,7 +416,7 @@ function Settings({ initialTab = 'app-info' }) {
   const tabs = [
     {
       id: 'app-info',
-      label: 'App Info',
+      label: 'App Settings',
       icon: 'ℹ️',
       fullLabel: 'Application Info & Settings'
     },
@@ -445,6 +457,289 @@ function Settings({ initialTab = 'app-info' }) {
                 <div className="app-info-item">
                   <span className="app-info-label">Environment:</span>
                   <span className="app-info-value">{BUILD_INFO.environment}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* File Paths Configuration Section */}
+            <div className="file-paths-section">
+              <h2>File Path Configuration</h2>
+              <p className="section-description">Configure where the application looks for template files and saves created projects.</p>
+              
+              <div className="path-settings">
+                {/* Template Paths */}
+                <div className="setting-group">
+                  <h3>📁 Template Source Locations</h3>
+                  <p className="group-description">Where the application finds template files for project creation</p>
+                  
+                  <div className="setting-row">
+                    <label>Primary Template Path:</label>
+                    <div className="path-input-group">
+                      <input
+                        type="text"
+                        value={settings.pathSettings.templates.primaryPath}
+                        onChange={(e) => setSettings(prev => ({
+                          ...prev,
+                          pathSettings: {
+                            ...prev.pathSettings,
+                            templates: {
+                              ...prev.pathSettings.templates,
+                              primaryPath: e.target.value
+                            }
+                          }
+                        }))}
+                        placeholder="Network path to templates"
+                        className="path-input"
+                      />
+                      <button 
+                        type="button" 
+                        className="btn btn-secondary btn-sm"
+                        onClick={async () => {
+                          if (electronAPI && electronAPI.selectFolder) {
+                            const result = await electronAPI.selectFolder();
+                            if (result && !result.canceled && result.filePaths[0]) {
+                              setSettings(prev => ({
+                                ...prev,
+                                pathSettings: {
+                                  ...prev.pathSettings,
+                                  templates: {
+                                    ...prev.pathSettings.templates,
+                                    primaryPath: result.filePaths[0]
+                                  }
+                                }
+                              }));
+                            }
+                          }
+                        }}
+                        title="Browse for folder"
+                      >
+                        📂
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="setting-row">
+                    <label>Fallback Template Path:</label>
+                    <div className="path-input-group">
+                      <input
+                        type="text"
+                        value={settings.pathSettings.templates.fallbackPath}
+                        onChange={(e) => setSettings(prev => ({
+                          ...prev,
+                          pathSettings: {
+                            ...prev.pathSettings,
+                            templates: {
+                              ...prev.pathSettings.templates,
+                              fallbackPath: e.target.value
+                            }
+                          }
+                        }))}
+                        placeholder="Local fallback path (use {userHome} for user directory)"
+                        className="path-input"
+                      />
+                      <button 
+                        type="button" 
+                        className="btn btn-secondary btn-sm"
+                        onClick={async () => {
+                          if (electronAPI && electronAPI.selectFolder) {
+                            const result = await electronAPI.selectFolder();
+                            if (result && !result.canceled && result.filePaths[0]) {
+                              setSettings(prev => ({
+                                ...prev,
+                                pathSettings: {
+                                  ...prev.pathSettings,
+                                  templates: {
+                                    ...prev.pathSettings.templates,
+                                    fallbackPath: result.filePaths[0]
+                                  }
+                                }
+                              }));
+                            }
+                          }
+                        }}
+                        title="Browse for folder"
+                      >
+                        📂
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="setting-row">
+                    <label>Agent Requirements Path:</label>
+                    <div className="path-input-group">
+                      <input
+                        type="text"
+                        value={settings.pathSettings.templates.agentRequirementsPath}
+                        onChange={(e) => setSettings(prev => ({
+                          ...prev,
+                          pathSettings: {
+                            ...prev.pathSettings,
+                            templates: {
+                              ...prev.pathSettings.templates,
+                              agentRequirementsPath: e.target.value
+                            }
+                          }
+                        }))}
+                        placeholder="Path to agent requirements files"
+                        className="path-input"
+                      />
+                      <button 
+                        type="button" 
+                        className="btn btn-secondary btn-sm"
+                        onClick={async () => {
+                          if (electronAPI && electronAPI.selectFolder) {
+                            const result = await electronAPI.selectFolder();
+                            if (result && !result.canceled && result.filePaths[0]) {
+                              setSettings(prev => ({
+                                ...prev,
+                                pathSettings: {
+                                  ...prev.pathSettings,
+                                  templates: {
+                                    ...prev.pathSettings.templates,
+                                    agentRequirementsPath: result.filePaths[0]
+                                  }
+                                }
+                              }));
+                            }
+                          }
+                        }}
+                        title="Browse for folder"
+                      >
+                        📂
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Project Output Paths */}
+                <div className="setting-group">
+                  <h3>💾 Project Output Locations</h3>
+                  <p className="group-description">Where created project folders are saved</p>
+                  
+                  <div className="setting-row">
+                    <label>Default Output Location:</label>
+                    <select
+                      value={settings.pathSettings.projectOutput.defaultLocation}
+                      onChange={(e) => setSettings(prev => ({
+                        ...prev,
+                        pathSettings: {
+                          ...prev.pathSettings,
+                          projectOutput: {
+                            ...prev.pathSettings.projectOutput,
+                            defaultLocation: e.target.value
+                          }
+                        }
+                      }))}
+                      className="path-select"
+                    >
+                      <option value="desktop">Desktop</option>
+                      <option value="triage">Triage Folder</option>
+                      <option value="custom">Custom Path</option>
+                    </select>
+                  </div>
+                  
+                  <div className="setting-row">
+                    <label>Custom Output Path:</label>
+                    <div className="path-input-group">
+                      <input
+                        type="text"
+                        value={settings.pathSettings.projectOutput.customPath}
+                        onChange={(e) => setSettings(prev => ({
+                          ...prev,
+                          pathSettings: {
+                            ...prev.pathSettings,
+                            projectOutput: {
+                              ...prev.pathSettings.projectOutput,
+                              customPath: e.target.value
+                            }
+                          }
+                        }))}
+                        placeholder="Custom project output path (use {userHome} for user directory)"
+                        className="path-input"
+                        disabled={settings.pathSettings.projectOutput.defaultLocation !== 'custom'}
+                      />
+                      <button 
+                        type="button" 
+                        className="btn btn-secondary btn-sm"
+                        onClick={async () => {
+                          if (electronAPI && electronAPI.selectFolder) {
+                            const result = await electronAPI.selectFolder();
+                            if (result && !result.canceled && result.filePaths[0]) {
+                              setSettings(prev => ({
+                                ...prev,
+                                pathSettings: {
+                                  ...prev.pathSettings,
+                                  projectOutput: {
+                                    ...prev.pathSettings.projectOutput,
+                                    customPath: result.filePaths[0]
+                                  }
+                                }
+                              }));
+                            }
+                          }
+                        }}
+                        title="Browse for folder"
+                        disabled={settings.pathSettings.projectOutput.defaultLocation !== 'custom'}
+                      >
+                        📂
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="setting-row">
+                    <label>Triage Folder Path:</label>
+                    <div className="path-input-group">
+                      <input
+                        type="text"
+                        value={settings.pathSettings.projectOutput.triagePath}
+                        onChange={(e) => setSettings(prev => ({
+                          ...prev,
+                          pathSettings: {
+                            ...prev.pathSettings,
+                            projectOutput: {
+                              ...prev.pathSettings.projectOutput,
+                              triagePath: e.target.value
+                            }
+                          }
+                        }))}
+                        placeholder="Path to triage folder (use {userHome} for user directory)"
+                        className="path-input"
+                      />
+                      <button 
+                        type="button" 
+                        className="btn btn-secondary btn-sm"
+                        onClick={async () => {
+                          if (electronAPI && electronAPI.selectFolder) {
+                            const result = await electronAPI.selectFolder();
+                            if (result && !result.canceled && result.filePaths[0]) {
+                              setSettings(prev => ({
+                                ...prev,
+                                pathSettings: {
+                                  ...prev.pathSettings,
+                                  projectOutput: {
+                                    ...prev.pathSettings.projectOutput,
+                                    triagePath: result.filePaths[0]
+                                  }
+                                }
+                              }));
+                            }
+                          }
+                        }}
+                        title="Browse for folder"
+                      >
+                        📂
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Path Variables Info */}
+                <div className="setting-group">
+                  <h3>ℹ️ Path Variables</h3>
+                  <div className="path-variables-info">
+                    <p><strong>{'{userHome}'}</strong> - Automatically replaced with the current user's home directory</p>
+                    <p><strong>Example:</strong> {'{userHome}\\Desktop'} becomes 'C:\\Users\\YourName\\Desktop'</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -732,6 +1027,18 @@ function Settings({ initialTab = 'app-info' }) {
                 selfQCLow: 4,
                 selfQCDefault: 0.5,
                 fluffPercentage: 10
+              },
+              pathSettings: {
+                templates: {
+                  primaryPath: '\\\\10.3.10.30\\DAS\\DAS References\\!!!Templates For Project Creator',
+                  fallbackPath: '{userHome}\\Desktop\\1) Triage\\!!!Templates For Project Creator',
+                  agentRequirementsPath: '\\\\10.3.10.30\\DAS\\Agent Requirements'
+                },
+                projectOutput: {
+                  defaultLocation: 'desktop',
+                  customPath: '{userHome}\\Desktop',
+                  triagePath: '{userHome}\\Desktop\\1) Triage'
+                }
               }
             };
             setSettings(defaultSettings);

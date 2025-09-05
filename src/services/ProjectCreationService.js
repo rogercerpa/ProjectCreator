@@ -2,9 +2,14 @@ const fs = require('fs-extra');
 const path = require('path');
 const { exec } = require('child_process');
 const { app } = require('electron');
+const PathResolutionService = require('./PathResolutionService');
 
 class ProjectCreationService {
   constructor() {
+    // Initialize the path resolution service for centralized path management
+    this.pathResolver = new PathResolutionService();
+    
+    // Keep legacy template paths for backward compatibility
     this.templatePaths = {
       master: '\\\\10.3.10.30\\DAS\\DAS References\\!!!Templates For Project Creator',
       desktop: path.join(process.env.USERPROFILE || process.env.HOME, 'Desktop', '1) Triage', '!!!Templates For Project Creator'),
@@ -59,10 +64,11 @@ class ProjectCreationService {
   /**
    * Create project with folders - Enhanced method for wizard integration
    * This method creates physical folder structure like the HTA tool
+   * NOW USES PathResolutionService for configurable paths
    */
   async createProjectWithFolders(projectData) {
     try {
-      console.log('Starting project creation with folders:', projectData);
+      console.log('Starting project creation with folders (using PathResolutionService):', projectData);
 
       // Validate required fields
       if (!this.validateProjectData(projectData)) {
@@ -77,13 +83,17 @@ class ProjectCreationService {
       const currentDate = new Date();
       const dateString = `${String(currentDate.getMonth() + 1).padStart(2, '0')}${String(currentDate.getDate()).padStart(2, '0')}${currentDate.getFullYear()}`;
       
-      // Determine project folder location (user's desktop for now)
-      const userHome = process.env.USERPROFILE || process.env.HOME;
-      const desktopPath = path.join(userHome, 'Desktop');
+      // ENHANCED: Use PathResolutionService to resolve all paths from settings
+      const resolvedPaths = await this.pathResolver.resolveAllProjectPaths(projectData);
+      console.log('PathResolutionService resolved paths:', resolvedPaths);
+      
+      // Use the resolved output path instead of hardcoded desktop
+      const outputBasePath = resolvedPaths.output.finalPath;
+      await this.pathResolver.ensureDirectoryExists(outputBasePath);
       
       // Create main project folder: {ProjectName}_{ProjectContainer}
       const projectFolderName = `${sanitizedProjectName}_${projectData.projectContainer}`;
-      const projectFolderPath = path.join(desktopPath, projectFolderName);
+      const projectFolderPath = path.join(outputBasePath, projectFolderName);
       
       // Create RFA subfolder: RFA#{RFANumber}_{RFAType}_{MMDDYYYY}
       const rfaFolderName = `RFA#${projectData.rfaNumber}_${projectData.rfaType}_${dateString}`;
@@ -98,14 +108,14 @@ class ProjectCreationService {
       await fs.ensureDir(agentFilesPath);
       await fs.ensureDir(path.join(rfaFolderPath, '!!Request Output'));
       
-      // Copy and process templates based on RFA type (like HTA)
-      await this.copyAndProcessTemplates(projectData, rfaFolderPath, dateString, sanitizedProjectName);
+      // Copy and process templates based on RFA type (using resolved paths)
+      await this.copyAndProcessTemplatesWithResolver(projectData, rfaFolderPath, dateString, sanitizedProjectName, resolvedPaths);
       
-      // Copy BOM CHECK folder from master template
-      await this.copyBOMCheckFolder(rfaFolderPath);
+      // Copy BOM CHECK folder from master template (using resolved paths)
+      await this.copyBOMCheckFolderWithResolver(rfaFolderPath, resolvedPaths);
       
-      // Copy agent-specific files
-      await this.copyAgentSpecificFiles(projectData, rfaFolderPath, dateString, sanitizedProjectName);
+      // Copy agent-specific files (using resolved paths)
+      await this.copyAgentSpecificFilesWithResolver(projectData, rfaFolderPath, dateString, sanitizedProjectName, resolvedPaths);
       
       // Process documents (Design Notes and Assumptions)
       await this.processProjectDocuments(projectData, rfaFolderPath);
@@ -116,14 +126,18 @@ class ProjectCreationService {
       console.log('Project with folders created successfully:', {
         projectPath: projectFolderPath,
         rfaPath: rfaFolderPath,
-        agentFilesPath
+        agentFilesPath,
+        usedTemplatePath: resolvedPaths.templates.bestTemplatePath,
+        usedOutputPath: outputBasePath
       });
       
       return { 
         success: true, 
         projectPath: projectFolderPath,
         rfaPath: rfaFolderPath,
-        agentFilesPath: agentFilesPath
+        agentFilesPath: agentFilesPath,
+        resolvedPaths: resolvedPaths, // Include resolved path info for debugging
+        message: 'Project folder created successfully using configurable paths'
       };
       
     } catch (error) {
@@ -642,6 +656,151 @@ class ProjectCreationService {
     } catch (error) {
       console.error('Agile export failed:', error);
       throw error;
+    }
+  }
+
+  // ===== NEW METHODS USING PathResolutionService =====
+
+  /**
+   * Copy and process templates using PathResolutionService (enhanced version)
+   */
+  async copyAndProcessTemplatesWithResolver(projectData, rfaFolderPath, dateString, sanitizedProjectName, resolvedPaths) {
+    try {
+      console.log('copyAndProcessTemplatesWithResolver: Using resolved template path:', resolvedPaths.rfaTemplate.path);
+      
+      if (!resolvedPaths.rfaTemplate.valid) {
+        console.warn('Template path not valid, trying fallback:', resolvedPaths.rfaTemplate.reason);
+        // Fall back to legacy method if resolved paths fail
+        return await this.copyAndProcessTemplates(projectData, rfaFolderPath, dateString, sanitizedProjectName);
+      }
+
+      const templatePath = resolvedPaths.rfaTemplate.path;
+      
+      if (await fs.pathExists(templatePath)) {
+        // Copy the entire template folder
+        const templateFolderName = resolvedPaths.rfaTemplate.subFolder;
+        const destPath = path.join(rfaFolderPath, templateFolderName);
+        
+        await fs.copy(templatePath, destPath);
+        console.log(`Template copied from ${templatePath} to ${destPath}`);
+        
+        // Rename the folder to match project naming convention
+        const rfaType = projectData.rfaType;
+        let newFolderName;
+        
+        if (rfaType.includes('Reloc')) {
+          if (rfaType.includes('Controls')) {
+            newFolderName = `RFA#${projectData.rfaNumber}_(Reloc Portion) ${rfaType}_${dateString}`;
+          } else {
+            newFolderName = `RFA#${projectData.rfaNumber}_${rfaType}_${dateString}`;
+          }
+        } else {
+          newFolderName = `RFA#${projectData.rfaNumber}_${rfaType}_${dateString}`;
+        }
+        
+        const newPath = path.join(rfaFolderPath, newFolderName);
+        await fs.move(destPath, newPath);
+        console.log(`Template folder renamed to: ${newFolderName}`);
+        
+        // Process files inside the renamed folder
+        await this.processTemplateFiles(newPath, projectData, dateString, sanitizedProjectName);
+        
+      } else {
+        console.warn(`Template not found at resolved path: ${templatePath}, falling back to legacy method`);
+        return await this.copyAndProcessTemplates(projectData, rfaFolderPath, dateString, sanitizedProjectName);
+      }
+    } catch (error) {
+      console.error('Error in copyAndProcessTemplatesWithResolver:', error);
+      // Fall back to legacy method on error
+      return await this.copyAndProcessTemplates(projectData, rfaFolderPath, dateString, sanitizedProjectName);
+    }
+  }
+
+  /**
+   * Copy BOM CHECK folder using PathResolutionService (enhanced version)
+   */
+  async copyBOMCheckFolderWithResolver(rfaFolderPath, resolvedPaths) {
+    try {
+      console.log('copyBOMCheckFolderWithResolver: Using template path:', resolvedPaths.templates.bestTemplatePath);
+      
+      const bomCheckPath = path.join(resolvedPaths.templates.bestTemplatePath, 'BOM CHECK');
+      
+      if (await fs.pathExists(bomCheckPath)) {
+        const destPath = path.join(rfaFolderPath, 'BOM CHECK');
+        await fs.copy(bomCheckPath, destPath);
+        console.log(`BOM CHECK folder copied from ${bomCheckPath} to ${destPath}`);
+      } else {
+        console.warn(`BOM CHECK not found at ${bomCheckPath}, trying fallback...`);
+        // Try fallback template path
+        if (resolvedPaths.templates.fallback.valid) {
+          const fallbackBomPath = path.join(resolvedPaths.templates.fallback.path, 'BOM CHECK');
+          if (await fs.pathExists(fallbackBomPath)) {
+            const destPath = path.join(rfaFolderPath, 'BOM CHECK');
+            await fs.copy(fallbackBomPath, destPath);
+            console.log(`BOM CHECK folder copied from fallback: ${fallbackBomPath}`);
+          } else {
+            console.warn('BOM CHECK not found in fallback path either');
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error in copyBOMCheckFolderWithResolver:', error);
+      // Fall back to legacy method
+      return await this.copyBOMCheckFolder(rfaFolderPath);
+    }
+  }
+
+  /**
+   * Copy agent-specific files using PathResolutionService (enhanced version)
+   */
+  async copyAgentSpecificFilesWithResolver(projectData, agentFilesPath, dateString, sanitizedProjectName, resolvedPaths) {
+    try {
+      console.log('copyAgentSpecificFilesWithResolver: Using agent requirements path:', resolvedPaths.templates.agentRequirements.path);
+      
+      if (!resolvedPaths.templates.agentRequirements.valid) {
+        console.warn('Agent requirements path not valid:', resolvedPaths.templates.agentRequirements.reason);
+        // Fall back to legacy method
+        return await this.copyAgentSpecificFiles(projectData, agentFilesPath, dateString, sanitizedProjectName);
+      }
+
+      const agentNumber = projectData.agentNumber;
+      const agentRequirementsPath = resolvedPaths.templates.agentRequirements.path;
+      
+      // Copy metric template for specific agents
+      const metricAgents = ['563', '584', '903', '904', '905', '906', '909', '912', '915', '926', '968'];
+      if (metricAgents.includes(agentNumber)) {
+        const metricTemplate = path.join(resolvedPaths.templates.bestTemplatePath, '(Metric).vsp');
+        if (await fs.pathExists(metricTemplate)) {
+          const destPath = path.join(agentFilesPath, `ABC_${sanitizedProjectName}_${projectData.rfaType} ORIG_${dateString} (Metric).vsp`);
+          await fs.copy(metricTemplate, destPath);
+          console.log(`Metric template copied for agent ${agentNumber}`);
+        }
+      }
+
+      // Copy Holophane template for 4-digit agents
+      if (agentNumber.length === 4) {
+        const holophaneTemplate = path.join(agentRequirementsPath, 'Holophane.vsp');
+        if (await fs.pathExists(holophaneTemplate)) {
+          const destPath = path.join(agentFilesPath, `ABC_${sanitizedProjectName}_${projectData.rfaType} ORIG_${dateString}.vsp`);
+          await fs.copy(holophaneTemplate, destPath);
+          console.log(`Holophane template copied for 4-digit agent ${agentNumber}`);
+        }
+      }
+
+      // Copy agent-specific template
+      const agentTemplate = path.join(agentRequirementsPath, `${agentNumber}.vsp`);
+      if (await fs.pathExists(agentTemplate)) {
+        const destPath = path.join(agentFilesPath, `ABC_${sanitizedProjectName}_${projectData.rfaType} ORIG_${dateString}.vsp`);
+        await fs.copy(agentTemplate, destPath);
+        console.log(`Agent-specific template copied: ${agentNumber}.vsp`);
+      } else {
+        console.warn(`Agent template not found: ${agentTemplate}`);
+      }
+
+    } catch (error) {
+      console.error('Error in copyAgentSpecificFilesWithResolver:', error);
+      // Fall back to legacy method
+      return await this.copyAgentSpecificFiles(projectData, agentFilesPath, dateString, sanitizedProjectName);
     }
   }
 }

@@ -603,60 +603,27 @@ const ProjectWizardStep2 = ({
           </button>
         </div>
 
-        {/* DIRECT COPY: Triage Results Display from ProjectForm.jsx lines 1312+ */}
+        {/* Simplified Triage Results Display */}
         {triageResults && (
-          <div className="triage-results">
-            <h4>Detailed Triage Breakdown</h4>
-            <div className="triage-configuration-summary">
-              <h5>Active Sections:</h5>
-              <ul>
-                <li>Panel Schedules: {formData.hasPanelSchedules ? 'YES' : 'NO'}</li>
-                <li>Submittal Section: {formData.hasSubmittals ? 'YES' : 'NO'}</li>
-                {formData.hasSubmittals && (
-                  <li>Needs Layout/BOM: {formData.needsLayoutBOM ? 'YES' : 'NO'}</li>
-                )}
-              </ul>
-              <p><strong>Sections Contributing to Calculation:</strong></p>
-              <ul>
-                {triageResults.showPanelFields && <li>✓ Panel Schedule Fields</li>}
-                {triageResults.showLayoutFields && <li>✓ Layout Fields</li>}
-                {triageResults.showSubmittalFields && <li>✓ Submittal Fields</li>}
-              </ul>
-            </div>
-            <div className="triage-breakdown">
-              <h5>Time Breakdown:</h5>
-              <div className="breakdown-grid">
-                <div className="breakdown-item">
-                  <span className="breakdown-label">Panel Time:</span>
-                  <span className="breakdown-value">{triageResults.panelTime.toFixed(2)} hr</span>
+          <div className="triage-results-simplified">
+            <h4>Estimated Project Time</h4>
+            <div className="triage-summary">
+              <div className="total-time">
+                <span className="time-label">Total Estimated Time:</span>
+                <span className="time-value">{triageResults.totalTriage.toFixed(1)} hours</span>
+              </div>
+              <div className="time-breakdown">
+                <div className="breakdown-row">
+                  <span>Base Calculation:</span>
+                  <span>{triageResults.baseTotal.toFixed(1)} hr</span>
                 </div>
-                <div className="breakdown-item">
-                  <span className="breakdown-label">Layout Time:</span>
-                  <span className="breakdown-value">{triageResults.layoutTime.toFixed(2)} hr</span>
+                <div className="breakdown-row">
+                  <span>Quality Control:</span>
+                  <span>{triageResults.selfQC.toFixed(1)} hr</span>
                 </div>
-                <div className="breakdown-item">
-                  <span className="breakdown-label">Submittal Time:</span>
-                  <span className="breakdown-value">{triageResults.submittalTime.toFixed(2)} hr</span>
-                </div>
-                <div className="breakdown-item">
-                  <span className="breakdown-label">Page Bonus:</span>
-                  <span className="breakdown-value">{triageResults.pageBonus.toFixed(2)} hr</span>
-                </div>
-                <div className="breakdown-item">
-                  <span className="breakdown-label">Base Total:</span>
-                  <span className="breakdown-value">{triageResults.baseTotal.toFixed(2)} hr</span>
-                </div>
-                <div className="breakdown-item">
-                  <span className="breakdown-label">Self QC:</span>
-                  <span className="breakdown-value">{triageResults.selfQC.toFixed(2)} hr</span>
-                </div>
-                <div className="breakdown-item">
-                  <span className="breakdown-label">Fluff:</span>
-                  <span className="breakdown-value">{triageResults.fluff.toFixed(2)} hr</span>
-                </div>
-                <div className="breakdown-item total">
-                  <span className="breakdown-label"><strong>Total Triage:</strong></span>
-                  <span className="breakdown-value"><strong>{triageResults.totalTriage.toFixed(2)} hr</strong></span>
+                <div className="breakdown-row">
+                  <span>Buffer Time:</span>
+                  <span>{triageResults.fluff.toFixed(1)} hr</span>
                 </div>
               </div>
             </div>

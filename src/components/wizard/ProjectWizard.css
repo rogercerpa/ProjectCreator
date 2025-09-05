@@ -233,6 +233,79 @@
   font-style: italic;
 }
 
+/* Simplified Triage Results */
+.triage-results-simplified {
+  margin-top: 20px;
+  padding: 20px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 8px;
+  border: 2px solid #e9ecef;
+}
+
+.triage-results-simplified h4 {
+  margin: 0 0 15px 0;
+  color: #333;
+  font-size: 18px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.triage-summary {
+  text-align: center;
+}
+
+.total-time {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+  padding: 15px;
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  color: white;
+  border-radius: 8px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.time-label {
+  font-size: 16px;
+}
+
+.time-value {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.time-breakdown {
+  display: flex;
+  justify-content: space-around;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #dee2e6;
+  min-width: 150px;
+  font-size: 14px;
+}
+
+.breakdown-row span:first-child {
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.breakdown-row span:last-child {
+  color: #333;
+  font-weight: 600;
+}
+
 .step-badge {
   display: inline-flex;
   align-items: center;

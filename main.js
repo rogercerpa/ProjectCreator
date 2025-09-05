@@ -185,6 +185,14 @@ ipcMain.handle('select-directory', async () => {
   return result.canceled ? null : result.filePaths[0];
 });
 
+ipcMain.handle('select-folder', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openDirectory'],
+    title: 'Select Folder'
+  });
+  return result; // Return full result object for UI compatibility
+});
+
 ipcMain.handle('select-file', async (event, options = {}) => {
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openFile'],

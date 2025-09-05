@@ -4,6 +4,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
   // File system operations (with validation)
   selectDirectory: () => ipcRenderer.invoke('select-directory'),
+  selectFolder: () => ipcRenderer.invoke('select-folder'),
   selectFile: (options) => ipcRenderer.invoke('select-file', options),
   saveFile: (options) => ipcRenderer.invoke('save-file', options),
   
