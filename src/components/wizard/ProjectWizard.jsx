@@ -605,31 +605,73 @@ const ProjectWizard = ({
             </button>
           ) : (
             <button
-              onClick={() => {
-                // Complete the wizard and create/update project
-                const completeProject = {
-                  ...formData,
-                  status: 'active',
-                  completionStep: 3,
-                  updatedAt: new Date().toISOString(),
-                  sourceType: 'wizard'
-                };
+              onClick={async () => {
+                setIsLoading(true);
+                setError(null);
+                
+                try {
+                  // STEP 1: Create the physical project folder structure (NEW)
+                  setNotification({
+                    type: 'info',
+                    message: 'Creating project folders and files...'
+                  });
+                  
+                  // Call the project creation service via Electron IPC
+                  const folderCreationResult = await window.electronAPI.projectCreateWithFolders(formData);
+                  
+                  if (!folderCreationResult.success) {
+                    throw new Error(`Failed to create project folder: ${folderCreationResult.error}`);
+                  }
+                  
+                  setNotification({
+                    type: 'success',
+                    message: '✅ Project folders created successfully!'
+                  });
+                  
+                  // STEP 2: Complete the wizard and create project in app (EXISTING)
+                  const completeProject = {
+                    ...formData,
+                    id: Date.now().toString(),
+                    status: 'active',
+                    completionStep: 3,
+                    updatedAt: new Date().toISOString(),
+                    sourceType: 'wizard',
+                    // Add the physical folder paths to the project
+                    projectPath: folderCreationResult.projectPath,
+                    rfaPath: folderCreationResult.rfaPath,
+                    agentFilesPath: folderCreationResult.agentFilesPath
+                  };
 
-                if (mode === 'create' && typeof onProjectCreated === 'function') {
-                  onProjectCreated(completeProject);
-                } else if (typeof onProjectUpdated === 'function') {
-                  onProjectUpdated(completeProject);
+                  console.log('ProjectWizard: Created complete project object:', completeProject);
+
+                  // STEP 3: Call existing project creation handler (routes to project management)
+                  if (mode === 'create' && typeof onProjectCreated === 'function') {
+                    console.log('ProjectWizard: Calling onProjectCreated with:', completeProject);
+                    onProjectCreated(completeProject);
+                  } else if (typeof onProjectUpdated === 'function') {
+                    console.log('ProjectWizard: Calling onProjectUpdated with:', completeProject);
+                    onProjectUpdated(completeProject);
+                  }
+
+                  // STEP 4: Do NOT reset wizard when navigating to project management
+                  // The wizard will be reset when user navigates away from project management
+                  console.log('ProjectWizard: Project creation completed, navigating to project management...');
+                  
+                } catch (error) {
+                  console.error('Project creation failed:', error);
+                  setError(`Failed to create project: ${error.message}`);
+                  setNotification({
+                    type: 'error',
+                    message: `Project creation failed: ${error.message}`
+                  });
+                } finally {
+                  setIsLoading(false);
                 }
-
-                // Automatically reset wizard for next project creation
-                setTimeout(() => {
-                  resetWizardState();
-                }, 100); // Small delay to ensure project creation completes first
               }}
               disabled={isLoading}
               className="btn btn-primary"
             >
-              Complete & Manage Project
+              {isLoading ? 'Creating Project...' : 'Complete & Manage Project'}
             </button>
           )}
         </div>

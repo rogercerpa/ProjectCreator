@@ -86,7 +86,10 @@ const ProjectManagement = ({
     setCurrentMode('edit');
   };
 
+  console.log('ProjectManagement received project:', project);
+  
   if (!project) {
+    console.error('ProjectManagement: No project provided!');
     return (
       <div className="project-management">
         <div className="error-state">

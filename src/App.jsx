@@ -180,9 +180,11 @@ function App() {
 
 
   const handleProjectCreated = (project) => {
+    console.log('handleProjectCreated called with:', project);
     setProjects(prev => [project, ...prev]);
     setCurrentProject(project);
     setCurrentView('project-management');
+    console.log('Current project set to:', project);
   };
 
   const handleProjectUpdated = (updatedProject) => {
@@ -257,12 +259,19 @@ function App() {
 
   // Complete wizard reset function for both automatic and manual reset
   const handleWizardReset = () => {
+    console.log('App: handleWizardReset called');
     handleFormReset();
-    setCurrentProject(null);
+    // Do NOT clear currentProject here - it will be cleared when user navigates away from project management
+    // setCurrentProject(null); // REMOVED: This was causing the "Project Not Found" error
     // Additional wizard-specific resets will be handled by the wizard component
   };
 
   const handleViewChange = (view) => {
+    // Clear current project when navigating away from project management
+    if (currentView === 'project-management' && view !== 'project-management') {
+      console.log('App: Navigating away from project management, clearing current project');
+      setCurrentProject(null);
+    }
     setCurrentView(view);
   };
 

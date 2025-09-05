@@ -57,6 +57,85 @@ class ProjectCreationService {
   }
 
   /**
+   * Create project with folders - Enhanced method for wizard integration
+   * This method creates physical folder structure like the HTA tool
+   */
+  async createProjectWithFolders(projectData) {
+    try {
+      console.log('Starting project creation with folders:', projectData);
+
+      // Validate required fields
+      if (!this.validateProjectData(projectData)) {
+        throw new Error('Invalid project data');
+      }
+
+      // Sanitize project name (like HTA: remove \, /, :, _ and convert to uppercase)
+      const sanitizedProjectName = this.sanitizeProjectName(projectData.projectName);
+      const firstLetter = this.getFirstLetter(sanitizedProjectName);
+      
+      // Create date string in MMDDYYYY format (like HTA)
+      const currentDate = new Date();
+      const dateString = `${String(currentDate.getMonth() + 1).padStart(2, '0')}${String(currentDate.getDate()).padStart(2, '0')}${currentDate.getFullYear()}`;
+      
+      // Determine project folder location (user's desktop for now)
+      const userHome = process.env.USERPROFILE || process.env.HOME;
+      const desktopPath = path.join(userHome, 'Desktop');
+      
+      // Create main project folder: {ProjectName}_{ProjectContainer}
+      const projectFolderName = `${sanitizedProjectName}_${projectData.projectContainer}`;
+      const projectFolderPath = path.join(desktopPath, projectFolderName);
+      
+      // Create RFA subfolder: RFA#{RFANumber}_{RFAType}_{MMDDYYYY}
+      const rfaFolderName = `RFA#${projectData.rfaNumber}_${projectData.rfaType}_${dateString}`;
+      const rfaFolderPath = path.join(projectFolderPath, rfaFolderName);
+      
+      // Agent Files path for opening
+      const agentFilesPath = path.join(rfaFolderPath, '!Agent Files');
+      
+      // Create folder structure
+      await fs.ensureDir(projectFolderPath);
+      await fs.ensureDir(rfaFolderPath);
+      await fs.ensureDir(agentFilesPath);
+      await fs.ensureDir(path.join(rfaFolderPath, '!!Request Output'));
+      
+      // Copy and process templates based on RFA type (like HTA)
+      await this.copyAndProcessTemplates(projectData, rfaFolderPath, dateString, sanitizedProjectName);
+      
+      // Copy BOM CHECK folder from master template
+      await this.copyBOMCheckFolder(rfaFolderPath);
+      
+      // Copy agent-specific files
+      await this.copyAgentSpecificFiles(projectData, rfaFolderPath, dateString, sanitizedProjectName);
+      
+      // Process documents (Design Notes and Assumptions)
+      await this.processProjectDocuments(projectData, rfaFolderPath);
+      
+      // Open the !Agent Files folder (like HTA)
+      await this.openAgentFilesFolder(agentFilesPath);
+      
+      console.log('Project with folders created successfully:', {
+        projectPath: projectFolderPath,
+        rfaPath: rfaFolderPath,
+        agentFilesPath
+      });
+      
+      return { 
+        success: true, 
+        projectPath: projectFolderPath,
+        rfaPath: rfaFolderPath,
+        agentFilesPath: agentFilesPath
+      };
+      
+    } catch (error) {
+      console.error('Project creation with folders failed:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  /**
    * Validate project data before creation
    */
   validateProjectData(projectData) {
@@ -219,9 +298,150 @@ class ProjectCreationService {
   }
 
   /**
+   * Copy and process templates based on RFA type (like HTA)
+   */
+  async copyAndProcessTemplates(projectData, rfaFolderPath, dateString, sanitizedProjectName) {
+    try {
+      const rfaType = projectData.rfaType;
+      let templatePath, templateFolderName, newFolderName;
+
+      // Determine template based on RFA type (exactly like HTA)
+      if (rfaType.includes('Reloc')) {
+        // Relocation projects
+        templatePath = this.templatePaths.reloc;
+        templateFolderName = 'RELOC-RFA#_TYPE_MMDDYYYY';
+        if (rfaType.includes('Controls')) {
+          newFolderName = `RFA#${projectData.rfaNumber}_(Reloc Portion) ${rfaType}_${dateString}`;
+        } else {
+          newFolderName = `RFA#${projectData.rfaNumber}_${rfaType}_${dateString}`;
+        }
+      } else if (rfaType === 'PHOTOMETRICS') {
+        // Photometrics projects
+        templatePath = this.templatePaths.photometrics;
+        templateFolderName = 'PHOTOMETRICS-RFA#_TYPE_MMDDYYYY';
+        newFolderName = `RFA#${projectData.rfaNumber}_${rfaType}_${dateString}`;
+      } else {
+        // Standard controls projects
+        templatePath = this.templatePaths.controls;
+        templateFolderName = 'RFA#_TYPE_MMDDYYYY';
+        newFolderName = `RFA#${projectData.rfaNumber}_${rfaType}_${dateString}`;
+      }
+
+      // Check if template exists
+      if (await fs.pathExists(templatePath)) {
+        // Copy template folder to RFA folder
+        await fs.copy(templatePath, rfaFolderPath);
+        
+        // Rename the copied template folder
+        const oldPath = path.join(rfaFolderPath, templateFolderName);
+        const newPath = path.join(rfaFolderPath, newFolderName);
+        
+        if (await fs.pathExists(oldPath)) {
+          await fs.move(oldPath, newPath);
+          
+          // Process files inside the renamed folder (like HTA)
+          await this.processTemplateFiles(newPath, projectData, dateString, sanitizedProjectName);
+        }
+      } else {
+        console.warn(`Template not found: ${templatePath}`);
+      }
+    } catch (error) {
+      console.error('Error copying and processing templates:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Process template files (rename .vsp and .vsl files like HTA)
+   */
+  async processTemplateFiles(templateFolder, projectData, dateString, sanitizedProjectName) {
+    try {
+      const files = await fs.readdir(templateFolder);
+      
+      for (const file of files) {
+        const filePath = path.join(templateFolder, file);
+        const stats = await fs.stat(filePath);
+        
+        if (stats.isFile()) {
+          const ext = path.extname(file).toLowerCase();
+          
+          if (ext === '.vsp') {
+            // Rename .vsp files like HTA: ABC_{ProjectName}_{RFAType} ORIG_{DateString}.vsp
+            const newFileName = `ABC_${sanitizedProjectName}_${projectData.rfaType} ORIG_${dateString}.vsp`;
+            const newFilePath = path.join(templateFolder, newFileName);
+            await fs.move(filePath, newFilePath);
+            break; // Only rename the first .vsp file found
+          } else if (ext === '.vsl') {
+            // Rename .vsl files like HTA: {RFANumber} A1.vsl
+            const newFileName = `${projectData.rfaNumber} A1.vsl`;
+            const newFilePath = path.join(templateFolder, newFileName);
+            await fs.move(filePath, newFilePath);
+            break; // Only rename the first .vsl file found
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error processing template files:', error);
+      // Don't fail the entire process for file renaming issues
+    }
+  }
+
+  /**
+   * Copy BOM CHECK folder from master template
+   */
+  async copyBOMCheckFolder(rfaFolderPath) {
+    try {
+      const bomCheckPath = path.join(this.templatePaths.master, 'BOM CHECK');
+      if (await fs.pathExists(bomCheckPath)) {
+        const destPath = path.join(rfaFolderPath, 'BOM CHECK');
+        await fs.copy(bomCheckPath, destPath);
+      }
+    } catch (error) {
+      console.error('Error copying BOM CHECK folder:', error);
+      // Don't fail the entire process for BOM CHECK issues
+    }
+  }
+
+  /**
+   * Process project documents (Design Notes and Assumptions like HTA)
+   */
+  async processProjectDocuments(projectData, rfaFolderPath) {
+    try {
+      // This would integrate with WordService to process documents
+      // For now, we'll just log that this step would happen
+      console.log('Document processing would happen here for:', rfaFolderPath);
+      
+      // TODO: Integrate with WordService to:
+      // 1. Find Design Notes and Assumptions.docx
+      // 2. Insert agent requirements
+      // 3. Replace project placeholders
+    } catch (error) {
+      console.error('Error processing documents:', error);
+      // Don't fail the entire process for document issues
+    }
+  }
+
+  /**
+   * Open the !Agent Files folder (like HTA)
+   */
+  async openAgentFilesFolder(agentFilesPath) {
+    try {
+      // Open folder using system command
+      const command = process.platform === 'win32' ? `explorer "${agentFilesPath}"` : `open "${agentFilesPath}"`;
+      exec(command, (error) => {
+        if (error) {
+          console.error('Error opening Agent Files folder:', error);
+        }
+      });
+    } catch (error) {
+      console.error('Error opening Agent Files folder:', error);
+    }
+  }
+
+  /**
    * Copy agent-specific files
    */
-  async copyAgentSpecificFiles(projectData, rfaFolder, dateString) {
+  async copyAgentSpecificFiles(projectData, rfaFolder, dateString, sanitizedProjectName) {
     try {
       const agentNumber = projectData.agentNumber;
       
@@ -230,7 +450,7 @@ class ProjectCreationService {
       if (metricAgents.includes(agentNumber)) {
         const metricTemplate = path.join(this.templatePaths.master, '(Metric).vsp');
         if (await fs.pathExists(metricTemplate)) {
-          const destPath = path.join(rfaFolder, `ABC_${projectData.projectName}_${projectData.rfaType} ORIG_${dateString} (Metric).vsp`);
+          const destPath = path.join(rfaFolder, `ABC_${sanitizedProjectName}_${projectData.rfaType} ORIG_${dateString} (Metric).vsp`);
           await fs.copy(metricTemplate, destPath);
         }
       }
@@ -239,7 +459,7 @@ class ProjectCreationService {
       if (agentNumber.length === 4) {
         const holophaneTemplate = path.join(this.templatePaths.agentRequirements, 'Holophane.vsp');
         if (await fs.pathExists(holophaneTemplate)) {
-          const destPath = path.join(rfaFolder, `ABC_${projectData.projectName}_${projectData.rfaType} ORIG_${dateString}.vsp`);
+          const destPath = path.join(rfaFolder, `ABC_${sanitizedProjectName}_${projectData.rfaType} ORIG_${dateString}.vsp`);
           await fs.copy(holophaneTemplate, destPath);
         }
       }
@@ -247,7 +467,7 @@ class ProjectCreationService {
       // Copy agent-specific template
       const agentTemplate = path.join(this.templatePaths.agentRequirements, `${agentNumber}.vsp`);
       if (await fs.pathExists(agentTemplate)) {
-        const destPath = path.join(rfaFolder, `ABC_${projectData.projectName}_${projectData.rfaType} ORIG_${dateString}.vsp`);
+        const destPath = path.join(rfaFolder, `ABC_${sanitizedProjectName}_${projectData.rfaType} ORIG_${dateString}.vsp`);
         await fs.copy(agentTemplate, destPath);
       }
 

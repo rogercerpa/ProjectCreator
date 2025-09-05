@@ -467,6 +467,15 @@ ipcMain.handle('project-create-folder', async (event, projectData) => {
   }
 });
 
+// Project creation with folders (NEW - for wizard integration)
+ipcMain.handle('project-create-with-folders', async (event, projectData) => {
+  try {
+    return await projectCreationService.createProjectWithFolders(projectData);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
 ipcMain.handle('project-export-das-board', async (event, projectData) => {
   try {
     return await projectCreationService.exportToDASBoard(projectData);

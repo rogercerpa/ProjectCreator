@@ -47,6 +47,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // Project creation
   projectCreateFolder: (projectData) => ipcRenderer.invoke('project-create-folder', projectData),
+  projectCreateWithFolders: (projectData) => ipcRenderer.invoke('project-create-with-folders', projectData),
   projectExportDASBoard: (projectData) => ipcRenderer.invoke('project-export-das-board', projectData),
   projectExportAgile: (projectData) => ipcRenderer.invoke('project-export-agile', projectData),
   
