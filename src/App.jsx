@@ -255,6 +255,13 @@ function App() {
     });
   };
 
+  // Complete wizard reset function for both automatic and manual reset
+  const handleWizardReset = () => {
+    handleFormReset();
+    setCurrentProject(null);
+    // Additional wizard-specific resets will be handled by the wizard component
+  };
+
   const handleViewChange = (view) => {
     setCurrentView(view);
   };
@@ -359,9 +366,12 @@ function App() {
                 <ProjectWizard
                   mode={currentProject ? 'edit' : 'create'}
                   existingProject={currentProject}
+                  formData={formData}
+                  onFormDataChange={handleFormDataChange}
                   onProjectCreated={handleProjectCreated}
                   onProjectUpdated={handleProjectUpdated}
                   onCancel={() => setCurrentView('welcome')}
+                  onWizardReset={handleWizardReset}
                 />
               </div>
             );

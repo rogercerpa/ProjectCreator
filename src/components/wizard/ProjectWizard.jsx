@@ -19,81 +19,17 @@ const ProjectDraftService = window.electron ?
  * Handles data persistence, validation, and step navigation
  */
 const ProjectWizard = ({ 
+  formData,
+  onFormDataChange,
   onProjectCreated, 
   onProjectUpdated, 
   onCancel,
+  onWizardReset,
   existingProject = null,
   mode = 'create' // 'create' or 'edit'
 }) => {
-  // Initialize form data with the same structure as original ProjectForm
-  const initialFormData = {
-    projectName: '',
-    rfaNumber: '',
-    agentNumber: '',
-    projectContainer: '',
-    rfaType: '',
-    regionalTeam: '',
-    ecd: '',
-    nationalAccount: 'Default',
-    complexity: '',
-    rfaValue: '',
-    status: '',
-    products: '',
-    assignedTo: '',
-    repContacts: '',
-    requestedDate: '',
-    submittedDate: '',
-    // Unified Triage Control Fields
-    hasPanelSchedules: false,
-    hasSubmittals: false,
-    needsLayoutBOM: false,
-    // Panel Schedule Fields
-    largeLMPs: 0,
-    mediumLMPs: 0,
-    smallLMPs: 0,
-    arp8: 0,
-    arp16: 0,
-    arp32: 0,
-    arp48: 0,
-    esheetsSchedules: 2, // 1 = Yes, 2 = No
-    showPanelSchedules: false, // Keep for backward compatibility
-    // Layout Fields
-    numOfRooms: 0,
-    overrideRooms: 0,
-    roomMultiplier: 2,
-    reviewSetup: 0.5,
-    numOfPages: 1,
-    specReview: 0,
-    // Submittal Fields
-    numOfSubRooms: 0,
-    overrideSubRooms: 0,
-    riserMultiplier: 1,
-    soo: 0.5,
-    // Photometrics Fields
-    photoSoftware: 'VL',
-    // Triage Results
-    saveLocation: 'Server',
-    isRevision: false,
-    dueDate: '',
-    totalTriage: 0,
-    panelTime: 0,
-    layoutTime: 0,
-    submittalTime: 0,
-    pageBonus: 0,
-    baseTotal: 0,
-    selfQC: 0,
-    fluff: 0,
-    // Additional Fields
-    firstAvailable: false
-  };
-
-  // Merge existing project data if in edit mode
-  const [formData, setFormData] = useState(() => {
-    if (existingProject) {
-      return { ...initialFormData, ...existingProject };
-    }
-    return initialFormData;
-  });
+  // Use formData from props (managed by App.jsx) instead of internal state
+  // This ensures proper synchronization and persistence across navigation
 
   // Initialize hooks
   const wizard = useWizardState(formData, 3);
@@ -116,8 +52,8 @@ const ProjectWizard = ({
 
   // Handle form data changes with debounced validation
   const handleFormDataChange = useCallback((newFormData) => {
-    // Update form data immediately for responsive UI
-    setFormData(newFormData);
+    // Update form data immediately via parent component (App.jsx)
+    onFormDataChange(newFormData);
     wizard.updateWizardData(newFormData);
     
     // DEBOUNCING: Clear existing validation timeout
@@ -137,7 +73,7 @@ const ProjectWizard = ({
     }, 300); // 300ms debounce delay
     
     setValidationTimeout(timeout);
-  }, [wizard, stepValidation]); // CRITICAL FIX: Include only stable dependencies
+  }, [onFormDataChange, wizard, stepValidation]); // Updated dependencies
 
   // Cleanup validation timeout on unmount
   useEffect(() => {
@@ -157,6 +93,36 @@ const ProjectWizard = ({
   const handleFieldTouch = useCallback((fieldName) => {
     stepValidation.touchField(fieldName);
   }, []); // CRITICAL FIX: stepValidation is stable from hook
+
+  // Reset wizard to clean state
+  const resetWizardState = useCallback(() => {
+    // Clear notifications and errors first
+    setError(null);
+    setNotification(null);
+    setIsLoading(false);
+    
+    // Reset draft states
+    if (projectDraft) {
+      try {
+        projectDraft.clearDraft();
+      } catch (draftError) {
+        console.warn('Failed to clear draft:', draftError);
+      }
+    }
+    
+    // Call parent reset function to reset form data (this will trigger re-render with clean data)
+    if (onWizardReset) {
+      onWizardReset();
+    }
+    
+    // Reset wizard navigation state AFTER formData is cleared
+    // This ensures wizard state resets with clean formData
+    setTimeout(() => {
+      wizard.resetWizard();
+      console.log('Wizard reset completed - ready for new project');
+    }, 50); // Small delay to ensure formData reset completes first
+    
+  }, [wizard, projectDraft, onWizardReset]);
 
   // Handle step navigation with enhanced error handling
   const handleNext = useCallback(async () => {
@@ -493,6 +459,7 @@ const ProjectWizard = ({
             onValidationChange={(isValid, errors) => {
               wizard.setStepValidation(1, isValid, errors);
             }}
+            onWizardReset={resetWizardState}
           />
         );
       
@@ -653,6 +620,11 @@ const ProjectWizard = ({
                 } else if (typeof onProjectUpdated === 'function') {
                   onProjectUpdated(completeProject);
                 }
+
+                // Automatically reset wizard for next project creation
+                setTimeout(() => {
+                  resetWizardState();
+                }, 100); // Small delay to ensure project creation completes first
               }}
               disabled={isLoading}
               className="btn btn-primary"

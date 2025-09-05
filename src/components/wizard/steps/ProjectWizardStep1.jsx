@@ -15,7 +15,8 @@ const ProjectWizardStep1 = ({
   onFieldError,
   onFieldTouch,
   showImportedFields = false,
-  onValidationChange
+  onValidationChange,
+  onWizardReset
 }) => {
   const [isPasting, setIsPasting] = useState(false);
   const [importedFields, setImportedFields] = useState([]);
@@ -149,6 +150,34 @@ const ProjectWizardStep1 = ({
       soo: triageSettings.defaultSOO,
       numOfPages: triageSettings.defaultNumOfPages
     };
+  };
+
+  // Check if form has any data (to conditionally show Start Fresh button)
+  const hasFormData = () => {
+    const nonEmptyFields = ['projectName', 'rfaNumber', 'agentNumber', 'projectContainer', 'rfaType', 'regionalTeam'];
+    return nonEmptyFields.some(field => formData[field] && formData[field].toString().trim() !== '');
+  };
+
+  // Handle manual wizard reset with confirmation
+  const handleStartFresh = () => {
+    if (!hasFormData()) {
+      // If form is already empty, just show a message
+      alert('✨ Form is already clear and ready for new project creation!');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      '🗑️ Clear all form data?\n\nThis will reset all fields and start fresh. This action cannot be undone.\n\nAre you sure you want to continue?'
+    );
+    
+    if (confirmed && onWizardReset) {
+      onWizardReset();
+      
+      // Show success feedback
+      setTimeout(() => {
+        alert('✅ Form cleared successfully! Ready to create a new project.');
+      }, 100);
+    }
   };
 
   // ENHANCED: Advanced Agile import functionality with detailed feedback
@@ -582,6 +611,15 @@ const ProjectWizardStep1 = ({
                   📋 Import From Agile
                 </>
               )}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleStartFresh}
+              disabled={isPasting}
+              className="btn btn-outline start-fresh-btn"
+            >
+              🗑️ Start Fresh
             </button>
             
             <div className="import-help">
