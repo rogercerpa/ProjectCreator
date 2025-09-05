@@ -14,7 +14,8 @@ const ProjectWizardStep2 = ({
   errors = {},
   onFieldError,
   onFieldTouch,
-  onValidationChange
+  onValidationChange,
+  onNavigateToSettings
 }) => {
   // Simple state - no complex optimizations
   const [triageResults, setTriageResults] = useState(null);
@@ -101,39 +102,25 @@ const ProjectWizardStep2 = ({
           </div>
         </div>
 
-        {/* DIRECT COPY: Current Settings Display from ProjectForm.jsx lines 795-828 */}
+        {/* Settings Button */}
         <div className="triage-subsection">
-          <h4>Current Calculation Settings</h4>
-          <div className="settings-display">
-            <div className="settings-grid">
-              <div className="setting-item">
-                <strong>LMP Multipliers:</strong>
-                <span>Small: {triageCalculationService.getSettings().lmpMultipliers.small} min</span>
-                <span>Medium: {triageCalculationService.getSettings().lmpMultipliers.medium} min</span>
-                <span>Large: {triageCalculationService.getSettings().lmpMultipliers.large} min</span>
-              </div>
-              <div className="setting-item">
-                <strong>ARP Multipliers:</strong>
-                <span>ARP8: {triageCalculationService.getSettings().arpMultipliers.arp8} min</span>
-                <span>ARP16: {triageCalculationService.getSettings().arpMultipliers.arp16} min</span>
-                <span>ARP32: {triageCalculationService.getSettings().arpMultipliers.arp32} min</span>
-                <span>ARP48: {triageCalculationService.getSettings().arpMultipliers.arp48} min</span>
-              </div>
-              <div className="setting-item">
-                <strong>Room Multipliers:</strong>
-                <span>Layout: {triageCalculationService.getSettings().roomMultiplier} min/room</span>
-                <span>Riser: {triageCalculationService.getSettings().riserMultiplier} min/room</span>
-              </div>
-              <div className="setting-item">
-                <strong>Defaults:</strong>
-                <span>Review Setup: {triageCalculationService.getSettings().defaultReviewSetup} hr</span>
-                <span>SOO: {triageCalculationService.getSettings().defaultSOO} hr</span>
-                <span>Pages: {triageCalculationService.getSettings().defaultNumOfPages}</span>
-              </div>
-            </div>
-            <div className="settings-note">
-              <small>💡 These values can be adjusted in the Settings page</small>
-            </div>
+          <div className="settings-button-container">
+            <button
+              type="button"
+              onClick={() => {
+                if (onNavigateToSettings) {
+                  onNavigateToSettings('triage-calc');
+                } else {
+                  console.warn('Navigation function not provided');
+                }
+              }}
+              className="btn btn-outline settings-btn"
+            >
+              ⚙️ Triage Calculation Settings
+            </button>
+            <p className="settings-description">
+              Configure multipliers, defaults, and calculation parameters
+            </p>
           </div>
         </div>
 

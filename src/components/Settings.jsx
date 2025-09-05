@@ -7,8 +7,8 @@ import { getFullVersionInfo, getVersionDisplay, BUILD_INFO } from '../utils/vers
 // Access secure electron API through contextBridge
 const { electronAPI } = window;
 
-function Settings() {
-  const [activeTab, setActiveTab] = useState('app-info');
+function Settings({ initialTab = 'app-info' }) {
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [settings, setSettings] = useState({
     rfaTypes: ['BOM (No Layout)', 'BOM with Layout', 'Controls BOM - Budget', 'Controls BOM - Layout', 'BUDGET', 'LAYOUT', 'SUBMITTAL', 'RELEASE', 'GRAPHICS', 'PHOTOMETRICS', 'Consultation'],
     regionalTeams: ['Region 1', 'Region 2', 'Region 3', 'Region 4', 'Region 5', 'NAVS'],

@@ -25,6 +25,7 @@ const ProjectWizard = ({
   onProjectUpdated, 
   onCancel,
   onWizardReset,
+  onNavigateToSettings,
   existingProject = null,
   mode = 'create' // 'create' or 'edit'
 }) => {
@@ -123,6 +124,11 @@ const ProjectWizard = ({
     }, 50); // Small delay to ensure formData reset completes first
     
   }, [wizard, projectDraft, onWizardReset]);
+
+  // Auto-scroll to top when step changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [wizard.currentStep]);
 
   // Handle step navigation with enhanced error handling
   const handleNext = useCallback(async () => {
@@ -480,6 +486,7 @@ const ProjectWizard = ({
               onValidationChange={(isValid, errors) => {
                 wizard.setStepValidation(2, isValid, errors);
               }}
+              onNavigateToSettings={onNavigateToSettings}
             />
           </WizardErrorBoundary>
         );
@@ -557,7 +564,10 @@ const ProjectWizard = ({
         <div className="nav-left">
           {wizard.canGoToPrevious() && (
             <button
-              onClick={wizard.previousStep}
+              onClick={() => {
+                wizard.previousStep();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
               disabled={isLoading}
               className="btn btn-secondary"
             >
@@ -576,21 +586,43 @@ const ProjectWizard = ({
 
         <div className="nav-center">
           <div className="step-progress">
-            {Array.from({ length: 3 }, (_, i) => (
-              <div
-                key={i + 1}
-                className={`progress-step ${
-                  i + 1 === wizard.currentStep ? 'active' : ''
-                } ${
-                  wizard.isStepCompleted(i + 1) ? 'completed' : ''
-                } ${
-                  wizard.isStepAccessible(i + 1) ? 'accessible' : ''
-                }`}
-                onClick={() => wizard.isStepAccessible(i + 1) && wizard.goToStep(i + 1)}
-              >
-                {i + 1}
-              </div>
-            ))}
+            {Array.from({ length: 3 }, (_, i) => {
+              const stepNumber = i + 1;
+              const stepTitles = ['Basic Info', 'Triage Calc', 'Management'];
+              const stepStatuses = ['Project Details', 'Time Calculation', 'Project Setup'];
+              const isActive = stepNumber === wizard.currentStep;
+              const isCompleted = wizard.isStepCompleted(stepNumber);
+              const isAccessible = wizard.isStepAccessible(stepNumber);
+              
+              return (
+                <div
+                  key={stepNumber}
+                  className={`progress-step ${
+                    isActive ? 'active' : ''
+                  } ${
+                    isCompleted ? 'completed' : ''
+                  } ${
+                    isAccessible ? 'accessible' : ''
+                  }`}
+                  onClick={() => {
+                    if (isAccessible) {
+                      wizard.goToStep(stepNumber);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                  }}
+                >
+                  <div className="step-circle">
+                    {isCompleted ? '✓' : stepNumber}
+                  </div>
+                  <div className="step-label">
+                    {stepTitles[i]}
+                  </div>
+                  <div className="step-status">
+                    {isCompleted ? 'Complete' : isActive ? 'Current' : 'Pending'}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 

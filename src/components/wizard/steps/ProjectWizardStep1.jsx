@@ -585,16 +585,24 @@ const ProjectWizardStep1 = ({
   };
 
   return (
-    <WizardLayout
-      title="Project General Information"
-      subtitle="Import from Agile or fill in the basic project details"
-      step={1}
-      totalSteps={3}
-    >
-      <div className="wizard-step-content">
-        {/* Enhanced Import Actions */}
-        <div className="import-actions">
-          <div className="import-primary">
+    <div className="wizard-layout">
+      {/* Unified Modern Header with Import Actions */}
+      <div className="unified-header">
+        {/* Header Info - Top Section */}
+        <div className="header-info">
+          <div className="step-badge">
+            <span className="step-badge-number">1</span>
+            <span className="step-badge-divider">of</span>
+            <span className="step-badge-total">3</span>
+          </div>
+          
+          <h2 className="step-title">Project General Information</h2>
+          <p className="step-subtitle">Import from Agile or fill in the basic project details</p>
+        </div>
+
+        {/* Header Actions - Bottom Section */}
+        <div className="header-actions">
+          <div className="action-group left-action">
             <button
               type="button"
               onClick={handlePasteRFAInfo}
@@ -612,7 +620,15 @@ const ProjectWizardStep1 = ({
                 </>
               )}
             </button>
+            
+            <div className="action-help">
+              <span className="help-text">
+                💡 Copy RFA details from Agile and click import to auto-fill fields
+              </span>
+            </div>
+          </div>
 
+          <div className="action-group right-action">
             <button
               type="button"
               onClick={handleStartFresh}
@@ -621,42 +637,40 @@ const ProjectWizardStep1 = ({
             >
               🗑️ Start Fresh
             </button>
-            
-            <div className="import-help">
-              <span className="help-text">
-                💡 Copy RFA details from Agile and click import to auto-fill fields
+          </div>
+        </div>
+        
+        {importedFields.length > 0 && (
+          <div className="import-feedback">
+            <div className="feedback-content">
+              <span className="import-success">
+                ✅ {importedFields.length} fields imported successfully
               </span>
+              <div className="imported-field-list">
+                <strong>Imported:</strong>
+                <span className="field-names">
+                  {importedFields.slice(0, 3).map(field => 
+                    field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())
+                  ).join(', ')}
+                  {importedFields.length > 3 && ` and ${importedFields.length - 3} more`}
+                </span>
+              </div>
+            </div>
+            <div className="feedback-actions">
+              <button
+                type="button"
+                onClick={clearImportedHighlight}
+                className="btn btn-outline btn-small"
+              >
+                Clear Highlighting
+              </button>
             </div>
           </div>
-          
-          {importedFields.length > 0 && (
-            <div className="import-feedback">
-              <div className="feedback-content">
-                <span className="import-success">
-                  ✅ {importedFields.length} fields imported successfully
-                </span>
-                <div className="imported-field-list">
-                  <strong>Imported:</strong>
-                  <span className="field-names">
-                    {importedFields.slice(0, 3).map(field => 
-                      field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())
-                    ).join(', ')}
-                    {importedFields.length > 3 && ` and ${importedFields.length - 3} more`}
-                  </span>
-                </div>
-              </div>
-              <div className="feedback-actions">
-                <button
-                  type="button"
-                  onClick={clearImportedHighlight}
-                  className="btn btn-outline btn-small"
-                >
-                  Clear Highlighting
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+        )}
+      </div>
+
+      <div className="wizard-content">
+        <div className="wizard-step-content">
 
         {/* PRESERVED: Exact form structure from ProjectForm.jsx lines 513-788 */}
         <div className="form-section">
@@ -1043,8 +1057,9 @@ const ProjectWizardStep1 = ({
             )}
           </div>
         </div>
+        </div>
       </div>
-    </WizardLayout>
+    </div>
   );
 };
 

@@ -22,6 +22,7 @@ function App() {
   const [currentView, setCurrentView] = useState('welcome');
   const [currentProject, setCurrentProject] = useState(null);
   const [projects, setProjects] = useState([]);
+  const [settingsTab, setSettingsTab] = useState('triage-calc');
   
   // Draft recovery state
   const [showDraftRecovery, setShowDraftRecovery] = useState(false);
@@ -381,6 +382,10 @@ function App() {
                   onProjectUpdated={handleProjectUpdated}
                   onCancel={() => setCurrentView('welcome')}
                   onWizardReset={handleWizardReset}
+                  onNavigateToSettings={(tab = 'triage-calc') => {
+                    setSettingsTab(tab);
+                    setCurrentView('settings');
+                  }}
                 />
               </div>
             );
@@ -457,7 +462,7 @@ function App() {
             />
           );
         case 'settings':
-          return <Settings />;
+          return <Settings initialTab={settingsTab} />;
         case 'welcome':
         default:
           return (
