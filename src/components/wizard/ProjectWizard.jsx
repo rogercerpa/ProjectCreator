@@ -232,40 +232,20 @@ const ProjectWizard = ({
         }
       }
       
-      // Special handling for Step 2 - Complete triage calculations
+      // Special handling for Step 2 - Just validate and prepare for Step 3
       if (wizard.currentStep === 2) {
         operationContext = 'step2-completion';
         try {
-          // Inline step 2 completion logic to avoid circular dependencies
-          setNotification({
-            type: 'info',
-            message: 'Finalizing project with triage calculations...'
-          });
-
-          const completeProject = {
-            ...formData,
-            updatedAt: new Date().toISOString(),
-            status: 'active',
-            completionStep: 2,
-            sourceType: 'wizard'
-          };
-
-          if (mode === 'create' && typeof onProjectCreated === 'function') {
-            onProjectCreated(completeProject);
-          } else if (typeof onProjectUpdated === 'function') {
-            onProjectUpdated(completeProject);
-          }
-
           setNotification({
             type: 'success',
-            message: '🎉 Triage calculations completed! Proceeding to project management.'
+            message: '🎉 Triage calculations completed! Proceeding to project management setup.'
           });
         } catch (step2Error) {
           console.error('Step 2 completion failed:', step2Error);
-          setError('Failed to finalize triage calculations. Please try again.');
+          setError('Failed to complete step 2. Please try again.');
           setNotification({
             type: 'error',
-            message: 'Unable to complete triage calculations. Please verify your data and try again.'
+            message: 'Unable to complete step 2. Please verify your data and try again.'
           });
           return; // Don't proceed if step 2 fails
         }
@@ -659,20 +639,25 @@ const ProjectWizard = ({
           ) : (
             <button
               onClick={() => {
-                // Complete the wizard and redirect to project management
-                if (onProjectUpdated) {
-                  onProjectUpdated({
-                    ...formData,
-                    status: 'active',
-                    completionStep: 3,
-                    updatedAt: new Date().toISOString()
-                  });
+                // Complete the wizard and create/update project
+                const completeProject = {
+                  ...formData,
+                  status: 'active',
+                  completionStep: 3,
+                  updatedAt: new Date().toISOString(),
+                  sourceType: 'wizard'
+                };
+
+                if (mode === 'create' && typeof onProjectCreated === 'function') {
+                  onProjectCreated(completeProject);
+                } else if (typeof onProjectUpdated === 'function') {
+                  onProjectUpdated(completeProject);
                 }
               }}
               disabled={isLoading}
               className="btn btn-primary"
             >
-              Complete Project
+              Complete & Manage Project
             </button>
           )}
         </div>

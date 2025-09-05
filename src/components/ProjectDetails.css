@@ -1,0 +1,322 @@
+/* ProjectDetails.css - Styling for the read-only project details view */
+
+.project-details {
+  padding: 30px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Section styling */
+.details-section {
+  background: white;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  padding: 24px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.section-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #212529;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.details-section h2 {
+  margin: 0 0 20px 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #212529;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.details-section h3 {
+  margin: 16px 0 12px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #495057;
+}
+
+/* Grid layouts */
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detail-item label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #6c757d;
+  margin: 0;
+}
+
+.detail-item span {
+  font-size: 15px;
+  color: #212529;
+  padding: 8px 0;
+  border-bottom: 1px solid #f8f9fa;
+}
+
+/* Status badges */
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.status-badge.active {
+  background: #d1e7dd;
+  color: #0f5132;
+}
+
+.status-badge.completed {
+  background: #cff4fc;
+  color: #055160;
+}
+
+.status-badge.on-hold {
+  background: #fff3cd;
+  color: #664d03;
+}
+
+.status-badge.cancelled {
+  background: #f8d7da;
+  color: #842029;
+}
+
+/* Triage specific styling */
+.triage-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.triage-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border-left: 4px solid #0d6efd;
+}
+
+.triage-total label {
+  font-size: 16px;
+  font-weight: 600;
+  color: #495057;
+  margin: 0;
+}
+
+.triage-hours {
+  font-size: 24px;
+  font-weight: 700;
+  color: #0d6efd;
+}
+
+.breakdown-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.breakdown-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #f8f9fa;
+  border-radius: 6px;
+}
+
+.breakdown-item.total {
+  background: #e7f3ff;
+  border: 1px solid #b6d7ff;
+  font-weight: 600;
+}
+
+.breakdown-label {
+  font-size: 14px;
+  color: #6c757d;
+}
+
+.breakdown-value {
+  font-size: 14px;
+  font-weight: 500;
+  color: #212529;
+}
+
+.config-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.config-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.config-item span:first-child {
+  font-size: 14px;
+  color: #6c757d;
+}
+
+.config-item span:last-child {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.config-item span.enabled {
+  color: #198754;
+}
+
+.config-item span.disabled {
+  color: #6c757d;
+}
+
+/* Panel details */
+.panel-details {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.panel-group {
+  background: #f8f9fa;
+  padding: 16px;
+  border-radius: 8px;
+}
+
+.panel-group h3 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #495057;
+  text-transform: uppercase;
+}
+
+.panel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.panel-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: white;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.panel-item span:first-child {
+  color: #6c757d;
+}
+
+.panel-item span:last-child {
+  font-weight: 500;
+  color: #212529;
+}
+
+/* Layout and submittal details */
+.layout-details,
+.submittal-details {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+}
+
+/* Button styles */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-outline {
+  background: transparent;
+  color: #0d6efd;
+  border: 1px solid #0d6efd;
+}
+
+.btn-outline:hover {
+  background: #0d6efd;
+  color: white;
+}
+
+.btn-small {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .project-details {
+    padding: 15px;
+  }
+
+  .details-section {
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .details-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .breakdown-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .panel-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .triage-total {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}

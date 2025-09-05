@@ -3,6 +3,7 @@ import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import ProjectForm from './components/ProjectForm';
 import ProjectWizard from './components/wizard/ProjectWizard';
+import ProjectManagement from './components/ProjectManagement';
 import DraftRecoveryModal from './components/wizard/components/DraftRecoveryModal';
 import MigrationAssistant from './components/wizard/components/MigrationAssistant';
 import Settings from './components/Settings';
@@ -181,7 +182,7 @@ function App() {
   const handleProjectCreated = (project) => {
     setProjects(prev => [project, ...prev]);
     setCurrentProject(project);
-    setCurrentView('welcome');
+    setCurrentView('project-management');
   };
 
   const handleProjectUpdated = (updatedProject) => {
@@ -415,17 +416,26 @@ function App() {
                       <button 
                         onClick={() => {
                           setCurrentProject(project);
-                          setCurrentView('form');
+                          setCurrentView('project-management');
                         }}
                         className="btn btn-secondary"
                       >
-                        Edit Project
+                        Manage Project
                       </button>
                     </div>
                   ))}
                 </div>
               )}
             </div>
+          );
+        case 'project-management':
+          return (
+            <ProjectManagement
+              project={currentProject}
+              onProjectUpdated={handleProjectUpdated}
+              onBack={() => setCurrentView('list')}
+              mode="view"
+            />
           );
         case 'settings':
           return <Settings />;
@@ -594,7 +604,7 @@ function App() {
                         <button 
                           onClick={() => {
                             setCurrentProject(project);
-                            setCurrentView('form');
+                            setCurrentView('project-management');
                           }}
                           className="btn btn-secondary btn-small"
                         >

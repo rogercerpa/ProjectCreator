@@ -1,0 +1,234 @@
+/* ProjectManagement.css - Styling for the main project management interface */
+
+.project-management {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: #f8f9fa;
+}
+
+/* Header */
+.project-management-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 30px;
+  background: white;
+  border-bottom: 1px solid #e9ecef;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.btn-back {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: 1px solid #dee2e6;
+  background: white;
+  color: #6c757d;
+  text-decoration: none;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.btn-back:hover {
+  background: #f8f9fa;
+  border-color: #adb5bd;
+  color: #495057;
+}
+
+.project-title h1 {
+  margin: 0 0 8px 0;
+  font-size: 28px;
+  font-weight: 600;
+  color: #212529;
+}
+
+.project-meta {
+  display: flex;
+  gap: 20px;
+  font-size: 14px;
+  color: #6c757d;
+}
+
+.project-meta span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.project-rfa {
+  font-weight: 500;
+}
+
+.project-status {
+  padding: 4px 8px;
+  border-radius: 12px;
+  background: #e7f3e7;
+  color: #2d5a2d;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.project-triage {
+  font-weight: 500;
+  color: #0d6efd;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.notification {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.notification.success {
+  background: #d1e7dd;
+  color: #0f5132;
+  border: 1px solid #badbcc;
+}
+
+.notification.error {
+  background: #f8d7da;
+  color: #842029;
+  border: 1px solid #f5c2c7;
+}
+
+.edit-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* Unsaved changes banner */
+.unsaved-changes-banner {
+  background: #fff3cd;
+  color: #664d03;
+  padding: 12px 30px;
+  border-bottom: 1px solid #f0e68c;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Main content */
+.project-management-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+
+/* Error state */
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 400px;
+  text-align: center;
+  color: #6c757d;
+}
+
+.error-state h2 {
+  margin-bottom: 16px;
+  color: #dc3545;
+}
+
+.error-state p {
+  margin-bottom: 24px;
+  font-size: 16px;
+}
+
+/* Button styles */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: #0d6efd;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #0b5ed7;
+}
+
+.btn-secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #5c636a;
+}
+
+.btn-outline {
+  background: transparent;
+  color: #0d6efd;
+  border: 1px solid #0d6efd;
+}
+
+.btn-outline:hover:not(:disabled) {
+  background: #0d6efd;
+  color: white;
+}
+
+.btn-small {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .project-management-header {
+    flex-direction: column;
+    gap: 15px;
+    align-items: flex-start;
+    padding: 15px 20px;
+  }
+
+  .header-left {
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .project-meta {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .edit-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .unsaved-changes-banner {
+    padding: 10px 20px;
+  }
+}
