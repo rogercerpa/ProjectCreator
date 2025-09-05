@@ -2,9 +2,18 @@ import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import ProjectForm from './components/ProjectForm';
+import ProjectWizard from './components/wizard/ProjectWizard';
+import DraftRecoveryModal from './components/wizard/components/DraftRecoveryModal';
+import MigrationAssistant from './components/wizard/components/MigrationAssistant';
 import Settings from './components/Settings';
+import featureFlagService from './services/FeatureFlagService';
 import { getFullVersionInfo, getVersionDisplay } from './utils/version';
 import './App.css';
+
+// Import draft service for enhanced recovery
+const ProjectDraftService = window.electron ? 
+  window.electron.require('./src/services/ProjectDraftService') : 
+  null;
 
 function App() {
   
@@ -12,6 +21,16 @@ function App() {
   const [currentView, setCurrentView] = useState('welcome');
   const [currentProject, setCurrentProject] = useState(null);
   const [projects, setProjects] = useState([]);
+  
+  // Draft recovery state
+  const [showDraftRecovery, setShowDraftRecovery] = useState(false);
+  const [draftService] = useState(() => ProjectDraftService ? new ProjectDraftService() : null);
+  const [hasDrafts, setHasDrafts] = useState(false);
+  
+  // Migration and feature flag state
+  const [showMigrationAssistant, setShowMigrationAssistant] = useState(false);
+  const [userInterfacePreference, setUserInterfacePreference] = useState(null);
+  const [isFirstVisit, setIsFirstVisit] = useState(false);
   const [formData, setFormData] = useState({
     projectName: '',
     rfaNumber: '',
@@ -81,6 +100,41 @@ function App() {
         // Simulate app initialization
         await new Promise(resolve => setTimeout(resolve, 1000));
         
+        // Check if this is the user's first visit
+        const hasVisitedBefore = localStorage.getItem('app-visited') === 'true';
+        setIsFirstVisit(!hasVisitedBefore);
+        
+        if (!hasVisitedBefore) {
+          localStorage.setItem('app-visited', 'true');
+          localStorage.setItem('user-join-date', new Date().toISOString());
+        }
+        
+        // Load user interface preference
+        const savedPreference = localStorage.getItem('interface-preference');
+        setUserInterfacePreference(savedPreference);
+        
+        // Check for existing drafts
+        if (draftService) {
+          try {
+            const allDrafts = await draftService.getAllDrafts();
+            setHasDrafts(allDrafts.length > 0);
+          } catch (error) {
+            console.warn('Error checking drafts:', error);
+          }
+        }
+        
+        // Determine if migration assistant should be shown
+        const shouldShowAssistant = featureFlagService.shouldShowMigrationAssistant() && 
+                                   !hasVisitedBefore && 
+                                   !savedPreference;
+        
+        if (shouldShowAssistant) {
+          // Show migration assistant after a brief delay
+          setTimeout(() => {
+            setShowMigrationAssistant(true);
+          }, 2000);
+        }
+        
         // Ensure form data is properly initialized with default values
         setFormData(prevFormData => ({
           ...prevFormData,
@@ -120,7 +174,7 @@ function App() {
     };
 
     initializeApp();
-  }, []);
+  }, [draftService]);
 
 
 
@@ -204,10 +258,127 @@ function App() {
     setCurrentView(view);
   };
 
+  // Draft recovery handlers
+  const handleResumeDraft = (draft) => {
+    try {
+      // Load draft data into form
+      setFormData(draft.formData);
+      setCurrentProject(null); // Clear any existing project
+      
+      // Navigate to wizard and go to the appropriate step
+      setCurrentView('wizard');
+      
+      console.log('Resumed draft:', draft.id, 'at step', draft.currentStep);
+    } catch (error) {
+      console.error('Error resuming draft:', error);
+    }
+  };
+
+  const handleDeleteDraft = (draftId) => {
+    // Refresh draft count after deletion
+    if (draftService) {
+      draftService.getAllDrafts().then(drafts => {
+        setHasDrafts(drafts.length > 0);
+      }).catch(error => {
+        console.warn('Error refreshing draft count:', error);
+      });
+    }
+  };
+
+  // Migration assistant handlers
+  const handleInterfaceSelection = (selectedInterface, remember) => {
+    setUserInterfacePreference(selectedInterface);
+    
+    if (remember) {
+      localStorage.setItem('interface-preference', selectedInterface);
+    }
+    
+    // Navigate to the selected interface
+    if (selectedInterface === 'wizard') {
+      setCurrentView('wizard');
+    } else if (selectedInterface === 'classic') {
+      setCurrentView('form');
+    }
+    
+    console.log(`User selected interface: ${selectedInterface}, remember: ${remember}`);
+  };
+
+  // Smart view change handler that respects feature flags
+  const handleSmartViewChange = (view) => {
+    // If trying to access wizard or form, check feature flags and preferences
+    if (view === 'form' || view === 'wizard') {
+      
+      // Check if wizard is forced
+      if (featureFlagService.isWizardForced() && view === 'form') {
+        setCurrentView('wizard');
+        return;
+      }
+      
+      // Check if classic form is disabled
+      if (!featureFlagService.isWizardEnabled() && view === 'wizard') {
+        setCurrentView('form');
+        return;
+      }
+      
+      // Use default interface preference if no specific view requested
+      if (view === 'form' && featureFlagService.isWizardDefault() && userInterfacePreference !== 'classic') {
+        setCurrentView('wizard');
+        return;
+      }
+    }
+    
+    setCurrentView(view);
+  };
+
+  // Get recommended interface for new project creation
+  const getRecommendedInterface = () => {
+    // Check feature flags first
+    if (featureFlagService.isWizardForced()) return 'wizard';
+    if (!featureFlagService.isWizardEnabled()) return 'form';
+    
+    // Use user preference if set
+    if (userInterfacePreference) {
+      return userInterfacePreference === 'wizard' ? 'wizard' : 'form';
+    }
+    
+    // Use feature flag default
+    if (featureFlagService.isWizardDefault()) return 'wizard';
+    
+    return 'form'; // Fallback to classic
+  };
+
   // Render main content based on current view
   const renderMainContent = () => {
     try {
       switch (currentView) {
+        case 'wizard':
+          try {
+            return (
+              <div className="wizard-wrapper">
+                <ProjectWizard
+                  mode={currentProject ? 'edit' : 'create'}
+                  existingProject={currentProject}
+                  onProjectCreated={handleProjectCreated}
+                  onProjectUpdated={handleProjectUpdated}
+                  onCancel={() => setCurrentView('welcome')}
+                />
+              </div>
+            );
+          } catch (error) {
+            console.error('Error rendering ProjectWizard:', error);
+            return (
+              <div className="wizard-error">
+                <h2>⚠️ Wizard Error</h2>
+                <p>Unable to load the Project Wizard. Error: {error.message}</p>
+                <button onClick={() => setCurrentView('welcome')} className="btn btn-secondary">
+                  Go Back to Welcome
+                </button>
+                <button onClick={() => window.location.reload()} className="btn btn-primary">
+                  Reload Application
+                </button>
+              </div>
+            );
+          }
         case 'form':
           return (
             <ProjectForm
@@ -326,25 +497,87 @@ function App() {
 
               <div className="quick-actions">
                 <h2>🚀 Get Started</h2>
+                
+                {/* Draft Recovery Section */}
+                {hasDrafts && (
+                  <div className="draft-recovery-section">
+                    <div className="recovery-banner">
+                      <div className="recovery-content">
+                        <span className="recovery-icon">📋</span>
+                        <div className="recovery-text">
+                          <h3>Continue Your Work</h3>
+                          <p>You have unfinished projects that can be resumed</p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => setShowDraftRecovery(true)}
+                        className="btn btn-primary recovery-btn"
+                      >
+                        📖 Resume Projects
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
                 <div className="action-buttons">
                   <button 
-                    onClick={() => setCurrentView('form')}
-                    className="btn btn-primary btn-large"
+                    onClick={() => handleSmartViewChange(getRecommendedInterface())}
+                    className={`btn btn-large ${getRecommendedInterface() === 'wizard' ? 'btn-primary featured-btn' : 'btn-secondary'}`}
                   >
-                    ✨ Create New Project
+                    {getRecommendedInterface() === 'wizard' ? '🧙‍♂️ Start Project Wizard' : '📝 Start Project Form'}
+                    <span className="btn-subtitle">
+                      {getRecommendedInterface() === 'wizard' 
+                        ? 'Recommended: Guided step-by-step setup' 
+                        : 'Quick project creation'
+                      }
+                    </span>
                   </button>
+                  
+                  {featureFlagService.isWizardEnabled() && getRecommendedInterface() !== 'wizard' && (
+                    <button 
+                      onClick={() => handleSmartViewChange('wizard')}
+                      className="btn btn-secondary btn-large"
+                    >
+                      🧙‍♂️ Try Project Wizard
+                      <span className="btn-subtitle">Enhanced guided experience</span>
+                    </button>
+                  )}
+                  
+                  {getRecommendedInterface() !== 'form' && !featureFlagService.isWizardForced() && (
+                    <button 
+                      onClick={() => handleSmartViewChange('form')}
+                      className="btn btn-secondary btn-large"
+                    >
+                      📝 Advanced Form
+                      <span className="btn-subtitle">For experienced users</span>
+                    </button>
+                  )}
+                  
                   <button 
                     onClick={() => setCurrentView('list')}
                     className="btn btn-secondary btn-large"
                   >
                     📋 View Projects ({projects.length})
+                    <span className="btn-subtitle">Manage existing projects</span>
                   </button>
+                  
                   <button 
                     onClick={() => setCurrentView('settings')}
                     className="btn btn-secondary btn-large"
                   >
                     ⚙️ Application Settings
+                    <span className="btn-subtitle">Configure preferences</span>
                   </button>
+                  
+                  {(isFirstVisit || !userInterfacePreference) && featureFlagService.shouldShowMigrationAssistant() && (
+                    <button 
+                      onClick={() => setShowMigrationAssistant(true)}
+                      className="btn btn-tertiary btn-large"
+                    >
+                      🔄 Interface Tour
+                      <span className="btn-subtitle">Learn about the enhanced experience</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -444,13 +677,35 @@ function App() {
       <div className="app-container">
         <Sidebar
           currentView={currentView}
-          onViewChange={handleViewChange}
+          onViewChange={handleSmartViewChange}
           projectCount={projects.length}
         />
         <main className="main-content">
           {renderMainContent()}
         </main>
       </div>
+      
+      {/* Draft Recovery Modal */}
+      {showDraftRecovery && (
+        <DraftRecoveryModal
+          isOpen={showDraftRecovery}
+          onClose={() => setShowDraftRecovery(false)}
+          onResumeDraft={handleResumeDraft}
+          onDeleteDraft={handleDeleteDraft}
+          draftService={draftService}
+        />
+      )}
+      
+      {/* Migration Assistant */}
+      {showMigrationAssistant && (
+        <MigrationAssistant
+          isOpen={showMigrationAssistant}
+          onClose={() => setShowMigrationAssistant(false)}
+          onSelectInterface={handleInterfaceSelection}
+          currentInterface={currentView}
+          showComparison={true}
+        />
+      )}
     </div>
   );
 }

@@ -10,10 +10,16 @@ function Sidebar({ currentView, onViewChange, projectCount }) {
       description: 'Get started'
     },
     {
+      id: 'wizard',
+      label: 'Project Wizard',
+      icon: '🧙‍♂️',
+      description: 'Guided setup'
+    },
+    {
       id: 'form',
       label: 'Project Form',
       icon: '📝',
-      description: 'Create projects'
+      description: 'Advanced editor'
     },
     {
       id: 'list',

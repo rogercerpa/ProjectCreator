@@ -290,12 +290,147 @@
   padding: 1rem 2rem;
   font-size: 1.1rem;
   min-width: 180px;
+  flex-direction: column;
+  align-items: stretch;
+  text-align: left;
 }
 
 .btn-small {
   padding: 0.5rem 1rem;
   font-size: 0.9rem;
   min-width: 100px;
+}
+
+/* Enhanced Button Styles for Wizard Integration */
+.btn-subtitle {
+  font-size: 0.85rem;
+  font-weight: 400;
+  opacity: 0.8;
+  margin-top: 0.5rem;
+  display: block;
+  line-height: 1.3;
+}
+
+.featured-btn {
+  position: relative;
+  background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+  box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3);
+  border: 2px solid transparent;
+  animation: featuredPulse 3s ease-in-out infinite;
+}
+
+.featured-btn:hover {
+  background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%);
+  box-shadow: 0 6px 16px rgba(25, 118, 210, 0.4);
+  transform: translateY(-2px);
+}
+
+.featured-btn::before {
+  content: "✨ NEW";
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #ff9800;
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+@keyframes featuredPulse {
+  0%, 100% { box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3); }
+  50% { box-shadow: 0 4px 20px rgba(25, 118, 210, 0.5); }
+}
+
+/* Draft Recovery Section */
+.draft-recovery-section {
+  margin: 2rem 0;
+  padding: 0;
+}
+
+.recovery-banner {
+  background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+  border: 2px solid #ff9800;
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 4px 12px rgba(255, 152, 0, 0.2);
+  animation: slideInFromTop 0.5s ease-out;
+}
+
+@keyframes slideInFromTop {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.recovery-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+}
+
+.recovery-icon {
+  font-size: 2rem;
+  background: white;
+  border-radius: 50%;
+  padding: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.recovery-text h3 {
+  margin: 0 0 4px 0;
+  color: #e65100;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.recovery-text p {
+  margin: 0;
+  color: #bf360c;
+  font-size: 14px;
+}
+
+.recovery-btn {
+  background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(255, 152, 0, 0.3);
+}
+
+.recovery-btn:hover {
+  background: linear-gradient(135deg, #f57c00 0%, #ef6c00 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 152, 0, 0.4);
+}
+
+/* Tertiary Button Style for Migration Assistant */
+.btn.btn-tertiary {
+  background: none;
+  color: #1976d2;
+  border: 2px solid #1976d2;
+}
+
+.btn.btn-tertiary:hover {
+  background: #1976d2;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3);
 }
 
 /* Recent Projects */

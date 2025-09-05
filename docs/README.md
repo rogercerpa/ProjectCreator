@@ -1,6 +1,6 @@
 # Project Creator
 
-A modern Electron-based desktop application for creating and managing projects, developed for Acuity Brands, Inc.
+A modern Electron-based desktop application for creating and managing projects, developed for Roger Cerpa.
 
 ## Features
 
