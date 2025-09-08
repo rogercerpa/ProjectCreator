@@ -125,9 +125,8 @@ const Phase5EnhancedFeaturesTest = () => {
         try {
           // Test progress indicator functionality
           const testSteps = [
-            { title: 'Step 1', subtitle: 'Basic Info' },
-            { title: 'Step 2', subtitle: 'Triage' },
-            { title: 'Step 3', subtitle: 'Management' }
+            { title: 'Step 1', subtitle: 'Project Setup' },
+            { title: 'Step 2', subtitle: 'Triage & Complete' }
           ];
           
           // Simulate progress states

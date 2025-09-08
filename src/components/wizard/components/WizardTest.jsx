@@ -105,17 +105,17 @@ const WizardTest = () => {
       const progress = wizard.progress();
       addTestResult(
         'useWizardState - Progress Calculation',
-        progress.current === 2 && progress.total === 3,
+        progress.current === 2 && progress.total === 2,
         `Progress: ${progress.current}/${progress.total} (${progress.percentage}%)`
       );
 
       // Test 9: Step Accessibility
       const step1Accessible = wizard.isStepAccessible(1);
-      const step3Accessible = wizard.isStepAccessible(3);
+      const step2Accessible = wizard.isStepAccessible(2);
       addTestResult(
         'useWizardState - Step Accessibility',
-        step1Accessible === true && step3Accessible === false,
-        `Step 1: ${step1Accessible}, Step 3: ${step3Accessible}`
+        step1Accessible === true && step2Accessible === false,
+        `Step 1: ${step1Accessible}, Step 2: ${step2Accessible}`
       );
 
       // Test 10: Reset Functionality
@@ -220,9 +220,9 @@ const WizardTest = () => {
             <strong>Horizontal Progress:</strong>
             <WizardProgress
               currentStep={wizard.currentStep}
-              totalSteps={3}
+              totalSteps={2}
               completedSteps={wizard.completedSteps}
-              stepTitles={['Basic Info', 'Triage Calc', 'Project Mgmt']}
+              stepTitles={['Project Setup', 'Triage & Complete']}
               variant="horizontal"
             />
           </div>
@@ -231,7 +231,7 @@ const WizardTest = () => {
             <strong>Compact Progress:</strong>
             <CompactProgress
               currentStep={wizard.currentStep}
-              totalSteps={3}
+              totalSteps={2}
               completedSteps={wizard.completedSteps}
             />
           </div>
@@ -239,9 +239,8 @@ const WizardTest = () => {
           <div style={{ marginBottom: '15px' }}>
             <strong>Step Status Badges:</strong>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              <StepStatusBadge stepNumber={1} isCompleted={wizard.isStepCompleted(1)} title="Basic Info" />
-              <StepStatusBadge stepNumber={2} isActive={wizard.currentStep === 2} title="Triage" />
-              <StepStatusBadge stepNumber={3} title="Management" />
+              <StepStatusBadge stepNumber={1} isCompleted={wizard.isStepCompleted(1)} title="Project Setup" />
+              <StepStatusBadge stepNumber={2} isActive={wizard.currentStep === 2} title="Triage & Complete" />
             </div>
           </div>
         </div>
@@ -251,12 +250,12 @@ const WizardTest = () => {
           <h4>Navigation Component:</h4>
           <WizardNavigation
             currentStep={wizard.currentStep}
-            totalSteps={3}
+            totalSteps={2}
             canGoToPrevious={wizard.canGoToPrevious()}
             canProceedToNext={wizard.canProceedToNext()}
             isLoading={false}
             completedSteps={wizard.completedSteps}
-            accessibleSteps={[1, 2, 3].filter(step => wizard.isStepAccessible(step))}
+            accessibleSteps={[1, 2].filter(step => wizard.isStepAccessible(step))}
             {...mockHandlers}
           />
         </div>

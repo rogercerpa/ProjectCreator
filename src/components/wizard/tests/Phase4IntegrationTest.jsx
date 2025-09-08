@@ -179,7 +179,7 @@ const Phase4IntegrationTest = () => {
         const stepProgression = [
           { step: 1, canProceed: true, reason: 'Basic info complete' },
           { step: 2, canProceed: true, reason: 'Triage calculation complete' },
-          { step: 3, canProceed: true, reason: 'Ready for project management' }
+          { step: 2, canProceed: true, reason: 'Ready to complete project creation' }
         ];
 
         const progressionWorking = stepProgression.every(test => test.canProceed);
@@ -225,10 +225,10 @@ const Phase4IntegrationTest = () => {
         const creationSteps = [
           'Step 1: Basic info completion triggers partial save',
           'Step 2: Triage calculation updates draft',
-          'Step 3: Final project creation from draft'
+          'Step 2: Final project creation from draft'
         ];
 
-        const flowComplete = creationSteps.length === 3;
+        const flowComplete = creationSteps.length === 3; // Still 3 steps in the array, but only 2 wizard steps
         
         addTestResult(
           'Project Creation Flow',

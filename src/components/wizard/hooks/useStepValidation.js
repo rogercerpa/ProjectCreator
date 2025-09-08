@@ -75,10 +75,6 @@ const useStepValidation = () => {
         }
       }
     },
-    step3: {
-      required: [],
-      custom: {}
-    }
   }), []);
 
   // Validate a single field

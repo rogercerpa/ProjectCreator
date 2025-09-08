@@ -626,11 +626,11 @@ const ProjectWizardStep1 = ({
           <div className="step-badge">
             <span className="step-badge-number">1</span>
             <span className="step-badge-divider">of</span>
-            <span className="step-badge-total">3</span>
+            <span className="step-badge-total">2</span>
           </div>
           
-          <h2 className="step-title">Project General Information</h2>
-          <p className="step-subtitle">Import from Agile or fill in the basic project details</p>
+          <h2 className="step-title">Project Setup</h2>
+          <p className="step-subtitle">Import from Agile or fill in the basic project details - folders will be created automatically</p>
         </div>
 
         {/* Header Actions - Bottom Section */}
@@ -1046,7 +1046,7 @@ const ProjectWizardStep1 = ({
         {/* Enhanced Progress Summary */}
         <div className="step-summary">
           <div className="summary-header">
-            <h4>Step 1 Progress</h4>
+            <h4>Project Setup Progress</h4>
             <div className="progress-indicator">
               <div className="progress-bar">
                 <div 
@@ -1087,7 +1087,7 @@ const ProjectWizardStep1 = ({
           <div className="validation-feedback">
             {getValidationProgress().complete ? (
               <div className="feedback-success">
-                ✅ All required fields are complete! Ready to proceed to triage calculation.
+                ✅ All required fields are complete! Ready to create project folders and proceed to triage calculation.
               </div>
             ) : (
               <div className="feedback-incomplete">

@@ -81,14 +81,22 @@ const ProjectWizardStep2 = ({
     
     onFormDataChange(updatedFormData);
     setTriageResults(triageCalculationResults);
+    
+    // Mark Step 2 as completed and valid after successful triage calculation
+    if (onValidationChange && triageCalculationResults.totalTriage > 0) {
+      console.log('Step 2: Calling onValidationChange with isValid=true');
+      onValidationChange(true, {}); // Step 2 is now valid and complete
+    } else {
+      console.log('Step 2: onValidationChange not called - onValidationChange:', !!onValidationChange, 'totalTriage:', triageCalculationResults.totalTriage);
+    }
   };
 
   return (
     <WizardLayout
-      title="Project Triage Calculation"
-      subtitle="Configure and calculate the estimated time for this project"
+      title="Triage & Complete"
+      subtitle="Configure calculations and complete project creation"
       step={2}
-      totalSteps={3}
+      totalSteps={2}
     >
       <div className="wizard-step-content">
         {/* Project Context Summary */}
@@ -625,6 +633,11 @@ const ProjectWizardStep2 = ({
                   <span>Buffer Time:</span>
                   <span>{triageResults.fluff.toFixed(1)} hr</span>
                 </div>
+              </div>
+            </div>
+            <div className="triage-completion-status">
+              <div className="completion-indicator">
+                ✅ Triage calculation complete! Ready to create project.
               </div>
             </div>
           </div>

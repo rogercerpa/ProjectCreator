@@ -33,7 +33,7 @@ const ProjectWizard = ({
   // This ensures proper synchronization and persistence across navigation
 
   // Initialize hooks
-  const wizard = useWizardState(formData, 3);
+  const wizard = useWizardState(formData, 2);
   const projectDraft = useProjectDraft(existingProject?.id);
   const stepValidation = useStepValidation();
 
@@ -166,7 +166,7 @@ const ProjectWizard = ({
       // ENHANCED ERROR HANDLING: Step completion with individual error tracking
       stepCompletionAttempted = true;
       
-      // Special handling for Step 1 - Create partial project
+      // Special handling for Step 1 - Create partial project and folders
       if (wizard.currentStep === 1) {
         operationContext = 'step1-completion';
         try {
@@ -184,8 +184,28 @@ const ProjectWizard = ({
 
           if (draftResult.success) {
             setNotification({
+              type: 'info',
+              message: 'Creating project folders and files...'
+            });
+
+            // Create the physical project folder structure
+            const folderCreationResult = await window.electronAPI.projectCreateWithFolders(formData);
+            
+            if (!folderCreationResult.success) {
+              throw new Error(`Failed to create project folder: ${folderCreationResult.error}`);
+            }
+            
+            // Store folder paths in formData for later use
+            onFormDataChange({
+              ...formData,
+              projectPath: folderCreationResult.projectPath,
+              rfaPath: folderCreationResult.rfaPath,
+              agentFilesPath: folderCreationResult.agentFilesPath
+            });
+
+            setNotification({
               type: 'success',
-              message: '✅ Project basics saved! You can safely continue.'
+              message: '✅ Project basics saved and folders created! Ready for triage calculation.'
             });
           } else {
             setNotification({
@@ -195,29 +215,63 @@ const ProjectWizard = ({
           }
         } catch (step1Error) {
           console.error('Step 1 completion failed:', step1Error);
-          setError('Failed to save project basics. Please try again.');
+          setError('Failed to save project basics or create folders. Please try again.');
           setNotification({
             type: 'error',
-            message: 'Unable to save project data. Check your connection and try again.'
+            message: 'Unable to save project data or create folders. Check your connection and try again.'
           });
           return; // Don't proceed if step 1 fails
         }
       }
       
-      // Special handling for Step 2 - Just validate and prepare for Step 3
+      // Special handling for Step 2 - Complete project creation and navigate to management
       if (wizard.currentStep === 2) {
         operationContext = 'step2-completion';
         try {
           setNotification({
-            type: 'success',
-            message: '🎉 Triage calculations completed! Proceeding to project management setup.'
+            type: 'info',
+            message: 'Completing project creation...'
           });
+
+          // Complete the project creation
+          const completeProject = {
+            ...formData,
+            id: Date.now().toString(),
+            status: 'active',
+            completionStep: 2,
+            updatedAt: new Date().toISOString(),
+            sourceType: 'wizard',
+            // Add the physical folder paths to the project (already created in Step 1)
+            projectPath: formData.projectPath,
+            rfaPath: formData.rfaPath,
+            agentFilesPath: formData.agentFilesPath
+          };
+
+          console.log('ProjectWizard: Created complete project object:', completeProject);
+
+          // Navigate to project management
+          if (mode === 'create' && typeof onProjectCreated === 'function') {
+            console.log('ProjectWizard: Calling onProjectCreated with:', completeProject);
+            onProjectCreated(completeProject);
+          } else if (typeof onProjectUpdated === 'function') {
+            console.log('ProjectWizard: Calling onProjectUpdated with:', completeProject);
+            onProjectUpdated(completeProject);
+          }
+
+          setNotification({
+            type: 'success',
+            message: '🎉 Project creation completed! Welcome to project management.'
+          });
+
+          // Don't proceed to next step since we're navigating away
+          return;
+
         } catch (step2Error) {
           console.error('Step 2 completion failed:', step2Error);
-          setError('Failed to complete step 2. Please try again.');
+          setError('Failed to complete project creation. Please try again.');
           setNotification({
             type: 'error',
-            message: 'Unable to complete step 2. Please verify your data and try again.'
+            message: 'Unable to complete project creation. Please verify your data and try again.'
           });
           return; // Don't proceed if step 2 fails
         }
@@ -391,15 +445,6 @@ const ProjectWizard = ({
 
   // Removed step completion functions to eliminate circular dependencies
 
-  // Handle step 3 - Redirect to project management
-  const handleStep3Navigation = useCallback(() => {
-    // Step 3 will redirect to project management page
-    // This is handled in the parent component
-    setNotification({
-      type: 'success',
-      message: 'Project creation completed! Welcome to project management.'
-    });
-  }, []);
 
   // Debounced auto-save functionality to prevent excessive saves
   const [autoSaveTimeout, setAutoSaveTimeout] = useState(null);
@@ -443,12 +488,6 @@ const ProjectWizard = ({
     }
   }, [mode, existingProject, projectDraft]);
 
-  // Handle Step 3 navigation - moved from render function to fix React violation
-  useEffect(() => {
-    if (wizard.currentStep === 3) {
-      handleStep3Navigation();
-    }
-  }, [wizard.currentStep, handleStep3Navigation]); // currentStep and handleStep3Navigation are stable
 
   // Render current step content
   const renderStepContent = () => {
@@ -489,29 +528,6 @@ const ProjectWizard = ({
               onNavigateToSettings={onNavigateToSettings}
             />
           </WizardErrorBoundary>
-        );
-      
-      case 3:
-        return (
-          <WizardLayout
-            title="Project Management"
-            subtitle="Manage project files, uploads, and integrations"
-            step={3}
-            totalSteps={3}
-          >
-            <div className="step-content">
-              <div className="step-placeholder">
-                <h3>Step 3: Project Management</h3>
-                <p>Redirecting to project management page...</p>
-                <div className="completion-summary">
-                  <h4>Project Creation Complete!</h4>
-                  <p><strong>Project:</strong> {formData.projectName}</p>
-                  <p><strong>RFA:</strong> {formData.rfaNumber}</p>
-                  <p><strong>Triage Time:</strong> {formData.totalTriage} hours</p>
-                </div>
-              </div>
-            </div>
-          </WizardLayout>
         );
       
       default:
@@ -586,10 +602,10 @@ const ProjectWizard = ({
 
         <div className="nav-center">
           <div className="step-progress">
-            {Array.from({ length: 3 }, (_, i) => {
+            {Array.from({ length: 2 }, (_, i) => {
               const stepNumber = i + 1;
-              const stepTitles = ['Basic Info', 'Triage Calc', 'Management'];
-              const stepStatuses = ['Project Details', 'Time Calculation', 'Project Setup'];
+              const stepTitles = ['Project Setup', 'Triage & Complete'];
+              const stepStatuses = ['Basic Info & Folders', 'Calculations & Finish'];
               const isActive = stepNumber === wizard.currentStep;
               const isCompleted = wizard.isStepCompleted(stepNumber);
               const isAccessible = wizard.isStepAccessible(stepNumber);
@@ -627,7 +643,7 @@ const ProjectWizard = ({
         </div>
 
         <div className="nav-right">
-          {wizard.currentStep < 3 ? (
+          {wizard.currentStep < 2 ? (
             <button
               onClick={handleNext}
               disabled={isLoading || !wizard.canProceedToNext()}
@@ -637,73 +653,11 @@ const ProjectWizard = ({
             </button>
           ) : (
             <button
-              onClick={async () => {
-                setIsLoading(true);
-                setError(null);
-                
-                try {
-                  // STEP 1: Create the physical project folder structure (NEW)
-                  setNotification({
-                    type: 'info',
-                    message: 'Creating project folders and files...'
-                  });
-                  
-                  // Call the project creation service via Electron IPC
-                  const folderCreationResult = await window.electronAPI.projectCreateWithFolders(formData);
-                  
-                  if (!folderCreationResult.success) {
-                    throw new Error(`Failed to create project folder: ${folderCreationResult.error}`);
-                  }
-                  
-                  setNotification({
-                    type: 'success',
-                    message: '✅ Project folders created successfully!'
-                  });
-                  
-                  // STEP 2: Complete the wizard and create project in app (EXISTING)
-                  const completeProject = {
-                    ...formData,
-                    id: Date.now().toString(),
-                    status: 'active',
-                    completionStep: 3,
-                    updatedAt: new Date().toISOString(),
-                    sourceType: 'wizard',
-                    // Add the physical folder paths to the project
-                    projectPath: folderCreationResult.projectPath,
-                    rfaPath: folderCreationResult.rfaPath,
-                    agentFilesPath: folderCreationResult.agentFilesPath
-                  };
-
-                  console.log('ProjectWizard: Created complete project object:', completeProject);
-
-                  // STEP 3: Call existing project creation handler (routes to project management)
-                  if (mode === 'create' && typeof onProjectCreated === 'function') {
-                    console.log('ProjectWizard: Calling onProjectCreated with:', completeProject);
-                    onProjectCreated(completeProject);
-                  } else if (typeof onProjectUpdated === 'function') {
-                    console.log('ProjectWizard: Calling onProjectUpdated with:', completeProject);
-                    onProjectUpdated(completeProject);
-                  }
-
-                  // STEP 4: Do NOT reset wizard when navigating to project management
-                  // The wizard will be reset when user navigates away from project management
-                  console.log('ProjectWizard: Project creation completed, navigating to project management...');
-                  
-                } catch (error) {
-                  console.error('Project creation failed:', error);
-                  setError(`Failed to create project: ${error.message}`);
-                  setNotification({
-                    type: 'error',
-                    message: `Project creation failed: ${error.message}`
-                  });
-                } finally {
-                  setIsLoading(false);
-                }
-              }}
-              disabled={isLoading}
+              onClick={handleNext}
+              disabled={isLoading || !wizard.canProceedToNext()}
               className="btn btn-primary"
             >
-              {isLoading ? 'Creating Project...' : 'Complete & Manage Project'}
+              {isLoading ? 'Completing...' : 'Complete & Manage Project'}
             </button>
           )}
         </div>
