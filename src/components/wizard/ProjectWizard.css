@@ -1,13 +1,13 @@
-/* ProjectWizard.css - Wizard-specific styles */
+/* ProjectWizard.css - Wizard-specific styles - Optimized for 1200x900 */
 
 .project-wizard {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 1rem; /* Reduced from 20px */
   background: #fff;
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  min-height: 600px;
+  min-height: 500px; /* Reduced from 600px */
   position: relative;
 }
 
@@ -101,14 +101,14 @@
   z-index: 1000;
 }
 
-/* Clean Wizard Layout */
+/* Clean Wizard Layout - Optimized for 1200x900 */
 .wizard-layout {
-  margin-bottom: 40px;
+  margin-bottom: 1.5rem; /* Reduced from 40px */
 }
 
 .wizard-header {
-  margin-bottom: 30px;
-  padding: 30px 0;
+  margin-bottom: 1.5rem; /* Reduced from 30px */
+  padding: 1.5rem 0; /* Reduced from 30px 0 */
   border-bottom: 2px solid #e0e0e0;
   background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
   border-radius: 12px 12px 0 0;
@@ -132,10 +132,10 @@
   position: relative;
 }
 
-/* Unified Header for Step 1 */
+/* Unified Header for Step 1 - Optimized for 1200x900 */
 .unified-header {
-  margin-bottom: 30px;
-  padding: 30px;
+  margin-bottom: 1.5rem; /* Reduced from 30px */
+  padding: 1.5rem; /* Reduced from 30px */
   background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
   border-radius: 12px;
   border: 2px solid #e9ecef;
@@ -156,14 +156,14 @@
 
 .header-info {
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 1.5rem; /* Reduced from 30px */
 }
 
 .header-actions {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 20px;
+  gap: 1rem; /* Reduced from 20px */
 }
 
 .action-group {
@@ -1454,28 +1454,41 @@
   font-size: 14px;
 }
 
-/* Enhanced Form Styles for Wizard */
+/* Enhanced Form Styles for Wizard - Optimized for 1200x900 */
 .wizard-step-content .form-section {
   background: white;
-  padding: 25px;
+  padding: 1.25rem; /* Reduced from 25px */
   border-radius: 8px;
   border: 1px solid #e9ecef;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .wizard-step-content .form-section h3 {
-  margin: 0 0 25px 0;
+  margin: 0 0 1rem; /* Reduced from 25px */
   color: #495057;
-  font-size: 18px;
+  font-size: 1.1rem; /* Reduced from 18px */
   font-weight: 600;
   border-bottom: 2px solid #007bff;
-  padding-bottom: 10px;
+  padding-bottom: 0.5rem; /* Reduced from 10px */
 }
 
 .wizard-step-content .form-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(3, 1fr); /* Fixed 3 columns for 1200px width */
+  gap: 1rem; /* Reduced from 20px */
+}
+
+/* Responsive form grid for different screen sizes */
+@media (max-width: 1024px) {
+  .wizard-step-content .form-grid {
+    grid-template-columns: repeat(2, 1fr); /* 2 columns on medium screens */
+  }
+}
+
+@media (max-width: 768px) {
+  .wizard-step-content .form-grid {
+    grid-template-columns: 1fr; /* Single column on mobile */
+  }
 }
 
 .wizard-step-content .form-group {
@@ -1485,18 +1498,18 @@
 }
 
 .wizard-step-content .form-group label {
-  margin-bottom: 8px;
+  margin-bottom: 0.4rem; /* Reduced from 8px */
   font-weight: 600;
   color: #495057;
-  font-size: 14px;
+  font-size: 0.8rem; /* Reduced from 14px */
 }
 
 .wizard-step-content .form-group input,
 .wizard-step-content .form-group select {
-  padding: 12px 14px;
+  padding: 0.6rem 0.7rem; /* Reduced from 12px 14px */
   border: 2px solid #e9ecef;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: 0.8rem; /* Reduced from 14px */
   transition: all 0.2s ease;
   background: white;
 }
@@ -1674,10 +1687,10 @@
   border-radius: 4px;
 }
 
-/* Triage Subsections */
+/* Triage Subsections - Optimized for 1200x900 */
 .triage-subsection {
-  margin-bottom: 30px;
-  padding: 20px;
+  margin-bottom: 1.25rem; /* Reduced from 30px */
+  padding: 1rem; /* Reduced from 20px */
   background: white;
   border-radius: 8px;
   border: 1px solid #e0e0e0;
@@ -1685,25 +1698,25 @@
 }
 
 .triage-subsection h4 {
-  margin: 0 0 20px 0;
+  margin: 0 0 0.75rem; /* Reduced from 20px */
   color: #1976d2;
-  font-size: 16px;
+  font-size: 1rem; /* Reduced from 16px */
   font-weight: 600;
   border-bottom: 2px solid #1976d2;
-  padding-bottom: 8px;
+  padding-bottom: 0.4rem; /* Reduced from 8px */
 }
 
 .triage-subsection h5 {
-  margin: 0 0 15px 0;
+  margin: 0 0 0.5rem; /* Reduced from 15px */
   color: #424242;
-  font-size: 15px;
+  font-size: 0.9rem; /* Reduced from 15px */
   font-weight: 600;
 }
 
 .triage-subsection h6 {
-  margin: 0 0 12px 0;
+  margin: 0 0 0.4rem; /* Reduced from 12px */
   color: #616161;
-  font-size: 14px;
+  font-size: 0.8rem; /* Reduced from 14px */
   font-weight: 600;
 }
 
@@ -1749,25 +1762,124 @@
   font-style: italic;
 }
 
-/* Section-specific styles */
+/* Section-specific styles - Optimized for 1200x900 */
 .panel-fields,
 .layout-fields,
 .submittal-fields {
   background: #fafafa;
-  padding: 15px;
+  padding: 0.75rem; /* Reduced from 15px */
   border-radius: 6px;
   border: 1px solid #e0e0e0;
-  margin-top: 15px;
+  margin-top: 0.75rem; /* Reduced from 15px */
+}
+
+/* Config Grid for Triage Configuration */
+.config-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr); /* 3 columns for 1200px width */
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.config-item {
+  background: #f8f9fa;
+  padding: 0.75rem;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
+}
+
+.config-item h5 {
+  margin: 0 0 0.5rem 0;
+  color: #495057;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.config-item .radio-group {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.config-item .radio-group label {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  font-size: 0.8rem;
+}
+
+.config-item .radio-group label:hover {
+  background: #e9ecef;
+}
+
+.config-item .radio-group input[type="radio"] {
+  margin: 0;
+  cursor: pointer;
+}
+
+/* Responsive config grid */
+@media (max-width: 1024px) {
+  .config-grid {
+    grid-template-columns: repeat(2, 1fr); /* 2 columns on medium screens */
+  }
+}
+
+@media (max-width: 768px) {
+  .config-grid {
+    grid-template-columns: 1fr; /* Single column on mobile */
+  }
 }
 
 .lmp-section,
 .nlight-section,
 .esheets-section {
-  margin-bottom: 20px;
-  padding: 12px;
+  margin-bottom: 1rem; /* Reduced from 20px */
+  padding: 0.6rem; /* Reduced from 12px */
   background: white;
   border-radius: 6px;
   border: 1px solid #e0e0e0;
+}
+
+/* Fields Row Layout for Side-by-Side Sections */
+.fields-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* Two equal columns */
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+/* Compact Form Grid for Smaller Fields */
+.form-grid.compact {
+  grid-template-columns: repeat(2, 1fr); /* 2 columns for compact layout */
+  gap: 0.5rem;
+}
+
+.form-grid.compact .form-group {
+  margin-bottom: 0.25rem;
+}
+
+.form-grid.compact .form-group label {
+  font-size: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+
+.form-grid.compact .form-group input {
+  padding: 0.4rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+/* Responsive fields row */
+@media (max-width: 768px) {
+  .fields-row {
+    grid-template-columns: 1fr; /* Single column on mobile */
+  }
+  
+  .form-grid.compact {
+    grid-template-columns: 1fr; /* Single column on mobile */
+  }
 }
 
 /* Enhanced Calculate Button */

@@ -55,13 +55,53 @@ function Settings({ initialTab = 'app-info' }) {
 
   useEffect(() => {
     loadSettings();
+    // Scroll to top when settings page loads - ensure DOM is ready
+    const scrollToTop = () => {
+      const mainContent = document.querySelector('.main-content');
+      if (mainContent) {
+        console.log('Scrolling main-content to top, current scroll:', mainContent.scrollTop);
+        mainContent.scrollTo({ top: 0, behavior: 'auto' });
+      } else {
+        console.log('Main content not found, using window scroll');
+        // Fallback to window scroll
+        window.scrollTo({ top: 0, behavior: 'auto' });
+      }
+    };
+    
+    // Use requestAnimationFrame to ensure DOM is ready
+    requestAnimationFrame(() => {
+      scrollToTop();
+      // Try again after CSS animation completes (300ms + buffer)
+      setTimeout(scrollToTop, 400);
+      // Final attempt after component is fully rendered
+      setTimeout(scrollToTop, 600);
+    });
   }, []);
 
-  // Reset editing state when tab changes
+  // Reset editing state when tab changes and scroll to top
   useEffect(() => {
     setEditingField(null);
     setEditingIndex(-1);
     setNewValue('');
+    // Scroll to top when tab changes - ensure DOM is ready
+    const scrollToTop = () => {
+      const mainContent = document.querySelector('.main-content');
+      if (mainContent) {
+        mainContent.scrollTo({ top: 0, behavior: 'auto' });
+      } else {
+        // Fallback to window scroll
+        window.scrollTo({ top: 0, behavior: 'auto' });
+      }
+    };
+    
+    // Use requestAnimationFrame to ensure DOM is ready
+    requestAnimationFrame(() => {
+      scrollToTop();
+      // Try again after CSS animation completes (300ms + buffer)
+      setTimeout(scrollToTop, 400);
+      // Final attempt after component is fully rendered
+      setTimeout(scrollToTop, 600);
+    });
   }, [activeTab]);
 
 
@@ -76,6 +116,18 @@ function Settings({ initialTab = 'app-info' }) {
         setEditingIndex(-1);
         setNewValue('');
       }
+      
+      // Also scroll to top when returning to the page
+      const scrollToTop = () => {
+        const mainContent = document.querySelector('.main-content');
+        if (mainContent) {
+          mainContent.scrollTo({ top: 0, behavior: 'auto' });
+        } else {
+          window.scrollTo({ top: 0, behavior: 'auto' });
+        }
+      };
+      
+      requestAnimationFrame(scrollToTop);
     };
 
     const handleVisibilityChange = () => {

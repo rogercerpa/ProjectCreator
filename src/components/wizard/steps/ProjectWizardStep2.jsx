@@ -84,10 +84,7 @@ const ProjectWizardStep2 = ({
     
     // Mark Step 2 as completed and valid after successful triage calculation
     if (onValidationChange && triageCalculationResults.totalTriage > 0) {
-      console.log('Step 2: Calling onValidationChange with isValid=true');
       onValidationChange(true, {}); // Step 2 is now valid and complete
-    } else {
-      console.log('Step 2: onValidationChange not called - onValidationChange:', !!onValidationChange, 'totalTriage:', triageCalculationResults.totalTriage);
     }
   };
 
@@ -132,86 +129,94 @@ const ProjectWizardStep2 = ({
           </div>
         </div>
 
-        {/* DIRECT COPY: Triage Configuration from ProjectForm.jsx lines 834-913 */}
+        {/* Optimized Triage Configuration - Compact Layout */}
         <div className="triage-subsection">
           <h4>Triage Configuration</h4>
           
-          {/* Panel Schedules Question */}
-          <div className="form-group">
-            <h5>Panel Schedules (YES or NO):</h5>
-            <label>
-              <input
-                type="radio"
-                name="hasPanelSchedules"
-                value="false"
-                checked={!formData.hasPanelSchedules}
-                onChange={() => onFormDataChange({ ...formData, hasPanelSchedules: false })}
-              />
-              No
-            </label>
-            <label>
-              <input
-                type="radio"
-                name="hasPanelSchedules"
-                value="true"
-                checked={formData.hasPanelSchedules}
-                onChange={() => onFormDataChange({ ...formData, hasPanelSchedules: true })}
-              />
-              Yes
-            </label>
-          </div>
-
-          {/* Submittal Section Question */}
-          <div className="form-group">
-            <h5>Submittal Section (YES or NO):</h5>
-            <label>
-              <input
-                type="radio"
-                name="hasSubmittals"
-                value="false"
-                checked={!formData.hasSubmittals}
-                onChange={() => onFormDataChange({ ...formData, hasSubmittals: false, needsLayoutBOM: false })}
-              />
-              No
-            </label>
-            <label>
-              <input
-                type="radio"
-                name="hasSubmittals"
-                value="true"
-                checked={formData.hasSubmittals}
-                onChange={() => onFormDataChange({ ...formData, hasSubmittals: true })}
-              />
-              Yes
-            </label>
-          </div>
-
-          {/* Conditional Layout/BOM Question */}
-          {formData.hasSubmittals && (
-            <div className="form-group">
-              <h5>Needs Layout/BOM created (YES or NO):</h5>
-              <label>
-                <input
-                  type="radio"
-                  name="needsLayoutBOM"
-                  value="false"
-                  checked={!formData.needsLayoutBOM}
-                  onChange={() => onFormDataChange({ ...formData, needsLayoutBOM: false })}
-                />
-                No
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  name="needsLayoutBOM"
-                  value="true"
-                  checked={formData.needsLayoutBOM}
-                  onChange={() => onFormDataChange({ ...formData, needsLayoutBOM: true })}
-                />
-                Yes
-              </label>
+          <div className="config-grid">
+            {/* Panel Schedules Question */}
+            <div className="config-item">
+              <h5>Panel Schedules:</h5>
+              <div className="radio-group">
+                <label>
+                  <input
+                    type="radio"
+                    name="hasPanelSchedules"
+                    value="false"
+                    checked={!formData.hasPanelSchedules}
+                    onChange={() => onFormDataChange({ ...formData, hasPanelSchedules: false })}
+                  />
+                  No
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="hasPanelSchedules"
+                    value="true"
+                    checked={formData.hasPanelSchedules}
+                    onChange={() => onFormDataChange({ ...formData, hasPanelSchedules: true })}
+                  />
+                  Yes
+                </label>
+              </div>
             </div>
-          )}
+
+            {/* Submittal Section Question */}
+            <div className="config-item">
+              <h5>Submittal Section:</h5>
+              <div className="radio-group">
+                <label>
+                  <input
+                    type="radio"
+                    name="hasSubmittals"
+                    value="false"
+                    checked={!formData.hasSubmittals}
+                    onChange={() => onFormDataChange({ ...formData, hasSubmittals: false, needsLayoutBOM: false })}
+                  />
+                  No
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="hasSubmittals"
+                    value="true"
+                    checked={formData.hasSubmittals}
+                    onChange={() => onFormDataChange({ ...formData, hasSubmittals: true })}
+                  />
+                  Yes
+                </label>
+              </div>
+            </div>
+
+            {/* Conditional Layout/BOM Question */}
+            {formData.hasSubmittals && (
+              <div className="config-item">
+                <h5>Layout/BOM:</h5>
+                <div className="radio-group">
+                  <label>
+                    <input
+                      type="radio"
+                      name="needsLayoutBOM"
+                      value="false"
+                      checked={!formData.needsLayoutBOM}
+                      onChange={() => onFormDataChange({ ...formData, needsLayoutBOM: false })}
+                    />
+                    No
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      name="needsLayoutBOM"
+                      value="true"
+                      checked={formData.needsLayoutBOM}
+                      onChange={() => onFormDataChange({ ...formData, needsLayoutBOM: true })}
+                    />
+                    Yes
+                  </label>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* DIRECT COPY: Dynamic Triage Fields from ProjectForm.jsx lines 916-1201 */}
@@ -223,112 +228,114 @@ const ProjectWizardStep2 = ({
             <div className="panel-fields">
               <h5>Panel Schedule Fields:</h5>
               
-              <div className="lmp-section">
-                <h6>LMPs:</h6>
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label htmlFor="largeLMPs">Large</label>
-                    <input
-                      type="number"
-                      id="largeLMPs"
-                      name="largeLMPs"
-                      value={formData.largeLMPs || ''}
-                      onChange={handleInputChange}
-                      min="0"
-                      step="1"
-                      placeholder="0"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label htmlFor="mediumLMPs">Medium</label>
-                    <input
-                      type="number"
-                      id="mediumLMPs"
-                      name="mediumLMPs"
-                      value={formData.mediumLMPs || ''}
-                      onChange={handleInputChange}
-                      min="0"
-                      step="1"
-                      placeholder="0"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label htmlFor="smallLMPs">Small</label>
-                    <input
-                      type="number"
-                      id="smallLMPs"
-                      name="smallLMPs"
-                      value={formData.smallLMPs || ''}
-                      onChange={handleInputChange}
-                      min="0"
-                      step="1"
-                      placeholder="0"
-                    />
+              <div className="fields-row">
+                <div className="lmp-section">
+                  <h6>LMPs:</h6>
+                  <div className="form-grid compact">
+                    <div className="form-group">
+                      <label htmlFor="largeLMPs">Large</label>
+                      <input
+                        type="number"
+                        id="largeLMPs"
+                        name="largeLMPs"
+                        value={formData.largeLMPs || ''}
+                        onChange={handleInputChange}
+                        min="0"
+                        step="1"
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="mediumLMPs">Medium</label>
+                      <input
+                        type="number"
+                        id="mediumLMPs"
+                        name="mediumLMPs"
+                        value={formData.mediumLMPs || ''}
+                        onChange={handleInputChange}
+                        min="0"
+                        step="1"
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="smallLMPs">Small</label>
+                      <input
+                        type="number"
+                        id="smallLMPs"
+                        name="smallLMPs"
+                        value={formData.smallLMPs || ''}
+                        onChange={handleInputChange}
+                        min="0"
+                        step="1"
+                        placeholder="0"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-              
-              <div className="nlight-section">
-                <h6>nLight ARPs:</h6>
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label htmlFor="arp8">ARP 8</label>
-                    <input
-                      type="number"
-                      id="arp8"
-                      name="arp8"
-                      value={formData.arp8 || ''}
-                      onChange={handleInputChange}
-                      min="0"
-                      step="1"
-                      placeholder="0"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label htmlFor="arp16">ARP 16</label>
-                    <input
-                      type="number"
-                      id="arp16"
-                      name="arp16"
-                      value={formData.arp16 || ''}
-                      onChange={handleInputChange}
-                      min="0"
-                      step="1"
-                      placeholder="0"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label htmlFor="arp32">ARP 32</label>
-                    <input
-                      type="number"
-                      id="arp32"
-                      name="arp32"
-                      value={formData.arp32 || ''}
-                      onChange={handleInputChange}
-                      min="0"
-                      step="1"
-                      placeholder="0"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label htmlFor="arp48">ARP 48</label>
-                    <input
-                      type="number"
-                      id="arp48"
-                      name="arp48"
-                      value={formData.arp48 || ''}
-                      onChange={handleInputChange}
-                      min="0"
-                      step="1"
-                      placeholder="0"
-                    />
+                
+                <div className="nlight-section">
+                  <h6>nLight ARPs:</h6>
+                  <div className="form-grid compact">
+                    <div className="form-group">
+                      <label htmlFor="arp8">ARP 8</label>
+                      <input
+                        type="number"
+                        id="arp8"
+                        name="arp8"
+                        value={formData.arp8 || ''}
+                        onChange={handleInputChange}
+                        min="0"
+                        step="1"
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="arp16">ARP 16</label>
+                      <input
+                        type="number"
+                        id="arp16"
+                        name="arp16"
+                        value={formData.arp16 || ''}
+                        onChange={handleInputChange}
+                        min="0"
+                        step="1"
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="arp32">ARP 32</label>
+                      <input
+                        type="number"
+                        id="arp32"
+                        name="arp32"
+                        value={formData.arp32 || ''}
+                        onChange={handleInputChange}
+                        min="0"
+                        step="1"
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="arp48">ARP 48</label>
+                      <input
+                        type="number"
+                        id="arp48"
+                        name="arp48"
+                        value={formData.arp48 || ''}
+                        onChange={handleInputChange}
+                        min="0"
+                        step="1"
+                        placeholder="0"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
               
               <div className="esheets-section">
                 <h6>Panel Schedules (Shown on E-Sheets):</h6>
-                <div className="form-group">
+                <div className="radio-group">
                   <label>
                     <input
                       type="radio"

@@ -46,15 +46,10 @@ const useWizardState = (initialData = {}, totalSteps = 2) => {
 
   // Validation state management
   const setStepValidation = useCallback((stepNumber, isValid, errors = {}) => {
-    console.log(`setStepValidation: step=${stepNumber}, isValid=${isValid}, errors=`, errors);
-    setStepValidationStates(prev => {
-      const newState = {
-        ...prev,
-        [stepNumber]: { isValid, errors }
-      };
-      console.log('Updated validation states:', newState);
-      return newState;
-    });
+    setStepValidationStates(prev => ({
+      ...prev,
+      [stepNumber]: { isValid, errors }
+    }));
   }, []);
 
   const getStepValidation = useCallback((stepNumber) => {
@@ -75,17 +70,13 @@ const useWizardState = (initialData = {}, totalSteps = 2) => {
 
   const canProceedToNext = useCallback(() => {
     const currentStepValidation = getStepValidation(currentStep);
-    console.log(`canProceedToNext: step=${currentStep}, totalSteps=${totalSteps}, isValid=${currentStepValidation.isValid}`);
     
     // For the final step, only check if it's valid (no next step needed)
     if (currentStep === totalSteps) {
-      console.log(`Final step: returning isValid=${currentStepValidation.isValid}`);
       return currentStepValidation.isValid;
     }
     // For other steps, check if valid and there's a next step
-    const result = currentStepValidation.isValid && currentStep < totalSteps;
-    console.log(`Non-final step: returning ${result}`);
-    return result;
+    return currentStepValidation.isValid && currentStep < totalSteps;
   }, [currentStep, totalSteps, getStepValidation]);
 
   const canGoToPrevious = useCallback(() => {
