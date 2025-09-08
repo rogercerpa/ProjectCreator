@@ -270,6 +270,26 @@ const ProjectWizardStep1 = ({
     }
   };
 
+  const cleanProjectName = (projectName) => {
+    if (!projectName) return '';
+    
+    // Remove common unwanted identifiers that might appear in clipboard data
+    const unwantedWords = ['Tasks', 'BOM', 'Header', 'Details', 'Notes', 'Documents', 'Loading'];
+    
+    let cleaned = projectName.trim();
+    
+    // Remove unwanted words (case insensitive)
+    unwantedWords.forEach(word => {
+      const regex = new RegExp(`\\b${word}\\b`, 'gi');
+      cleaned = cleaned.replace(regex, '').trim();
+    });
+    
+    // Clean up extra spaces and normalize
+    cleaned = cleaned.replace(/\s+/g, ' ').trim();
+    
+    return cleaned;
+  };
+
   const checkNationalAccount = (projectName) => {
     if (!projectName) return 'Default';
     
@@ -303,10 +323,10 @@ const ProjectWizardStep1 = ({
     
     const parsedData = {};
     
-    // Extract RFA Number and Revision
+    // Extract RFA Number and Revision - Fix to include full number with dash
     const rfaMatch = clipboardText.match(/Request for Assistance (\d+)-(\d+)/);
     if (rfaMatch) {
-      parsedData.rfaNumber = rfaMatch[1];
+      parsedData.rfaNumber = `${rfaMatch[1]}-${rfaMatch[2]}`; // Include the dash and revision number
       const revisionNumber = rfaMatch[2];
       parsedData.isRevision = revisionNumber !== '0';
     }
@@ -356,15 +376,15 @@ const ProjectWizardStep1 = ({
     
     // Extract Project Name and Container - Look for the specific format in your data
     // The data shows: "Haskell Jacksonville Headquarters Project Blue Sky 25-58944"
-    const projectMatch = clipboardText.match(/Haskell (.+?) (\d{2}-\d{5})/);
+    const projectMatch = clipboardText.match(/([A-Za-z\s\-]+?)\s+(\d{2}-\d{5})/);
     if (projectMatch) {
-      parsedData.projectName = projectMatch[1].trim();
+      parsedData.projectName = cleanProjectName(projectMatch[1].trim());
       parsedData.projectContainer = projectMatch[2];
     } else {
       // Fallback: try to find any project name pattern
-      const fallbackProjectMatch = clipboardText.match(/([A-Za-z\s]+)\s+(\d{2}-\d{5})/);
+      const fallbackProjectMatch = clipboardText.match(/([A-Za-z\s\-]+)\s+(\d{2}-\d{5})/);
       if (fallbackProjectMatch) {
-        parsedData.projectName = fallbackProjectMatch[1].trim();
+        parsedData.projectName = cleanProjectName(fallbackProjectMatch[1].trim());
         parsedData.projectContainer = fallbackProjectMatch[2];
       }
     }
@@ -438,7 +458,10 @@ const ProjectWizardStep1 = ({
     // Extract Products - Look for "Products on This Request: Controls - nLight"
     const productsMatch = clipboardText.match(/Products on This Request:\s*([^\n\r]+)/);
     if (productsMatch) {
-      parsedData.products = productsMatch[1].trim();
+      // Split products by comma and clean up each product
+      const productsText = productsMatch[1].trim();
+      const productsArray = productsText.split(',').map(p => p.trim()).filter(p => p.length > 0);
+      parsedData.products = productsArray;
     }
     
     // Extract Assigned To - Look for "Assigned To: Cerpa, Roger"
@@ -490,6 +513,16 @@ const ProjectWizardStep1 = ({
       parsedData.numOfPages = 1;
     }
     
+    // Set default save location to Triage
+    if (!parsedData.saveLocation) {
+      parsedData.saveLocation = 'Triage';
+    }
+    
+    // Set due date to match requested date as default
+    if (parsedData.requestedDate && !parsedData.dueDate) {
+      parsedData.dueDate = parsedData.requestedDate;
+    }
+    
     console.log('Parsed data:', parsedData);
     
     // Validate that we have at least the essential data
@@ -515,7 +548,7 @@ const ProjectWizardStep1 = ({
       case 'projectName':
         return value && value.trim().length >= 3;
       case 'rfaNumber':
-        return value && /^\d+$/.test(value);
+        return value && /^\d+-\d+$/.test(value);
       case 'agentNumber':
         return value && /^\d+$/.test(value);
       case 'projectContainer':
@@ -926,18 +959,31 @@ const ProjectWizardStep1 = ({
             </div>
 
             <div className={`form-group ${isFieldImported('products') ? 'imported-field' : ''}`}>
-              <label htmlFor="products">Products</label>
-              <select
-                id="products"
-                name="products"
-                value={formData.products || ''}
-                onChange={handleInputChange}
-              >
-                <option value="">Select Products</option>
+              <label>Products</label>
+              <div className="checkbox-group">
                 {dropdownOptions.productOptions.map(product => (
-                  <option key={product} value={product}>{product}</option>
+                  <label key={product} className="checkbox-item">
+                    <input
+                      type="checkbox"
+                      name="products"
+                      value={product}
+                      checked={Array.isArray(formData.products) ? formData.products.includes(product) : false}
+                      onChange={(e) => {
+                        const currentProducts = Array.isArray(formData.products) ? formData.products : [];
+                        let newProducts;
+                        if (e.target.checked) {
+                          newProducts = [...currentProducts, product];
+                        } else {
+                          newProducts = currentProducts.filter(p => p !== product);
+                        }
+                        onFormDataChange({ ...formData, products: newProducts });
+                      }}
+                    />
+                    <span className="checkbox-label">{product}</span>
+                  </label>
                 ))}
-              </select>
+              </div>
+              <small className="field-hint">Select one or more products</small>
               {isFieldImported('products') && <span className="import-indicator">📋 Imported</span>}
             </div>
 

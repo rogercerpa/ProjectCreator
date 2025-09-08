@@ -283,7 +283,7 @@ Complexity: Level 2`;
         const validateAllFields = (data) => {
           const validations = {
             projectName: data.projectName && data.projectName.trim().length >= 3,
-            rfaNumber: data.rfaNumber && /^\d+$/.test(data.rfaNumber),
+            rfaNumber: data.rfaNumber && /^\d+-\d+$/.test(data.rfaNumber),
             agentNumber: data.agentNumber && /^\d+$/.test(data.agentNumber),
             projectContainer: data.projectContainer && /^\d{2}-\d{5}$/.test(data.projectContainer),
             rfaType: data.rfaType && data.rfaType !== '',

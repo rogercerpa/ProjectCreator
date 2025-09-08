@@ -21,7 +21,7 @@ const useStepValidation = () => {
         'regionalTeam'
       ],
       patterns: {
-        rfaNumber: /^\d+$/,
+        rfaNumber: /^\d+-\d+$/,
         agentNumber: /^\d+$/,
         projectContainer: /^\d{2}-\d{5}$/
       },

@@ -343,19 +343,13 @@ class ProjectCreationService {
 
       // Check if template exists
       if (await fs.pathExists(templatePath)) {
-        // Copy template folder to RFA folder
+        // Copy the contents of the template folder directly into rfaFolderPath
+        // This prevents creating nested folder structure
         await fs.copy(templatePath, rfaFolderPath);
+        console.log(`Template contents copied from ${templatePath} to ${rfaFolderPath}`);
         
-        // Rename the copied template folder
-        const oldPath = path.join(rfaFolderPath, templateFolderName);
-        const newPath = path.join(rfaFolderPath, newFolderName);
-        
-        if (await fs.pathExists(oldPath)) {
-          await fs.move(oldPath, newPath);
-          
-          // Process files inside the renamed folder (like HTA)
-          await this.processTemplateFiles(newPath, projectData, dateString, sanitizedProjectName);
-        }
+        // Process files inside the RFA folder (no need to rename folders since we copied contents directly)
+        await this.processTemplateFiles(rfaFolderPath, projectData, dateString, sanitizedProjectName);
       } else {
         console.warn(`Template not found: ${templatePath}`);
       }
@@ -677,33 +671,13 @@ class ProjectCreationService {
       const templatePath = resolvedPaths.rfaTemplate.path;
       
       if (await fs.pathExists(templatePath)) {
-        // Copy the entire template folder
-        const templateFolderName = resolvedPaths.rfaTemplate.subFolder;
-        const destPath = path.join(rfaFolderPath, templateFolderName);
+        // Copy the contents of the template folder directly into rfaFolderPath
+        // This prevents creating nested folder structure
+        await fs.copy(templatePath, rfaFolderPath);
+        console.log(`Template contents copied from ${templatePath} to ${rfaFolderPath}`);
         
-        await fs.copy(templatePath, destPath);
-        console.log(`Template copied from ${templatePath} to ${destPath}`);
-        
-        // Rename the folder to match project naming convention
-        const rfaType = projectData.rfaType;
-        let newFolderName;
-        
-        if (rfaType.includes('Reloc')) {
-          if (rfaType.includes('Controls')) {
-            newFolderName = `RFA#${projectData.rfaNumber}_(Reloc Portion) ${rfaType}_${dateString}`;
-          } else {
-            newFolderName = `RFA#${projectData.rfaNumber}_${rfaType}_${dateString}`;
-          }
-        } else {
-          newFolderName = `RFA#${projectData.rfaNumber}_${rfaType}_${dateString}`;
-        }
-        
-        const newPath = path.join(rfaFolderPath, newFolderName);
-        await fs.move(destPath, newPath);
-        console.log(`Template folder renamed to: ${newFolderName}`);
-        
-        // Process files inside the renamed folder
-        await this.processTemplateFiles(newPath, projectData, dateString, sanitizedProjectName);
+        // Process files inside the RFA folder (no need to rename folders since we copied contents directly)
+        await this.processTemplateFiles(rfaFolderPath, projectData, dateString, sanitizedProjectName);
         
       } else {
         console.warn(`Template not found at resolved path: ${templatePath}, falling back to legacy method`);
