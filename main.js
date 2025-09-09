@@ -8,6 +8,7 @@ const WordService = require('./src/services/WordService');
 const FileService = require('./src/services/FileService');
 const ProjectPersistenceService = require('./src/services/ProjectPersistenceService');
 const ProjectCreationService = require('./src/services/ProjectCreationService');
+const FormSettingsService = require('./src/services/FormSettingsService');
 const SecurityLoggingService = require('./src/services/SecurityLoggingService');
 
 // Import package.json for version info
@@ -22,6 +23,7 @@ const wordService = new WordService();
 const fileService = new FileService();
 const projectPersistenceService = new ProjectPersistenceService();
 const projectCreationService = new ProjectCreationService();
+const formSettingsService = new FormSettingsService();
 const securityLoggingService = new SecurityLoggingService();
 
 function createWindow() {
@@ -479,6 +481,92 @@ ipcMain.handle('project-create-folder', async (event, projectData) => {
 ipcMain.handle('project-create-with-folders', async (event, projectData) => {
   try {
     return await projectCreationService.createProjectWithFolders(projectData);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// Validation handlers
+ipcMain.handle('project-validate', async (event, projectData) => {
+  try {
+    return await projectCreationService.validateProject(projectData);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('project-validate-field', async (event, fieldName, value, projectData) => {
+  try {
+    return await projectCreationService.validateField(fieldName, value, projectData);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// Form Settings handlers
+ipcMain.handle('form-settings-get-all', async (event) => {
+  try {
+    return { success: true, data: formSettingsService.getAllSettings() };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('form-settings-get-rfa-types', async (event) => {
+  try {
+    return { success: true, data: formSettingsService.getRFATypes() };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('form-settings-get-national-accounts', async (event) => {
+  try {
+    return { success: true, data: formSettingsService.getNationalAccounts() };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('form-settings-add-custom-rfa-type', async (event, label, value) => {
+  try {
+    const result = formSettingsService.addCustomRFAType(label, value);
+    return { success: true, data: result };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('form-settings-add-custom-national-account', async (event, label, value) => {
+  try {
+    const result = formSettingsService.addCustomNationalAccount(label, value);
+    return { success: true, data: result };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('form-settings-validate-form-data', async (event, formData) => {
+  try {
+    const result = formSettingsService.validateFormData(formData);
+    return { success: true, data: result };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('project-validation-status', async (event) => {
+  try {
+    return await projectCreationService.getValidationStatus();
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('project-clear-validation-caches', async (event) => {
+  try {
+    projectCreationService.clearValidationCaches();
+    return { success: true };
   } catch (error) {
     return { success: false, error: error.message };
   }

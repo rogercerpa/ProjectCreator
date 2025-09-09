@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import useWizardState from './hooks/useWizardState';
 import useProjectDraft from './hooks/useProjectDraft';
 import useStepValidation from './hooks/useStepValidation';
@@ -36,6 +36,10 @@ const ProjectWizard = ({
   const wizard = useWizardState(formData, 2);
   const projectDraft = useProjectDraft(existingProject?.id);
   const stepValidation = useStepValidation();
+  
+  // Use refs to prevent infinite loops in useEffect
+  const projectDraftRef = useRef(projectDraft);
+  projectDraftRef.current = projectDraft;
 
   // Loading and error states
   const [isLoading, setIsLoading] = useState(false);
@@ -459,7 +463,7 @@ const ProjectWizard = ({
     if (Object.keys(formData).length > 0) {
       const timeout = setTimeout(() => {
         try {
-          projectDraft.enableAutoSave(formData, wizard.currentStep);
+          projectDraftRef.current.enableAutoSave(formData, wizard.currentStep);
         } catch (autoSaveError) {
           console.warn('Auto-save setup failed:', autoSaveError);
         }
@@ -472,21 +476,22 @@ const ProjectWizard = ({
       if (autoSaveTimeout) {
         clearTimeout(autoSaveTimeout);
       }
-      projectDraft.disableAutoSave();
+      projectDraftRef.current.disableAutoSave();
     };
-  }, [formData, wizard.currentStep, projectDraft]); // Keep necessary dependencies
+  }, [formData, wizard.currentStep]); // Removed projectDraft from dependencies
 
   // Handle draft recovery
   useEffect(() => {
     if (mode === 'create' && !existingProject) {
       // Check for recoverable drafts
-      const drafts = projectDraft.getDrafts();
+      const drafts = projectDraftRef.current.getDrafts();
       if (drafts.length > 0) {
         // Could show draft recovery dialog here
-        console.log('Recoverable drafts found:', drafts);
+        // Temporarily disabled to prevent console spam
+        // console.log('Recoverable drafts found:', drafts);
       }
     }
-  }, [mode, existingProject, projectDraft]);
+  }, [mode, existingProject]); // Removed projectDraft from dependencies
 
 
   // Render current step content

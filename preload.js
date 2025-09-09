@@ -52,6 +52,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
   projectExportDASBoard: (projectData) => ipcRenderer.invoke('project-export-das-board', projectData),
   projectExportAgile: (projectData) => ipcRenderer.invoke('project-export-agile', projectData),
   
+  // Validation methods
+  projectValidate: (projectData) => ipcRenderer.invoke('project-validate', projectData),
+  projectValidateField: (fieldName, value, projectData) => ipcRenderer.invoke('project-validate-field', fieldName, value, projectData),
+  projectValidationStatus: () => ipcRenderer.invoke('project-validation-status'),
+  projectClearValidationCaches: () => ipcRenderer.invoke('project-clear-validation-caches'),
+  
+  // Form Settings methods
+  formSettingsGetAll: () => ipcRenderer.invoke('form-settings-get-all'),
+  formSettingsGetRFATypes: () => ipcRenderer.invoke('form-settings-get-rfa-types'),
+  formSettingsGetNationalAccounts: () => ipcRenderer.invoke('form-settings-get-national-accounts'),
+  formSettingsAddCustomRFAType: (label, value) => ipcRenderer.invoke('form-settings-add-custom-rfa-type', label, value),
+  formSettingsAddCustomNationalAccount: (label, value) => ipcRenderer.invoke('form-settings-add-custom-national-account', label, value),
+  formSettingsValidateFormData: (formData) => ipcRenderer.invoke('form-settings-validate-form-data', formData),
+  
   // Error handling
   onError: (callback) => ipcRenderer.on('error', callback),
   onNewProject: (callback) => ipcRenderer.on('new-project', callback),

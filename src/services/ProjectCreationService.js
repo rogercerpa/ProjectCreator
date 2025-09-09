@@ -3,11 +3,19 @@ const path = require('path');
 const { exec } = require('child_process');
 const { app } = require('electron');
 const PathResolutionService = require('./PathResolutionService');
+const ValidationOrchestrator = require('./ValidationOrchestrator');
+const RFATypeMappingService = require('./RFATypeMappingService');
 
 class ProjectCreationService {
   constructor() {
     // Initialize the path resolution service for centralized path management
     this.pathResolver = new PathResolutionService();
+    
+    // Initialize validation orchestrator for comprehensive validation
+    this.validationOrchestrator = new ValidationOrchestrator();
+    
+    // Initialize mapping service for label/value conversion
+    this.rfaMapping = new RFATypeMappingService();
     
     // Keep legacy template paths for backward compatibility
     this.templatePaths = {
@@ -28,17 +36,20 @@ class ProjectCreationService {
     try {
       console.log('Starting project creation:', projectData);
 
-      // Validate required fields
-      if (!this.validateProjectData(projectData)) {
+      // Convert form data to internal format
+      const internalProjectData = this.rfaMapping.convertFormDataToInternal(projectData);
+
+      // Validate required fields using internal data
+      if (!this.validateProjectData(internalProjectData)) {
         throw new Error('Invalid project data');
       }
 
       // Sanitize project name
-      const sanitizedProjectName = this.sanitizeProjectName(projectData.projectName);
+      const sanitizedProjectName = this.sanitizeProjectName(internalProjectData.projectName);
       const firstLetter = this.getFirstLetter(sanitizedProjectName);
       
       // Determine save location and paths
-      const paths = this.determineProjectPaths(projectData, sanitizedProjectName, firstLetter);
+      const paths = this.determineProjectPaths(internalProjectData, sanitizedProjectName, firstLetter);
       
       // Create project structure
       const projectFolder = await this.createProjectStructure(projectData, paths, sanitizedProjectName, firstLetter);
@@ -70,13 +81,40 @@ class ProjectCreationService {
     try {
       console.log('Starting project creation with folders (using PathResolutionService):', projectData);
 
-      // Validate required fields
-      if (!this.validateProjectData(projectData)) {
+      // Convert form data to internal format for validation and processing
+      const internalProjectData = this.rfaMapping.convertFormDataToInternal(projectData);
+      console.log('Converted to internal format:', internalProjectData);
+
+      // ENHANCED: Run comprehensive validation using ValidationOrchestrator
+      console.log('Running comprehensive validation...');
+      const validationResult = await this.validationOrchestrator.validateProjectCreation(projectData);
+      
+      if (!validationResult.success) {
+        console.error('Validation failed:', validationResult.errors);
+        return {
+          success: false,
+          error: `Validation failed: ${validationResult.errors.join(', ')}`,
+          validationResult: validationResult
+        };
+      }
+
+      // Log validation warnings if any
+      if (validationResult.warnings && validationResult.warnings.length > 0) {
+        console.warn('Validation warnings:', validationResult.warnings);
+      }
+
+      // Log validation recommendations
+      if (validationResult.recommendations && validationResult.recommendations.length > 0) {
+        console.log('Validation recommendations:', validationResult.recommendations);
+      }
+
+      // Validate required fields using internal data
+      if (!this.validateProjectData(internalProjectData)) {
         throw new Error('Invalid project data');
       }
 
       // Sanitize project name (like HTA: remove \, /, :, _ and convert to uppercase)
-      const sanitizedProjectName = this.sanitizeProjectName(projectData.projectName);
+      const sanitizedProjectName = this.sanitizeProjectName(internalProjectData.projectName);
       const firstLetter = this.getFirstLetter(sanitizedProjectName);
       
       // Create date string in MMDDYYYY format (like HTA)
@@ -84,7 +122,7 @@ class ProjectCreationService {
       const dateString = `${String(currentDate.getMonth() + 1).padStart(2, '0')}${String(currentDate.getDate()).padStart(2, '0')}${currentDate.getFullYear()}`;
       
       // ENHANCED: Use PathResolutionService to resolve all paths from settings
-      const resolvedPaths = await this.pathResolver.resolveAllProjectPaths(projectData);
+      const resolvedPaths = await this.pathResolver.resolveAllProjectPaths(internalProjectData);
       console.log('PathResolutionService resolved paths:', resolvedPaths);
       
       // Use the resolved output path instead of hardcoded desktop
@@ -137,7 +175,8 @@ class ProjectCreationService {
         rfaPath: rfaFolderPath,
         agentFilesPath: agentFilesPath,
         resolvedPaths: resolvedPaths, // Include resolved path info for debugging
-        message: 'Project folder created successfully using configurable paths'
+        validationResult: validationResult, // Include validation results
+        message: 'Project folder created successfully using configurable paths and comprehensive validation'
       };
       
     } catch (error) {
@@ -775,6 +814,77 @@ class ProjectCreationService {
       console.error('Error in copyAgentSpecificFilesWithResolver:', error);
       // Fall back to legacy method
       return await this.copyAgentSpecificFiles(projectData, agentFilesPath, dateString, sanitizedProjectName);
+    }
+  }
+
+  /**
+   * Validate project data using comprehensive validation pipeline
+   * @param {Object} projectData - Project data to validate
+   * @returns {Promise<Object>} Validation result
+   */
+  async validateProject(projectData) {
+    try {
+      console.log('Running comprehensive project validation...');
+      return await this.validationOrchestrator.validateProjectCreation(projectData);
+    } catch (error) {
+      console.error('Project validation failed:', error);
+      return {
+        success: false,
+        errors: [`Validation failed: ${error.message}`],
+        warnings: [],
+        recommendations: []
+      };
+    }
+  }
+
+  /**
+   * Validate specific field
+   * @param {string} fieldName - Name of field to validate
+   * @param {any} value - Value to validate
+   * @param {Object} projectData - Full project data context
+   * @returns {Promise<Object>} Field validation result
+   */
+  async validateField(fieldName, value, projectData = {}) {
+    try {
+      return await this.validationOrchestrator.validateField(fieldName, value, projectData);
+    } catch (error) {
+      console.error('Field validation failed:', error);
+      return {
+        fieldName: fieldName,
+        value: value,
+        isValid: false,
+        errors: [`Field validation failed: ${error.message}`],
+        warnings: [],
+        suggestions: []
+      };
+    }
+  }
+
+  /**
+   * Get validation service status
+   * @returns {Object} Service status information
+   */
+  getValidationStatus() {
+    try {
+      return this.validationOrchestrator.getServiceStatus();
+    } catch (error) {
+      console.error('Failed to get validation status:', error);
+      return {
+        error: error.message,
+        available: false
+      };
+    }
+  }
+
+  /**
+   * Clear all validation caches
+   */
+  clearValidationCaches() {
+    try {
+      this.validationOrchestrator.clearAllCaches();
+      console.log('All validation caches cleared');
+    } catch (error) {
+      console.error('Failed to clear validation caches:', error);
     }
   }
 }
