@@ -1,6 +1,6 @@
 {
   "name": "project-creator",
-  "version": "5.0.44",
+  "version": "5.0.45",
   "description": "Project Creator - Modern Electron application for creating and managing projects",
   "main": "main.js",
   "homepage": "./",
@@ -178,7 +178,9 @@
       "deleteAppDataOnUninstall": false,
       "perMachine": false,
       "allowElevation": true,
-      "installerLanguages": ["en"],
+      "installerLanguages": [
+        "en"
+      ],
       "warningsAsErrors": false,
       "artifactName": "${productName} Setup ${version}.${ext}",
       "uninstallDisplayName": "Project Creator"
