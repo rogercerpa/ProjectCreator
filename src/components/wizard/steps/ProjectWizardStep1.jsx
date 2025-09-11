@@ -183,6 +183,8 @@ const ProjectWizardStep1 = ({
   // ENHANCED: Advanced Agile import functionality with detailed feedback
   const handlePasteRFAInfo = async () => {
     setIsPasting(true);
+    const startTime = performance.now();
+    
     try {
       const clipboardText = await navigator.clipboard.readText();
       
@@ -197,7 +199,17 @@ const ProjectWizardStep1 = ({
         console.log('Processing large Agile data...');
       }
 
+      // Parse data with performance tracking
+      const parseStartTime = performance.now();
       const parsedData = parseRFAInfo(clipboardText);
+      const parseTime = performance.now() - parseStartTime;
+      
+      console.log(`Data parsing completed in ${parseTime.toFixed(2)}ms`);
+      
+      // Log performance warning if parsing takes too long
+      if (parseTime > 1000) {
+        console.warn(`⚠️ Slow parsing detected: ${parseTime.toFixed(2)}ms - consider optimizing parseRFAInfo function`);
+      }
       
       if (parsedData) {
         // Track which fields were imported for visual feedback
@@ -266,6 +278,8 @@ const ProjectWizardStep1 = ({
       
       alert(errorMessage);
     } finally {
+      const totalTime = performance.now() - startTime;
+      console.log(`Total Agile import process completed in ${totalTime.toFixed(2)}ms`);
       setIsPasting(false);
     }
   };
@@ -319,7 +333,12 @@ const ProjectWizardStep1 = ({
   // PRESERVED: Complete parseRFAInfo function from original component
   const parseRFAInfo = (clipboardText) => {
     // Enhanced parsing based on actual Agile data format
-    console.log('Parsing clipboard data:', clipboardText);
+    console.log('=== AGILE DATA DEBUG ===');
+    console.log('Full clipboard data length:', clipboardText.length);
+    console.log('First 500 characters:', clipboardText.substring(0, 500));
+    console.log('Last 200 characters:', clipboardText.substring(Math.max(0, clipboardText.length - 200)));
+    console.log('All lines:', clipboardText.split('\n').map((line, i) => `${i + 1}: ${line}`));
+    console.log('=== END DEBUG ===');
     
     const parsedData = {};
     
@@ -374,18 +393,75 @@ const ProjectWizardStep1 = ({
       parsedData.rfaType = rfaTypeMapping[rfaTypeText] || rfaTypeText;
     }
     
-    // Extract Project Name and Container - Look for the specific format in your data
-    // The data shows: "Haskell Jacksonville Headquarters Project Blue Sky 25-58944"
-    const projectMatch = clipboardText.match(/([A-Za-z\s\-]+?)\s+(\d{2}-\d{5})/);
-    if (projectMatch) {
-      parsedData.projectName = cleanProjectName(projectMatch[1].trim());
-      parsedData.projectContainer = projectMatch[2];
-    } else {
-      // Fallback: try to find any project name pattern
-      const fallbackProjectMatch = clipboardText.match(/([A-Za-z\s\-]+)\s+(\d{2}-\d{5})/);
-      if (fallbackProjectMatch) {
-        parsedData.projectName = cleanProjectName(fallbackProjectMatch[1].trim());
-        parsedData.projectContainer = fallbackProjectMatch[2];
+    // Extract Project Name and Container - Enhanced pattern matching
+    // Look for patterns like: "CLT1 DC1 25-15237" or "Haskell Jacksonville Headquarters Project Blue Sky 25-58944"
+    console.log('Looking for project name and container in:', clipboardText.substring(0, 200) + '...');
+    
+    // Try multiple patterns for better matching - updated for actual Agile format
+    const projectPatterns = [
+      // Pattern 1: Short format like "CLT1 DC1 25-15237" (most common in Agile)
+      /([A-Za-z0-9\s\-\.&,()'\/]{2,20}?)\s+(\d{2}-\d{5})/,
+      // Pattern 2: Long format like "FLORIDA SHERIFF'S ASSN YOUTH LEARNING & BLACKBURN/ 25-58874"
+      /([A-Za-z0-9\s\-\.&,()'\/]{10,100}?)\s+(\d{2}-\d{5})/,
+      // Pattern 3: With "Project Name:" prefix
+      /Project Name:\s*([A-Za-z0-9\s\-\.&,()'\/]+?)\s+(\d{2}-\d{5})/i,
+      // Pattern 4: With "Project Container:" prefix
+      /Project Container:\s*(\d{2}-\d{5})/i,
+      // Pattern 5: Look for any alphanumeric text followed by container pattern (very flexible)
+      /([A-Za-z0-9\s\-\.&,()'\/]{3,}?)\s+(\d{2}-\d{5})/
+    ];
+    
+    // First try to find the pattern after "BOM" line specifically (most reliable for Agile)
+    // Updated regex to handle long names with special characters like apostrophes, ampersands, slashes
+    // Use a more efficient approach: find the line after BOM, then extract name and container
+    const bomLineIndex = clipboardText.indexOf('BOM');
+    if (bomLineIndex !== -1) {
+      const afterBom = clipboardText.substring(bomLineIndex);
+      const bomMatch = afterBom.match(/BOM\s*\n\s*([^\n]+?)\s+(\d{2}-\d{5})/);
+      if (bomMatch) {
+        console.log('Found project match after BOM line:', bomMatch);
+        parsedData.projectName = cleanProjectName(bomMatch[1].trim());
+        parsedData.projectContainer = bomMatch[2];
+      }
+    }
+    
+    // If BOM pattern didn't work, try the general patterns
+    if (!parsedData.projectName || !parsedData.projectContainer) {
+      let projectMatch = null;
+      let patternUsed = '';
+      
+      for (let i = 0; i < projectPatterns.length; i++) {
+        const match = clipboardText.match(projectPatterns[i]);
+        if (match) {
+          projectMatch = match;
+          patternUsed = `Pattern ${i + 1}`;
+          console.log(`Found project match using ${patternUsed}:`, match);
+          break;
+        }
+      }
+      
+      if (projectMatch) {
+        if (projectMatch.length >= 3) {
+          // Pattern with both name and container
+          parsedData.projectName = cleanProjectName(projectMatch[1].trim());
+          parsedData.projectContainer = projectMatch[2];
+        } else if (projectMatch.length === 2) {
+          // Pattern with only container
+          parsedData.projectContainer = projectMatch[1];
+          // Try to find project name separately
+          const nameMatch = clipboardText.match(/([A-Za-z0-9\s\-\.&,()'\/]{3,}?)(?=\s+\d{2}-\d{5})/);
+          if (nameMatch) {
+            parsedData.projectName = cleanProjectName(nameMatch[1].trim());
+          }
+        }
+        
+        console.log(`Project parsing result (${patternUsed}):`, {
+          projectName: parsedData.projectName,
+          projectContainer: parsedData.projectContainer
+        });
+      } else {
+        console.warn('No project name/container pattern matched in clipboard data');
+        console.log('Available text patterns:', clipboardText.match(/[A-Za-z0-9\s\-\.&,()'\/]{3,}?\s+\d{2}-\d{5}/g));
       }
     }
     

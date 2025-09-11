@@ -1,0 +1,333 @@
+/* Update Notification Styles */
+.update-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 10000;
+  max-width: 400px;
+  background: #ffffff;
+  border: 1px solid #e1e5e9;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  animation: slideIn 0.3s ease-out;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.update-notification-content {
+  padding: 0;
+}
+
+.update-notification-header {
+  display: flex;
+  align-items: flex-start;
+  padding: 20px 20px 16px 20px;
+  border-bottom: 1px solid #f1f3f4;
+}
+
+.update-notification-icon {
+  font-size: 24px;
+  margin-right: 12px;
+  margin-top: 2px;
+}
+
+.update-notification-title {
+  flex: 1;
+}
+
+.update-notification-title h3 {
+  margin: 0 0 4px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.update-notification-title p {
+  margin: 0;
+  font-size: 14px;
+  color: #666;
+}
+
+.update-notification-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: #999;
+  cursor: pointer;
+  padding: 4px;
+  margin: -4px -4px 0 0;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.update-notification-close:hover {
+  background: #f5f5f5;
+  color: #666;
+}
+
+.update-notification-body {
+  padding: 16px 20px;
+}
+
+.update-release-name {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: #1a1a1a;
+}
+
+.update-release-notes {
+  margin-bottom: 16px;
+}
+
+.update-release-notes h4 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.release-notes-content {
+  font-size: 13px;
+  color: #666;
+  line-height: 1.4;
+  max-height: 120px;
+  overflow-y: auto;
+  padding: 8px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
+}
+
+.update-download-progress {
+  margin-bottom: 16px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #007bff, #0056b3);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.update-download-progress p {
+  margin: 0;
+  font-size: 13px;
+  color: #666;
+  text-align: center;
+}
+
+.update-installing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 6px;
+}
+
+.update-installing .spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #e9ecef;
+  border-top: 2px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-right: 8px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.update-installing p {
+  margin: 0;
+  font-size: 14px;
+  color: #666;
+}
+
+.update-notification-actions {
+  display: flex;
+  gap: 8px;
+  padding: 0 20px 16px 20px;
+}
+
+.update-button {
+  flex: 1;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.update-button.primary {
+  background: #007bff;
+  color: white;
+}
+
+.update-button.primary:hover {
+  background: #0056b3;
+}
+
+.update-button.secondary {
+  background: #f8f9fa;
+  color: #666;
+  border: 1px solid #e9ecef;
+}
+
+.update-button.secondary:hover {
+  background: #e9ecef;
+}
+
+.update-button.install {
+  background: #28a745;
+  color: white;
+}
+
+.update-button.install:hover {
+  background: #1e7e34;
+}
+
+.update-button.disabled {
+  background: #e9ecef;
+  color: #999;
+  cursor: not-allowed;
+}
+
+.update-notification-footer {
+  padding: 12px 20px 16px 20px;
+  border-top: 1px solid #f1f3f4;
+  text-align: center;
+}
+
+.update-link {
+  background: none;
+  border: none;
+  color: #007bff;
+  font-size: 13px;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.update-link:hover {
+  background: #f8f9fa;
+  text-decoration: none;
+}
+
+/* Responsive design */
+@media (max-width: 480px) {
+  .update-notification {
+    top: 10px;
+    right: 10px;
+    left: 10px;
+    max-width: none;
+  }
+  
+  .update-notification-actions {
+    flex-direction: column;
+  }
+  
+  .update-button {
+    flex: none;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .update-notification {
+    background: #2d2d2d;
+    border-color: #404040;
+    color: #ffffff;
+  }
+  
+  .update-notification-header {
+    border-bottom-color: #404040;
+  }
+  
+  .update-notification-title h3 {
+    color: #ffffff;
+  }
+  
+  .update-notification-title p {
+    color: #cccccc;
+  }
+  
+  .update-notification-close {
+    color: #cccccc;
+  }
+  
+  .update-notification-close:hover {
+    background: #404040;
+    color: #ffffff;
+  }
+  
+  .update-release-name {
+    color: #ffffff;
+  }
+  
+  .update-release-notes h4 {
+    color: #ffffff;
+  }
+  
+  .release-notes-content {
+    background: #404040;
+    border-color: #555555;
+    color: #cccccc;
+  }
+  
+  .progress-bar {
+    background: #404040;
+  }
+  
+  .update-installing {
+    background: #404040;
+  }
+  
+  .update-installing p {
+    color: #cccccc;
+  }
+  
+  .update-button.secondary {
+    background: #404040;
+    color: #cccccc;
+    border-color: #555555;
+  }
+  
+  .update-button.secondary:hover {
+    background: #555555;
+  }
+  
+  .update-notification-footer {
+    border-top-color: #404040;
+  }
+}
+
+

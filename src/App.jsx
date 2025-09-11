@@ -7,7 +7,14 @@ import ProjectManagement from './components/ProjectManagement';
 import DraftRecoveryModal from './components/wizard/components/DraftRecoveryModal';
 import MigrationAssistant from './components/wizard/components/MigrationAssistant';
 import Settings from './components/Settings';
+// Use simple services that work in both main and renderer processes
 import featureFlagService from './services/FeatureFlagService';
+import crashReportingService from './services/SimpleCrashReportingService';
+import analyticsService from './services/SimpleAnalyticsService';
+import performanceMonitoringService from './services/SimplePerformanceMonitoringService';
+// import autoUpdateService from './services/AutoUpdateService';
+// import UpdateNotification from './components/UpdateNotification';
+// import PerformanceDashboard from './components/PerformanceDashboard';
 import { getFullVersionInfo, getVersionDisplay } from './utils/version';
 import './App.css';
 
@@ -94,10 +101,51 @@ function App() {
     firstAvailable: false
   });
 
+  // Initialize monitoring services
+  const initializeMonitoringServices = async () => {
+    try {
+      // Initialize crash reporting
+      await crashReportingService.initialize({
+        environment: typeof process !== 'undefined' ? process.env?.NODE_ENV : 'development',
+        debug: typeof process !== 'undefined' ? process.env?.NODE_ENV === 'development' : true
+      });
+
+      // Initialize analytics
+      analyticsService.initialize({
+        enabled: true,
+        version: getFullVersionInfo().full
+      });
+
+      // Initialize performance monitoring
+      performanceMonitoringService.initialize({
+        enabled: true,
+        thresholds: {
+          renderTime: 100,
+          apiResponseTime: 1000,
+          memoryUsage: 100 * 1024 * 1024
+        }
+      });
+
+      // Track app initialization
+      analyticsService.trackEvent('app_initialized', {
+        version: getFullVersionInfo().full,
+        platform: typeof process !== 'undefined' ? process.platform : 'unknown',
+        arch: typeof process !== 'undefined' ? process.arch : 'unknown'
+      });
+
+      console.log('Monitoring services initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize monitoring services:', error);
+    }
+  };
+
   useEffect(() => {
     const initializeApp = async () => {
       try {
         setIsLoading(true);
+        
+        // Initialize crash reporting and analytics
+        await initializeMonitoringServices();
         
         // Simulate app initialization
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -171,12 +219,28 @@ function App() {
         setIsLoading(false);
       } catch (err) {
         console.error('Failed to initialize app:', err);
+        
+        // Track error in analytics and crash reporting
+        analyticsService.trackError(err, { context: 'app_initialization' });
+        crashReportingService.captureException(err, { context: 'app_initialization' });
+        
         setIsLoading(false);
       }
     };
 
     initializeApp();
   }, [draftService]);
+
+  // Cleanup monitoring services on unmount
+  useEffect(() => {
+    return () => {
+      // Cleanup monitoring services
+      crashReportingService.close();
+      analyticsService.cleanup();
+      performanceMonitoringService.cleanup();
+      // autoUpdateService.cleanup();
+    };
+  }, []);
 
 
 
@@ -186,6 +250,13 @@ function App() {
     setCurrentProject(project);
     setCurrentView('project-management');
     console.log('Current project set to:', project);
+    
+    // Track project creation in analytics
+    analyticsService.trackProjectCreation(project, {
+      projectType: project.rfaType,
+      regionalTeam: project.regionalTeam,
+      complexity: project.complexity
+    });
   };
 
   const handleProjectUpdated = (updatedProject) => {
@@ -274,6 +345,12 @@ function App() {
       setCurrentProject(null);
     }
     setCurrentView(view);
+    
+    // Track view change in analytics
+    analyticsService.trackPageView(view, {
+      previousView: currentView,
+      hasCurrentProject: !!currentProject
+    });
   };
 
   // Draft recovery handlers
@@ -287,8 +364,19 @@ function App() {
       setCurrentView('wizard');
       
       console.log('Resumed draft:', draft.id, 'at step', draft.currentStep);
+      
+      // Track draft recovery in analytics
+      analyticsService.trackEvent('draft_recovered', {
+        draftId: draft.id,
+        step: draft.currentStep,
+        projectType: draft.formData?.rfaType
+      });
     } catch (error) {
       console.error('Error resuming draft:', error);
+      
+      // Track error in analytics and crash reporting
+      analyticsService.trackError(error, { context: 'draft_recovery' });
+      crashReportingService.captureException(error, { context: 'draft_recovery' });
     }
   };
 
@@ -681,6 +769,11 @@ function App() {
       }
     } catch (error) {
       console.error('Error rendering main content:', error);
+      
+      // Track error in analytics and crash reporting
+      analyticsService.trackError(error, { context: 'main_content_render' });
+      crashReportingService.captureException(error, { context: 'main_content_render' });
+      
       return (
         <div className="error-container">
           <h2>Error Loading Content</h2>
@@ -740,6 +833,12 @@ function App() {
           showComparison={true}
         />
       )}
+      
+      {/* Update Notification - temporarily disabled */}
+      {/* <UpdateNotification /> */}
+      
+      {/* Performance Dashboard - temporarily disabled */}
+      {/* <PerformanceDashboard /> */}
     </div>
   );
 }

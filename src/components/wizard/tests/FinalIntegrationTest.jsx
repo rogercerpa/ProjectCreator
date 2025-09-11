@@ -466,7 +466,7 @@ const FinalIntegrationTest = () => {
           <br />
           🧠 Intelligent Features: Auto-Save, Smart Defaults, Draft Recovery
           <br />
-          ⚡ Optimized Performance: Sub-100ms Renders, <3MB Memory
+          ⚡ Optimized Performance: Sub-100ms Renders, &lt;3MB Memory
           <br />
           🔄 Seamless Migration with User Choice and Rollback Capability
           <br /><br />

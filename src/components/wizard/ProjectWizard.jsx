@@ -6,6 +6,7 @@ import WizardLayout from './components/WizardLayout';
 import WizardErrorBoundary from './components/WizardErrorBoundary';
 import ProjectWizardStep1 from './steps/ProjectWizardStep1';
 import ProjectWizardStep2 from './steps/ProjectWizardStep2';
+import performanceMonitoringService from '../../services/SimplePerformanceMonitoringService';
 import './ProjectWizard.css';
 
 // Import draft service for server-side partial saves
@@ -138,6 +139,13 @@ const ProjectWizard = ({
   const handleNext = useCallback(async () => {
     setError(null);
     setIsLoading(true);
+
+    // Track step navigation performance
+    const timerId = performanceMonitoringService.startTimer('wizard_step_navigation', {
+      fromStep: wizard.currentStep,
+      toStep: wizard.currentStep + 1,
+      mode
+    });
 
     // Enhanced error tracking
     let operationContext = 'initialization';
@@ -378,6 +386,8 @@ const ProjectWizard = ({
       
     } finally {
       setIsLoading(false);
+      // End performance timer
+      performanceMonitoringService.endTimer(timerId);
     }
   }, [formData, wizard, stepValidation, projectDraft]); // Remove circular dependencies
 

@@ -16,7 +16,8 @@ export const validatePath = (inputPath) => {
   // Remove null bytes and other dangerous characters
   const sanitized = inputPath
     .replace(/\0/g, '')
-    .replace(/[<>:"|?*]/g, '')
+    .replace(/[<>"|?*]/g, ' ')
+    .replace(/\s+/g, ' ')
     .trim();
     
   return sanitized;
@@ -93,14 +94,14 @@ export const validateNumber = (value, min = 0, max = Number.MAX_SAFE_INTEGER) =>
 };
 
 // File extension validation
-export const validateFileExtension = (filename, allowedExtensions = []) => {
+export const validateFileExtension = (filename, allowedExtensions = ['.docx', '.doc', '.pdf', '.xlsx', '.xls', '.txt', '.csv']) => {
   if (typeof filename !== 'string') {
     throw new Error('Filename must be a string');
   }
   
   const extension = filename.toLowerCase().split('.').pop();
   
-  if (allowedExtensions.length > 0 && !allowedExtensions.includes(extension)) {
+  if (allowedExtensions.length > 0 && !allowedExtensions.includes('.' + extension)) {
     throw new Error(`File type .${extension} not allowed`);
   }
   
@@ -122,9 +123,16 @@ export const sanitizeSearchQuery = (query) => {
   ];
   
   let sanitized = query;
-  dangerous.forEach(pattern => {
-    sanitized = sanitized.replace(pattern, '');
-  });
+  for (const pattern of dangerous) {
+    if (pattern.test(sanitized)) {
+      return '';
+    }
+  }
+  
+  // Additional check for common SQL injection patterns
+  if (sanitized.includes("'") && (sanitized.includes("OR") || sanitized.includes("AND"))) {
+    return '';
+  }
   
   return sanitized.trim();
 };
@@ -139,7 +147,8 @@ export const sanitizeHTML = (html) => {
   const sanitized = html
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
     .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
-    .replace(/on\w+\s*=/gi, '')
+    .replace(/on\w+\s*=\s*["'][^"']*["']/gi, '')
+    .replace(/href\s*=\s*["']javascript:[^"']*["']/gi, 'href=""')
     .replace(/javascript:/gi, '')
     .replace(/vbscript:/gi, '');
     
