@@ -173,7 +173,15 @@
       "installerHeader": "assets/icons/favicon.ico",
       "installerHeaderIcon": "assets/icons/favicon.ico",
       "displayLanguageSelector": false,
-      "language": "1033"
+      "language": "1033",
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "perMachine": false,
+      "allowElevation": true,
+      "installerLanguages": ["en"],
+      "warningsAsErrors": false,
+      "artifactName": "${productName} Setup ${version}.${ext}",
+      "uninstallDisplayName": "Project Creator"
     },
     "dmg": {
       "title": "Project Creator Installer",

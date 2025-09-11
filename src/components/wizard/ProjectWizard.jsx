@@ -248,7 +248,6 @@ const ProjectWizard = ({
           // Complete the project creation
           const completeProject = {
             ...formData,
-            id: Date.now().toString(),
             status: 'active',
             completionStep: 2,
             updatedAt: new Date().toISOString(),
@@ -261,19 +260,84 @@ const ProjectWizard = ({
 
           console.log('ProjectWizard: Created complete project object:', completeProject);
 
-          // Navigate to project management
-          if (mode === 'create' && typeof onProjectCreated === 'function') {
-            console.log('ProjectWizard: Calling onProjectCreated with:', completeProject);
-            onProjectCreated(completeProject);
-          } else if (typeof onProjectUpdated === 'function') {
-            console.log('ProjectWizard: Calling onProjectUpdated with:', completeProject);
-            onProjectUpdated(completeProject);
+          // CRITICAL FIX: Save project to persistent storage first
+          setNotification({
+            type: 'info',
+            message: 'Saving project to database...'
+          });
+
+          const saveResult = await window.electronAPI.projectSave(completeProject);
+          
+          if (!saveResult.success) {
+            throw new Error(`Failed to save project: ${saveResult.error}`);
           }
 
-          setNotification({
-            type: 'success',
-            message: '🎉 Project creation completed! Welcome to project management.'
-          });
+          console.log('ProjectWizard: Project saved successfully:', saveResult);
+
+          // Use the saved project with proper ID and timestamps
+          const savedProject = saveResult.project;
+
+          // Navigate to project management
+          console.log('ProjectWizard: About to call navigation function');
+          console.log('ProjectWizard: mode =', mode);
+          console.log('ProjectWizard: onProjectCreated =', typeof onProjectCreated);
+          console.log('ProjectWizard: savedProject =', savedProject);
+
+          if (mode === 'create' && typeof onProjectCreated === 'function') {
+            console.log('ProjectWizard: Calling onProjectCreated with saved project:', savedProject);
+            try {
+              // Call the navigation function and wait for completion
+              await onProjectCreated(savedProject);
+              console.log('ProjectWizard: ✅ onProjectCreated completed successfully');
+              
+              setNotification({
+                type: 'success',
+                message: '🎉 Project saved and creation completed! Welcome to project management.'
+              });
+              
+            } catch (navError) {
+              console.error('ProjectWizard: ❌ Error in onProjectCreated:', navError);
+              setNotification({
+                type: 'warning',
+                message: '✅ Project saved successfully, but navigation failed. Please check the Projects list.'
+              });
+              // Don't throw the error, project is saved successfully
+            }
+          } else if (typeof onProjectUpdated === 'function') {
+            console.log('ProjectWizard: Calling onProjectUpdated with saved project:', savedProject);
+            try {
+              await onProjectUpdated(savedProject);
+              console.log('ProjectWizard: ✅ onProjectUpdated completed successfully');
+              
+              setNotification({
+                type: 'success',
+                message: '🎉 Project updated and saved successfully! Welcome to project management.'
+              });
+              
+            } catch (navError) {
+              console.error('ProjectWizard: ❌ Error in onProjectUpdated:', navError);
+              setNotification({
+                type: 'warning',
+                message: '✅ Project updated successfully, but navigation failed. Please check the Projects list.'
+              });
+              // Don't throw the error, project is saved successfully
+            }
+          } else {
+            console.error('ProjectWizard: ❌ No valid navigation function available!');
+            console.error('ProjectWizard: mode =', mode);
+            console.error('ProjectWizard: onProjectCreated =', onProjectCreated);
+            console.error('ProjectWizard: onProjectUpdated =', onProjectUpdated);
+            
+            setNotification({
+              type: 'warning',
+              message: '✅ Project saved successfully! Please navigate to the Projects list to view it.'
+            });
+          }
+
+          // Wait a moment to ensure all UI updates are complete
+          setTimeout(() => {
+            console.log('ProjectWizard: All navigation and UI updates should be complete');
+          }, 200);
 
           // Don't proceed to next step since we're navigating away
           return;

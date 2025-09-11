@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   projectDelete: (projectId) => ipcRenderer.invoke('project-delete', projectId),
   projectSearch: (searchCriteria) => ipcRenderer.invoke('project-search', searchCriteria),
   projectStats: () => ipcRenderer.invoke('project-stats'),
+  projectsLoadAll: () => ipcRenderer.invoke('projects-load-all'), // CRITICAL FIX for data persistence
   
   // Triage calculations
   triageCalculate: (triageData) => ipcRenderer.invoke('triage-calculate', triageData),

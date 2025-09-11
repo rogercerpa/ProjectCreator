@@ -2,6 +2,9 @@ const { app, BrowserWindow, Menu, ipcMain, dialog, shell } = require('electron')
 const path = require('path');
 const fs = require('fs-extra');
 
+// Import version check service
+const versionCheckService = require('./src/utils/versionCheck');
+
 // Import services
 const ProjectService = require('./src/services/ProjectService');
 const WordService = require('./src/services/WordService');
@@ -73,7 +76,14 @@ function createWindow() {
 }
 
 // Create window when Electron is ready
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  // Handle version checking and upgrades
+  try {
+    await versionCheckService.handlePostInstall();
+  } catch (error) {
+    console.error('Error during version check:', error);
+  }
+
   createWindow();
 
   // Create application menu
@@ -323,6 +333,26 @@ ipcMain.handle('project-stats', async () => {
     return await projectPersistenceService.getProjectStats();
   } catch (error) {
     return { success: false, error: error.message };
+  }
+});
+
+// Load all projects - CRITICAL FIX for data persistence
+ipcMain.handle('projects-load-all', async () => {
+  try {
+    const projects = await projectPersistenceService.loadProjects();
+    return {
+      success: true,
+      projects: projects,
+      count: projects.length,
+      message: `${projects.length} projects loaded successfully`
+    };
+  } catch (error) {
+    console.error('Error loading all projects:', error);
+    return { 
+      success: false, 
+      error: error.message,
+      projects: []
+    };
   }
 });
 

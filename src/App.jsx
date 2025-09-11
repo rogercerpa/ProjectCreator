@@ -163,6 +163,21 @@ function App() {
         const savedPreference = localStorage.getItem('interface-preference');
         setUserInterfacePreference(savedPreference);
         
+        // CRITICAL FIX: Load existing projects from persistent storage
+        try {
+          const projectsResult = await window.electronAPI.projectsLoadAll();
+          if (projectsResult && projectsResult.success && Array.isArray(projectsResult.projects)) {
+            setProjects(projectsResult.projects);
+            console.log(`✅ Loaded ${projectsResult.projects.length} existing projects from storage`);
+          } else {
+            console.warn('Failed to load projects:', projectsResult?.error || 'Unknown error');
+            setProjects([]); // Ensure projects is always an array
+          }
+        } catch (projectLoadError) {
+          console.error('Error loading existing projects:', projectLoadError);
+          setProjects([]); // Ensure projects is always an array even on error
+        }
+
         // Check for existing drafts
         if (draftService) {
           try {
@@ -244,26 +259,121 @@ function App() {
 
 
 
-  const handleProjectCreated = (project) => {
-    console.log('handleProjectCreated called with:', project);
-    setProjects(prev => [project, ...prev]);
-    setCurrentProject(project);
-    setCurrentView('project-management');
-    console.log('Current project set to:', project);
+  const handleProjectCreated = async (project) => {
+    console.log('🎯 handleProjectCreated called with:', project);
+    
+    // Validate project data
+    if (!project) {
+      console.error('❌ handleProjectCreated: No project provided!');
+      return;
+    }
+    
+    if (!project.id) {
+      console.error('❌ handleProjectCreated: Project missing ID!', project);
+      return;
+    }
+    
+    console.log('✅ handleProjectCreated: Project validation passed');
+    
+    try {
+      // CRITICAL FIX: Reload all projects from persistent storage to ensure UI is in sync
+      console.log('🔄 handleProjectCreated: Reloading all projects from storage to ensure sync');
+      const projectsResult = await window.electronAPI.projectsLoadAll();
+      
+      if (projectsResult && projectsResult.success && Array.isArray(projectsResult.projects)) {
+        console.log('✅ handleProjectCreated: Successfully reloaded projects from storage');
+        console.log(`🔄 handleProjectCreated: Found ${projectsResult.projects.length} projects in storage`);
+        
+        // Update projects list with fresh data from storage
+        setProjects(projectsResult.projects);
+        
+        // Find the newly created project in the fresh data
+        const freshProject = projectsResult.projects.find(p => p.id === project.id);
+        if (freshProject) {
+          console.log('✅ handleProjectCreated: Found newly created project in fresh data:', freshProject);
+          setCurrentProject(freshProject);
+        } else {
+          console.log('⚠️ handleProjectCreated: Using provided project data as fallback:', project);
+          setCurrentProject(project);
+        }
+        
+      } else {
+        console.warn('⚠️ handleProjectCreated: Failed to reload projects, using fallback approach');
+        // Fallback to original approach
+        setProjects(prev => {
+          const existingIndex = prev.findIndex(p => p.id === project.id);
+          if (existingIndex !== -1) {
+            const updated = [...prev];
+            updated[existingIndex] = project;
+            return updated;
+          } else {
+            return [project, ...prev];
+          }
+        });
+        setCurrentProject(project);
+      }
+      
+      // Navigate to project management with a small delay to ensure state updates complete
+      setTimeout(() => {
+        console.log('🎯 handleProjectCreated: Setting current view to project-management');
+        setCurrentView('project-management');
+      }, 50); // Slightly longer delay to ensure all state updates complete
+      
+      console.log('✅ handleProjectCreated: All state updates completed');
+      
+    } catch (error) {
+      console.error('❌ handleProjectCreated: Error during state updates:', error);
+      // Fallback approach if reload fails
+      setProjects(prev => [project, ...prev]);
+      setCurrentProject(project);
+      setTimeout(() => {
+        setCurrentView('project-management');
+      }, 50);
+    }
     
     // Track project creation in analytics
-    analyticsService.trackProjectCreation(project, {
-      projectType: project.rfaType,
-      regionalTeam: project.regionalTeam,
-      complexity: project.complexity
-    });
+    try {
+      analyticsService.trackProjectCreation(project, {
+        projectType: project.rfaType,
+        regionalTeam: project.regionalTeam,
+        complexity: project.complexity
+      });
+      console.log('✅ handleProjectCreated: Analytics tracked successfully');
+    } catch (analyticsError) {
+      console.warn('⚠️ handleProjectCreated: Analytics tracking failed:', analyticsError);
+    }
   };
 
-  const handleProjectUpdated = (updatedProject) => {
-    setProjects(prev => 
-      prev.map(p => p.id === updatedProject.id ? updatedProject : p)
-    );
-    setCurrentProject(updatedProject);
+  const handleProjectUpdated = async (updatedProject) => {
+    try {
+      // Save updated project to persistent storage
+      const saveResult = await window.electronAPI.projectSave(updatedProject);
+      
+      if (saveResult.success) {
+        // Use the saved project data (which may have updated timestamps, etc.)
+        const savedProject = saveResult.project;
+        
+        setProjects(prev => 
+          prev.map(p => p.id === savedProject.id ? savedProject : p)
+        );
+        setCurrentProject(savedProject);
+        console.log('✅ Project updated and saved:', savedProject);
+      } else {
+        console.error('Failed to save updated project:', saveResult.error);
+        // Still update UI but warn user
+        setProjects(prev => 
+          prev.map(p => p.id === updatedProject.id ? updatedProject : p)
+        );
+        setCurrentProject(updatedProject);
+      }
+    } catch (error) {
+      console.error('Error updating project:', error);
+      // Fallback to UI update only
+      setProjects(prev => 
+        prev.map(p => p.id === updatedProject.id ? updatedProject : p)
+      );
+      setCurrentProject(updatedProject);
+    }
   };
 
   const handleFormDataChange = (newFormData) => {
@@ -338,12 +448,27 @@ function App() {
     // Additional wizard-specific resets will be handled by the wizard component
   };
 
-  const handleViewChange = (view) => {
+  const handleViewChange = async (view) => {
     // Clear current project when navigating away from project management
     if (currentView === 'project-management' && view !== 'project-management') {
       console.log('App: Navigating away from project management, clearing current project');
       setCurrentProject(null);
     }
+    
+    // CRITICAL FIX: Refresh projects when navigating to list view to ensure latest data
+    if (view === 'list') {
+      console.log('🔄 App: Navigating to projects list, refreshing projects from storage');
+      try {
+        const projectsResult = await window.electronAPI.projectsLoadAll();
+        if (projectsResult && projectsResult.success && Array.isArray(projectsResult.projects)) {
+          setProjects(projectsResult.projects);
+          console.log(`✅ App: Projects list refreshed, found ${projectsResult.projects.length} projects`);
+        }
+      } catch (error) {
+        console.warn('⚠️ App: Failed to refresh projects list:', error);
+      }
+    }
+    
     setCurrentView(view);
     
     // Track view change in analytics
@@ -455,6 +580,7 @@ function App() {
 
   // Render main content based on current view
   const renderMainContent = () => {
+    console.log('🎯 App: renderMainContent called with currentView =', currentView);
     try {
       switch (currentView) {
         case 'wizard':
@@ -506,7 +632,26 @@ function App() {
         case 'list':
           return (
             <div className="projects-list-container">
-              <h2>Projects List</h2>
+              <div className="projects-list-header">
+                <h2>Projects List</h2>
+                <button 
+                  onClick={async () => {
+                    console.log('🔄 Manual refresh triggered');
+                    try {
+                      const projectsResult = await window.electronAPI.projectsLoadAll();
+                      if (projectsResult && projectsResult.success && Array.isArray(projectsResult.projects)) {
+                        setProjects(projectsResult.projects);
+                        console.log(`✅ Manual refresh completed, found ${projectsResult.projects.length} projects`);
+                      }
+                    } catch (error) {
+                      console.warn('⚠️ Manual refresh failed:', error);
+                    }
+                  }}
+                  className="btn btn-outline btn-small"
+                >
+                  🔄 Refresh
+                </button>
+              </div>
               {projects.length === 0 ? (
                 <div className="no-projects">
                   <p>No projects found.</p>
@@ -541,6 +686,10 @@ function App() {
             </div>
           );
         case 'project-management':
+          console.log('🎯 App: Rendering project-management view');
+          console.log('🎯 App: currentProject =', currentProject);
+          console.log('🎯 App: currentProject type =', typeof currentProject);
+          console.log('🎯 App: currentProject keys =', currentProject ? Object.keys(currentProject) : 'no project');
           return (
             <ProjectManagement
               project={currentProject}

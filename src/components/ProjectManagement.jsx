@@ -86,15 +86,20 @@ const ProjectManagement = ({
     setCurrentMode('edit');
   };
 
-  console.log('ProjectManagement received project:', project);
+  console.log('🎯 ProjectManagement: Component rendered');
+  console.log('🎯 ProjectManagement: Received project:', project);
+  console.log('🎯 ProjectManagement: Project type:', typeof project);
+  console.log('🎯 ProjectManagement: Project keys:', project ? Object.keys(project) : 'no project');
   
   if (!project) {
-    console.error('ProjectManagement: No project provided!');
+    console.error('❌ ProjectManagement: No project provided!');
+    console.error('❌ ProjectManagement: onBack function:', typeof onBack);
     return (
       <div className="project-management">
         <div className="error-state">
           <h2>⚠️ Project Not Found</h2>
           <p>The requested project could not be loaded.</p>
+          <p><small>Debug: project = {JSON.stringify(project)}</small></p>
           <button onClick={onBack} className="btn btn-primary">
             ← Back to Projects
           </button>
@@ -102,6 +107,8 @@ const ProjectManagement = ({
       </div>
     );
   }
+  
+  console.log('✅ ProjectManagement: Project validation passed, rendering main content');
 
   return (
     <div className="project-management">
