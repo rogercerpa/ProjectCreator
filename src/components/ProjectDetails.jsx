@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './ProjectDetails.css';
 
 /**
@@ -6,6 +6,7 @@ import './ProjectDetails.css';
  * Shows all project details in a well-organized, read-only format
  */
 const ProjectDetails = ({ project, onEdit }) => {
+  const [isExporting, setIsExporting] = useState(false);
   const formatDate = (dateString) => {
     if (!dateString) return 'Not set';
     const date = new Date(dateString);
@@ -26,15 +27,146 @@ const ProjectDetails = ({ project, onEdit }) => {
     }).format(value);
   };
 
+  // Helper function to map frontend project data to backend expected format
+  // This fixes the field name mismatch where frontend uses 'totalTriage' but backend expects 'totalTime'
+  const mapProjectDataForExport = (project) => {
+    return {
+      // Basic project info
+      projectName: project.projectName,
+      rfaNumber: project.rfaNumber,
+      agentNumber: project.agentNumber,
+      projectContainer: project.projectContainer,
+      rfaType: project.rfaType,
+      isRevision: project.isRevision,
+      requestedDate: project.requestedDate,
+      estimatedCompletionDate: project.ecd,
+      dueDate: project.dueDate,
+      
+      // Triage data - map frontend field names to backend expected names
+      totalTime: project.totalTriage || 0,  // KEY FIX: totalTriage → totalTime
+      numOfRooms: project.numOfRooms || 0,
+      overrideRooms: project.overrideRooms || 0,
+      numOfSubRooms: project.numOfSubRooms || 0,
+      overrideSubRooms: project.overrideSubRooms || 0,
+      reviewSetup: project.reviewSetup || 0,
+      specReview: project.specReview || 0,
+      soo: project.soo || 0,
+      selfQC: project.selfQC || 0,
+      fluff: project.fluff || 0,
+      panelTime: project.panelTime || 0,
+      layoutTime: project.layoutTime || 0,
+      submittalTime: project.submittalTime || 0,
+      panelSchedules: project.hasPanelSchedules || false,
+      firstAvailable: project.firstAvailable || false,
+      
+      // Include multipliers that backend might need for calculations
+      roomMultiplier: project.roomMultiplier || 2,
+      riserMultiplier: project.riserMultiplier || 1,
+      
+      // Panel data
+      largeLMPs: project.largeLMPs || 0,
+      mediumLMPs: project.mediumLMPs || 0,
+      smallLMPs: project.smallLMPs || 0,
+      arp8: project.arp8 || 0,
+      arp16: project.arp16 || 0,
+      arp32: project.arp32 || 0,
+      arp48: project.arp48 || 0,
+      esheetsSchedules: project.esheetsSchedules || 2
+    };
+  };
+
+  // Export to DAS Board
+  const handleExportToDASBoard = async () => {
+    if (!project.rfaNumber || !project.projectName) {
+      alert('Project must have RFA Number and Project Name to export to DAS Board.');
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      // Map project data to format expected by backend
+      const mappedProjectData = mapProjectDataForExport(project);
+      const mappedTriageData = mapProjectDataForExport(project);
+      
+      const result = await window.electronAPI.exportDASBoard(mappedProjectData, mappedTriageData);
+      
+      if (result.success) {
+        // Copy to clipboard - format the data as needed for DAS Board
+        const exportText = `${result.data.firstColumn}\t${result.data.projectName}\t${result.data.dueDate}\t${result.data.triageTime}`;
+        
+        await navigator.clipboard.writeText(exportText);
+        alert('Project data exported to DAS Board format and copied to clipboard!');
+      } else {
+        alert(`Failed to export to DAS Board: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Export to DAS Board failed:', error);
+      alert('Failed to export to DAS Board.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Export to Agile
+  const handleExportToAgile = async () => {
+    setIsExporting(true);
+    try {
+      // Map project data to format expected by backend
+      const mappedProjectData = mapProjectDataForExport(project);
+      const mappedTriageData = mapProjectDataForExport(project);
+      
+      const result = await window.electronAPI.exportAgile(mappedProjectData, mappedTriageData);
+      
+      if (result.success && result.data) {
+        // Format the data for Agile - convert object array to tab-separated text
+        const exportLines = result.data.map(item => {
+          if (typeof item === 'object' && item.label !== undefined) {
+            return `${item.label}\t${item.value}`;
+          }
+          return item;
+        });
+        const exportText = exportLines.join('\n');
+        
+        await navigator.clipboard.writeText(exportText);
+        alert('Project triage breakdown exported to Agile format and copied to clipboard!');
+      } else {
+        alert(`Failed to export to Agile: ${result.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Export to Agile failed:', error);
+      alert('Failed to export to Agile.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="project-details">
       {/* Project Overview */}
       <div className="details-section">
         <div className="section-header">
           <h2>📋 Project Overview</h2>
-          <button onClick={onEdit} className="btn btn-outline btn-small">
-            ✏️ Edit
-          </button>
+          <div className="header-actions">
+            <button 
+              onClick={handleExportToDASBoard}
+              disabled={isExporting || !project.rfaNumber || !project.projectName}
+              className="btn btn-outline btn-small"
+              title="Export project data to DAS Board format"
+            >
+              📊 Copy to DAS Board
+            </button>
+            <button 
+              onClick={handleExportToAgile}
+              disabled={isExporting}
+              className="btn btn-outline btn-small"
+              title="Export triage breakdown to Agile format"
+            >
+              📈 Copy to Agile
+            </button>
+            <button onClick={onEdit} className="btn btn-outline btn-small">
+              ✏️ Edit
+            </button>
+          </div>
         </div>
         <div className="details-grid">
           <div className="detail-item">

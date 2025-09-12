@@ -167,3 +167,4 @@ class VersionCheckService {
 const versionCheckService = new VersionCheckService();
 
 export default versionCheckService;
+

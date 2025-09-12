@@ -112,53 +112,65 @@ const ProjectManagement = ({
 
   return (
     <div className="project-management">
-      {/* Header */}
+      {/* Responsive Header */}
       <div className="project-management-header">
-        <div className="header-left">
-          <button onClick={onBack} className="btn btn-secondary btn-back">
-            ← Back to Projects
-          </button>
-          <div className="project-title">
-            <h1>{projectData.projectName || 'Untitled Project'}</h1>
-            <div className="project-meta">
-              <span className="project-rfa">RFA: {projectData.rfaNumber || 'N/A'}</span>
-              <span className="project-status">{projectData.status || 'Active'}</span>
-              {projectData.totalTriage && (
-                <span className="project-triage">Triage: {projectData.totalTriage}h</span>
-              )}
+        <div className="header-container">
+          {/* Project Title and Meta */}
+          <div className="header-title">
+            <div className="project-title">
+              <h1 title={projectData.projectName || 'Untitled Project'}>
+                {projectData.projectName || 'Untitled Project'}
+              </h1>
+              <div className="project-meta">
+                <span className="project-rfa">RFA: {projectData.rfaNumber || 'N/A'}</span>
+                <span className="project-status">{projectData.status || 'Active'}</span>
+                {projectData.totalTriage && (
+                  <span className="project-triage">Triage: {projectData.totalTriage}h</span>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-        
-        <div className="header-right">
-          {notification && (
-            <div className={`notification ${notification.type}`}>
-              {notification.message}
-            </div>
-          )}
           
-          {currentMode === 'view' ? (
-            <button onClick={handleEdit} className="btn btn-primary">
-              ✏️ Edit Project
-            </button>
-          ) : (
-            <div className="edit-actions">
-              <button 
-                onClick={handleCancelEdit} 
-                className="btn btn-secondary"
-                disabled={isSaving}
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleSave} 
-                className="btn btn-primary"
-                disabled={isSaving || !hasUnsavedChanges}
-              >
-                {isSaving ? 'Saving...' : 'Save Changes'}
-              </button>
+          {/* Actions Area */}
+          <div className="header-actions">
+            {notification && (
+              <div className={`notification ${notification.type}`}>
+                {notification.message}
+              </div>
+            )}
+            
+            <div className="action-buttons">
+              {currentMode === 'edit' && (
+                <div className="edit-actions">
+                  <button 
+                    onClick={handleCancelEdit} 
+                    className="btn btn-secondary"
+                    disabled={isSaving}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={handleSave} 
+                    className="btn btn-primary"
+                    disabled={isSaving || !hasUnsavedChanges}
+                  >
+                    {isSaving ? 'Saving...' : 'Save Changes'}
+                  </button>
+                </div>
+              )}
+              {/* Additional action buttons can be added here */}
             </div>
-          )}
+            
+            {/* Overflow Menu for Additional Buttons (if needed) */}
+            <div className="action-overflow">
+              <button className="overflow-toggle" title="More actions">
+                ⋮
+              </button>
+              <div className="overflow-menu" style={{ display: 'none' }}>
+                {/* Additional buttons will go here when needed */}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

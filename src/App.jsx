@@ -439,6 +439,66 @@ function App() {
     });
   };
 
+  // Handle project deletion
+  const handleProjectDelete = async (projectId, projectName) => {
+    try {
+      // Show confirmation dialog
+      const confirmed = window.confirm(
+        `Are you sure you want to delete the project "${projectName}"?\n\nThis action cannot be undone.`
+      );
+      
+      if (!confirmed) {
+        return;
+      }
+
+      console.log(`🗑️ Deleting project: ${projectId} (${projectName})`);
+      
+      // Call the delete API
+      const deleteResult = await window.electronAPI.projectDelete(projectId);
+      
+      if (deleteResult.success) {
+        // Remove project from local state
+        setProjects(prev => prev.filter(p => p.id !== projectId));
+        
+        // Clear current project if it was the deleted one
+        if (currentProject && currentProject.id === projectId) {
+          setCurrentProject(null);
+          setCurrentView('list'); // Navigate back to list if we were viewing the deleted project
+        }
+        
+        console.log(`✅ Project deleted successfully: ${projectName}`);
+        
+        // Track deletion in analytics
+        analyticsService.trackEvent('project_deleted', {
+          projectId: projectId,
+          projectName: projectName
+        });
+        
+      } else {
+        console.error('Failed to delete project:', deleteResult.error);
+        alert(`Failed to delete project: ${deleteResult.error}`);
+      }
+      
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      alert(`Error deleting project: ${error.message}`);
+      
+      // Track error in analytics and crash reporting
+      analyticsService.trackError(error, { context: 'project_deletion', projectId });
+      crashReportingService.captureException(error, { context: 'project_deletion' });
+    }
+  };
+
+  // Helper function to truncate project names to first 3 words
+  const truncateProjectName = (name) => {
+    if (!name) return '';
+    const words = name.trim().split(' ');
+    if (words.length <= 3) {
+      return name;
+    }
+    return words.slice(0, 3).join(' ') + '...';
+  };
+
   // Complete wizard reset function for both automatic and manual reset
   const handleWizardReset = () => {
     console.log('App: handleWizardReset called');
@@ -666,19 +726,48 @@ function App() {
                 <div className="projects-grid">
                   {projects.map(project => (
                     <div key={project.id} className="project-card">
-                      <h3>{project.projectName}</h3>
-                      <p><strong>RFA:</strong> {project.rfaNumber}</p>
-                      <p><strong>Team:</strong> {project.regionalTeam}</p>
-                      <p><strong>Status:</strong> {project.status || 'In Progress'}</p>
-                      <button 
-                        onClick={() => {
-                          setCurrentProject(project);
-                          setCurrentView('project-management');
-                        }}
-                        className="btn btn-secondary"
-                      >
-                        Manage Project
-                      </button>
+                      <div className="project-card-header">
+                        <div className="project-info">
+                          <h3 title={project.projectName}>{truncateProjectName(project.projectName)}</h3>
+                          <span className={`project-status status-${(project.status || 'in-progress').toLowerCase().replace(' ', '-')}`}>
+                            {project.status || 'In Progress'}
+                          </span>
+                        </div>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleProjectDelete(project.id, project.projectName);
+                          }}
+                          className="delete-btn"
+                          title="Delete Project"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                      
+                      <div className="project-details">
+                        <div className="detail-row">
+                          <span className="detail-label">RFA:</span>
+                          <span className="detail-value">{project.rfaNumber}</span>
+                        </div>
+                        <div className="detail-row">
+                          <span className="detail-label">Team:</span>
+                          <span className="detail-value">{project.regionalTeam}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="project-card-actions">
+                        <button 
+                          onClick={() => {
+                            setCurrentProject(project);
+                            setCurrentView('project-management');
+                          }}
+                          className="btn btn-primary manage-btn"
+                        >
+                          <span>📋</span>
+                          Manage Project
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
