@@ -1031,7 +1031,6 @@ function App() {
         <h1>Project Creator</h1>
         <p>Loading modern application...</p>
         <div className="spinner"></div>
-        <p>Built with Electron & React</p>
       </div>
     );
   }

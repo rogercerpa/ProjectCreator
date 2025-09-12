@@ -16,12 +16,6 @@ function Sidebar({ currentView, onViewChange, projectCount }) {
       description: 'Guided setup'
     },
     {
-      id: 'form',
-      label: 'Project Form',
-      icon: '📝',
-      description: 'Advanced editor'
-    },
-    {
       id: 'list',
       label: 'Projects',
       icon: '📁',
@@ -57,18 +51,6 @@ function Sidebar({ currentView, onViewChange, projectCount }) {
         ))}
       </nav>
 
-      <div className="sidebar-footer">
-        <div className="sidebar-info">
-          <div className="info-item">
-            <span className="info-label">Status:</span>
-            <span className="info-value online">Online</span>
-          </div>
-          <div className="info-item">
-            <span className="info-label">Projects:</span>
-            <span className="info-value">{projectCount}</span>
-          </div>
-        </div>
-      </div>
     </aside>
   );
 }

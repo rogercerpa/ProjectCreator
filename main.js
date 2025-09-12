@@ -45,7 +45,7 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js') // SECURITY: Use preload script for secure IPC
     },
     icon: path.join(__dirname, 'assets/icons/favicon.ico'),
-    title: 'Project Creator - Electron',
+    title: 'Project Creator',
     show: false
   });
 
