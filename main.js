@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs-extra');
 
 // Import version check service
-const versionCheckService = require('./src/utils/versionCheck');
+const versionCheckService = require('./src/utils/versionCheck').default;
 
 // Import services
 const ProjectService = require('./src/services/ProjectService');
@@ -32,8 +32,8 @@ const securityLoggingService = new SecurityLoggingService();
 function createWindow() {
   // Create the browser window
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 900,
+    width: 1300,
+    height: 1300,
     minWidth: 800,
     minHeight: 600,
     webPreferences: {

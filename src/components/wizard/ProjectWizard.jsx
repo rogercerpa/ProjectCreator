@@ -656,89 +656,91 @@ const ProjectWizard = ({
 
       {/* Navigation */}
       <div className="wizard-navigation">
-        <div className="nav-left">
-          {wizard.canGoToPrevious() && (
+        <div className="wizard-navigation-content">
+          <div className="nav-left">
+            {wizard.canGoToPrevious() && (
+              <button
+                onClick={() => {
+                  wizard.previousStep();
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                disabled={isLoading}
+                className="btn btn-secondary"
+              >
+                ← Previous
+              </button>
+            )}
+            
             <button
-              onClick={() => {
-                wizard.previousStep();
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
+              onClick={onCancel}
               disabled={isLoading}
-              className="btn btn-secondary"
+              className="btn btn-outline"
             >
-              ← Previous
+              Cancel
             </button>
-          )}
-          
-          <button
-            onClick={onCancel}
-            disabled={isLoading}
-            className="btn btn-outline"
-          >
-            Cancel
-          </button>
-        </div>
-
-        <div className="nav-center">
-          <div className="step-progress">
-            {Array.from({ length: 2 }, (_, i) => {
-              const stepNumber = i + 1;
-              const stepTitles = ['Project Setup', 'Triage & Complete'];
-              const stepStatuses = ['Basic Info & Folders', 'Calculations & Finish'];
-              const isActive = stepNumber === wizard.currentStep;
-              const isCompleted = wizard.isStepCompleted(stepNumber);
-              const isAccessible = wizard.isStepAccessible(stepNumber);
-              
-              return (
-                <div
-                  key={stepNumber}
-                  className={`progress-step ${
-                    isActive ? 'active' : ''
-                  } ${
-                    isCompleted ? 'completed' : ''
-                  } ${
-                    isAccessible ? 'accessible' : ''
-                  }`}
-                  onClick={() => {
-                    if (isAccessible) {
-                      wizard.goToStep(stepNumber);
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }
-                  }}
-                >
-                  <div className="step-circle">
-                    {isCompleted ? '✓' : stepNumber}
-                  </div>
-                  <div className="step-label">
-                    {stepTitles[i]}
-                  </div>
-                  <div className="step-status">
-                    {isCompleted ? 'Complete' : isActive ? 'Current' : 'Pending'}
-                  </div>
-                </div>
-              );
-            })}
           </div>
-        </div>
 
-        <div className="nav-right">
-          {wizard.currentStep < 2 ? (
-            <button
-              onClick={handleNext}
-              disabled={isLoading || !wizard.canProceedToNext()}
-              className="btn btn-primary"
-            >
-              {isLoading ? 'Saving...' : 'Next →'}
-            </button>
-          ) : (
-            <button
-              onClick={handleNext}
-              disabled={isLoading || !wizard.canProceedToNext()}
-              className="btn btn-primary"
-            >
-              {isLoading ? 'Completing...' : 'Complete & Manage Project'}
-            </button>
-          )}
+          <div className="nav-center">
+            <div className="step-progress">
+              {Array.from({ length: 2 }, (_, i) => {
+                const stepNumber = i + 1;
+                const stepTitles = ['Project Setup', 'Triage & Complete'];
+                const stepStatuses = ['Basic Info & Folders', 'Calculations & Finish'];
+                const isActive = stepNumber === wizard.currentStep;
+                const isCompleted = wizard.isStepCompleted(stepNumber);
+                const isAccessible = wizard.isStepAccessible(stepNumber);
+                
+                return (
+                  <div
+                    key={stepNumber}
+                    className={`progress-step ${
+                      isActive ? 'active' : ''
+                    } ${
+                      isCompleted ? 'completed' : ''
+                    } ${
+                      isAccessible ? 'accessible' : ''
+                    }`}
+                    onClick={() => {
+                      if (isAccessible) {
+                        wizard.goToStep(stepNumber);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }
+                    }}
+                  >
+                    <div className="step-circle">
+                      {isCompleted ? '✓' : stepNumber}
+                    </div>
+                    <div className="step-label">
+                      {stepTitles[i]}
+                    </div>
+                    <div className="step-status">
+                      {isCompleted ? 'Complete' : isActive ? 'Current' : 'Pending'}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="nav-right">
+            {wizard.currentStep < 2 ? (
+              <button
+                onClick={handleNext}
+                disabled={isLoading || !wizard.canProceedToNext()}
+                className="btn btn-primary"
+              >
+                {isLoading ? 'Saving...' : 'Next →'}
+              </button>
+            ) : (
+              <button
+                onClick={handleNext}
+                disabled={isLoading || !wizard.canProceedToNext()}
+                className="btn btn-primary"
+              >
+                {isLoading ? 'Completing...' : 'Complete & Manage Project'}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

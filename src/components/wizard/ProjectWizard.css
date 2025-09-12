@@ -104,6 +104,7 @@
 /* Clean Wizard Layout - Optimized for 1200x900 */
 .wizard-layout {
   margin-bottom: 1.5rem; /* Reduced from 40px */
+  padding-bottom: 160px; /* Ensure content doesn't get hidden behind larger footer */
 }
 
 .wizard-header {
@@ -450,13 +451,47 @@
   bottom: 0;
   background: white;
   border-top: 2px solid #e0e0e0;
-  padding: 20px 0;
-  margin-top: 40px;
+  padding: 20px 0 40px 0;
+  margin: 40px -1rem 0 -1rem;
+  z-index: 100;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  min-height: 120px;
+}
+
+.wizard-navigation::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: -30px;
+  background: white;
+  z-index: -1;
+}
+
+.wizard-navigation::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -30px;
+  height: 50px;
+  background: white;
+  z-index: -1;
+}
+
+.wizard-navigation-content {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
   gap: 20px;
+  position: relative;
+  z-index: 1;
 }
 
 .nav-left,
@@ -708,20 +743,7 @@
   }
 }
 
-/* Wizard Navigation Styles */
-.wizard-navigation {
-  position: sticky;
-  bottom: 0;
-  background: white;
-  border-top: 2px solid #e0e0e0;
-  padding: 20px 0;
-  margin-top: 40px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 20px;
-}
+/* Duplicate wizard-navigation removed - using the one above */
 
 .nav-left,
 .nav-right {
