@@ -44,7 +44,17 @@ const useStepValidation = () => {
       required: [],
       custom: {
         triageConfiguration: (formData) => {
-          // Validate based on unified triage control fields
+          // PRIORITY 1: If triage calculation is already completed, step is valid
+          if (formData.totalTriage && formData.totalTriage > 0) {
+            return null; // Step is valid - triage calculation was completed
+          }
+          
+          // PRIORITY 2: If basic project data exists, allow manual completion
+          if (formData.projectName && formData.rfaNumber) {
+            return null; // Step is valid - basic project data exists, manual completion allowed
+          }
+          
+          // PRIORITY 3: Advanced validation only if neither condition above is met
           const { hasPanelSchedules, hasSubmittals, needsLayoutBOM } = formData;
           
           // If panel schedules enabled, at least one panel field should have value

@@ -18,7 +18,22 @@ const ProjectWizardStep2 = ({
   onNavigateToSettings
 }) => {
   // Simple state - no complex optimizations
-  const [triageResults, setTriageResults] = useState(null);
+  // Initialize triageResults from formData if totalTriage exists
+  const [triageResults, setTriageResults] = useState(() => {
+    if (formData.totalTriage && formData.totalTriage > 0) {
+      return {
+        totalTriage: formData.totalTriage || 0,
+        panelTime: formData.panelTime || 0,
+        layoutTime: formData.layoutTime || 0,
+        submittalTime: formData.submittalTime || 0,
+        pageBonus: formData.pageBonus || 0,
+        baseTotal: formData.baseTotal || 0,
+        selfQC: formData.selfQC || 0,
+        fluff: formData.fluff || 0
+      };
+    }
+    return null;
+  });
   const [dropdownOptions, setDropdownOptions] = useState(dropdownOptionsService.getOptions());
 
   // Load dropdown options (simple version)
@@ -37,6 +52,40 @@ const ProjectWizardStep2 = ({
     
     return unsubscribe;
   }, []);
+
+  // Watch for changes in formData.totalTriage and update triageResults accordingly
+  useEffect(() => {
+    if (formData.totalTriage && formData.totalTriage > 0 && (!triageResults || triageResults.totalTriage !== formData.totalTriage)) {
+      setTriageResults({
+        totalTriage: formData.totalTriage || 0,
+        panelTime: formData.panelTime || 0,
+        layoutTime: formData.layoutTime || 0,
+        submittalTime: formData.submittalTime || 0,
+        pageBonus: formData.pageBonus || 0,
+        baseTotal: formData.baseTotal || 0,
+        selfQC: formData.selfQC || 0,
+        fluff: formData.fluff || 0
+      });
+    }
+  }, [formData.totalTriage, formData.panelTime, formData.layoutTime, formData.submittalTime, 
+      formData.pageBonus, formData.baseTotal, formData.selfQC, formData.fluff, triageResults]);
+
+  // Auto-validate step when formData changes or triageResults are calculated
+  useEffect(() => {
+    // Step 2 is valid if either:
+    // 1. Triage calculation has been completed (triageResults exists and totalTriage > 0)
+    // 2. OR basic project data is present (allowing manual completion)
+    const hasTriageResults = triageResults && triageResults.totalTriage > 0;
+    const hasBasicProjectData = formData.projectName && formData.rfaNumber;
+    
+    const isValid = hasTriageResults || hasBasicProjectData;
+    
+    if (onValidationChange) {
+      onValidationChange(isValid, isValid ? {} : { 
+        step2: ['Please complete triage calculation or ensure project data is valid'] 
+      });
+    }
+  }, [formData, triageResults, onValidationChange]);
 
   // Simple input handler - DIRECT COPY from ProjectForm.jsx
   const handleInputChange = (e) => {
@@ -83,6 +132,7 @@ const ProjectWizardStep2 = ({
     setTriageResults(triageCalculationResults);
     
     // Mark Step 2 as completed and valid after successful triage calculation
+    // The useEffect above will automatically handle validation, but we can also do it explicitly here
     if (onValidationChange && triageCalculationResults.totalTriage > 0) {
       onValidationChange(true, {}); // Step 2 is now valid and complete
     }
