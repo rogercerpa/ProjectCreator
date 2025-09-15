@@ -15,6 +15,8 @@ const FormSettingsService = require('./src/services/FormSettingsService');
 const SecurityLoggingService = require('./src/services/SecurityLoggingService');
 const AgencyService = require('./src/services/AgencyService');
 const ExcelDiagnosticService = require('./src/services/ExcelDiagnosticService');
+const SettingsService = require('./src/services/SettingsService');
+const AgencySyncService = require('./src/services/AgencySyncService');
 
 // Import package.json for version info
 const packageJson = require('./package.json');
@@ -32,6 +34,8 @@ const formSettingsService = new FormSettingsService();
 const securityLoggingService = new SecurityLoggingService();
 const agencyService = new AgencyService();
 const excelDiagnosticService = new ExcelDiagnosticService();
+const settingsService = new SettingsService();
+const agencySyncService = new AgencySyncService(agencyService, settingsService);
 
 function createWindow() {
   // Create the browser window
@@ -87,7 +91,15 @@ app.whenReady().then(async () => {
   } catch (error) {
     console.error('Error during version check:', error);
   }
-
+  
+  // Initialize sync service
+  try {
+    await agencySyncService.initialize();
+    console.log('✅ Agency sync service initialized');
+  } catch (error) {
+    console.error('Error initializing sync service:', error);
+  }
+  
   createWindow();
 
   // Create application menu
@@ -745,6 +757,80 @@ ipcMain.handle('excel-diagnose', async (event, filePath) => {
   try {
     return await excelDiagnosticService.diagnoseExcelFile(filePath);
   } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// Sync operations
+ipcMain.handle('sync-get-settings', async () => {
+  try {
+    return await agencySyncService.getSyncSettings();
+  } catch (error) {
+    console.error('Error in sync-get-settings handler:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('sync-update-settings', async (event, newSettings) => {
+  try {
+    return await agencySyncService.updateSyncSettings(newSettings);
+  } catch (error) {
+    console.error('Error in sync-update-settings handler:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('sync-test-file-path', async (event, filePath) => {
+  try {
+    return await agencySyncService.testFilePath(filePath);
+  } catch (error) {
+    console.error('Error in sync-test-file-path handler:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('sync-start-auto', async (event, filePath) => {
+  try {
+    return await agencySyncService.startAutoSync(filePath);
+  } catch (error) {
+    console.error('Error in sync-start-auto handler:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('sync-stop-auto', async () => {
+  try {
+    return await agencySyncService.stopAutoSync();
+  } catch (error) {
+    console.error('Error in sync-stop-auto handler:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('sync-manual', async (event, filePath) => {
+  try {
+    return await agencySyncService.manualSync(filePath);
+  } catch (error) {
+    console.error('Error in sync-manual handler:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('sync-get-status', async () => {
+  try {
+    const status = agencySyncService.getSyncStatus();
+    return { success: true, status };
+  } catch (error) {
+    console.error('Error in sync-get-status handler:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('sync-export-to-excel', async (event, filePath, options = {}) => {
+  try {
+    return await agencySyncService.exportToExcel(filePath, options);
+  } catch (error) {
+    console.error('Error in sync-export-to-excel handler:', error);
     return { success: false, error: error.message };
   }
 });

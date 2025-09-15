@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AgencyEditModal from './AgencyEditModal';
 import './Settings.css';
 import dropdownOptionsService from '../services/DropdownOptionsService';
 import triageCalculationService from '../services/TriageCalculationService';
@@ -71,10 +72,28 @@ function Settings({ initialTab = 'app-info' }) {
   });
   const [importStatus, setImportStatus] = useState(null);
 
+  // Agency sync state
+  const [syncSettings, setSyncSettings] = useState({
+    enabled: false,
+    mode: 'manual',
+    filePath: '',
+    lastSync: null,
+    autoSyncInterval: 30
+  });
+  const [syncStatus, setSyncStatus] = useState(null);
+  const [filePathValid, setFilePathValid] = useState(null);
+  const [showSyncStatus, setShowSyncStatus] = useState(false);
+  const [exportStatus, setExportStatus] = useState(null);
+
+  // Modal state for editing agencies
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingAgencyModal, setEditingAgencyModal] = useState(null);
+
   useEffect(() => {
     loadSettings();
     loadAgencies();
     loadAgencyStats();
+    loadSyncSettings();
     // Scroll to top when settings page loads - ensure DOM is ready
     const scrollToTop = () => {
       const mainContent = document.querySelector('.main-content');
@@ -285,19 +304,30 @@ function Settings({ initialTab = 'app-info' }) {
   };
 
   const handleEditAgency = (agency) => {
-    setAgencyFormData({
-      agencyNumber: agency.agencyNumber || '',
-      agencyName: agency.agencyName || '',
-      contactName: agency.contactName || '',
-      contactEmail: agency.contactEmail || '',
-      phoneNumber: agency.phoneNumber || '',
-      role: agency.role || '',
-      region: agency.region || '',
-      mainContact: agency.mainContact || '',
-      sae: agency.sae || 'No'
-    });
-    setEditingAgency(agency);
-    setShowAgencyForm(true);
+    setEditingAgencyModal(agency);
+    setIsEditModalOpen(true);
+  };
+
+  const handleModalSave = async (updatedAgency) => {
+    try {
+      const result = await window.electronAPI.agenciesUpdate(updatedAgency);
+      if (result.success) {
+        await loadAgencies();
+        await loadAgencyStats();
+        setIsEditModalOpen(false);
+        setEditingAgencyModal(null);
+      } else {
+        throw new Error(result.error || 'Failed to update agency');
+      }
+    } catch (error) {
+      console.error('Error updating agency:', error);
+      throw error; // Re-throw to let modal handle the error display
+    }
+  };
+
+  const handleModalClose = () => {
+    setIsEditModalOpen(false);
+    setEditingAgencyModal(null);
   };
 
   const handleDeleteAgency = async (agency) => {
@@ -370,6 +400,126 @@ function Settings({ initialTab = 'app-info' }) {
         type: 'error', 
         message: 'Error importing Excel file: ' + error.message 
       });
+    }
+  };
+
+  // Agency sync functions
+  const loadSyncSettings = async () => {
+    try {
+      const result = await window.electronAPI.syncGetSettings();
+      if (result && result.success) {
+        setSyncSettings(result.settings);
+      }
+    } catch (error) {
+      console.error('Error loading sync settings:', error);
+    }
+  };
+
+  const handleSyncSettingsUpdate = async (newSettings) => {
+    try {
+      const result = await window.electronAPI.syncUpdateSettings(newSettings);
+      if (result && result.success) {
+        setSyncSettings(result.settings);
+        setSyncStatus({ type: 'success', message: 'Sync settings updated successfully!' });
+        
+        // Clear status after delay
+        setTimeout(() => setSyncStatus(null), 3000);
+      } else {
+        setSyncStatus({ type: 'error', message: 'Failed to update sync settings: ' + (result?.error || 'Unknown error') });
+      }
+    } catch (error) {
+      console.error('Error updating sync settings:', error);
+      setSyncStatus({ type: 'error', message: 'Error updating sync settings: ' + error.message });
+    }
+  };
+
+  const handleFilePathTest = async (filePath) => {
+    try {
+      const result = await window.electronAPI.syncTestFilePath(filePath);
+      setFilePathValid(result.success);
+      
+      if (result.success) {
+        setSyncStatus({ 
+          type: 'success', 
+          message: `File path is valid! Size: ${(result.fileInfo.size / 1024).toFixed(1)}KB, Last modified: ${new Date(result.fileInfo.lastModified).toLocaleString()}` 
+        });
+      } else {
+        setSyncStatus({ type: 'error', message: 'File path error: ' + result.error });
+      }
+    } catch (error) {
+      console.error('Error testing file path:', error);
+      setFilePathValid(false);
+      setSyncStatus({ type: 'error', message: 'Error testing file path: ' + error.message });
+    }
+  };
+
+  const handleManualSync = async () => {
+    try {
+      setSyncStatus({ type: 'loading', message: 'Starting manual sync...' });
+      
+      const result = await window.electronAPI.syncManual(syncSettings.filePath);
+      
+      if (result && result.success) {
+        setSyncStatus({ 
+          type: 'success', 
+          message: `Manual sync completed! Imported ${result.totalImported} agencies.` 
+        });
+        
+        // Reload data
+        await loadAgencies();
+        await loadAgencyStats();
+        await loadSyncSettings();
+      } else {
+        setSyncStatus({ type: 'error', message: 'Manual sync failed: ' + (result?.error || 'Unknown error') });
+      }
+    } catch (error) {
+      console.error('Error in manual sync:', error);
+      setSyncStatus({ type: 'error', message: 'Error in manual sync: ' + error.message });
+    }
+  };
+
+  const handleBrowseFilePath = async () => {
+    try {
+      const result = await window.electronAPI.selectExcelFile();
+      if (result && result.success && result.filePath) {
+        const updatedSettings = { ...syncSettings, filePath: result.filePath };
+        setSyncSettings(updatedSettings);
+        await handleFilePathTest(result.filePath);
+      }
+    } catch (error) {
+      console.error('Error selecting file:', error);
+      setSyncStatus({ type: 'error', message: 'Error selecting file: ' + error.message });
+    }
+  };
+
+  const handleExportToExcel = async () => {
+    try {
+      setExportStatus({ type: 'loading', message: 'Exporting agencies to Excel file...' });
+      
+      const result = await window.electronAPI.syncExportToExcel(syncSettings.filePath);
+      
+      if (result && result.success) {
+        let message = `Successfully exported ${result.exportedCount} agencies to Excel file!`;
+        if (result.backupCreated && result.backupPath) {
+          message += ` (Latest backup: ${result.backupPath})`;
+        }
+        
+        setExportStatus({ 
+          type: 'success', 
+          message: message
+        });
+        
+        // Reload sync settings to get updated lastExport time
+        await loadSyncSettings();
+        
+        // Clear status after delay
+        setTimeout(() => setExportStatus(null), 5000);
+      } else {
+        setExportStatus({ type: 'error', message: 'Export failed: ' + (result?.error || 'Unknown error') });
+      }
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      setExportStatus({ type: 'error', message: 'Error exporting to Excel: ' + error.message });
     }
   };
 
@@ -1109,72 +1259,227 @@ function Settings({ initialTab = 'app-info' }) {
       case 'agencies':
         return (
           <div className="tab-content">
-            <div className="agencies-management">
-              <h2>Agency Management</h2>
-              <p className="section-description">Import agencies from Excel or add them manually</p>
-
-              {/* Statistics */}
-              {agencyStats && (
-                <div className="agency-stats">
-                  <div className="stat-card">
-                    <span className="stat-number">{agencyStats.totalAgencies}</span>
-                    <span className="stat-label">Total Agencies</span>
-                  </div>
-                  <div className="stat-card">
-                    <span className="stat-number">{Object.keys(agencyStats.byRegion || {}).length}</span>
-                    <span className="stat-label">Regions</span>
-                  </div>
-                  <div className="stat-card">
-                    <span className="stat-number">{Object.keys(agencyStats.byRole || {}).length}</span>
-                    <span className="stat-label">Roles</span>
-                  </div>
+            <div className="agencies-management compact-layout">
+              {/* Header with inline stats */}
+              <div className="header-with-stats">
+                <div className="header-content">
+                  <h2>Agency Management</h2>
+                  <p className="section-description">Manage your agency database</p>
                 </div>
-              )}
+                {agencyStats && (
+                  <div className="inline-stats">
+                    <span className="stat-item">{agencyStats.totalAgencies} Agencies</span>
+                    <span className="stat-item">{Object.keys(agencyStats.byRegion || {}).length} Regions</span>
+                    <span className="stat-item">{Object.keys(agencyStats.byRole || {}).length} Roles</span>
+                  </div>
+                )}
+              </div>
 
-              {/* Import Section */}
+              {/* Sync Configuration */}
               <div className="settings-section">
-                <h3>Import from Excel</h3>
+                <h3>🔄 Auto-Sync Configuration</h3>
                 <p className="field-description">
-                  Import agency data from an Excel file with columns: Agency Number, Agency Name, Contact Name, 
-                  Contact email, Contact Number, Role, Region, Main Contact, SAE
+                  Configure automatic sync with your Excel file
                 </p>
                 
-                <div className="import-section">
-                  <div className="import-buttons">
-                    <button 
-                      className="btn btn-primary"
-                      onClick={handleExcelImport}
-                      disabled={importStatus?.type === 'loading'}
-                    >
-                      {importStatus?.type === 'loading' ? '⏳ Importing...' : '📂 Import Excel File'}
-                    </button>
+                <div className="sync-config">
+                  {/* Enable/Disable Sync + Import Controls */}
+                  <div className="form-group toggle-with-import">
+                    <div className="toggle-section">
+                      <label className="checkbox-label">
+                        <input
+                          type="checkbox"
+                          checked={syncSettings.enabled}
+                          onChange={(e) => {
+                            const newSettings = { ...syncSettings, enabled: e.target.checked };
+                            setSyncSettings(newSettings);
+                            handleSyncSettingsUpdate(newSettings);
+                          }}
+                        />
+                        <div className={`toggle-switch ${syncSettings.enabled ? 'checked' : ''}`}>
+                          <div className={`toggle-slider ${syncSettings.enabled ? 'checked' : ''}`}></div>
+                        </div>
+                        <span className="checkmark">Enable Auto-Sync</span>
+                      </label>
+                    </div>
                     
-                    <button 
-                      className="btn btn-secondary"
-                      onClick={handleExcelDiagnose}
-                      disabled={importStatus?.type === 'loading'}
-                    >
-                      🔍 Diagnose Excel File
-                    </button>
-                  </div>
-                  
-                  {importStatus && (
-                    <div className={`import-status ${importStatus.type}`}>
-                      <div className="status-message">
-                        {importStatus.type === 'loading' && <div className="spinner"></div>}
-                        <pre>{importStatus.message}</pre>
+                    <div className={`import-section ${syncSettings.enabled ? 'disabled' : ''}`}>
+                      <h4>📥 Import from Excel</h4>
+                      <p className="import-description">
+                        {syncSettings.enabled 
+                          ? 'Manual import disabled - Auto-sync is handling imports'
+                          : 'One-time import of agency data from Excel file'
+                        }
+                      </p>
+                      <div className="import-buttons">
+                        <button 
+                          className="btn btn-secondary"
+                          onClick={handleExcelImport}
+                          disabled={syncSettings.enabled}
+                        >
+                          📂 Import Excel
+                        </button>
+                        <button 
+                          className="btn btn-secondary"
+                          onClick={handleExcelDiagnose}
+                          disabled={syncSettings.enabled}
+                        >
+                          🔍 Diagnose Excel
+                        </button>
                       </div>
+                      
+                      {/* Import Status */}
+                      {importStatus && (
+                        <div className={`status-message ${importStatus.type}`}>
+                          {importStatus.type === 'loading' && <span className="spinner">⏳</span>}
+                          {importStatus.message}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Sync Mode Selection */}
+                  <div className="form-group">
+                    <label>Sync Mode</label>
+                    <div className="radio-group">
+                      <label className="radio-label">
+                        <input
+                          type="radio"
+                          name="syncMode"
+                          value="manual"
+                          checked={syncSettings.mode === 'manual'}
+                          onChange={(e) => {
+                            const newSettings = { ...syncSettings, mode: e.target.value };
+                            setSyncSettings(newSettings);
+                            handleSyncSettingsUpdate(newSettings);
+                          }}
+                        />
+                        <span className="radio-mark"></span>
+                        Manual (Import on demand)
+                      </label>
+                      <label className="radio-label">
+                        <input
+                          type="radio"
+                          name="syncMode"
+                          value="auto"
+                          checked={syncSettings.mode === 'auto'}
+                          onChange={(e) => {
+                            const newSettings = { ...syncSettings, mode: e.target.value };
+                            setSyncSettings(newSettings);
+                            handleSyncSettingsUpdate(newSettings);
+                          }}
+                        />
+                        <span className="radio-mark"></span>
+                        Automatic (Monitor file changes)
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* File Path Configuration */}
+                  <div className="form-group">
+                    <label>Excel File Path</label>
+                    <div className={`file-path-input ${filePathValid === false ? 'error' : filePathValid === true ? 'success' : ''}`}>
+                      <input
+                        type="text"
+                        value={syncSettings.filePath}
+                        onChange={(e) => {
+                          const newSettings = { ...syncSettings, filePath: e.target.value };
+                          setSyncSettings(newSettings);
+                          setFilePathValid(null); // Reset validation
+                        }}
+                        placeholder="Enter or browse to select Excel file path..."
+                      />
+                      <button 
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={handleBrowseFilePath}
+                      >
+                        📁 Browse
+                      </button>
+                    </div>
+                    {syncSettings.filePath && (
+                      <div className="file-path-actions">
+                        <button 
+                          type="button"
+                          className="btn btn-small"
+                          onClick={() => handleFilePathTest(syncSettings.filePath)}
+                        >
+                          🔍 Test Path
+                        </button>
+                        <button 
+                          type="button"
+                          className="btn btn-small"
+                          onClick={() => {
+                            const newSettings = { ...syncSettings, filePath: syncSettings.filePath };
+                            handleSyncSettingsUpdate(newSettings);
+                          }}
+                        >
+                          💾 Save Path
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Manual Sync Button */}
+                  {syncSettings.filePath && (
+                    <div className="form-group">
+                      <button 
+                        type="button"
+                        className="btn btn-primary sync-now-btn"
+                        onClick={handleManualSync}
+                        disabled={!syncSettings.filePath || filePathValid === false}
+                      >
+                        🔄 Sync Now
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Sync Status */}
+                  {syncStatus && (
+                    <div className={`status-message ${syncStatus.type}`}>
+                      {syncStatus.type === 'loading' && <span className="spinner">⏳</span>}
+                      {syncStatus.message}
+                    </div>
+                  )}
+
+                  {/* Last Sync Info */}
+                  {syncSettings.lastSync && (
+                    <div className="sync-info">
+                      <small>
+                        Last sync: {new Date(syncSettings.lastSync).toLocaleString()}
+                      </small>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Manual Entry Section */}
-              <div className="settings-section">
-                <div className="section-header">
-                  <h3>Manual Entry</h3>
+              {/* Actions Panel - Export + Manual Entry Combined */}
+              <div className="actions-panel">
+                <div className="action-group">
+                  {syncSettings.filePath ? (
+                    <div className="compact-export">
+                      <button 
+                        type="button"
+                        className="btn btn-primary compact-btn"
+                        onClick={handleExportToExcel}
+                        disabled={!syncSettings.filePath || filePathValid === false}
+                      >
+                        📤 Export to Excel
+                      </button>
+                      {syncSettings.lastExport && (
+                        <small className="last-action">
+                          Last export: {new Date(syncSettings.lastExport).toLocaleString()}
+                        </small>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="action-disabled">Configure Excel file path to enable export</p>
+                  )}
+                </div>
+                
+                <div className="action-group">
                   <button 
-                    className="btn btn-secondary"
+                    className="btn btn-secondary compact-btn"
                     onClick={() => {
                       setShowAgencyForm(true);
                       setEditingAgency(null);
@@ -1194,8 +1499,18 @@ function Settings({ initialTab = 'app-info' }) {
                     ➕ Add New Agency
                   </button>
                 </div>
+              </div>
 
-                {showAgencyForm && (
+              {/* Export Status */}
+              {exportStatus && (
+                <div className={`status-message compact ${exportStatus.type}`}>
+                  {exportStatus.type === 'loading' && <span className="spinner">⏳</span>}
+                  {exportStatus.message}
+                </div>
+              )}
+
+              {/* Agency Form */}
+              {showAgencyForm && (
                   <div className="agency-form-container">
                     <div className="agency-form-header">
                       <h4>{editingAgency ? 'Edit Agency' : 'Add New Agency'}</h4>
@@ -1385,7 +1700,14 @@ function Settings({ initialTab = 'app-info' }) {
                     </div>
                   </div>
                 )}
-              </div>
+
+              {/* Agency Edit Modal */}
+              <AgencyEditModal
+                isOpen={isEditModalOpen}
+                onClose={handleModalClose}
+                agency={editingAgencyModal}
+                onSave={handleModalSave}
+              />
             </div>
           </div>
         );

@@ -597,7 +597,7 @@ class AgencyService {
     }
   }
 
-  // Export agencies to Excel
+  // Export agencies to Excel (create new file)
   async exportToExcel(outputPath) {
     try {
       const agencies = await this.loadAgencies();
@@ -611,14 +611,11 @@ class AgencyService {
         'Agency Name': agency.agencyName,
         'Contact Name': agency.contactName,
         'Contact Email': agency.contactEmail,
-        'Phone Number': agency.phoneNumber,
+        'Contact Number': agency.phoneNumber,
         'Role': agency.role,
         'Region': agency.region,
-        '#RGP': agency.rgpId,
-        'SAE': agency.sae,
-        'Fast Service': agency.fastService,
-        'Text Service Starting Date': agency.textServiceStartDate,
-        'Last Modified': agency.lastModified
+        'Main Contact': agency.mainContact,
+        'SAE': agency.sae
       }));
 
       // Create worksheet
@@ -630,10 +627,223 @@ class AgencyService {
 
       return {
         success: true,
-        message: `Exported ${agencies.length} agencies to ${outputPath}`
+        message: `Exported ${agencies.length} agencies to ${outputPath}`,
+        exportedCount: agencies.length
       };
     } catch (error) {
       console.error('Error exporting to Excel:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  // Export agencies to existing Excel file (for sync functionality)
+  async exportToExistingExcel(filePath, options = {}) {
+    try {
+      console.log('🔄 Starting export to existing Excel file:', filePath);
+      
+      // Validate file exists and is accessible
+      if (!fs.existsSync(filePath)) {
+        throw new Error('Excel file does not exist');
+      }
+
+      // Check if file is currently open/locked
+      try {
+        fs.accessSync(filePath, fs.constants.R_OK | fs.constants.W_OK);
+      } catch (error) {
+        throw new Error('Excel file is locked or not writable. Please close the file and try again.');
+      }
+
+      // Create backup if requested and cleanup old backups
+      let backupPath = null;
+      if (options.createBackup !== false) {
+        // Generate new backup filename
+        const timestamp = Date.now();
+        const baseFileName = filePath.replace(/\.xlsx?$/i, '');
+        const extension = path.extname(filePath);
+        backupPath = `${baseFileName}_backup_${timestamp}${extension}`;
+        
+        // Clean up old backup files before creating new one
+        try {
+          const directory = path.dirname(filePath);
+          const baseName = path.basename(filePath, extension);
+          const files = fs.readdirSync(directory);
+          
+          // Find existing backup files for this Excel file
+          const backupPattern = new RegExp(`^${baseName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}_backup_\\d+\\${extension.replace('.', '\\.')}$`);
+          const existingBackups = files
+            .filter(file => backupPattern.test(file))
+            .map(file => ({
+              name: file,
+              path: path.join(directory, file),
+              timestamp: parseInt(file.match(/_backup_(\d+)/)[1])
+            }))
+            .sort((a, b) => b.timestamp - a.timestamp); // Sort by timestamp, newest first
+          
+          // Delete old backup files (keep none, we'll create a new one)
+          existingBackups.forEach(backup => {
+            try {
+              fs.unlinkSync(backup.path);
+              console.log('🗑️ Deleted old backup:', backup.name);
+            } catch (deleteError) {
+              console.warn('Warning: Could not delete old backup:', backup.name, deleteError.message);
+            }
+          });
+          
+        } catch (cleanupError) {
+          console.warn('Warning: Could not cleanup old backups:', cleanupError.message);
+        }
+        
+        // Create new backup
+        fs.copyFileSync(filePath, backupPath);
+        console.log('📦 Created backup:', path.basename(backupPath));
+      }
+
+      // Load current agencies from app
+      const agencies = await this.loadAgencies();
+      
+      // Read existing Excel file to preserve structure
+      const workbook = XLSX.readFile(filePath);
+      const sheetNames = workbook.SheetNames;
+      
+      // Find the sheet to update (or use first sheet)
+      let targetSheetName = options.sheetName || sheetNames[0];
+      if (!sheetNames.includes(targetSheetName)) {
+        targetSheetName = sheetNames[0];
+      }
+      
+      console.log(`📊 Updating sheet: ${targetSheetName}`);
+      
+      // Get current worksheet
+      const worksheet = workbook.Sheets[targetSheetName];
+      const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+      
+      // Find header row and column mapping
+      let headerRow = -1;
+      let columnMapping = {};
+      
+      // Search for header row (look in first 10 rows)
+      for (let row = 0; row <= Math.min(9, range.e.r); row++) {
+        const rowHeaders = [];
+        let agencyHeaderCount = 0;
+        
+        for (let col = range.s.c; col <= range.e.c; col++) {
+          const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+          const cell = worksheet[cellAddress];
+          const cellValue = cell ? (cell.v || cell.w || '').toString().trim() : '';
+          
+          if (cellValue) {
+            rowHeaders.push(cellValue);
+            
+            // Check if this looks like an agency header
+            const lowerValue = cellValue.toLowerCase();
+            if (lowerValue.includes('agency') || lowerValue.includes('contact') || 
+                lowerValue.includes('name') || lowerValue.includes('email') ||
+                lowerValue.includes('role') || lowerValue.includes('region')) {
+              agencyHeaderCount++;
+            }
+          }
+        }
+        
+        // If we found enough agency-like headers, this is probably the header row
+        if (agencyHeaderCount >= 3) {
+          headerRow = row;
+          
+          // Create column mapping
+          for (let col = range.s.c; col <= range.e.c; col++) {
+            const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+            const cell = worksheet[cellAddress];
+            const cellValue = cell ? (cell.v || cell.w || '').toString().trim() : '';
+            
+            if (cellValue) {
+              columnMapping[col] = cellValue;
+            }
+          }
+          break;
+        }
+      }
+      
+      if (headerRow === -1) {
+        throw new Error('Could not find header row in Excel file');
+      }
+      
+      console.log(`📍 Found headers at row ${headerRow + 1}:`, Object.values(columnMapping));
+      
+      // Create reverse mapping (header name to column index)
+      const fieldToColumn = {};
+      Object.entries(columnMapping).forEach(([col, header]) => {
+        const lowerHeader = header.toLowerCase();
+        
+        if (lowerHeader.includes('agency number')) fieldToColumn.agencyNumber = parseInt(col);
+        else if (lowerHeader.includes('agency name')) fieldToColumn.agencyName = parseInt(col);
+        else if (lowerHeader.includes('contact name')) fieldToColumn.contactName = parseInt(col);
+        else if (lowerHeader.includes('contact email') || lowerHeader.includes('email')) fieldToColumn.contactEmail = parseInt(col);
+        else if (lowerHeader.includes('contact number') || lowerHeader.includes('phone')) fieldToColumn.phoneNumber = parseInt(col);
+        else if (lowerHeader.includes('role')) fieldToColumn.role = parseInt(col);
+        else if (lowerHeader.includes('region')) fieldToColumn.region = parseInt(col);
+        else if (lowerHeader.includes('main contact')) fieldToColumn.mainContact = parseInt(col);
+        else if (lowerHeader.includes('sae')) fieldToColumn.sae = parseInt(col);
+      });
+      
+      console.log('🗺️ Field to column mapping:', fieldToColumn);
+      
+      // Clear existing data (keep headers)
+      const dataStartRow = headerRow + 1;
+      for (let row = dataStartRow; row <= range.e.r; row++) {
+        for (let col = range.s.c; col <= range.e.c; col++) {
+          const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+          delete worksheet[cellAddress];
+        }
+      }
+      
+      // Write agency data
+      let currentRow = dataStartRow;
+      agencies.forEach((agency, index) => {
+        // Write each field to its corresponding column
+        Object.entries(fieldToColumn).forEach(([field, col]) => {
+          const cellAddress = XLSX.utils.encode_cell({ r: currentRow, c: col });
+          let value = agency[field] || '';
+          
+          // Handle specific field formatting
+          if (field === 'sae') {
+            value = value || 'No';
+          }
+          
+          worksheet[cellAddress] = {
+            v: value,
+            t: typeof value === 'number' ? 'n' : 's'
+          };
+        });
+        
+        currentRow++;
+      });
+      
+      // Update worksheet range
+      const newRange = XLSX.utils.encode_range({
+        s: { r: range.s.r, c: range.s.c },
+        e: { r: Math.max(currentRow - 1, headerRow), c: range.e.c }
+      });
+      worksheet['!ref'] = newRange;
+      
+      console.log(`📝 Updated ${agencies.length} agencies in Excel file`);
+      
+      // Write the file
+      XLSX.writeFile(workbook, filePath);
+      
+      return {
+        success: true,
+        message: `Successfully exported ${agencies.length} agencies to existing Excel file`,
+        exportedCount: agencies.length,
+        targetSheet: targetSheetName,
+        headerRow: headerRow + 1,
+        backupCreated: options.createBackup !== false,
+        backupPath: backupPath ? path.basename(backupPath) : null
+      };
+      
+    } catch (error) {
+      console.error('Error exporting to existing Excel:', error);
       return {
         success: false,
         error: error.message

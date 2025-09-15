@@ -80,6 +80,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   selectExcelFile: () => ipcRenderer.invoke('select-excel-file'),
   excelDiagnose: (filePath) => ipcRenderer.invoke('excel-diagnose', filePath),
   
+  // Sync operations
+  syncGetSettings: () => ipcRenderer.invoke('sync-get-settings'),
+  syncUpdateSettings: (newSettings) => ipcRenderer.invoke('sync-update-settings', newSettings),
+  syncTestFilePath: (filePath) => ipcRenderer.invoke('sync-test-file-path', filePath),
+  syncStartAuto: (filePath) => ipcRenderer.invoke('sync-start-auto', filePath),
+  syncStopAuto: () => ipcRenderer.invoke('sync-stop-auto'),
+  syncManual: (filePath) => ipcRenderer.invoke('sync-manual', filePath),
+  syncGetStatus: () => ipcRenderer.invoke('sync-get-status'),
+  syncExportToExcel: (filePath, options) => ipcRenderer.invoke('sync-export-to-excel', filePath, options),
+  
   // Error handling
   onError: (callback) => ipcRenderer.on('error', callback),
   onNewProject: (callback) => ipcRenderer.on('new-project', callback),
