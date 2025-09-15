@@ -4,6 +4,7 @@ import Sidebar from './components/Sidebar';
 import ProjectForm from './components/ProjectForm';
 import ProjectWizard from './components/wizard/ProjectWizard';
 import ProjectManagement from './components/ProjectManagement';
+import AgencyDirectory from './components/AgencyDirectory';
 import DraftRecoveryModal from './components/wizard/components/DraftRecoveryModal';
 import MigrationAssistant from './components/wizard/components/MigrationAssistant';
 import Settings from './components/Settings';
@@ -787,6 +788,8 @@ function App() {
               mode="view"
             />
           );
+        case 'agencies':
+          return <AgencyDirectory />;
         case 'settings':
           return <Settings initialTab={settingsTab} />;
         case 'welcome':

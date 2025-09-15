@@ -67,6 +67,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
   formSettingsAddCustomNationalAccount: (label, value) => ipcRenderer.invoke('form-settings-add-custom-national-account', label, value),
   formSettingsValidateFormData: (formData) => ipcRenderer.invoke('form-settings-validate-form-data', formData),
   
+  // Agency operations
+  agenciesImportExcel: (filePath) => ipcRenderer.invoke('agencies-import-excel', filePath),
+  agenciesLoadAll: () => ipcRenderer.invoke('agencies-load-all'),
+  agenciesSearch: (searchTerm, filters) => ipcRenderer.invoke('agencies-search', searchTerm, filters),
+  agenciesGetFilterOptions: () => ipcRenderer.invoke('agencies-get-filter-options'),
+  agenciesAdd: (agencyData) => ipcRenderer.invoke('agencies-add', agencyData),
+  agenciesUpdate: (agencyId, updates) => ipcRenderer.invoke('agencies-update', agencyId, updates),
+  agenciesDelete: (agencyId) => ipcRenderer.invoke('agencies-delete', agencyId),
+  agenciesGetStatistics: () => ipcRenderer.invoke('agencies-get-statistics'),
+  agenciesExportExcel: (outputPath) => ipcRenderer.invoke('agencies-export-excel', outputPath),
+  selectExcelFile: () => ipcRenderer.invoke('select-excel-file'),
+  excelDiagnose: (filePath) => ipcRenderer.invoke('excel-diagnose', filePath),
+  
   // Error handling
   onError: (callback) => ipcRenderer.on('error', callback),
   onNewProject: (callback) => ipcRenderer.on('new-project', callback),

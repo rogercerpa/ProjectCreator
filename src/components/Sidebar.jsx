@@ -22,6 +22,12 @@ function Sidebar({ currentView, onViewChange, projectCount }) {
       description: `View projects (${projectCount})`
     },
     {
+      id: 'agencies',
+      label: 'Agency Directory',
+      icon: '📋',
+      description: 'Search agencies'
+    },
+    {
       id: 'settings',
       label: 'Settings',
       icon: '⚙️',

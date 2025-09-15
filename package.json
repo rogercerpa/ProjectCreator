@@ -80,7 +80,8 @@
     "officegen": "^0.6.5",
     "path-browserify": "^1.0.1",
     "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "react-dom": "^19.1.1",
+    "xlsx": "^0.18.5"
   },
   "build": {
     "appId": "com.acuitybrands.projectcreator",

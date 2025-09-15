@@ -13,6 +13,8 @@ const ProjectPersistenceService = require('./src/services/ProjectPersistenceServ
 const ProjectCreationService = require('./src/services/ProjectCreationService');
 const FormSettingsService = require('./src/services/FormSettingsService');
 const SecurityLoggingService = require('./src/services/SecurityLoggingService');
+const AgencyService = require('./src/services/AgencyService');
+const ExcelDiagnosticService = require('./src/services/ExcelDiagnosticService');
 
 // Import package.json for version info
 const packageJson = require('./package.json');
@@ -28,6 +30,8 @@ const projectPersistenceService = new ProjectPersistenceService();
 const projectCreationService = new ProjectCreationService();
 const formSettingsService = new FormSettingsService();
 const securityLoggingService = new SecurityLoggingService();
+const agencyService = new AgencyService();
+const excelDiagnosticService = new ExcelDiagnosticService();
 
 function createWindow() {
   // Create the browser window
@@ -613,6 +617,133 @@ ipcMain.handle('project-export-das-board', async (event, projectData) => {
 ipcMain.handle('project-export-agile', async (event, projectData) => {
   try {
     return await projectCreationService.exportToAgile(projectData);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// Agency operations
+ipcMain.handle('agencies-import-excel', async (event, filePath) => {
+  try {
+    return await agencyService.importFromExcel(filePath);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('agencies-load-all', async () => {
+  try {
+    const agencies = await agencyService.loadAgencies();
+    return {
+      success: true,
+      agencies: agencies,
+      count: agencies.length,
+      message: `${agencies.length} agencies loaded successfully`
+    };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('agencies-search', async (event, searchTerm, filters) => {
+  try {
+    const agencies = await agencyService.searchAgencies(searchTerm, filters);
+    return {
+      success: true,
+      agencies: agencies,
+      count: agencies.length
+    };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('agencies-get-filter-options', async () => {
+  try {
+    const options = await agencyService.getFilterOptions();
+    return {
+      success: true,
+      options: options
+    };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('agencies-add', async (event, agencyData) => {
+  try {
+    return await agencyService.addAgency(agencyData);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('agencies-update', async (event, agencyId, updates) => {
+  try {
+    return await agencyService.updateAgency(agencyId, updates);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('agencies-delete', async (event, agencyId) => {
+  try {
+    return await agencyService.deleteAgency(agencyId);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('agencies-get-statistics', async () => {
+  try {
+    const statistics = await agencyService.getStatistics();
+    return {
+      success: true,
+      statistics: statistics
+    };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('agencies-export-excel', async (event, outputPath) => {
+  try {
+    return await agencyService.exportToExcel(outputPath);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// Excel file selection for agency import
+ipcMain.handle('select-excel-file', async () => {
+  try {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openFile'],
+      title: 'Select Excel File',
+      filters: [
+        { name: 'Excel Files', extensions: ['xlsx', 'xls'] },
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    });
+    
+    if (result.canceled) {
+      return { success: false, message: 'File selection cancelled' };
+    }
+    
+    return {
+      success: true,
+      filePath: result.filePaths[0],
+      message: 'File selected successfully'
+    };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// Excel diagnostic endpoint
+ipcMain.handle('excel-diagnose', async (event, filePath) => {
+  try {
+    return await excelDiagnosticService.diagnoseExcelFile(filePath);
   } catch (error) {
     return { success: false, error: error.message };
   }

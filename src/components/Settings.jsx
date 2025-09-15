@@ -53,8 +53,28 @@ function Settings({ initialTab = 'app-info' }) {
   const [newValue, setNewValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  // Agency management state
+  const [agencies, setAgencies] = useState([]);
+  const [agencyStats, setAgencyStats] = useState(null);
+  const [showAgencyForm, setShowAgencyForm] = useState(false);
+  const [editingAgency, setEditingAgency] = useState(null);
+  const [agencyFormData, setAgencyFormData] = useState({
+    agencyNumber: '',
+    agencyName: '',
+    contactName: '',
+    contactEmail: '',
+    phoneNumber: '',
+    role: '',
+    region: '',
+    mainContact: '',
+    sae: 'No'
+  });
+  const [importStatus, setImportStatus] = useState(null);
+
   useEffect(() => {
     loadSettings();
+    loadAgencies();
+    loadAgencyStats();
     // Scroll to top when settings page loads - ensure DOM is ready
     const scrollToTop = () => {
       const mainContent = document.querySelector('.main-content');
@@ -194,6 +214,272 @@ function Settings({ initialTab = 'app-info' }) {
       console.error('Failed to load settings:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Agency management functions
+  const loadAgencies = async () => {
+    try {
+      const result = await window.electronAPI.agenciesLoadAll();
+      if (result && result.success) {
+        setAgencies(result.agencies || []);
+      }
+    } catch (error) {
+      console.error('Error loading agencies:', error);
+      setAgencies([]);
+    }
+  };
+
+  const loadAgencyStats = async () => {
+    try {
+      const result = await window.electronAPI.agenciesGetStatistics();
+      if (result && result.success) {
+        setAgencyStats(result.statistics);
+      }
+    } catch (error) {
+      console.error('Error loading agency statistics:', error);
+    }
+  };
+
+  const handleAgencyFormSubmit = async (e) => {
+    e.preventDefault();
+    
+    try {
+      let result;
+      if (editingAgency) {
+        // Update existing agency
+        result = await window.electronAPI.agenciesUpdate(editingAgency.id, agencyFormData);
+      } else {
+        // Add new agency
+        result = await window.electronAPI.agenciesAdd(agencyFormData);
+      }
+
+      if (result && result.success) {
+        // Reload agencies and stats
+        await loadAgencies();
+        await loadAgencyStats();
+        
+        // Reset form
+        setAgencyFormData({
+          agencyNumber: '',
+          agencyName: '',
+          contactName: '',
+          contactEmail: '',
+          phoneNumber: '',
+          role: '',
+          region: '',
+          mainContact: '',
+          sae: 'No'
+        });
+        setShowAgencyForm(false);
+        setEditingAgency(null);
+        
+        alert(editingAgency ? 'Agency updated successfully!' : 'Agency added successfully!');
+      } else {
+        alert('Failed to save agency: ' + (result?.error || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('Error saving agency:', error);
+      alert('Error saving agency: ' + error.message);
+    }
+  };
+
+  const handleEditAgency = (agency) => {
+    setAgencyFormData({
+      agencyNumber: agency.agencyNumber || '',
+      agencyName: agency.agencyName || '',
+      contactName: agency.contactName || '',
+      contactEmail: agency.contactEmail || '',
+      phoneNumber: agency.phoneNumber || '',
+      role: agency.role || '',
+      region: agency.region || '',
+      mainContact: agency.mainContact || '',
+      sae: agency.sae || 'No'
+    });
+    setEditingAgency(agency);
+    setShowAgencyForm(true);
+  };
+
+  const handleDeleteAgency = async (agency) => {
+    if (window.confirm(`Are you sure you want to delete "${agency.agencyName}"? This action cannot be undone.`)) {
+      try {
+        const result = await window.electronAPI.agenciesDelete(agency.id);
+        if (result && result.success) {
+          await loadAgencies();
+          await loadAgencyStats();
+          alert('Agency deleted successfully!');
+        } else {
+          alert('Failed to delete agency: ' + (result?.error || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('Error deleting agency:', error);
+        alert('Error deleting agency: ' + error.message);
+      }
+    }
+  };
+
+  const handleExcelImport = async () => {
+    try {
+      const result = await window.electronAPI.selectExcelFile();
+      if (result && result.success && result.filePath) {
+        setImportStatus({ type: 'loading', message: 'Importing Excel file...' });
+        
+        const importResult = await window.electronAPI.agenciesImportExcel(result.filePath);
+        
+        if (importResult && importResult.success) {
+          setImportStatus({ 
+            type: 'success', 
+            message: `Successfully imported ${importResult.imported} agencies` 
+          });
+          
+          // Reload data
+          await loadAgencies();
+          await loadAgencyStats();
+          
+          // Clear status after delay
+          setTimeout(() => {
+            setImportStatus(null);
+          }, 3000);
+        } else {
+          console.error('Import failed:', importResult);
+          
+          let errorMessage = importResult?.error || 'Failed to import Excel file';
+          
+          // Show debug info if available
+          if (importResult?.debugInfo) {
+            console.log('Debug info:', importResult.debugInfo);
+            
+            if (importResult.debugInfo.columnHeaders) {
+              errorMessage += `\n\nFound columns: ${importResult.debugInfo.columnHeaders.join(', ')}`;
+            }
+            
+            if (importResult.debugInfo.totalRows !== undefined) {
+              errorMessage += `\nTotal rows: ${importResult.debugInfo.totalRows}`;
+            }
+          }
+          
+          setImportStatus({ 
+            type: 'error', 
+            message: errorMessage
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error importing Excel:', error);
+      setImportStatus({ 
+        type: 'error', 
+        message: 'Error importing Excel file: ' + error.message 
+      });
+    }
+  };
+
+  const handleExcelDiagnose = async () => {
+    try {
+      const result = await window.electronAPI.selectExcelFile();
+      if (result && result.success && result.filePath) {
+        setImportStatus({ type: 'loading', message: 'Analyzing Excel file structure...' });
+        
+        const diagnosisResult = await window.electronAPI.excelDiagnose(result.filePath);
+        
+        if (diagnosisResult && diagnosisResult.success) {
+          const diag = diagnosisResult.diagnosis;
+          const recs = diagnosisResult.recommendations;
+          
+          let message = `📊 EXCEL FILE ANALYSIS\n`;
+          message += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+          message += `📁 File: ${diag.fileName}\n`;
+          message += `📚 Total Sheets: ${diag.totalSheets}\n`;
+          message += `📋 All Sheets: ${diag.allSheets.join(', ')}\n\n`;
+          
+          // Show sheet analysis
+          message += `🔍 SHEET ANALYSIS:\n`;
+          message += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+          diag.sheetAnalysis.forEach(sheet => {
+            const scoreIcon = sheet.agencyScore > 50 ? '🎯' : sheet.agencyScore > 0 ? '📋' : '❌';
+            message += `${scoreIcon} ${sheet.sheetName}: ${sheet.totalRows}x${sheet.totalCols} (Score: ${sheet.agencyScore})\n`;
+            if (sheet.hasAgencyLikeData) {
+              message += `   ✅ Contains agency-like data\n`;
+            }
+            if (sheet.possibleHeaderRow > 0) {
+              message += `   📍 Possible headers at row ${sheet.possibleHeaderRow}\n`;
+            }
+          });
+          
+          if (diag.recommendedSheet) {
+            message += `\n🎯 RECOMMENDED SHEET: ${diag.recommendedSheet}\n`;
+            if (diag.recommendedHeaderRow > 0) {
+              message += `📍 Recommended header row: ${diag.recommendedHeaderRow}\n`;
+            }
+          } else {
+            message += `\n⚠️ NO SUITABLE SHEET FOUND FOR AGENCY DATA\n`;
+          }
+          
+          // Show detailed analysis if we have a recommended sheet
+          if (diag.detailedAnalysis) {
+            message += `\n🔍 DETAILED ANALYSIS (${diag.detailedAnalysis.sheetName}):\n`;
+            message += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+            
+            diag.detailedAnalysis.rowAnalysis.slice(0, 10).forEach(row => {
+              const preview = row.values.join(' | ');
+              const indicator = row.possibleHeader ? ' ⭐ HEADER?' : '';
+              message += `Row ${row.rowNumber}: [${row.contentCount} cells] ${preview}${indicator}\n`;
+            });
+            
+            if (diag.detailedAnalysis.parsingAttempts) {
+              message += `\n🧩 PARSING ATTEMPTS:\n`;
+              message += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+              diag.detailedAnalysis.parsingAttempts.forEach(attempt => {
+                if (attempt.success) {
+                  message += `✅ ${attempt.method}: ${attempt.rowCount} rows, ${attempt.columns.length} cols\n`;
+                  if (attempt.columns.length > 0) {
+                    message += `   Headers: ${attempt.columns.slice(0, 5).join(', ')}${attempt.columns.length > 5 ? '...' : ''}\n`;
+                  }
+                } else {
+                  message += `❌ ${attempt.method}: ${attempt.error}\n`;
+                }
+              });
+            }
+          }
+          
+          message += `\n💡 RECOMMENDATIONS:\n`;
+          message += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+          recs.forEach(rec => {
+            const icon = rec.type === 'warning' ? '⚠️' : rec.type === 'header' ? '🎯' : '📋';
+            message += `${icon} ${rec.message}\n`;
+          });
+          
+          // Check for potential data in the detailed analysis
+          if (diag.detailedAnalysis && diag.detailedAnalysis.rowAnalysis) {
+            const dataRows = diag.detailedAnalysis.rowAnalysis.filter(row => 
+              row.contentCount >= 3 && !row.possibleHeader
+            );
+            
+            if (dataRows.length > 0) {
+              message += `\n📊 POTENTIAL DATA ROWS FOUND: ${dataRows.length}\n`;
+              message += `Sample data from row ${dataRows[0].rowNumber}:\n`;
+              dataRows[0].values.slice(0, 5).forEach((value, index) => {
+                message += `  Column ${index + 1}: ${value}\n`;
+              });
+            }
+          }
+          
+          setImportStatus({ 
+            type: 'success', 
+            message: message
+          });
+        } else {
+          setImportStatus({ 
+            type: 'error', 
+            message: 'Failed to analyze Excel file: ' + (diagnosisResult?.error || 'Unknown error')
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error diagnosing Excel:', error);
+      setImportStatus({ 
+        type: 'error', 
+        message: 'Error analyzing Excel file: ' + error.message 
+      });
     }
   };
 
@@ -477,6 +763,12 @@ function Settings({ initialTab = 'app-info' }) {
       label: 'Form Settings',
       icon: '📝',
       fullLabel: 'Project Form Settings'
+    },
+    {
+      id: 'agencies',
+      label: 'Agencies',
+      icon: '🏢',
+      fullLabel: 'Agency Management'
     },
     {
       id: 'triage-calc',
@@ -810,6 +1102,290 @@ function Settings({ initialTab = 'app-info' }) {
               {renderFieldEditor('statusOptions', 'Status Options', settings.statusOptions)}
               {renderFieldEditor('productOptions', 'Product Options', settings.productOptions)}
               {renderFieldEditor('assignedToOptions', 'Assigned To Options', settings.assignedToOptions)}
+            </div>
+          </div>
+        );
+
+      case 'agencies':
+        return (
+          <div className="tab-content">
+            <div className="agencies-management">
+              <h2>Agency Management</h2>
+              <p className="section-description">Import agencies from Excel or add them manually</p>
+
+              {/* Statistics */}
+              {agencyStats && (
+                <div className="agency-stats">
+                  <div className="stat-card">
+                    <span className="stat-number">{agencyStats.totalAgencies}</span>
+                    <span className="stat-label">Total Agencies</span>
+                  </div>
+                  <div className="stat-card">
+                    <span className="stat-number">{Object.keys(agencyStats.byRegion || {}).length}</span>
+                    <span className="stat-label">Regions</span>
+                  </div>
+                  <div className="stat-card">
+                    <span className="stat-number">{Object.keys(agencyStats.byRole || {}).length}</span>
+                    <span className="stat-label">Roles</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Import Section */}
+              <div className="settings-section">
+                <h3>Import from Excel</h3>
+                <p className="field-description">
+                  Import agency data from an Excel file with columns: Agency Number, Agency Name, Contact Name, 
+                  Contact email, Contact Number, Role, Region, Main Contact, SAE
+                </p>
+                
+                <div className="import-section">
+                  <div className="import-buttons">
+                    <button 
+                      className="btn btn-primary"
+                      onClick={handleExcelImport}
+                      disabled={importStatus?.type === 'loading'}
+                    >
+                      {importStatus?.type === 'loading' ? '⏳ Importing...' : '📂 Import Excel File'}
+                    </button>
+                    
+                    <button 
+                      className="btn btn-secondary"
+                      onClick={handleExcelDiagnose}
+                      disabled={importStatus?.type === 'loading'}
+                    >
+                      🔍 Diagnose Excel File
+                    </button>
+                  </div>
+                  
+                  {importStatus && (
+                    <div className={`import-status ${importStatus.type}`}>
+                      <div className="status-message">
+                        {importStatus.type === 'loading' && <div className="spinner"></div>}
+                        <pre>{importStatus.message}</pre>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Manual Entry Section */}
+              <div className="settings-section">
+                <div className="section-header">
+                  <h3>Manual Entry</h3>
+                  <button 
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      setShowAgencyForm(true);
+                      setEditingAgency(null);
+                      setAgencyFormData({
+                        agencyNumber: '',
+                        agencyName: '',
+                        contactName: '',
+                        contactEmail: '',
+                        phoneNumber: '',
+                        role: '',
+                        region: '',
+                        mainContact: '',
+                        sae: 'No'
+                      });
+                    }}
+                  >
+                    ➕ Add New Agency
+                  </button>
+                </div>
+
+                {showAgencyForm && (
+                  <div className="agency-form-container">
+                    <div className="agency-form-header">
+                      <h4>{editingAgency ? 'Edit Agency' : 'Add New Agency'}</h4>
+                      <button 
+                        className="close-btn"
+                        onClick={() => {
+                          setShowAgencyForm(false);
+                          setEditingAgency(null);
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    
+                    <form onSubmit={handleAgencyFormSubmit} className="agency-form">
+                      <div className="form-grid">
+                        <div className="form-group">
+                          <label>Agency Number</label>
+                          <input
+                            type="text"
+                            value={agencyFormData.agencyNumber}
+                            onChange={(e) => setAgencyFormData({...agencyFormData, agencyNumber: e.target.value})}
+                            placeholder="Enter agency number"
+                          />
+                        </div>
+                        
+                        <div className="form-group">
+                          <label>Agency Name *</label>
+                          <input
+                            type="text"
+                            value={agencyFormData.agencyName}
+                            onChange={(e) => setAgencyFormData({...agencyFormData, agencyName: e.target.value})}
+                            placeholder="Enter agency name"
+                            required
+                          />
+                        </div>
+                        
+                        <div className="form-group">
+                          <label>Contact Name</label>
+                          <input
+                            type="text"
+                            value={agencyFormData.contactName}
+                            onChange={(e) => setAgencyFormData({...agencyFormData, contactName: e.target.value})}
+                            placeholder="Enter contact name"
+                          />
+                        </div>
+                        
+                        <div className="form-group">
+                          <label>Contact Email</label>
+                          <input
+                            type="email"
+                            value={agencyFormData.contactEmail}
+                            onChange={(e) => setAgencyFormData({...agencyFormData, contactEmail: e.target.value})}
+                            placeholder="Enter contact email"
+                          />
+                        </div>
+                        
+                        <div className="form-group">
+                          <label>Contact Number</label>
+                          <input
+                            type="tel"
+                            value={agencyFormData.phoneNumber}
+                            onChange={(e) => setAgencyFormData({...agencyFormData, phoneNumber: e.target.value})}
+                            placeholder="Enter contact number"
+                          />
+                        </div>
+                        
+                        <div className="form-group">
+                          <label>Role</label>
+                          <input
+                            type="text"
+                            value={agencyFormData.role}
+                            onChange={(e) => setAgencyFormData({...agencyFormData, role: e.target.value})}
+                            placeholder="Enter role"
+                          />
+                        </div>
+                        
+                        <div className="form-group">
+                          <label>Region</label>
+                          <select
+                            value={agencyFormData.region}
+                            onChange={(e) => setAgencyFormData({...agencyFormData, region: e.target.value})}
+                          >
+                            <option value="">Select region</option>
+                            <option value="Region 1">Region 1</option>
+                            <option value="Region 2">Region 2</option>
+                            <option value="Region 3">Region 3</option>
+                            <option value="Region 4">Region 4</option>
+                            <option value="Region 5">Region 5</option>
+                            <option value="International">International</option>
+                            <option value="Unknown">Unknown</option>
+                          </select>
+                        </div>
+                        
+                        <div className="form-group">
+                          <label>Main Contact</label>
+                          <input
+                            type="text"
+                            value={agencyFormData.mainContact}
+                            onChange={(e) => setAgencyFormData({...agencyFormData, mainContact: e.target.value})}
+                            placeholder="Enter main contact"
+                          />
+                        </div>
+                        
+                        <div className="form-group">
+                          <label>SAE</label>
+                          <select
+                            value={agencyFormData.sae}
+                            onChange={(e) => setAgencyFormData({...agencyFormData, sae: e.target.value})}
+                          >
+                            <option value="No">No</option>
+                            <option value="Yes">Yes</option>
+                          </select>
+                        </div>
+                      </div>
+                      
+                      <div className="form-actions">
+                        <button type="button" className="btn btn-secondary" onClick={() => {
+                          setShowAgencyForm(false);
+                          setEditingAgency(null);
+                        }}>
+                          Cancel
+                        </button>
+                        <button type="submit" className="btn btn-primary">
+                          {editingAgency ? 'Update Agency' : 'Add Agency'}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                )}
+              </div>
+
+              {/* Existing Agencies List */}
+              <div className="settings-section">
+                <h3>Existing Agencies ({agencies.length})</h3>
+                
+                {agencies.length === 0 ? (
+                  <div className="no-agencies">
+                    <p>No agencies found. Import from Excel or add manually.</p>
+                  </div>
+                ) : (
+                  <div className="agencies-list">
+                    <div className="agencies-table">
+                      <div className="table-header">
+                        <span>Agency Name</span>
+                        <span>Contact</span>
+                        <span>Region</span>
+                        <span>Role</span>
+                        <span>Actions</span>
+                      </div>
+                      
+                      {agencies.slice(0, 50).map(agency => (
+                        <div key={agency.id} className="table-row">
+                          <span className="agency-name" title={agency.agencyName}>
+                            {agency.agencyName}
+                          </span>
+                          <span className="contact-info">
+                            <div>{agency.contactName}</div>
+                            <div className="contact-email">{agency.contactEmail}</div>
+                          </span>
+                          <span className="region">{agency.region}</span>
+                          <span className="role">{agency.role}</span>
+                          <span className="actions">
+                            <button 
+                              className="btn-icon edit-btn"
+                              onClick={() => handleEditAgency(agency)}
+                              title="Edit agency"
+                            >
+                              ✏️
+                            </button>
+                            <button 
+                              className="btn-icon delete-btn"
+                              onClick={() => handleDeleteAgency(agency)}
+                              title="Delete agency"
+                            >
+                              🗑️
+                            </button>
+                          </span>
+                        </div>
+                      ))}
+                      
+                      {agencies.length > 50 && (
+                        <div className="table-footer">
+                          <p>Showing first 50 agencies. Use the Agency Directory to search all agencies.</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         );
