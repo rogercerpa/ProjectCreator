@@ -4,6 +4,7 @@ import Sidebar from './components/Sidebar';
 import ProjectForm from './components/ProjectForm';
 import ProjectWizard from './components/wizard/ProjectWizard';
 import ProjectManagement from './components/ProjectManagement';
+import ProjectList from './components/ProjectList';
 import AgencyDirectory from './components/AgencyDirectory';
 import DraftRecoveryModal from './components/wizard/components/DraftRecoveryModal';
 import MigrationAssistant from './components/wizard/components/MigrationAssistant';
@@ -694,7 +695,6 @@ function App() {
           return (
             <div className="projects-list-container">
               <div className="projects-list-header">
-                <h2>Projects List</h2>
                 <button 
                   onClick={async () => {
                     console.log('🔄 Manual refresh triggered');
@@ -708,71 +708,19 @@ function App() {
                       console.warn('⚠️ Manual refresh failed:', error);
                     }
                   }}
-                  className="btn btn-outline btn-small"
+                  className="btn btn-outline btn-small refresh-btn"
                 >
                   🔄 Refresh
                 </button>
               </div>
-              {projects.length === 0 ? (
-                <div className="no-projects">
-                  <p>No projects found.</p>
-                  <button 
-                    onClick={() => setCurrentView('form')}
-                    className="btn btn-primary"
-                  >
-                    Create Your First Project
-                  </button>
-                </div>
-              ) : (
-                <div className="projects-grid">
-                  {projects.map(project => (
-                    <div key={project.id} className="project-card">
-                      <div className="project-card-header">
-                        <div className="project-info">
-                          <h3 title={project.projectName}>{truncateProjectName(project.projectName)}</h3>
-                          <span className={`project-status status-${(project.status || 'in-progress').toLowerCase().replace(' ', '-')}`}>
-                            {project.status || 'In Progress'}
-                          </span>
-                        </div>
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleProjectDelete(project.id, project.projectName);
-                          }}
-                          className="delete-btn"
-                          title="Delete Project"
-                        >
-                          🗑️
-                        </button>
-                      </div>
-                      
-                      <div className="project-details">
-                        <div className="detail-row">
-                          <span className="detail-label">RFA:</span>
-                          <span className="detail-value">{project.rfaNumber}</span>
-                        </div>
-                        <div className="detail-row">
-                          <span className="detail-label">Team:</span>
-                          <span className="detail-value">{project.regionalTeam}</span>
-                        </div>
-                      </div>
-                      
-                      <div className="project-card-actions">
-                        <button 
-                          onClick={() => {
-                            setCurrentProject(project);
-                            setCurrentView('project-management');
-                          }}
-                          className="btn btn-primary manage-btn"
-                        >
-                          <span>📋</span>
-                          Manage Project
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <ProjectList
+                projects={projects}
+                onProjectSelect={(project) => {
+                  setCurrentProject(project);
+                  setCurrentView('project-management');
+                }}
+                onProjectDelete={handleProjectDelete}
+              />
             </div>
           );
         case 'project-management':

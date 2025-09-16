@@ -1,10 +1,16 @@
 import React, { useState } from 'react';
 import './ProjectList.css';
+import ViewToolbar from './ViewToolbar';
+import ProjectTableView from './ProjectTableView';
+import ProjectGroupView from './ProjectGroupView';
 
-function ProjectList({ projects, onProjectSelect }) {
+function ProjectList({ projects, onProjectSelect, onProjectDelete }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState('desc');
+  const [viewMode, setViewMode] = useState('table');
+  const [density, setDensity] = useState('standard');
+  const [groupBy, setGroupBy] = useState('none');
 
   const filteredProjects = projects.filter(project =>
     project.projectName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -51,6 +57,10 @@ function ProjectList({ projects, onProjectSelect }) {
     }
   };
 
+  const handleSortOrderToggle = () => {
+    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+  };
+
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -68,6 +78,113 @@ function ProjectList({ projects, onProjectSelect }) {
     return 'low';
   };
 
+  const renderCardView = (projectsToRender = sortedProjects) => {
+    return projectsToRender.map((project) => (
+      <div
+        key={project.id}
+        className={`project-card ${getStatusColor(project)} density-${density}`}
+        onClick={() => onProjectSelect(project)}
+      >
+        {/* Card Header with Title and Actions */}
+        <div className="card-header">
+          <div className="card-title-section">
+            <h3 className="card-title" title={project.projectName}>
+              {project.projectName || 'Untitled Project'}
+            </h3>
+            <span className={`priority-badge ${getStatusColor(project)}`}>
+              {getStatusColor(project)}
+            </span>
+          </div>
+          {onProjectDelete && (
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                onProjectDelete(project.id, project.projectName);
+              }}
+              className="card-delete-btn"
+              title="Delete Project"
+            >
+              ×
+            </button>
+          )}
+        </div>
+
+        {/* Card Body with Project Details */}
+        <div className="card-body">
+          <div className="card-details-grid">
+            <div className="detail-row">
+              <span className="detail-key">RFA Number</span>
+              <span className="detail-val">{project.rfaNumber || 'N/A'}</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-key">Agent</span>
+              <span className="detail-val">{project.agentNumber || 'N/A'}</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-key">Team</span>
+              <span className="detail-val">{project.regionalTeam || 'N/A'}</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-key">Type</span>
+              <span className="detail-val">{project.rfaType || 'N/A'}</span>
+            </div>
+            {project.projectContainer && (
+              <div className="detail-row">
+                <span className="detail-key">Container</span>
+                <span className="detail-val">{project.projectContainer}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Triage Information */}
+          {project.triageResults && (
+            <div className="card-triage-section">
+              <div className="triage-header">
+                <span className="triage-title">Triage Summary</span>
+                <span className={`triage-total ${getStatusColor(project)}`}>
+                  {project.triageResults.totalTriage}h
+                </span>
+              </div>
+              <div className="triage-details">
+                <span className="triage-detail">LMPs: {project.triageResults.totalLMPs || 0}</span>
+                <span className="triage-detail">ARPs: {project.triageResults.totalARPs || 0}</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Card Footer with Dates */}
+        <div className="card-footer">
+          <div className="card-timestamps">
+            <div className="timestamp">
+              <span className="timestamp-label">Created</span>
+              <span className="timestamp-value">{formatDate(project.createdAt)}</span>
+            </div>
+            {project.updatedAt !== project.createdAt && (
+              <div className="timestamp">
+                <span className="timestamp-label">Updated</span>
+                <span className="timestamp-value">{formatDate(project.updatedAt)}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    ));
+  };
+
+  const renderTableView = (projectsToRender = sortedProjects) => {
+    return (
+      <ProjectTableView
+        projects={projectsToRender}
+        onProjectSelect={onProjectSelect}
+        density={density}
+        sortBy={sortBy}
+        sortOrder={sortOrder}
+        onSort={handleSort}
+      />
+    );
+  };
+
   if (projects.length === 0) {
     return (
       <div className="project-list-empty">
@@ -82,111 +199,50 @@ function ProjectList({ projects, onProjectSelect }) {
     <div className="project-list">
       <div className="list-header">
         <h2>Project List</h2>
-        <p>{filteredProjects.length} of {projects.length} projects</p>
       </div>
 
-      <div className="list-controls">
-        <div className="search-box">
-          <input
-            type="text"
-            placeholder="Search projects..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="search-input"
-          />
-          <span className="search-icon">🔍</span>
+      <ViewToolbar
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        density={density}
+        onDensityChange={setDensity}
+        groupBy={groupBy}
+        onGroupByChange={setGroupBy}
+        sortBy={sortBy}
+        sortOrder={sortOrder}
+        onSortChange={setSortBy}
+        onSortOrderToggle={handleSortOrderToggle}
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        projectCount={projects.length}
+        filteredCount={filteredProjects.length}
+      />
+
+      {/* Render based on grouping and view mode */}
+      {groupBy !== 'none' ? (
+        <ProjectGroupView
+          projects={sortedProjects}
+          groupBy={groupBy}
+          viewMode={viewMode}
+          density={density}
+          onProjectSelect={onProjectSelect}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          onSort={handleSort}
+          renderCardView={renderCardView}
+          renderTableView={renderTableView}
+        />
+      ) : (
+        <div className={`project-content ${viewMode}-view ${density}`}>
+          {viewMode === 'table' ? (
+            renderTableView()
+          ) : (
+            <div className="projects-grid">
+              {renderCardView()}
+            </div>
+          )}
         </div>
-
-        <div className="sort-controls">
-          <label htmlFor="sortBy">Sort by:</label>
-          <select
-            id="sortBy"
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="sort-select"
-          >
-            <option value="createdAt">Created Date</option>
-            <option value="updatedAt">Updated Date</option>
-            <option value="projectName">Project Name</option>
-            <option value="rfaNumber">RFA Number</option>
-            <option value="agentNumber">Agent Number</option>
-          </select>
-          
-          <button
-            onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-            className="sort-order-btn"
-            title={`Sort ${sortOrder === 'asc' ? 'Descending' : 'Ascending'}`}
-          >
-            {sortOrder === 'asc' ? '↑' : '↓'}
-          </button>
-        </div>
-      </div>
-
-      <div className="projects-grid">
-        {sortedProjects.map((project) => (
-          <div
-            key={project.id}
-            className={`project-card ${getStatusColor(project)}`}
-            onClick={() => onProjectSelect(project)}
-          >
-            <div className="project-header">
-              <h3 className="project-name">{project.projectName}</h3>
-              <span className={`status-badge ${getStatusColor(project)}`}>
-                {getStatusColor(project).toUpperCase()}
-              </span>
-            </div>
-
-            <div className="project-details">
-              <div className="detail-item">
-                <span className="detail-label">RFA:</span>
-                <span className="detail-value">{project.rfaNumber}</span>
-              </div>
-              <div className="detail-item">
-                <span className="detail-label">Agent:</span>
-                <span className="detail-value">{project.agentNumber}</span>
-              </div>
-              <div className="detail-item">
-                <span className="detail-label">Container:</span>
-                <span className="detail-value">{project.projectContainer}</span>
-              </div>
-              <div className="detail-item">
-                <span className="detail-label">Type:</span>
-                <span className="detail-value">{project.rfaType}</span>
-              </div>
-              <div className="detail-item">
-                <span className="detail-label">Team:</span>
-                <span className="detail-value">{project.regionalTeam}</span>
-              </div>
-            </div>
-
-            {project.triageResults && (
-              <div className="triage-summary">
-                <div className="triage-item">
-                  <span className="triage-label">Total Triage:</span>
-                  <span className="triage-value">{project.triageResults.totalTriage}</span>
-                </div>
-                <div className="triage-breakdown">
-                  <span>LMPs: {project.triageResults.totalLMPs}</span>
-                  <span>ARPs: {project.triageResults.totalARPs}</span>
-                </div>
-              </div>
-            )}
-
-            <div className="project-footer">
-              <div className="project-dates">
-                <span className="date-label">Created:</span>
-                <span className="date-value">{formatDate(project.createdAt)}</span>
-              </div>
-              {project.updatedAt !== project.createdAt && (
-                <div className="project-dates">
-                  <span className="date-label">Updated:</span>
-                  <span className="date-value">{formatDate(project.updatedAt)}</span>
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
+      )}
 
       {filteredProjects.length === 0 && searchTerm && (
         <div className="no-results">

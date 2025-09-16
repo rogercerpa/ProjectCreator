@@ -1,0 +1,476 @@
+/* ProjectTableView.css - Styling for the table view of projects */
+
+/* Critical: Force horizontal table headers - override any global CSS */
+.project-table th,
+.project-table .table-header {
+  writing-mode: horizontal-tb !important;
+  text-orientation: mixed !important;
+  transform: none !important;
+  display: table-cell !important;
+  white-space: nowrap !important;
+  vertical-align: middle !important;
+  text-align: left !important;
+}
+
+.project-table-container {
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.table-controls {
+  padding: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+.project-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  table-layout: fixed;
+  min-width: 920px;
+  max-width: 100%;
+}
+
+/* Table Header - Force Horizontal Display */
+.project-table thead {
+  background: #f8fafc;
+  border-bottom: 2px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: table-header-group;
+}
+
+.project-table thead tr {
+  display: table-row;
+}
+
+.table-header {
+  padding: 0.75rem 0.5rem;
+  text-align: left;
+  font-weight: 600;
+  color: #374151;
+  border-right: 1px solid #e2e8f0;
+  position: relative;
+  white-space: nowrap;
+  vertical-align: middle;
+  line-height: 1.2;
+  height: auto;
+  min-height: 50px;
+  display: table-cell;
+  width: auto;
+  max-width: none;
+  writing-mode: horizontal-tb;
+  text-orientation: mixed;
+  transform: none;
+  word-break: normal;
+  overflow-wrap: normal;
+  font-size: 0.8125rem;
+}
+
+.table-header:last-child {
+  border-right: none;
+}
+
+.table-header.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
+}
+
+.table-header.sortable:hover {
+  background: #e2e8f0;
+  color: #667eea;
+}
+
+.table-header.sorted {
+  background: #e6f3ff;
+  color: #667eea;
+}
+
+.sort-icon {
+  font-size: 0.75rem;
+  opacity: 0.7;
+  margin-left: 0.5rem;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.table-header.sortable .sort-icon {
+  opacity: 0.5;
+}
+
+.table-header.sortable:hover .sort-icon,
+.table-header.sorted .sort-icon {
+  opacity: 1;
+}
+
+/* Table Body */
+.project-table tbody tr {
+  border-bottom: 1px solid #f1f5f9;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.project-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.project-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.project-table td {
+  padding: 0.625rem 0.5rem;
+  border-right: 1px solid #f1f5f9;
+  vertical-align: middle;
+  font-size: 0.8125rem;
+}
+
+.project-table td:last-child {
+  border-right: none;
+}
+
+/* Priority Row Styling */
+.project-row.high-priority {
+  border-left: 4px solid #f56565;
+}
+
+.project-row.medium-priority {
+  border-left: 4px solid #ed8936;
+}
+
+.project-row.low-priority {
+  border-left: 4px solid #48bb78;
+}
+
+/* Cell-specific Styling */
+.project-name-cell {
+  min-width: 200px;
+  max-width: 250px;
+}
+
+.name-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.project-name {
+  font-weight: 600;
+  color: #2d3748;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  line-height: 1.3;
+}
+
+.project-container {
+  font-size: 0.6875rem;
+  color: #718096;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.rfa-cell,
+.agent-cell,
+.type-cell,
+.team-cell {
+  color: #4a5568;
+  font-weight: 500;
+}
+
+.status-cell {
+  text-align: center;
+}
+
+.status-badge {
+  padding: 0.1875rem 0.375rem;
+  border-radius: 8px;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  display: inline-block;
+  min-width: 50px;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.status-badge.high {
+  background: #fed7d7;
+  color: #c53030;
+}
+
+.status-badge.medium {
+  background: #feebc8;
+  color: #c05621;
+}
+
+.status-badge.low {
+  background: #c6f6d5;
+  color: #22543d;
+}
+
+.triage-cell {
+  text-align: center;
+}
+
+.triage-value {
+  font-weight: 700;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.75rem;
+  padding: 0.1875rem 0.375rem;
+  border-radius: 4px;
+  display: inline-block;
+  min-width: 35px;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.triage-value.high {
+  background: #fed7d7;
+  color: #c53030;
+}
+
+.triage-value.medium {
+  background: #feebc8;
+  color: #c05621;
+}
+
+.triage-value.low {
+  background: #c6f6d5;
+  color: #22543d;
+}
+
+.date-cell {
+  color: #718096;
+  font-size: 0.6875rem;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.date-value {
+  display: block;
+  line-height: 1.2;
+}
+
+/* Density Variations */
+.project-table-container.compact .project-table td,
+.project-table-container.compact .table-header {
+  padding: 0.5rem;
+}
+
+.project-table-container.compact .project-table {
+  font-size: 0.75rem;
+}
+
+.project-table-container.compact .project-name {
+  font-size: 0.875rem;
+}
+
+.project-table-container.comfortable .project-table td,
+.project-table-container.comfortable .table-header {
+  padding: 1.25rem 0.75rem;
+}
+
+.project-table-container.comfortable .project-table {
+  font-size: 0.9375rem;
+}
+
+.project-table-container.comfortable .name-container {
+  gap: 0.375rem;
+}
+
+/* Empty State */
+.table-empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: #718096;
+}
+
+.table-empty-state .empty-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.table-empty-state h3 {
+  font-size: 1.5rem;
+  color: #4a5568;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.table-empty-state p {
+  font-size: 1rem;
+  margin: 0;
+}
+
+/* Force horizontal headers on all screen sizes */
+.table-header {
+  writing-mode: horizontal-tb !important;
+  text-orientation: mixed !important;
+  transform: none !important;
+  display: table-cell !important;
+  white-space: nowrap !important;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .table-wrapper {
+    overflow-x: auto;
+  }
+  
+  .project-table {
+    min-width: 920px;
+  }
+  
+  /* Ensure headers stay horizontal on smaller screens */
+  .table-header {
+    writing-mode: horizontal-tb !important;
+    text-orientation: mixed !important;
+    transform: none !important;
+  }
+}
+
+@media (max-width: 1024px) {
+  .table-wrapper {
+    overflow-x: scroll;
+  }
+  
+  .project-table {
+    min-width: 800px;
+  }
+  
+  .table-header,
+  .project-table td {
+    padding: 0.5rem 0.375rem;
+  }
+  
+  /* Ensure headers stay horizontal on smaller screens */
+  .table-header {
+    writing-mode: horizontal-tb !important;
+    text-orientation: mixed !important;
+    transform: none !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .project-table {
+    min-width: 700px;
+  }
+  
+  .project-name-cell {
+    min-width: 150px;
+    max-width: 200px;
+  }
+  
+  .date-cell {
+    display: none;
+  }
+  
+  .table-header:nth-child(8),
+  .table-header:nth-child(9),
+  .project-table td:nth-child(8),
+  .project-table td:nth-child(9) {
+    display: none;
+  }
+  
+  /* Force horizontal headers on mobile */
+  .table-header {
+    writing-mode: horizontal-tb !important;
+    text-orientation: mixed !important;
+    transform: none !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .project-table {
+    min-width: 500px;
+  }
+  
+  .type-cell,
+  .team-cell {
+    display: none;
+  }
+  
+  .table-header:nth-child(4),
+  .table-header:nth-child(5),
+  .project-table td:nth-child(4),
+  .project-table td:nth-child(5) {
+    display: none;
+  }
+  
+  /* Force horizontal headers on small screens */
+  .table-header {
+    writing-mode: horizontal-tb !important;
+    text-orientation: mixed !important;
+    transform: none !important;
+  }
+}
+
+/* Focus states for accessibility */
+.project-row:focus {
+  outline: 2px solid #667eea;
+  outline-offset: -2px;
+}
+
+.table-header.sortable:focus {
+  outline: 2px solid #667eea;
+  outline-offset: -2px;
+}
+
+/* Selection highlighting */
+.project-row:active {
+  background: #e6f3ff;
+}
+
+/* Hover effects */
+.project-row:hover .project-name {
+  color: #667eea;
+}
+
+.table-header.sortable:hover .header-text {
+  color: #667eea;
+}
+
+/* Print styles */
+@media print {
+  .project-table-container {
+    box-shadow: none;
+    border: 1px solid #000;
+  }
+  
+  .project-table {
+    font-size: 10px;
+  }
+  
+  .project-row.high-priority,
+  .project-row.medium-priority,
+  .project-row.low-priority {
+    border-left: 2px solid #000;
+  }
+  
+  .status-badge,
+  .triage-value {
+    background: none !important;
+    color: #000 !important;
+    border: 1px solid #000;
+  }
+}

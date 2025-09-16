@@ -74,6 +74,19 @@
 /* Projects List */
 .projects-list-container {
   padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.projects-list-header {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.refresh-btn {
+  margin-left: auto;
 }
 
 .projects-list-container h2 {
