@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import './AgencyDirectory.css';
+import AgencyTableView from './AgencyTableView';
 
 function AgencyDirectory() {
   const [agencies, setAgencies] = useState([]);
@@ -8,18 +9,19 @@ function AgencyDirectory() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
     region: 'all',
-    role: 'all',
-    fastService: 'all',
-    sae: 'all'
+    role: 'all'
   });
   const [filterOptions, setFilterOptions] = useState({
     regions: [],
-    roles: [],
-    fastServiceOptions: [],
-    saeOptions: []
+    roles: []
   });
   const [statistics, setStatistics] = useState(null);
   const [selectedAgency, setSelectedAgency] = useState(null);
+  const [viewMode, setViewMode] = useState(() => {
+    // Load saved view mode from localStorage, default to 'table'
+    const savedViewMode = localStorage.getItem('agencyDirectoryViewMode');
+    return savedViewMode || 'table';
+  });
 
   // Load agencies and filter options
   const loadAgencies = useCallback(async () => {
@@ -50,9 +52,7 @@ function AgencyDirectory() {
       if (result && result.success) {
         setFilterOptions(result.options || {
           regions: [],
-          roles: [],
-          fastServiceOptions: [],
-          saeOptions: []
+          roles: []
         });
       }
     } catch (error) {
@@ -105,14 +105,18 @@ function AgencyDirectory() {
     }));
   };
 
+  // Handle view mode changes
+  const handleViewModeChange = (newViewMode) => {
+    setViewMode(newViewMode);
+    localStorage.setItem('agencyDirectoryViewMode', newViewMode);
+  };
+
   // Clear all filters
   const clearFilters = () => {
     setSearchTerm('');
     setFilters({
       region: 'all',
-      role: 'all',
-      fastService: 'all',
-      sae: 'all'
+      role: 'all'
     });
   };
 
@@ -352,26 +356,6 @@ function AgencyDirectory() {
             ))}
           </select>
 
-          <select
-            value={filters.fastService}
-            onChange={e => handleFilterChange('fastService', e.target.value)}
-            className="filter-select"
-          >
-            <option value="all">Fast Service</option>
-            <option value="Yes">Yes</option>
-            <option value="No">No</option>
-          </select>
-
-          <select
-            value={filters.sae}
-            onChange={e => handleFilterChange('sae', e.target.value)}
-            className="filter-select"
-          >
-            <option value="all">SAE</option>
-            <option value="Yes">Yes</option>
-            <option value="No">No</option>
-          </select>
-
           <button 
             className="btn btn-secondary clear-filters-btn"
             onClick={clearFilters}
@@ -387,6 +371,29 @@ function AgencyDirectory() {
           <span className="results-count">
             {filteredAgencies.length} {filteredAgencies.length === 1 ? 'agency' : 'agencies'} found
           </span>
+          
+          {/* View Mode Toggle */}
+          <div className="view-mode-toggle">
+            <span className="control-label">View:</span>
+            <div className="toggle-group">
+              <button
+                onClick={() => handleViewModeChange('card')}
+                className={`toggle-btn ${viewMode === 'card' ? 'active' : ''}`}
+                title="Card View"
+              >
+                <span className="toggle-icon">🎴</span>
+                <span className="toggle-text">Card</span>
+              </button>
+              <button
+                onClick={() => handleViewModeChange('table')}
+                className={`toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
+                title="Table View"
+              >
+                <span className="toggle-icon">📋</span>
+                <span className="toggle-text">Table</span>
+              </button>
+            </div>
+          </div>
         </div>
 
         {filteredAgencies.length === 0 ? (
@@ -399,8 +406,17 @@ function AgencyDirectory() {
             )}
           </div>
         ) : (
-          <div className="agencies-grid">
-            {filteredAgencies.map(renderAgencyCard)}
+          <div className={`agency-content ${viewMode}-view`}>
+            {viewMode === 'table' ? (
+              <AgencyTableView
+                agencies={filteredAgencies}
+                onAgencySelect={setSelectedAgency}
+              />
+            ) : (
+              <div className="agencies-grid">
+                {filteredAgencies.map(renderAgencyCard)}
+              </div>
+            )}
           </div>
         )}
       </div>

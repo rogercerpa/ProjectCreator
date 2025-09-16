@@ -1165,26 +1165,28 @@
 }
 
 /* Start Fresh button styling */
-.start-fresh-btn {
+.btn.start-fresh-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 12px 18px;
-  font-weight: 500;
-  border: 2px solid #dc3545;
-  color: #dc3545;
-  background: transparent;
-  transition: all 0.3s ease;
+  gap: 8px;
+  padding: 12px 20px;
+  font-weight: 600;
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.start-fresh-btn:hover:not(:disabled) {
-  background: #dc3545;
-  color: white;
+.btn.start-fresh-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #0056b3 0%, #004085 100%) !important;
+  color: white !important;
   transform: translateY(-1px);
-  box-shadow: 0 3px 6px rgba(220, 53, 69, 0.3);
+  box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
 }
 
-.start-fresh-btn:disabled {
+.btn.start-fresh-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
@@ -1238,6 +1240,110 @@
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
+}
+
+/* Import Button Container - Bottom Left Positioning */
+.import-button-container {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  z-index: 10;
+}
+
+/* Tooltip Styles */
+.tooltip-container {
+  position: relative;
+  display: inline-block;
+}
+
+.tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 8px;
+  z-index: 1000;
+  animation: tooltipFadeIn 0.2s ease-in-out;
+}
+
+/* Adjust tooltip positioning for bottom-left button */
+.import-button-container .tooltip {
+  bottom: 100%;
+  top: auto;
+  margin-bottom: 8px;
+  margin-top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.tooltip-text {
+  display: block;
+  padding: 10px 14px;
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  border-radius: 6px;
+  white-space: normal;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  max-width: 250px;
+  min-width: 200px;
+  text-align: center;
+  word-wrap: break-word;
+  hyphens: auto;
+}
+
+.tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: rgba(0, 0, 0, 0.9);
+}
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* Responsive tooltip positioning */
+@media (max-width: 768px) {
+  .tooltip {
+    left: 0;
+    transform: none;
+    right: 0;
+    margin-left: 0;
+    margin-right: 0;
+  }
+  
+  .tooltip::after {
+    left: 20px;
+    transform: none;
+  }
+  
+  .tooltip-text {
+    white-space: normal;
+    text-align: left;
+    max-width: 200px;
+    min-width: 150px;
+    font-size: 10px;
+    padding: 8px 10px;
+  }
+  
+  /* Adjust import button positioning for mobile */
+  .import-button-container {
+    bottom: 10px;
+    left: 10px;
+  }
 }
 
 .import-feedback {

@@ -31,6 +31,7 @@ const ProjectWizardStep1 = ({
   const [validatedFields, setValidatedFields] = useState({});
   const [fieldFocus, setFieldFocus] = useState({});
   const [showAdvancedFields, setShowAdvancedFields] = useState(false);
+  const [showTooltip, setShowTooltip] = useState(false);
 
   // Load dropdown options and listen for changes (preserve original logic)
   useEffect(() => {
@@ -711,32 +712,6 @@ const ProjectWizardStep1 = ({
 
         {/* Header Actions - Bottom Section */}
         <div className="header-actions">
-          <div className="action-group left-action">
-            <button
-              type="button"
-              onClick={handlePasteRFAInfo}
-              disabled={isPasting}
-              className="btn btn-secondary import-btn"
-            >
-              {isPasting ? (
-                <>
-                  <span className="spinner"></span>
-                  Processing Agile Data...
-                </>
-              ) : (
-                <>
-                  📋 Import From Agile
-                </>
-              )}
-            </button>
-            
-            <div className="action-help">
-              <span className="help-text">
-                💡 Copy RFA details from Agile and click import to auto-fill fields
-              </span>
-            </div>
-          </div>
-
           <div className="action-group right-action">
             <button
               type="button"
@@ -776,6 +751,41 @@ const ProjectWizardStep1 = ({
             </div>
           </div>
         )}
+
+        {/* Import from Agile Button - Bottom Left Corner */}
+        <div className="import-button-container">
+          <div className="tooltip-container">
+            <button
+              type="button"
+              onClick={handlePasteRFAInfo}
+              disabled={isPasting}
+              className="btn btn-secondary import-btn"
+              onMouseEnter={() => setShowTooltip(true)}
+              onMouseLeave={() => setShowTooltip(false)}
+              onFocus={() => setShowTooltip(true)}
+              onBlur={() => setShowTooltip(false)}
+            >
+              {isPasting ? (
+                <>
+                  <span className="spinner"></span>
+                  Processing Agile Data...
+                </>
+              ) : (
+                <>
+                  📋 Import From Agile
+                </>
+              )}
+            </button>
+            
+            {showTooltip && (
+              <div className="tooltip">
+                <span className="tooltip-text">
+                  💡 Copy RFA details from Agile and click import to auto-fill fields
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="wizard-content">

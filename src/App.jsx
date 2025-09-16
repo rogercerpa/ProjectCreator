@@ -693,35 +693,26 @@ function App() {
           );
         case 'list':
           return (
-            <div className="projects-list-container">
-              <div className="projects-list-header">
-                <button 
-                  onClick={async () => {
-                    console.log('🔄 Manual refresh triggered');
-                    try {
-                      const projectsResult = await window.electronAPI.projectsLoadAll();
-                      if (projectsResult && projectsResult.success && Array.isArray(projectsResult.projects)) {
-                        setProjects(projectsResult.projects);
-                        console.log(`✅ Manual refresh completed, found ${projectsResult.projects.length} projects`);
-                      }
-                    } catch (error) {
-                      console.warn('⚠️ Manual refresh failed:', error);
-                    }
-                  }}
-                  className="btn btn-outline btn-small refresh-btn"
-                >
-                  🔄 Refresh
-                </button>
-              </div>
-              <ProjectList
-                projects={projects}
-                onProjectSelect={(project) => {
-                  setCurrentProject(project);
-                  setCurrentView('project-management');
-                }}
-                onProjectDelete={handleProjectDelete}
-              />
-            </div>
+            <ProjectList
+              projects={projects}
+              onProjectSelect={(project) => {
+                setCurrentProject(project);
+                setCurrentView('project-management');
+              }}
+              onProjectDelete={handleProjectDelete}
+              onRefresh={async () => {
+                console.log('🔄 Manual refresh triggered');
+                try {
+                  const projectsResult = await window.electronAPI.projectsLoadAll();
+                  if (projectsResult && projectsResult.success && Array.isArray(projectsResult.projects)) {
+                    setProjects(projectsResult.projects);
+                    console.log(`✅ Manual refresh completed, found ${projectsResult.projects.length} projects`);
+                  }
+                } catch (error) {
+                  console.warn('⚠️ Manual refresh failed:', error);
+                }
+              }}
+            />
           );
         case 'project-management':
           console.log('🎯 App: Rendering project-management view');

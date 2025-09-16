@@ -4,13 +4,28 @@ import ViewToolbar from './ViewToolbar';
 import ProjectTableView from './ProjectTableView';
 import ProjectGroupView from './ProjectGroupView';
 
-function ProjectList({ projects, onProjectSelect, onProjectDelete }) {
+function ProjectList({ projects, onProjectSelect, onProjectDelete, onRefresh }) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('createdAt');
-  const [sortOrder, setSortOrder] = useState('desc');
-  const [viewMode, setViewMode] = useState('table');
-  const [density, setDensity] = useState('standard');
-  const [groupBy, setGroupBy] = useState('none');
+  const [sortBy, setSortBy] = useState(() => {
+    const saved = localStorage.getItem('projectListSortBy');
+    return saved || 'createdAt';
+  });
+  const [sortOrder, setSortOrder] = useState(() => {
+    const saved = localStorage.getItem('projectListSortOrder');
+    return saved || 'desc';
+  });
+  const [viewMode, setViewMode] = useState(() => {
+    const saved = localStorage.getItem('projectListViewMode');
+    return saved || 'table';
+  });
+  const [density, setDensity] = useState(() => {
+    const saved = localStorage.getItem('projectListDensity');
+    return saved || 'standard';
+  });
+  const [groupBy, setGroupBy] = useState(() => {
+    const saved = localStorage.getItem('projectListGroupBy');
+    return saved || 'none';
+  });
 
   const filteredProjects = projects.filter(project =>
     project.projectName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -49,16 +64,34 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete }) {
   });
 
   const handleSort = (field) => {
-    if (sortBy === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(field);
-      setSortOrder('desc');
-    }
+    const newSortBy = field;
+    const newSortOrder = sortBy === field ? (sortOrder === 'asc' ? 'desc' : 'asc') : 'desc';
+    
+    setSortBy(newSortBy);
+    setSortOrder(newSortOrder);
+    localStorage.setItem('projectListSortBy', newSortBy);
+    localStorage.setItem('projectListSortOrder', newSortOrder);
   };
 
   const handleSortOrderToggle = () => {
-    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    const newSortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+    setSortOrder(newSortOrder);
+    localStorage.setItem('projectListSortOrder', newSortOrder);
+  };
+
+  const handleViewModeChange = (newViewMode) => {
+    setViewMode(newViewMode);
+    localStorage.setItem('projectListViewMode', newViewMode);
+  };
+
+  const handleDensityChange = (newDensity) => {
+    setDensity(newDensity);
+    localStorage.setItem('projectListDensity', newDensity);
+  };
+
+  const handleGroupByChange = (newGroupBy) => {
+    setGroupBy(newGroupBy);
+    localStorage.setItem('projectListGroupBy', newGroupBy);
   };
 
   const formatDate = (dateString) => {
@@ -197,64 +230,131 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete }) {
 
   return (
     <div className="project-list">
-      <div className="list-header">
-        <h2>Project List</h2>
+      <div className="project-list-header">
+        <div className="header-title">
+          <h1>Project List</h1>
+          <p>Manage and organize your projects</p>
+        </div>
+        
+        <div className="header-actions">
+          {onRefresh && (
+            <button 
+              onClick={onRefresh}
+              className="refresh-btn"
+              title="Refresh Project List"
+            >
+              <span className="refresh-icon">🔄</span>
+              <span className="refresh-text">Refresh</span>
+            </button>
+          )}
+          <p className="import-note">
+            💡 Create new projects using the <strong>Project Wizard</strong>
+          </p>
+        </div>
       </div>
 
-      <ViewToolbar
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-        density={density}
-        onDensityChange={setDensity}
-        groupBy={groupBy}
-        onGroupByChange={setGroupBy}
-        sortBy={sortBy}
-        sortOrder={sortOrder}
-        onSortChange={setSortBy}
-        onSortOrderToggle={handleSortOrderToggle}
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-        projectCount={projects.length}
-        filteredCount={filteredProjects.length}
-      />
-
-      {/* Render based on grouping and view mode */}
-      {groupBy !== 'none' ? (
-        <ProjectGroupView
-          projects={sortedProjects}
-          groupBy={groupBy}
-          viewMode={viewMode}
-          density={density}
-          onProjectSelect={onProjectSelect}
-          sortBy={sortBy}
-          sortOrder={sortOrder}
-          onSort={handleSort}
-          renderCardView={renderCardView}
-          renderTableView={renderTableView}
-        />
-      ) : (
-        <div className={`project-content ${viewMode}-view ${density}`}>
-          {viewMode === 'table' ? (
-            renderTableView()
-          ) : (
-            <div className="projects-grid">
-              {renderCardView()}
-            </div>
-          )}
+      {/* Statistics */}
+      <div className="project-stats">
+        <div className="stat-card">
+          <span className="stat-number">{projects.length}</span>
+          <span className="stat-label">Total Projects</span>
         </div>
-      )}
+        <div className="stat-card">
+          <span className="stat-number">{filteredProjects.length}</span>
+          <span className="stat-label">Filtered Results</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-number">{projects.filter(p => p.triageResults?.totalTriage > 100).length}</span>
+          <span className="stat-label">High Priority</span>
+        </div>
+      </div>
 
-      {filteredProjects.length === 0 && searchTerm && (
-        <div className="no-results">
-          <p>No projects found matching "{searchTerm}"</p>
-          <button
+      {/* Search and Filters */}
+      <div className="search-filters-section">
+        <div className="search-bar">
+          <input
+            type="text"
+            placeholder="Search projects, RFA numbers, agents..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="search-input"
+          />
+          <button 
+            className="clear-search-btn"
             onClick={() => setSearchTerm('')}
-            className="btn btn-secondary"
+            title="Clear search"
           >
-            Clear Search
+            ✕
           </button>
         </div>
-      )}
+
+        <ViewToolbar
+          viewMode={viewMode}
+          onViewModeChange={handleViewModeChange}
+          density={density}
+          onDensityChange={handleDensityChange}
+          groupBy={groupBy}
+          onGroupByChange={handleGroupByChange}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          onSortChange={(field) => {
+            setSortBy(field);
+            localStorage.setItem('projectListSortBy', field);
+          }}
+          onSortOrderToggle={handleSortOrderToggle}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          projectCount={projects.length}
+          filteredCount={filteredProjects.length}
+        />
+      </div>
+
+      {/* Results */}
+      <div className="results-section">
+        <div className="results-header">
+          <span className="results-count">
+            {filteredProjects.length} {filteredProjects.length === 1 ? 'project' : 'projects'} found
+          </span>
+        </div>
+
+        {/* Render based on grouping and view mode */}
+        {groupBy !== 'none' ? (
+          <ProjectGroupView
+            projects={sortedProjects}
+            groupBy={groupBy}
+            viewMode={viewMode}
+            density={density}
+            onProjectSelect={onProjectSelect}
+            sortBy={sortBy}
+            sortOrder={sortOrder}
+            onSort={handleSort}
+            renderCardView={renderCardView}
+            renderTableView={renderTableView}
+          />
+        ) : (
+          <div className={`project-content ${viewMode}-view ${density}`}>
+            {viewMode === 'table' ? (
+              renderTableView()
+            ) : (
+              <div className="projects-grid">
+                {renderCardView()}
+              </div>
+            )}
+          </div>
+        )}
+
+        {filteredProjects.length === 0 && searchTerm && (
+          <div className="no-results">
+            <p>No projects found matching "{searchTerm}"</p>
+            <button
+              onClick={() => setSearchTerm('')}
+              className="btn btn-secondary"
+            >
+              Clear Search
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
