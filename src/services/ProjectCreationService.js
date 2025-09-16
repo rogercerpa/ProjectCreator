@@ -5,6 +5,8 @@ const { app } = require('electron');
 const PathResolutionService = require('./PathResolutionService');
 const ValidationOrchestrator = require('./ValidationOrchestrator');
 const RFATypeMappingService = require('./RFATypeMappingService');
+const RevisionDetectionService = require('./RevisionDetectionService');
+const RevisionFileCopyService = require('./RevisionFileCopyService');
 
 class ProjectCreationService {
   constructor() {
@@ -16,6 +18,10 @@ class ProjectCreationService {
     
     // Initialize mapping service for label/value conversion
     this.rfaMapping = new RFATypeMappingService();
+    
+    // Initialize revision services
+    this.revisionDetectionService = new RevisionDetectionService();
+    this.revisionFileCopyService = new RevisionFileCopyService();
     
     // Keep legacy template paths for backward compatibility
     this.templatePaths = {
@@ -885,6 +891,414 @@ class ProjectCreationService {
       console.log('All validation caches cleared');
     } catch (error) {
       console.error('Failed to clear validation caches:', error);
+    }
+  }
+
+  // ===== REVISION WORKFLOW METHODS =====
+
+  /**
+   * Detect existing project and suggest revision mode
+   * @param {Object} projectData - Project information
+   * @returns {Promise<Object>} Detection result
+   */
+  async detectExistingProject(projectData) {
+    try {
+      return await this.revisionDetectionService.detectExistingProject(projectData);
+    } catch (error) {
+      console.error('ProjectCreationService: Error detecting existing project:', error);
+      return {
+        exists: false,
+        error: error.message,
+        shouldPromptRevision: false
+      };
+    }
+  }
+
+  /**
+   * Find previous revision for a project
+   * @param {Object} projectData - Project information
+   * @returns {Promise<Object>} Previous revision search result
+   */
+  async findPreviousRevision(projectData) {
+    try {
+      return await this.revisionDetectionService.findPreviousRevision(projectData);
+    } catch (error) {
+      console.error('ProjectCreationService: Error finding previous revision:', error);
+      return {
+        success: false,
+        error: error.message,
+        requiresManualSelection: true
+      };
+    }
+  }
+
+  /**
+   * Validate manually selected RFA folder
+   * @param {string} folderPath - Path to validate
+   * @returns {Promise<Object>} Validation result
+   */
+  async validateRFAFolder(folderPath) {
+    try {
+      return await this.revisionDetectionService.validateRFAFolder(folderPath);
+    } catch (error) {
+      console.error('ProjectCreationService: Error validating RFA folder:', error);
+      return {
+        isValid: false,
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * Create a revision project with folder structure and file copying
+   * @param {Object} projectData - Project information including revision settings
+   * @param {Object} revisionOptions - Revision-specific options
+   * @returns {Promise<Object>} Revision creation result
+   */
+  async createRevisionProject(projectData, revisionOptions = {}) {
+    try {
+      console.log('ProjectCreationService: Starting revision creation');
+      console.log('Project data:', projectData);
+      console.log('Revision options:', revisionOptions);
+
+      // Convert form data to internal format
+      const internalProjectData = this.rfaMapping.convertFormDataToInternal(projectData);
+
+      // OPTIMIZATION: Lightweight validation for revisions (skip heavy orchestrator)
+      console.log('ProjectCreationService: Using fast validation for revision');
+      
+      // Basic validation only - skip heavy validation pipeline for speed
+      if (!projectData.projectName || !projectData.rfaType) {
+        return {
+          success: false,
+          error: 'Validation failed: Project name and RFA type are required'
+        };
+      }
+      
+      console.log('ProjectCreationService: Fast validation passed for revision');
+
+      // Report initial progress
+      if (revisionOptions.onProgress) {
+        revisionOptions.onProgress('Starting revision creation...', 5, { step: 'validation' });
+      }
+
+      // Validate required fields
+      if (!this.validateProjectData(internalProjectData)) {
+        throw new Error('Invalid project data for revision');
+      }
+
+      // Sanitize project name and determine paths
+      const sanitizedProjectName = this.sanitizeProjectName(internalProjectData.projectName);
+      const firstLetter = this.getFirstLetter(sanitizedProjectName);
+      const currentDate = new Date();
+      const dateString = `${String(currentDate.getMonth() + 1).padStart(2, '0')}${String(currentDate.getDate()).padStart(2, '0')}${currentDate.getFullYear()}`;
+
+      // Step 1: Find previous revision
+      if (revisionOptions.onProgress) {
+        revisionOptions.onProgress('Finding previous revision...', 10, { step: 'detection' });
+      }
+      
+      let previousRevisionPath = revisionOptions.previousRevisionPath;
+      if (!previousRevisionPath) {
+        console.log('ProjectCreationService: Searching for previous revision automatically');
+        const findResult = await this.findPreviousRevision(projectData);
+        
+        if (findResult.success) {
+          previousRevisionPath = findResult.revisionPath;
+          console.log('ProjectCreationService: Found previous revision at:', previousRevisionPath);
+        } else {
+          console.log('ProjectCreationService: No previous revision found automatically');
+          return {
+            success: false,
+            requiresManualSelection: true,
+            error: 'Previous revision not found automatically. Manual selection required.',
+            searchResult: findResult
+          };
+        }
+      }
+
+      // Step 1.5: Ensure we have a valid previous revision path
+      if (!previousRevisionPath) {
+        return {
+          success: false,
+          error: 'Previous revision path is required but not found or provided'
+        };
+      }
+
+      // Step 2: Validate previous revision path
+      if (revisionOptions.onProgress) {
+        revisionOptions.onProgress('Validating revision folder...', 15, { step: 'validation', path: previousRevisionPath });
+      }
+      
+      if (previousRevisionPath) {
+        const validationResult = await this.validateRFAFolder(previousRevisionPath);
+        if (!validationResult.isValid) {
+          return {
+            success: false,
+            error: `Invalid previous revision folder: ${validationResult.error}`,
+            validationResult: validationResult
+          };
+        }
+      }
+
+      // Step 3: Resolve project paths using PathResolutionService
+      const resolvedPaths = await this.pathResolver.resolveAllProjectPaths(internalProjectData);
+      console.log('ProjectCreationService: Resolved paths for revision:', resolvedPaths);
+
+      // Step 4: Create new revision folder structure
+      const outputBasePath = resolvedPaths.output.finalPath;
+      await this.pathResolver.ensureDirectoryExists(outputBasePath);
+
+      const projectFolderName = `${sanitizedProjectName}_${projectData.projectContainer}`;
+      const projectFolderPath = path.join(outputBasePath, projectFolderName);
+      const rfaFolderName = `RFA#${projectData.rfaNumber}_${projectData.rfaType}_${dateString}`;
+      const rfaFolderPath = path.join(projectFolderPath, rfaFolderName);
+      const agentFilesPath = path.join(rfaFolderPath, '!Agent Files');
+
+      // Create folder structure
+      if (revisionOptions.onProgress) {
+        revisionOptions.onProgress('Creating folder structure...', 25, { step: 'folder_creation' });
+      }
+      
+      await fs.ensureDir(projectFolderPath);
+      await fs.ensureDir(rfaFolderPath);
+      await fs.ensureDir(agentFilesPath);
+      await fs.ensureDir(path.join(rfaFolderPath, '!!Request Output'));
+
+      console.log('ProjectCreationService: Created basic revision folder structure');
+
+      // Step 5: Copy BOM CHECK from template (always required)
+      if (revisionOptions.onProgress) {
+        revisionOptions.onProgress('Copying template files...', 30, { step: 'template_copy' });
+      }
+      await this.copyBOMCheckFolderWithResolver(rfaFolderPath, resolvedPaths);
+
+      // Step 6: Copy files from previous revision
+      if (previousRevisionPath) {
+        if (revisionOptions.onProgress) {
+          revisionOptions.onProgress('Copying files from previous revision...', 35, { step: 'revision_copy', path: previousRevisionPath });
+        }
+        console.log('ProjectCreationService: Starting file copy from previous revision');
+        
+        const copyOptions = {
+          copyAEMarkups: revisionOptions.copyAEMarkups !== false,
+          copyXREF: revisionOptions.copyXREF !== false,
+          copyLCD: revisionOptions.copyLCD !== false,
+          copyVSP: revisionOptions.copyVSP !== false,
+          copyDWG: revisionOptions.copyDWG !== false,
+          ...revisionOptions.copyOptions
+        };
+
+        const copyResult = await this.revisionFileCopyService.copyRevisionAssets(
+          previousRevisionPath,
+          rfaFolderPath,
+          {
+            copyOptions: copyOptions,
+            onProgress: revisionOptions.onProgress // Now we can pass the progress callback
+          }
+        );
+
+        if (!copyResult.success) {
+          console.warn('ProjectCreationService: Some file copy operations failed:', copyResult);
+          // Don't fail the entire revision creation for copy issues
+        }
+
+        console.log('ProjectCreationService: File copy operations completed');
+        console.log('Copy result:', copyResult.summary);
+      }
+
+      // Step 7: Copy agent-specific files (using resolver)
+      if (revisionOptions.onProgress) {
+        revisionOptions.onProgress('Copying agent-specific files...', 90, { step: 'agent_files' });
+      }
+      await this.copyAgentSpecificFilesWithResolver(projectData, rfaFolderPath, dateString, sanitizedProjectName, resolvedPaths);
+
+      // Step 8: Process project documents (if needed)
+      if (revisionOptions.onProgress) {
+        revisionOptions.onProgress('Processing project documents...', 95, { step: 'documents' });
+      }
+      await this.processProjectDocuments(projectData, rfaFolderPath);
+
+      // Step 9: Create shortcuts if needed (cross-year references)
+      if (revisionOptions.onProgress) {
+        revisionOptions.onProgress('Creating shortcuts...', 98, { step: 'shortcuts' });
+      }
+      await this.createRevisionShortcuts(projectData, projectFolderPath, rfaFolderPath);
+
+      // Step 10: Open Agent Files folder
+      await this.openAgentFilesFolder(agentFilesPath);
+
+      console.log('ProjectCreationService: Revision creation completed successfully');
+
+      return {
+        success: true,
+        projectPath: projectFolderPath,
+        rfaPath: rfaFolderPath,
+        agentFilesPath: agentFilesPath,
+        previousRevisionPath: previousRevisionPath,
+        resolvedPaths: resolvedPaths,
+        message: 'Revision created successfully with files copied from previous revision'
+      };
+
+    } catch (error) {
+      console.error('ProjectCreationService: Revision creation failed:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * Analyze what can be copied from a previous revision
+   * @param {string} revisionPath - Path to previous revision
+   * @returns {Promise<Object>} Analysis result
+   */
+  async analyzeRevisionContents(revisionPath) {
+    try {
+      return await this.revisionFileCopyService.analyzeRevisionContents(revisionPath);
+    } catch (error) {
+      console.error('ProjectCreationService: Error analyzing revision contents:', error);
+      return {
+        success: false,
+        error: error.message,
+        available: {}
+      };
+    }
+  }
+
+  /**
+   * Get recommended copy options based on revision content
+   * @param {string} revisionPath - Path to previous revision
+   * @returns {Promise<Object>} Recommended options
+   */
+  async getRecommendedCopyOptions(revisionPath) {
+    try {
+      const analysis = await this.analyzeRevisionContents(revisionPath);
+      return this.revisionFileCopyService.getRecommendedCopyOptions(analysis);
+    } catch (error) {
+      console.error('ProjectCreationService: Error getting recommended copy options:', error);
+      return {
+        copyAEMarkups: false,
+        copyXREF: false,
+        copyLCD: false,
+        copyVSP: false,
+        copyDWG: false
+      };
+    }
+  }
+
+  /**
+   * Create shortcuts for revision projects (implements HTA shortcut logic)
+   * @param {Object} projectData - Project information
+   * @param {string} projectFolderPath - Path to project folder
+   * @param {string} rfaFolderPath - Path to RFA folder
+   */
+  async createRevisionShortcuts(projectData, projectFolderPath, rfaFolderPath) {
+    try {
+      // Only create shortcuts for server-based projects
+      if (projectData.saveLocation !== 'Server') {
+        console.log('ProjectCreationService: Shortcuts not needed for non-server projects');
+        return;
+      }
+
+      const currentYear = new Date().getFullYear();
+      const sanitizedProjectName = this.sanitizeProjectName(projectData.projectName);
+      const firstLetter = this.getFirstLetter(sanitizedProjectName);
+      const currentYearPath = `\\\\10.3.10.30\\DAS\\${currentYear} Projects\\${firstLetter}\\${sanitizedProjectName}_${projectData.projectContainer}`;
+
+      // Check if project is in non-current year folder
+      if (projectFolderPath !== currentYearPath) {
+        console.log('ProjectCreationService: Creating shortcut for cross-year reference');
+        
+        const shortcutPath = `${currentYearPath}.lnk`;
+        const command = `powershell -Command "$WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('${shortcutPath}'); $Shortcut.TargetPath = '${projectFolderPath}'; $Shortcut.Description = 'Shortcut to initial revision'; $Shortcut.Save()"`;
+        
+        exec(command, (error) => {
+          if (error) {
+            console.error('ProjectCreationService: Error creating revision shortcut:', error);
+          } else {
+            console.log('ProjectCreationService: Revision shortcut created successfully');
+          }
+        });
+      }
+
+    } catch (error) {
+      console.error('ProjectCreationService: Error creating revision shortcuts:', error);
+      // Don't fail the entire revision creation for shortcut issues
+    }
+  }
+
+  /**
+   * Handle folder name mismatch scenarios
+   * @param {string} selectedPath - User selected path
+   * @param {string} expectedPath - Expected path based on project data
+   * @returns {Promise<Object>} Mismatch handling result
+   */
+  async handleFolderNameMismatch(selectedPath, expectedPath) {
+    try {
+      const analysis = this.revisionDetectionService.analyzeFolderNameMismatch(selectedPath, expectedPath);
+      
+      if (analysis.hasMismatch && analysis.shouldRename) {
+        // Return mismatch info for UI to handle user confirmation
+        return {
+          hasMismatch: true,
+          selectedFolder: analysis.selectedFolder,
+          expectedFolder: analysis.expectedFolder,
+          message: analysis.message,
+          requiresUserConfirmation: true
+        };
+      }
+
+      return {
+        hasMismatch: false,
+        message: 'Folder name matches expected naming convention'
+      };
+
+    } catch (error) {
+      console.error('ProjectCreationService: Error handling folder name mismatch:', error);
+      return {
+        hasMismatch: false,
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * Rename project folder to match current naming convention
+   * @param {string} oldPath - Current folder path
+   * @param {string} newPath - New folder path
+   * @returns {Promise<Object>} Rename result
+   */
+  async renameProjectFolder(oldPath, newPath) {
+    try {
+      console.log('ProjectCreationService: Renaming project folder');
+      console.log('From:', oldPath);
+      console.log('To:', newPath);
+
+      if (await fs.pathExists(newPath)) {
+        return {
+          success: false,
+          error: 'Target folder already exists'
+        };
+      }
+
+      await fs.move(oldPath, newPath);
+      
+      console.log('ProjectCreationService: Project folder renamed successfully');
+      return {
+        success: true,
+        oldPath: oldPath,
+        newPath: newPath,
+        message: 'Project folder renamed successfully'
+      };
+
+    } catch (error) {
+      console.error('ProjectCreationService: Error renaming project folder:', error);
+      return {
+        success: false,
+        error: error.message
+      };
     }
   }
 }

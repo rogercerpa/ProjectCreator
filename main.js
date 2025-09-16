@@ -1,6 +1,7 @@
 const { app, BrowserWindow, Menu, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs-extra');
+const os = require('os');
 
 // Import version check service
 const versionCheckService = require('./src/utils/versionCheck').default;
@@ -528,6 +529,241 @@ ipcMain.handle('project-create-with-folders', async (event, projectData) => {
   try {
     return await projectCreationService.createProjectWithFolders(projectData);
   } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// ===== REVISION WORKFLOW IPC HANDLERS =====
+
+// Detect existing project for revision suggestions
+ipcMain.handle('revision-detect-existing', async (event, projectData) => {
+  try {
+    return await projectCreationService.detectExistingProject(projectData);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// Find previous revision automatically
+ipcMain.handle('revision-find-previous', async (event, projectData) => {
+  try {
+    return await projectCreationService.findPreviousRevision(projectData);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// Validate manually selected RFA folder
+ipcMain.handle('revision-validate-folder', async (event, folderPath) => {
+  try {
+    return await projectCreationService.validateRFAFolder(folderPath);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// Create revision project with file copying and progress tracking
+ipcMain.handle('revision-create', async (event, projectData, revisionOptions) => {
+  try {
+    // Create progress callback that sends updates to renderer
+    const progressCallback = (step, progress, details) => {
+      event.sender.send('revision-progress-update', {
+        step,
+        progress,
+        details,
+        timestamp: Date.now()
+      });
+    };
+
+    // Add progress callback to options
+    const optionsWithProgress = {
+      ...revisionOptions,
+      onProgress: progressCallback
+    };
+
+    const result = await projectCreationService.createRevisionProject(projectData, optionsWithProgress);
+    
+    // Send completion event
+    if (result.success) {
+      event.sender.send('revision-progress-complete', {
+        message: result.message,
+        timestamp: Date.now()
+      });
+    }
+    
+    return result;
+  } catch (error) {
+    // Send error event
+    event.sender.send('revision-progress-error', {
+      error: error.message,
+      timestamp: Date.now()
+    });
+    return { success: false, error: error.message };
+  }
+});
+
+// Analyze revision contents for copy options
+ipcMain.handle('revision-analyze-contents', async (event, revisionPath) => {
+  try {
+    return await projectCreationService.analyzeRevisionContents(revisionPath);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// Get recommended copy options for revision
+ipcMain.handle('revision-get-copy-options', async (event, revisionPath) => {
+  try {
+    return await projectCreationService.getRecommendedCopyOptions(revisionPath);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// Handle folder name mismatch
+ipcMain.handle('revision-handle-folder-mismatch', async (event, selectedPath, expectedPath) => {
+  try {
+    return await projectCreationService.handleFolderNameMismatch(selectedPath, expectedPath);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// Rename project folder for mismatch resolution
+ipcMain.handle('revision-rename-folder', async (event, oldPath, newPath) => {
+  try {
+    return await projectCreationService.renameProjectFolder(oldPath, newPath);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// Manual selection of previous RFA folder using proper folder browser
+ipcMain.handle('revision-select-folder', async (event, startingPath) => {
+  try {
+    console.log('revision-select-folder called with startingPath:', startingPath);
+    
+    // Default to network path if no starting path provided
+    const defaultNetworkPath = '\\\\10.3.10.30\\DAS';
+    const explorerPath = startingPath || defaultNetworkPath;
+    
+    // Try Windows Shell folder browser first (the classic tree view browser)
+    try {
+      const { exec } = require('child_process');
+      const util = require('util');
+      const execPromise = util.promisify(exec);
+      
+      console.log('Using Windows Shell folder browser at:', explorerPath);
+      
+      // Use classic Windows folder browser via VBScript (more reliable than PowerShell COM)
+      // First ensure the network path is accessible
+      let startPath = explorerPath;
+      try {
+        // Test if network path exists, if not use local fallback
+        if (!await fs.pathExists(explorerPath)) {
+          console.log('Network path not accessible, using My Computer as starting point');
+          startPath = '';
+        }
+      } catch (err) {
+        console.log('Cannot verify network path, using My Computer as starting point');
+        startPath = '';
+      }
+      
+      const vbScript = `
+        Set shell = CreateObject("Shell.Application")
+        Set folder = shell.BrowseForFolder(0, "Choose previous RFA Folder - Navigate to ${explorerPath}", &H0200 + &H0040, "${startPath}")
+        If Not folder Is Nothing Then
+          WScript.Echo folder.Self.Path
+        Else
+          WScript.Echo "CANCELED"
+        End If
+      `;
+      
+      // Create temporary VBScript file
+      const tempVbsPath = path.join(os.tmpdir(), 'folder_browser_' + Date.now() + '.vbs');
+      await fs.writeFile(tempVbsPath, vbScript);
+      
+      console.log('Executing VBScript folder browser...');
+      const { stdout, stderr } = await execPromise(`cscript.exe //NoLogo "${tempVbsPath}"`, {
+        windowsHide: false,
+        timeout: 120000, // 2 minutes
+        encoding: 'utf8'
+      });
+      
+      // Clean up temp file
+      try {
+        await fs.unlink(tempVbsPath);
+      } catch (cleanupError) {
+        console.log('Could not clean up temp VBS file:', cleanupError.message);
+      }
+      
+      console.log('VBScript browser stdout:', stdout);
+      console.log('VBScript browser stderr:', stderr);
+      
+      if (!stderr && stdout && stdout.trim()) {
+        const selectedPath = stdout.trim();
+        
+        if (selectedPath === 'CANCELED') {
+          console.log('VBScript folder selection canceled');
+          return { success: false, canceled: true };
+        }
+        
+        console.log('VBScript folder selected:', selectedPath);
+        
+        // Validate the entered path exists
+        if (!fs.existsSync(selectedPath)) {
+          return {
+            success: false,
+            error: `The specified path does not exist: ${selectedPath}`
+          };
+        }
+        
+        // Validate the selected folder
+        const validationResult = await projectCreationService.validateRFAFolder(selectedPath);
+        
+        return {
+          success: true,
+          selectedPath: selectedPath,
+          validation: validationResult
+        };
+      } else {
+        console.log('VBScript browser failed or returned empty result, using fallback');
+        throw new Error('VBScript browser returned empty result');
+      }
+    } catch (vbsError) {
+      console.log('Windows VBScript approach failed, using Electron fallback:', vbsError.message);
+    }
+    
+    // Fallback to Electron dialog (always works)
+    console.log('Using Electron dialog fallback...');
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openDirectory'],
+      title: 'Select Previous RFA Folder',
+      defaultPath: explorerPath,
+      buttonLabel: 'Select RFA Folder'
+    });
+    
+    console.log('Electron dialog result:', result);
+    
+    if (result.canceled) {
+      return { success: false, canceled: true };
+    }
+    
+    const selectedPath = result.filePaths[0];
+    console.log('Electron dialog selected path:', selectedPath);
+    
+    // Validate the selected folder
+    const validationResult = await projectCreationService.validateRFAFolder(selectedPath);
+    console.log('Validation result:', validationResult);
+    
+    return {
+      success: true,
+      selectedPath: selectedPath,
+      validation: validationResult
+    };
+    
+  } catch (error) {
+    console.error('revision-select-folder error:', error);
     return { success: false, error: error.message };
   }
 });

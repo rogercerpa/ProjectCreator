@@ -6,6 +6,8 @@ import WizardLayout from './components/WizardLayout';
 import WizardErrorBoundary from './components/WizardErrorBoundary';
 import ProjectWizardStep1 from './steps/ProjectWizardStep1';
 import ProjectWizardStep2 from './steps/ProjectWizardStep2';
+import RevisionProgressModal, { useRevisionProgress } from './components/RevisionProgressModal';
+import ErrorDialog, { useErrorDialog } from './components/ErrorDialog';
 import performanceMonitoringService from '../../services/SimplePerformanceMonitoringService';
 import './ProjectWizard.css';
 
@@ -52,6 +54,12 @@ const ProjectWizard = ({
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [lastDraftSave, setLastDraftSave] = useState(null);
   const [currentDraftId, setCurrentDraftId] = useState(null);
+
+  // Revision progress tracking
+  const revisionProgress = useRevisionProgress();
+  
+  // Error dialog for revision errors
+  const { errorState, showError, close: closeErrorDialog } = useErrorDialog();
 
   // Debounced validation to prevent excessive validation calls
   const [validationTimeout, setValidationTimeout] = useState(null);
@@ -200,25 +208,109 @@ const ProjectWizard = ({
               message: 'Creating project folders and files...'
             });
 
-            // Create the physical project folder structure
-            const folderCreationResult = await window.electronAPI.projectCreateWithFolders(formData);
-            
-            if (!folderCreationResult.success) {
-              throw new Error(`Failed to create project folder: ${folderCreationResult.error}`);
-            }
-            
-            // Store folder paths in formData for later use
-            onFormDataChange({
-              ...formData,
-              projectPath: folderCreationResult.projectPath,
-              rfaPath: folderCreationResult.rfaPath,
-              agentFilesPath: folderCreationResult.agentFilesPath
-            });
+            // Check if this is a revision project
+            if (formData.isRevision) {
+              console.log('ProjectWizard: Creating revision project');
+              
+              // Start revision progress tracking
+              revisionProgress.start('Creating Revision Project');
+              
+              try {
+                // Set up progress event listeners
+                const cleanupProgressListener = window.electronAPI.onRevisionProgress((data) => {
+                  revisionProgress.updateProgress(data.step, data.progress, data.details);
+                });
 
-            setNotification({
-              type: 'success',
-              message: '✅ Project basics saved and folders created! Ready for triage calculation.'
-            });
+                const cleanupCompleteListener = window.electronAPI.onRevisionComplete((data) => {
+                  revisionProgress.complete(data.message);
+                });
+
+                const cleanupErrorListener = window.electronAPI.onRevisionError((data) => {
+                  revisionProgress.error(data.error);
+                });
+
+                // Create revision with real-time progress tracking
+                const revisionOptions = {
+                  previousRevisionPath: formData.previousRevisionPath,
+                  ...formData.revisionOptions
+                };
+
+                const folderCreationResult = await window.electronAPI.revisionCreate(formData, revisionOptions);
+
+                // Clean up event listeners
+                cleanupProgressListener();
+                cleanupCompleteListener();
+                cleanupErrorListener();
+                
+                if (!folderCreationResult.success) {
+                  if (folderCreationResult.requiresManualSelection) {
+                    // Manual selection needed - show error dialog
+                    showError({
+                      title: 'Previous Revision Required',
+                      message: 'Previous revision not found automatically. Please select the previous RFA folder manually in the revision panel above, then try again.',
+                      details: folderCreationResult.searchResult,
+                      type: 'warning'
+                    });
+                    revisionProgress.close();
+                    return; // Don't proceed until manual selection is complete
+                  }
+                  
+                  throw new Error(`Failed to create revision: ${folderCreationResult.error}`);
+                }
+                
+                // Success is handled by the onRevisionComplete event
+                
+                // Store folder paths in formData for later use
+                onFormDataChange({
+                  ...formData,
+                  projectPath: folderCreationResult.projectPath,
+                  rfaPath: folderCreationResult.rfaPath,
+                  agentFilesPath: folderCreationResult.agentFilesPath,
+                  previousRevisionPath: folderCreationResult.previousRevisionPath
+                });
+
+                setNotification({
+                  type: 'success',
+                  message: '✅ Revision project created successfully with files copied from previous revision!'
+                });
+                
+              } catch (revisionError) {
+                revisionProgress.error(revisionError.message);
+                
+                // Show error dialog for revision creation failures
+                showError({
+                  title: 'Revision Creation Failed',
+                  message: 'Failed to create the revision project. Please check the error details and try again.',
+                  details: revisionError.message,
+                  showRetry: false
+                });
+                
+                throw revisionError;
+              }
+              
+            } else {
+              // Standard new project creation
+              console.log('ProjectWizard: Creating new project');
+              
+              const folderCreationResult = await window.electronAPI.projectCreateWithFolders(formData);
+              
+              if (!folderCreationResult.success) {
+                throw new Error(`Failed to create project folder: ${folderCreationResult.error}`);
+              }
+              
+              // Store folder paths in formData for later use
+              onFormDataChange({
+                ...formData,
+                projectPath: folderCreationResult.projectPath,
+                rfaPath: folderCreationResult.rfaPath,
+                agentFilesPath: folderCreationResult.agentFilesPath
+              });
+
+              setNotification({
+                type: 'success',
+                message: '✅ Project basics saved and folders created! Ready for triage calculation.'
+              });
+            }
           } else {
             setNotification({
               type: 'warning',
@@ -743,6 +835,28 @@ const ProjectWizard = ({
           </div>
         </div>
       </div>
+      
+      {/* Revision Progress Modal */}
+      <RevisionProgressModal
+        isOpen={revisionProgress.isOpen}
+        progress={revisionProgress.progress}
+        currentStep={revisionProgress.currentStep}
+        operationLog={revisionProgress.operationLog}
+        onCancel={revisionProgress.close}
+        canCancel={revisionProgress.progress < 100}
+      />
+      
+      {/* Error Dialog for Revision Operations */}
+      <ErrorDialog
+        isOpen={errorState.isOpen}
+        title={errorState.title}
+        message={errorState.message}
+        details={errorState.details}
+        type={errorState.type}
+        showRetry={errorState.showRetry}
+        onClose={closeErrorDialog}
+        onRetry={errorState.onRetry}
+      />
     </div>
   );
 };

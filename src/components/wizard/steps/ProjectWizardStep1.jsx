@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import WizardLayout from '../components/WizardLayout';
+import RevisionConfigurationDialog from '../components/RevisionConfigurationDialog';
 import dropdownOptionsService from '../../../services/DropdownOptionsService';
 import triageCalculationService from '../../../services/TriageCalculationService';
 
@@ -32,6 +33,12 @@ const ProjectWizardStep1 = ({
   const [fieldFocus, setFieldFocus] = useState({});
   const [showAdvancedFields, setShowAdvancedFields] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
+  
+  // Revision-related state
+  const [showRevisionDialog, setShowRevisionDialog] = useState(false);
+  const [revisionConfigured, setRevisionConfigured] = useState(false);
+  const [revisionConfig, setRevisionConfig] = useState(null);
+  const [hasAutoOpened, setHasAutoOpened] = useState(false);
 
   // Load dropdown options and listen for changes (preserve original logic)
   useEffect(() => {
@@ -69,6 +76,46 @@ const ProjectWizardStep1 = ({
       }
     };
   }, []);
+
+  // Effect to handle revision mode changes
+  useEffect(() => {
+    if (formData.isRevision && !revisionConfigured && !hasAutoOpened) {
+      // Auto-open revision dialog when revision is selected for the first time only
+      setTimeout(() => {
+        setShowRevisionDialog(true);
+        setHasAutoOpened(true);
+      }, 300); // Small delay to ensure smooth transition
+    } else if (!formData.isRevision) {
+      // Reset revision state when switching away from revision mode
+      setRevisionConfigured(false);
+      setRevisionConfig(null);
+      setShowRevisionDialog(false);
+      setHasAutoOpened(false);
+    }
+  }, [formData.isRevision, revisionConfigured, hasAutoOpened]);
+
+  // Revision handling functions
+  const handleOpenRevisionDialog = () => {
+    setShowRevisionDialog(true);
+  };
+
+  const handleRevisionDialogClose = () => {
+    setShowRevisionDialog(false);
+  };
+
+  const handleRevisionDialogConfirm = (config) => {
+    console.log('ProjectWizardStep1: Revision configured:', config);
+    setRevisionConfig(config);
+    setRevisionConfigured(true);
+    
+    // Update form data with revision configuration
+    const newFormData = {
+      ...formData,
+      previousRevisionPath: config.previousRevisionPath,
+      revisionOptions: config
+    };
+    onFormDataChange(newFormData);
+  };
 
   // PRESERVED: Original handleInputChange logic from ProjectForm.jsx
   const handleInputChange = (e) => {
@@ -695,6 +742,7 @@ const ProjectWizardStep1 = ({
   };
 
   return (
+    <>
     <div className="wizard-layout">
       {/* Unified Modern Header with Import Actions */}
       <div className="unified-header">
@@ -752,8 +800,23 @@ const ProjectWizardStep1 = ({
           </div>
         )}
 
-        {/* Import from Agile Button - Bottom Left Corner */}
+        {/* Header Action Buttons - Bottom Left Corner */}
         <div className="import-button-container">
+          
+          {/* Revision Configuration Button - Show when revision is selected but not configured */}
+          {formData.isRevision && !revisionConfigured && (
+            <div className="revision-config-button-container">
+              <button
+                type="button"
+                onClick={handleOpenRevisionDialog}
+                className="btn btn-warning revision-config-header-btn"
+                title="Configure revision settings to proceed"
+              >
+                🔄 Configure Revision
+              </button>
+            </div>
+          )}
+          
           <div className="tooltip-container">
             <button
               type="button"
@@ -883,6 +946,18 @@ const ProjectWizardStep1 = ({
               </div>
               {isFieldImported('isRevision') && <span className="import-indicator">📋 Imported</span>}
             </div>
+
+            {/* Revision Configuration Summary - Show only when revision is configured */}
+            {formData.isRevision && revisionConfigured && (
+              <div className="revision-config-summary">
+                <div className="revision-summary-content">
+                  <div className="summary-icon">✅</div>
+                  <div className="summary-text">
+                    <strong>Revision Configured:</strong> {Object.values(revisionConfig?.copyOptions || {}).filter(Boolean).length} items selected
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className={`form-group ${isFieldImported('rfaType') ? 'imported-field' : ''}`}>
               <label htmlFor="rfaType">RFA Type *</label>
@@ -1192,6 +1267,15 @@ const ProjectWizardStep1 = ({
         </div>
       </div>
     </div>
+    
+    {/* Revision Configuration Dialog */}
+    <RevisionConfigurationDialog
+      isOpen={showRevisionDialog}
+      onClose={handleRevisionDialogClose}
+      onConfirm={handleRevisionDialogConfirm}
+      projectData={formData}
+    />
+    </>
   );
 };
 

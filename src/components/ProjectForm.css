@@ -662,3 +662,197 @@
     transform: translateY(-20px);
   }
 }
+
+/* Revision Configuration Section */
+.revision-config-section {
+  margin: 20px 0;
+}
+
+.revision-status {
+  background: #f8f9fa;
+  border: 2px solid #e9ecef;
+  border-radius: 12px;
+  padding: 20px;
+  transition: all 0.3s ease;
+}
+
+.revision-configured,
+.revision-not-configured {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.revision-configured {
+  background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+  border-color: #c3e6cb;
+}
+
+.revision-not-configured {
+  background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+  border-color: #ffc107;
+  border-width: 2px;
+  animation: gentlePulse 2s infinite;
+}
+
+@keyframes gentlePulse {
+  0%, 100% {
+    border-color: #ffc107;
+    box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.3);
+  }
+  50% {
+    border-color: #ff9800;
+    box-shadow: 0 0 0 4px rgba(255, 193, 7, 0.1);
+  }
+}
+
+.revision-status .status-icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+.revision-status .status-content {
+  flex: 1;
+}
+
+.revision-status h4 {
+  margin: 0 0 8px 0;
+  font-size: 1.1rem;
+  color: #495057;
+}
+
+.revision-status p {
+  margin: 4px 0;
+  font-size: 0.9rem;
+  color: #6c757d;
+}
+
+.revision-status p strong {
+  color: #495057;
+}
+
+.revision-configure-btn,
+.revision-reconfigure-btn {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.revision-configure-btn {
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  color: white;
+  box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
+}
+
+.revision-configure-btn:hover {
+  background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
+  box-shadow: 0 6px 12px rgba(0, 123, 255, 0.4);
+  transform: translateY(-2px);
+}
+
+.revision-reconfigure-btn {
+  background: linear-gradient(135deg, #6c757d 0%, #545b62 100%);
+  color: white;
+  box-shadow: 0 4px 8px rgba(108, 117, 125, 0.3);
+}
+
+.revision-reconfigure-btn:hover {
+  background: linear-gradient(135deg, #545b62 0%, #3d4043 100%);
+  box-shadow: 0 6px 12px rgba(108, 117, 125, 0.4);
+  transform: translateY(-2px);
+}
+
+/* Revision Configuration Summary (inline minimal version) */
+.revision-config-summary {
+  margin: 12px 0;
+  padding: 12px;
+  background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+  border: 1px solid #c3e6cb;
+  border-radius: 6px;
+}
+
+.revision-summary-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.summary-icon {
+  font-size: 1.2rem;
+}
+
+.summary-text {
+  color: #155724;
+  font-size: 0.9rem;
+}
+
+/* Revision Configuration Button in Header */
+.revision-config-button-container {
+  margin-right: 12px;
+  display: inline-block;
+}
+
+.revision-config-header-btn {
+  background: linear-gradient(135deg, #ffc107 0%, #e09900 100%);
+  color: #212529;
+  border: 2px solid #ffc107;
+  font-weight: 600;
+  padding: 10px 16px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(255, 193, 7, 0.3);
+  animation: gentleGlow 2s infinite;
+}
+
+.revision-config-header-btn:hover {
+  background: linear-gradient(135deg, #e09900 0%, #d39e00 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(255, 193, 7, 0.4);
+}
+
+@keyframes gentleGlow {
+  0%, 100% {
+    box-shadow: 0 2px 4px rgba(255, 193, 7, 0.3);
+  }
+  50% {
+    box-shadow: 0 2px 8px rgba(255, 193, 7, 0.5);
+  }
+}
+
+/* Responsive design for revision config */
+@media (max-width: 768px) {
+  .revision-configured,
+  .revision-not-configured {
+    flex-direction: column;
+    gap: 12px;
+    text-align: center;
+  }
+  
+  .revision-status .status-icon {
+    font-size: 1.5rem;
+  }
+  
+  .revision-configure-btn,
+  .revision-reconfigure-btn {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .revision-config-button-container {
+    margin-right: 8px;
+    margin-bottom: 8px;
+  }
+  
+  .revision-config-header-btn {
+    padding: 8px 12px;
+    font-size: 0.85rem;
+  }
+}

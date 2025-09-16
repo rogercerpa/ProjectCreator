@@ -53,6 +53,32 @@ contextBridge.exposeInMainWorld('electronAPI', {
   projectExportDASBoard: (projectData) => ipcRenderer.invoke('project-export-das-board', projectData),
   projectExportAgile: (projectData) => ipcRenderer.invoke('project-export-agile', projectData),
   
+  // Revision workflow operations
+  revisionDetectExisting: (projectData) => ipcRenderer.invoke('revision-detect-existing', projectData),
+  revisionFindPrevious: (projectData) => ipcRenderer.invoke('revision-find-previous', projectData),
+  revisionValidateFolder: (folderPath) => ipcRenderer.invoke('revision-validate-folder', folderPath),
+  revisionCreate: (projectData, revisionOptions) => ipcRenderer.invoke('revision-create', projectData, revisionOptions),
+  revisionAnalyzeContents: (revisionPath) => ipcRenderer.invoke('revision-analyze-contents', revisionPath),
+  revisionGetCopyOptions: (revisionPath) => ipcRenderer.invoke('revision-get-copy-options', revisionPath),
+  revisionHandleFolderMismatch: (selectedPath, expectedPath) => ipcRenderer.invoke('revision-handle-folder-mismatch', selectedPath, expectedPath),
+  revisionRenameFolder: (oldPath, newPath) => ipcRenderer.invoke('revision-rename-folder', oldPath, newPath),
+  revisionSelectFolder: (startingPath) => ipcRenderer.invoke('revision-select-folder', startingPath),
+
+  // Progress tracking events
+  onRevisionProgress: (callback) => {
+    ipcRenderer.on('revision-progress-update', (event, data) => callback(data));
+    // Return cleanup function
+    return () => ipcRenderer.removeAllListeners('revision-progress-update');
+  },
+  onRevisionComplete: (callback) => {
+    ipcRenderer.on('revision-progress-complete', (event, data) => callback(data));
+    return () => ipcRenderer.removeAllListeners('revision-progress-complete');
+  },
+  onRevisionError: (callback) => {
+    ipcRenderer.on('revision-progress-error', (event, data) => callback(data));
+    return () => ipcRenderer.removeAllListeners('revision-progress-error');
+  },
+  
   // Validation methods
   projectValidate: (projectData) => ipcRenderer.invoke('project-validate', projectData),
   projectValidateField: (fieldName, value, projectData) => ipcRenderer.invoke('project-validate-field', fieldName, value, projectData),

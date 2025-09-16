@@ -37,6 +37,16 @@ const useStepValidation = () => {
             return 'Please select an RFA type';
           }
           return null;
+        },
+        revision: (value, formData) => {
+          // Revision-specific validation
+          if (formData.isRevision) {
+            // Check if revision configuration is complete
+            if (!formData.previousRevisionPath && !formData.revisionOptions?.previousRevisionPath) {
+              return 'Revision configuration is required. Please configure your revision settings.';
+            }
+          }
+          return null;
         }
       }
     },
@@ -137,10 +147,17 @@ const useStepValidation = () => {
     // Run custom validations
     if (stepRules.custom) {
       Object.keys(stepRules.custom).forEach(validationName => {
-        if (validationName !== 'triageConfiguration') {
+        if (validationName !== 'triageConfiguration' && validationName !== 'revision') {
           const fieldErrors = validateField(validationName, formData[validationName], stepNumber, formData);
           if (fieldErrors.length > 0) {
             stepErrors[validationName] = fieldErrors;
+            isValid = false;
+          }
+        } else if (validationName === 'revision') {
+          // Special handling for revision validation
+          const customError = stepRules.custom[validationName](formData.isRevision, formData);
+          if (customError) {
+            stepErrors['revision'] = [customError];
             isValid = false;
           }
         } else {
