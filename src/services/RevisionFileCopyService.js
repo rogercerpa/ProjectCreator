@@ -8,7 +8,7 @@ const path = require('path');
  */
 class RevisionFileCopyService {
   constructor() {
-    this.supportedFolders = ['AE Markups', 'XREF', 'LCD'];
+    this.supportedFolders = ['AE Markups', 'XREF', 'LCD', 'BOM CHECK'];
     this.supportedExtensions = ['.vsp', '.dwg'];
   }
 
@@ -29,6 +29,7 @@ class RevisionFileCopyService {
         copyAEMarkups: true,
         copyXREF: true,
         copyLCD: true,
+        copyBOMCheck: true,
         copyVSP: true,
         copyDWG: true,
         ...options.copyOptions
@@ -39,13 +40,16 @@ class RevisionFileCopyService {
 
       // Define copy operations based on options
       if (copyOptions.copyAEMarkups) {
-        operations.push({ type: 'folder', name: 'AE Markups', weight: 25 });
+        operations.push({ type: 'folder', name: 'AE Markups', weight: 20 });
       }
       if (copyOptions.copyXREF) {
-        operations.push({ type: 'folder', name: 'XREF', weight: 25 });
+        operations.push({ type: 'folder', name: 'XREF', weight: 20 });
       }
       if (copyOptions.copyLCD) {
-        operations.push({ type: 'folder', name: 'LCD', weight: 20 });
+        operations.push({ type: 'folder', name: 'LCD', weight: 15 });
+      }
+      if (copyOptions.copyBOMCheck) {
+        operations.push({ type: 'folder', name: 'BOM CHECK', weight: 20 });
       }
       if (copyOptions.copyVSP || copyOptions.copyDWG) {
         const extensions = [];

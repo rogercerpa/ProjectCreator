@@ -77,14 +77,11 @@ const ProjectWizardStep1 = ({
     };
   }, []);
 
-  // Effect to handle revision mode changes
+  // Effect to handle revision mode changes with automatic detection first
   useEffect(() => {
     if (formData.isRevision && !revisionConfigured && !hasAutoOpened) {
-      // Auto-open revision dialog when revision is selected for the first time only
-      setTimeout(() => {
-        setShowRevisionDialog(true);
-        setHasAutoOpened(true);
-      }, 300); // Small delay to ensure smooth transition
+      // HTA-like: Try automatic detection first, only show dialog if it fails
+      handleAutomaticRevisionDetection();
     } else if (!formData.isRevision) {
       // Reset revision state when switching away from revision mode
       setRevisionConfigured(false);
@@ -93,6 +90,61 @@ const ProjectWizardStep1 = ({
       setHasAutoOpened(false);
     }
   }, [formData.isRevision, revisionConfigured, hasAutoOpened]);
+
+  // HTA-like automatic revision detection (try first before showing dialog)
+  const handleAutomaticRevisionDetection = async () => {
+    try {
+      setHasAutoOpened(true); // Prevent re-triggering
+      
+      console.log('ProjectWizardStep1: Attempting automatic revision detection...');
+      
+      // Try automatic detection first
+      const result = await window.electronAPI.revisionFindPrevious(formData);
+      
+      if (result.success && result.revisionPath) {
+        // SUCCESS: Automatic detection worked!
+        console.log('ProjectWizardStep1: Automatic detection SUCCESS:', result.revisionPath);
+        
+        const revisionInfo = {
+          previousRevisionPath: result.revisionPath,
+          projectPath: result.projectPath,
+          searchMethod: 'automatic',
+          foundInYear: result.foundInYear,
+          rfaFolderName: result.rfaFolderName
+        };
+        
+        setRevisionConfig(revisionInfo);
+        setRevisionConfigured(true);
+        
+        // Update form data with automatic discovery
+        const newFormData = {
+          ...formData,
+          previousRevisionPath: result.revisionPath,
+          revisionOptions: revisionInfo
+        };
+        onFormDataChange(newFormData);
+        
+        console.log('✅ ProjectWizardStep1: Revision configured automatically!');
+        
+      } else {
+        // FAILED: Show dialog for manual configuration
+        console.log('ProjectWizardStep1: Automatic detection failed, showing configuration dialog');
+        console.log('Reason:', result.reason);
+        
+        setTimeout(() => {
+          setShowRevisionDialog(true);
+        }, 300); // Small delay for smooth transition
+      }
+      
+    } catch (error) {
+      console.error('ProjectWizardStep1: Error during automatic detection:', error);
+      
+      // Fallback to manual configuration on error
+      setTimeout(() => {
+        setShowRevisionDialog(true);
+      }, 300);
+    }
+  };
 
   // Revision handling functions
   const handleOpenRevisionDialog = () => {

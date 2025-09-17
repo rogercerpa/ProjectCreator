@@ -1006,6 +1006,22 @@ class ProjectCreationService {
         if (findResult.success) {
           previousRevisionPath = findResult.revisionPath;
           console.log('ProjectCreationService: Found previous revision at:', previousRevisionPath);
+          
+          // Show RFA selection notification if we have smart selection details
+          if (findResult.selectionReasoning && findResult.selectionStrategy) {
+            if (findResult.selectionStrategy === 'auto_medium_confidence' || 
+                findResult.selectionStrategy === 'fallback_latest') {
+              
+              const notificationMessage = `🔍 Multiple RFA types found. ${findResult.selectionReasoning}`;
+              if (revisionOptions.onProgress) {
+                revisionOptions.onProgress(notificationMessage, 15, { 
+                  step: 'rfa_selection',
+                  details: 'Smart RFA folder selection completed'
+                });
+              }
+              console.log('📋 RFA Selection Notification:', notificationMessage);
+            }
+          }
         } else {
           console.log('ProjectCreationService: No previous revision found automatically');
           return {
@@ -1067,11 +1083,16 @@ class ProjectCreationService {
 
       console.log('ProjectCreationService: Created basic revision folder structure');
 
-      // Step 5: Copy BOM CHECK from template (always required)
-      if (revisionOptions.onProgress) {
-        revisionOptions.onProgress('Copying template files...', 30, { step: 'template_copy' });
+      // Step 5: Copy BOM CHECK from template (only if no previous revision or copy disabled)
+      if (!previousRevisionPath || revisionOptions.copyBOMCheck === false) {
+        if (revisionOptions.onProgress) {
+          revisionOptions.onProgress('Copying template files...', 30, { step: 'template_copy' });
+        }
+        console.log('ProjectCreationService: Copying fresh BOM CHECK from template (no previous revision or copy disabled)');
+        await this.copyBOMCheckFolderWithResolver(rfaFolderPath, resolvedPaths);
+      } else {
+        console.log('ProjectCreationService: Skipping template BOM CHECK - will use previous revision BOM CHECK');
       }
-      await this.copyBOMCheckFolderWithResolver(rfaFolderPath, resolvedPaths);
 
       // Step 6: Copy files from previous revision
       if (previousRevisionPath) {
@@ -1084,6 +1105,7 @@ class ProjectCreationService {
           copyAEMarkups: revisionOptions.copyAEMarkups !== false,
           copyXREF: revisionOptions.copyXREF !== false,
           copyLCD: revisionOptions.copyLCD !== false,
+          copyBOMCheck: revisionOptions.copyBOMCheck !== false,
           copyVSP: revisionOptions.copyVSP !== false,
           copyDWG: revisionOptions.copyDWG !== false,
           ...revisionOptions.copyOptions

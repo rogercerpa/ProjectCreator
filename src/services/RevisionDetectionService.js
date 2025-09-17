@@ -1,5 +1,6 @@
 const fs = require('fs-extra');
 const path = require('path');
+const RFATypeMatchingService = require('./RFATypeMatchingService');
 
 /**
  * RevisionDetectionService
@@ -19,6 +20,7 @@ class RevisionDetectionService {
           'C:\\Users\\USERNAME\\Desktop\\1) Triage'
       }
     };
+    this.rfaMatchingService = new RFATypeMatchingService();
   }
 
   /**
@@ -113,68 +115,148 @@ class RevisionDetectionService {
   }
 
   /**
-   * Find previous revision folders for a project
+   * Find previous revision folders for a project (HTA-like automatic detection)
    * @param {Object} projectData - Project information
    * @returns {Promise<Object>} Previous revision search result
    */
   async findPreviousRevision(projectData) {
     try {
-      console.log('RevisionDetectionService: Finding previous revision for:', projectData.projectName);
+      console.log('🔍 RevisionDetectionService: Starting HTA-like automatic revision detection');
+      console.log('📋 RevisionDetectionService: Project data received:', {
+        projectName: projectData?.projectName,
+        projectContainer: projectData?.projectContainer,
+        regionalTeam: projectData?.regionalTeam,
+        nationalAccount: projectData?.nationalAccount
+      });
+      
+      // Safety check for required fields
+      if (!projectData) {
+        throw new Error('Project data is required');
+      }
+      
+      if (!projectData.projectName) {
+        throw new Error('Project name is required');
+      }
+      
+      if (!projectData.projectContainer) {
+        throw new Error('Project container is required');
+      }
+      
+      // HTA-like: Skip detection for desktop emergency use
+      if (projectData.regionalTeam === 'Desktop Emergency Use only') {
+        console.log('RevisionDetectionService: Desktop emergency mode - skipping automatic detection');
+        return {
+          success: false,
+          requiresManualSelection: true,
+          reason: 'Desktop emergency mode - automatic detection skipped',
+          searchMethod: 'manual_required',
+          // Ensure backwards compatibility
+          revisionPath: null,
+          projectPath: null
+        };
+      }
+      
+      console.log(`🔍 RevisionDetectionService: Raw project name from form: "${projectData.projectName}"`);
       
       const sanitizedProjectName = this.sanitizeProjectName(projectData.projectName);
       const firstLetter = this.getFirstLetter(sanitizedProjectName);
       const projectFolderName = `${sanitizedProjectName}_${projectData.projectContainer}`;
       
-      // Build search paths (same as project detection)
+      console.log(`✅ RevisionDetectionService: After sanitization: "${sanitizedProjectName}"`);
+      console.log(`📁 RevisionDetectionService: Project folder to find: "${projectFolderName}" (${firstLetter})`);
+      console.log(`🎯 RevisionDetectionService: Will search for PROJECT FOLDER first, then RFA folders inside it`);
+      
+      // Build HTA-like intelligent search paths
       const searchPaths = this.buildProjectSearchPaths(projectData, firstLetter, projectFolderName);
       
-      // Search for project folder first
+      // HTA-like: Search hierarchically with detailed logging
       let projectFolderPath = null;
+      let foundInYear = null;
+      
       for (const searchPath of searchPaths) {
+        console.log(`🔍 UPDATED CODE: Checking ${searchPath.year} (${searchPath.reasoning}): ${searchPath.path}`);
+        
         if (await fs.pathExists(searchPath.path)) {
           projectFolderPath = searchPath.path;
-          console.log('RevisionDetectionService: Found project folder at:', projectFolderPath);
+          foundInYear = searchPath.year;
+          console.log(`✅ RevisionDetectionService: Found project folder in ${foundInYear} (${searchPath.reasoning})`);
           break;
+        } else {
+          console.log(`❌ RevisionDetectionService: Project not found in ${searchPath.year}`);
         }
       }
 
       if (!projectFolderPath) {
-        console.log('RevisionDetectionService: No project folder found, will need manual selection');
+        console.log('❌ RevisionDetectionService: Project folder not found in any year - manual selection required');
         return {
           success: false,
           requiresManualSelection: true,
           reason: 'Project folder not found in any year location',
-          searchedPaths: searchPaths.map(p => p.path)
+          searchedPaths: searchPaths.map(p => ({ path: p.path, year: p.year, reasoning: p.reasoning })),
+          searchMethod: 'automatic_failed',
+          // Ensure backwards compatibility
+          revisionPath: null,
+          projectPath: null
         };
       }
 
-      // Find the most recent RFA folder within the project
-      const mostRecentRFA = await this.findMostRecentRFAFolder(projectFolderPath);
+      console.log(`✅ RevisionDetectionService: Project found in ${foundInYear}, scanning for RFA folders...`);
+
+      // HTA-like: Find the most recent RFA folder within the discovered project
+      const rfaSelectionResult = await this.findMostRecentRFAFolder(projectFolderPath, projectData.rfaType);
       
-      if (mostRecentRFA) {
-        console.log('RevisionDetectionService: Found most recent RFA:', mostRecentRFA);
+      if (rfaSelectionResult && rfaSelectionResult.folderPath) {
+        const selectedPath = rfaSelectionResult.folderPath;
+        console.log(`✅ RevisionDetectionService: Smart selection SUCCESS! Using: ${path.basename(selectedPath)}`);
+        console.log(`📋 Selection reasoning: ${rfaSelectionResult.reasoning}`);
+        
         return {
           success: true,
           projectPath: projectFolderPath,
-          revisionPath: mostRecentRFA,
-          searchMethod: 'automatic',
-          message: 'Previous revision found automatically'
+          revisionPath: selectedPath,
+          searchMethod: 'automatic_smart',
+          foundInYear: foundInYear,
+          message: `Previous revision found automatically in ${foundInYear}`,
+          rfaFolderName: path.basename(selectedPath),
+          selectionStrategy: rfaSelectionResult.selectionStrategy,
+          selectionReasoning: rfaSelectionResult.reasoning,
+          confidence: rfaSelectionResult.confidence
         };
-      } else {
+      } else if (rfaSelectionResult && rfaSelectionResult.requiresManualSelection) {
+        console.log('⚠️ RevisionDetectionService: Smart selection requires manual input');
         return {
           success: false,
           requiresManualSelection: true,
-          reason: 'No RFA folders found in project directory',
-          projectPath: projectFolderPath
+          reason: rfaSelectionResult.reasoning || 'Multiple RFA folders found - manual selection required',
+          projectPath: projectFolderPath,
+          foundInYear: foundInYear,
+          searchMethod: 'automatic_partial',
+          revisionPath: null,
+          availableFolders: rfaSelectionResult.allFolders
+        };
+      } else {
+        console.log('❌ RevisionDetectionService: Project found but no valid RFA folders');
+        return {
+          success: false,
+          requiresManualSelection: true,
+          reason: 'No valid RFA folders found in project directory',
+          projectPath: projectFolderPath,
+          foundInYear: foundInYear,
+          searchMethod: 'automatic_partial',
+          revisionPath: null
         };
       }
 
     } catch (error) {
-      console.error('RevisionDetectionService: Error finding previous revision:', error);
+      console.error('❌ RevisionDetectionService: Error during automatic revision detection:', error);
       return {
         success: false,
         error: error.message,
-        requiresManualSelection: true
+        requiresManualSelection: true,
+        searchMethod: 'error',
+        // Ensure backwards compatibility
+        revisionPath: null,
+        projectPath: null
       };
     }
   }
@@ -216,7 +298,7 @@ class RevisionDetectionService {
       const contents = await fs.readdir(folderPath);
       const hasAgentFiles = contents.includes('!Agent Files');
       const hasRequestOutput = contents.includes('!!Request Output');
-      
+
       return {
         isValid: true,
         folderName: folderName,
@@ -283,86 +365,399 @@ class RevisionDetectionService {
    */
   buildProjectSearchPaths(projectData, firstLetter, projectFolderName) {
     const currentYear = new Date().getFullYear();
-    const projectYear = parseInt('20' + projectData.projectContainer.substring(0, 2));
     
-    const searchPaths = [
-      {
-        path: `${this.config.serverPaths.currentYear}\\${currentYear} Projects\\${firstLetter}\\${projectFolderName}`,
-        year: currentYear,
-        type: 'current'
-      },
-      {
-        path: `${this.config.serverPaths.currentYear}\\${currentYear - 1} Projects\\${firstLetter}\\${projectFolderName}`,
-        year: currentYear - 1,
-        type: 'previous'
-      },
-      {
-        path: `${this.config.serverPaths.currentYear}\\${currentYear - 2} Projects\\${firstLetter}\\${projectFolderName}`,
-        year: currentYear - 2,
-        type: 'two_years_ago'
+    // HTA-like: Extract project year from container (first 2 digits) with safety checks
+    let projectYear = currentYear; // Default fallback
+    
+    try {
+      if (projectData.projectContainer && typeof projectData.projectContainer === 'string' && projectData.projectContainer.length >= 2) {
+        const yearSuffix = projectData.projectContainer.substring(0, 2);
+        const parsedYear = parseInt('20' + yearSuffix);
+        
+        // Validate the year is reasonable (2020-2030 range)
+        if (parsedYear >= 2020 && parsedYear <= 2030) {
+          projectYear = parsedYear;
+        } else {
+          console.warn(`RevisionDetectionService: Invalid project year ${parsedYear} from container ${projectData.projectContainer}, using current year`);
+        }
+      } else {
+        console.warn(`RevisionDetectionService: Invalid project container '${projectData.projectContainer}', using current year`);
       }
-    ];
+    } catch (error) {
+      console.error('RevisionDetectionService: Error extracting project year:', error);
+      console.log('RevisionDetectionService: Using current year as fallback');
+    }
+    
+    const yearOffset = projectYear - currentYear;
+    
+    console.log(`RevisionDetectionService: Project year ${projectYear}, Current year ${currentYear}, Offset: ${yearOffset}`);
+    
+    // HTA-like: Build year-based search strategy
+    let searchYears = [];
+    
+    switch (yearOffset) {
+      case 0:
+        // Project is current year - search current, then previous years
+        searchYears = [currentYear, currentYear - 1, currentYear - 2];
+        break;
+      case -1:
+        // Project is from last year - search previous, then current, then older
+        searchYears = [currentYear - 1, currentYear, currentYear - 2];
+        break;
+      case -2:
+        // Project is from 2 years ago - search that year first
+        searchYears = [currentYear - 2, currentYear - 1, currentYear];
+        break;
+      default:
+        // For other years, search intelligently
+        if (yearOffset < 0) {
+          // Older project - search project year first, then newer
+          searchYears = [projectYear, projectYear + 1, projectYear + 2].filter(year => year <= currentYear);
+        } else {
+          // Future project - search current year first
+          searchYears = [currentYear, currentYear - 1, currentYear - 2];
+        }
+    }
+    
+    // Ensure we always have at least 3 years to search with safety checks
+    if (searchYears.length === 0) {
+      // Fallback to basic current year search if array is somehow empty
+      console.warn('RevisionDetectionService: searchYears array empty, using fallback');
+      searchYears = [currentYear, currentYear - 1, currentYear - 2];
+    }
+    
+    while (searchYears.length < 3) {
+      const lastYear = searchYears[searchYears.length - 1];
+      if (lastYear && lastYear > currentYear - 5) { // Don't go back more than 5 years
+        searchYears.push(lastYear - 1);
+      } else {
+        // Safety fallback - add remaining years from current
+        const missingCount = 3 - searchYears.length;
+        for (let i = 1; i <= missingCount; i++) {
+          const yearToAdd = currentYear - i;
+          if (!searchYears.includes(yearToAdd) && yearToAdd >= currentYear - 5) {
+            searchYears.push(yearToAdd);
+          }
+        }
+        break;
+      }
+    }
+    
+    // Build search paths in priority order with safety checks
+    const serverBasePath = this.config?.serverPaths?.currentYear || '\\\\10.3.10.30\\DAS';
+    
+    const searchPaths = searchYears.map((year, index) => {
+      const basePath = `${serverBasePath}\\${year} Projects\\${firstLetter}\\${projectFolderName}`;
+      
+      return {
+        path: basePath,
+        year: year,
+        type: index === 0 ? 'primary' : index === 1 ? 'secondary' : 'tertiary',
+        priority: index + 1,
+        reasoning: this.getSearchReasoning(year, projectYear, currentYear) || 'unknown'
+      };
+    });
 
     // Handle national accounts (add subfolder if specified)
-    if (projectData.nationalAccount && projectData.nationalAccount !== 'Default') {
+    // FIXED: Sanitize nationalAccount to prevent Agile import pollution
+    const sanitizedNationalAccount = this.sanitizeNationalAccount(projectData.nationalAccount);
+    
+    if (sanitizedNationalAccount && sanitizedNationalAccount !== 'Default') {
+      console.log(`🏢 Using national account folder: "${sanitizedNationalAccount}"`);
       searchPaths.forEach(searchPath => {
         searchPath.path = searchPath.path.replace(
           `\\${projectFolderName}`,
-          `\\${projectData.nationalAccount}\\${projectFolderName}`
+          `\\${sanitizedNationalAccount}\\${projectFolderName}`
         );
       });
+    } else {
+      console.log(`📁 Using standard project folder structure (no national account)`);
     }
 
+    console.log('RevisionDetectionService: Search strategy:', searchPaths.map(p => `${p.year} (${p.reasoning})`));
     return searchPaths;
   }
 
   /**
-   * Find the most recent RFA folder in a project directory
-   * @param {string} projectPath - Path to project directory
-   * @returns {Promise<string|null>} Path to most recent RFA folder
+   * Get reasoning for search year selection (for debugging)
+   * @param {number} searchYear - Year being searched
+   * @param {number} projectYear - Project's year
+   * @param {number} currentYear - Current year
+   * @returns {string} Human-readable reasoning
    */
-  async findMostRecentRFAFolder(projectPath) {
+  getSearchReasoning(searchYear, projectYear, currentYear) {
     try {
-      const contents = await fs.readdir(projectPath);
+      // Safety checks for valid numbers
+      if (typeof searchYear !== 'number' || typeof projectYear !== 'number' || typeof currentYear !== 'number') {
+        return 'invalid parameters';
+      }
       
-      // Filter for RFA folders
-      const rfaFolders = contents.filter(item => item.includes('RFA#'));
+      if (searchYear === projectYear) return 'project year';
+      if (searchYear === currentYear) return 'current year';
+      if (searchYear === currentYear - 1) return 'previous year';
+      if (searchYear === currentYear - 2) return 'two years ago';
+      
+      const yearDiff = currentYear - searchYear;
+      if (yearDiff > 0) {
+        return `${yearDiff} years ago`;
+      } else if (yearDiff < 0) {
+        return `${Math.abs(yearDiff)} years in future`;
+      } else {
+        return 'current year';
+      }
+    } catch (error) {
+      console.error('RevisionDetectionService: Error in getSearchReasoning:', error);
+      return 'error';
+    }
+  }
+
+  /**
+   * Find the most recent RFA folder in a project directory using smart RFA type matching
+   * @param {string} projectPath - Path to project directory  
+   * @param {string} formRFAType - RFA type from project form
+   * @returns {Promise<Object|null>} Selection result with folder path and reasoning, or null
+   */
+  async findMostRecentRFAFolder(projectPath, formRFAType) {
+    try {
+      console.log(`🔍 RevisionDetectionService: Smart RFA folder selection for "${formRFAType}" in:`, projectPath);
+      
+      const contents = await fs.readdir(projectPath, { withFileTypes: true });
+      
+      // Filter for RFA folders (directories only, containing "RFA#")
+      const rfaFolders = contents
+        .filter(dirent => dirent.isDirectory() && dirent.name.includes('RFA#'))
+        .map(dirent => ({
+          name: dirent.name,
+          path: path.join(projectPath, dirent.name)
+        }));
+      
+      console.log(`📋 Found ${rfaFolders.length} RFA folders:`, rfaFolders.map(f => f.name));
       
       if (rfaFolders.length === 0) {
+        console.log('❌ No RFA folders found');
         return null;
       }
 
-      // Sort by name (which includes date) to get most recent
-      rfaFolders.sort((a, b) => b.localeCompare(a));
+      // Use smart RFA type matching to select the best folder
+      const selectionResult = this.rfaMatchingService.selectBestRFAFolder(formRFAType, rfaFolders);
       
-      const mostRecentRFA = rfaFolders[0];
-      const rfaPath = path.join(projectPath, mostRecentRFA);
-      
-      // Verify it's a directory
-      const stats = await fs.stat(rfaPath);
-      if (stats.isDirectory()) {
-        return rfaPath;
+      if (!selectionResult.selectedFolder) {
+        console.log('❌ Smart RFA matching failed to select a folder');
+        return null;
       }
 
-      return null;
+      const selectedFolder = selectionResult.selectedFolder;
+      console.log(`🎯 Smart selection result:`, {
+        strategy: selectionResult.strategy,
+        confidence: selectionResult.confidence,
+        folder: selectedFolder.name,
+        reasoning: selectionResult.reasoning
+      });
+
+      // Validate the selected RFA folder has expected content
+      const isValid = await this.validateRFAFolderContent(selectedFolder.path);
+      if (!isValid) {
+        console.log(`⚠️ Selected RFA folder "${selectedFolder.name}" is invalid, trying alternatives...`);
+        
+        // Try other high-scoring folders if the selected one is invalid
+        const alternatives = selectionResult.allFolders.slice(1); // Skip the first (already tried)
+        
+        for (const candidate of alternatives) {
+          const candidateValid = await this.validateRFAFolderContent(candidate.path);
+          
+          if (candidateValid) {
+            console.log(`✅ Using valid alternative RFA folder: ${candidate.name}`);
+            return {
+              folderPath: candidate.path,
+              selectionStrategy: 'fallback_validation',
+              reasoning: `Selected "${candidate.name}" after validation failure of primary choice`,
+              requiresManualSelection: false,
+              allFolders: selectionResult.allFolders
+            };
+          }
+        }
+        
+        console.log('❌ No valid RFA folders found after validation');
+        return {
+          folderPath: null,
+          selectionStrategy: 'validation_failed',
+          reasoning: 'All RFA folders failed content validation',
+          requiresManualSelection: true,
+          allFolders: selectionResult.allFolders
+        };
+      }
+
+      // Return successful selection result
+      return {
+        folderPath: selectedFolder.path,
+        selectionStrategy: selectionResult.strategy,
+        reasoning: selectionResult.reasoning,
+        requiresManualSelection: selectionResult.requiresManualSelection,
+        confidence: selectionResult.confidence,
+        selectedFolder: selectedFolder,
+        allFolders: selectionResult.allFolders
+      };
 
     } catch (error) {
-      console.error('RevisionDetectionService: Error finding most recent RFA folder:', error);
+      console.error('❌ RevisionDetectionService: Error in smart RFA folder selection:', error);
       return null;
     }
   }
 
   /**
-   * Sanitize project name (implements HTA logic)
+   * Extract RFA version number from folder name (format: RFA#12345-1, RFA#12345-2, etc.)
+   * @param {string} rfaName - RFA folder name
+   * @returns {number|null} Version number or null if not found
+   */
+  extractRFAVersion(rfaName) {
+    try {
+      // Look for pattern RFA#[number]-[version] 
+      const versionMatch = rfaName.match(/RFA#\d+-(\d+)/i);
+      
+      if (versionMatch) {
+        const version = parseInt(versionMatch[1]);
+        console.log(`📋 Extracted version ${version} from: ${rfaName}`);
+        return version;
+      }
+      
+      console.log(`⚠️ No version number found in: ${rfaName}`);
+      return null;
+    } catch (error) {
+      console.log(`❌ Error extracting version from ${rfaName}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Extract date from RFA folder name (format: RFA#123_TYPE_MMDDYYYY)
+   * @param {string} rfaName - RFA folder name
+   * @returns {Date|null} Parsed date or null if invalid
+   */
+  extractDateFromRFAName(rfaName) {
+    try {
+      // Look for date pattern MMDDYYYY at the end
+      const dateMatch = rfaName.match(/_(\d{2})(\d{2})(\d{4})$/);
+      
+      if (dateMatch) {
+        const [, month, day, year] = dateMatch;
+        const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        
+        // Validate the date is reasonable
+        if (date.getFullYear() >= 2020 && date.getFullYear() <= 2030) {
+          return date;
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  /**
+   * Validate that an RFA folder has expected content (basic validation)
+   * @param {string} rfaPath - Path to RFA folder
+   * @returns {Promise<boolean>} True if folder appears to be a valid RFA folder
+   */
+  async validateRFAFolderContent(rfaPath) {
+    try {
+      // Check if the folder exists and is readable
+      await fs.access(rfaPath);
+      
+      // Check for typical RFA folder structure
+      const contents = await fs.readdir(rfaPath);
+      
+      // Look for common folders/files that indicate a valid RFA
+      const hasAgentFiles = contents.some(item => item.includes('Agent Files'));
+      const hasRequestOutput = contents.some(item => item.includes('Request Output'));
+      const hasBOMCheck = contents.some(item => item.includes('BOM CHECK'));
+      
+      // RFA folder should have at least one of these
+      const isValid = hasAgentFiles || hasRequestOutput || hasBOMCheck || contents.length > 0;
+      
+      console.log(`RevisionDetectionService: RFA validation for ${path.basename(rfaPath)}: ${isValid} (contents: ${contents.length} items)`);
+      
+      return isValid;
+      
+    } catch (error) {
+      console.log(`RevisionDetectionService: RFA validation failed for ${rfaPath}:`, error.message);
+      return false;
+    }
+  }
+
+  /**
+   * Sanitize national account field to remove Agile import pollution
+   * @param {string} nationalAccount - Raw national account from form
+   * @returns {string|null} Clean national account or null if invalid
+   */
+  sanitizeNationalAccount(nationalAccount) {
+    if (!nationalAccount || typeof nationalAccount !== 'string') {
+      return null;
+    }
+
+    let sanitized = nationalAccount.trim();
+    
+    // Remove common Agile import pollution patterns
+    if (sanitized.match(/^(Last Updated:|Updated:|Created:)/i)) {
+      console.log(`🧹 Removing nationalAccount pollution: "${sanitized}" → null`);
+      return null;
+    }
+    
+    // Remove date/time patterns that indicate pollution
+    if (sanitized.match(/\d{1,2}\/\d{1,2}\/\d{4}/)) {
+      console.log(`🧹 Removing nationalAccount date pollution: "${sanitized}" → null`);
+      return null;
+    }
+    
+    // If it's just "Default" or empty, return null
+    if (sanitized === 'Default' || sanitized === '') {
+      return null;
+    }
+    
+    console.log(`✅ Valid nationalAccount: "${sanitized}"`);
+    return sanitized;
+  }
+
+  /**
+   * Sanitize project name (implements HTA logic with enhanced Agile import handling)
    * @param {string} projectName - Raw project name
    * @returns {string} Sanitized project name
    */
   sanitizeProjectName(projectName) {
-    return projectName
-      .replace(/[\\\/:]/g, ' ')  // Replace backslashes, forward slashes, colons
-      .replace(/_/g, ' ')        // Replace underscores
-      .toUpperCase()             // Convert to uppercase
-      .trim();
+    if (!projectName || typeof projectName !== 'string') {
+      console.warn('RevisionDetectionService: Invalid project name, using fallback');
+      return 'UNKNOWN PROJECT';
+    }
+
+    let sanitized = projectName;
+    
+    // Remove common Agile import pollution
+    sanitized = sanitized.replace(/^Last Updated:\s*/i, ''); // Remove "Last Updated:" prefix
+    sanitized = sanitized.replace(/^Updated:\s*/i, '');      // Remove "Updated:" prefix
+    sanitized = sanitized.replace(/^Created:\s*/i, '');      // Remove "Created:" prefix
+    
+    // Remove date/time stamps that might be imported
+    sanitized = sanitized.replace(/\d{1,2}\/\d{1,2}\/\d{4}.*$/g, ''); // Remove dates like "12/15/2024"
+    sanitized = sanitized.replace(/\d{4}-\d{2}-\d{2}.*$/g, '');        // Remove dates like "2024-12-15"
+    
+    // Replace invalid Windows path characters
+    sanitized = sanitized.replace(/[\\\/:*?"<>|]/g, ' ');  // Replace all invalid Windows chars
+    sanitized = sanitized.replace(/_/g, ' ');               // Replace underscores
+    
+    // Clean up multiple spaces and trim
+    sanitized = sanitized.replace(/\s+/g, ' ').trim();
+    
+    // Convert to uppercase
+    sanitized = sanitized.toUpperCase();
+    
+    // Validate result
+    if (!sanitized || sanitized.length === 0) {
+      console.warn('RevisionDetectionService: Project name became empty after sanitization, using fallback');
+      return 'UNKNOWN PROJECT';
+    }
+    
+    console.log(`RevisionDetectionService: Sanitized "${projectName}" → "${sanitized}"`);
+    return sanitized;
   }
 
   /**
