@@ -349,10 +349,10 @@ const ProjectWizardStep1 = ({
         
         alert(successMessage);
         
-        // Auto-clear highlighting after 10 seconds
+        // Auto-clear highlighting after 3 seconds
         setTimeout(() => {
           setImportedFields([]);
-        }, 10000);
+        }, 3000);
         
       } else {
         alert(`❌ Could not parse RFA information from clipboard.\n\n` +
@@ -824,33 +824,6 @@ const ProjectWizardStep1 = ({
           </div>
         </div>
         
-        {importedFields.length > 0 && (
-          <div className="import-feedback">
-            <div className="feedback-content">
-              <span className="import-success">
-                ✅ {importedFields.length} fields imported successfully
-              </span>
-              <div className="imported-field-list">
-                <strong>Imported:</strong>
-                <span className="field-names">
-                  {importedFields.slice(0, 3).map(field => 
-                    field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())
-                  ).join(', ')}
-                  {importedFields.length > 3 && ` and ${importedFields.length - 3} more`}
-                </span>
-              </div>
-            </div>
-            <div className="feedback-actions">
-              <button
-                type="button"
-                onClick={clearImportedHighlight}
-                className="btn btn-outline btn-small"
-              >
-                Clear Highlighting
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Header Action Buttons - Bottom Left Corner */}
         <div className="import-button-container">

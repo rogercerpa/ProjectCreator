@@ -13,6 +13,86 @@ class RevisionFileCopyService {
   }
 
   /**
+   * Extract RFA version number from RFA folder path
+   * @param {string} rfaFolderPath - Path to RFA folder (e.g., "RFA#61726-2_CONTROLS_02152025")
+   * @returns {number|null} RFA version number or null if not found
+   */
+  extractRFAVersionFromPath(rfaFolderPath) {
+    try {
+      const folderName = path.basename(rfaFolderPath);
+      // Pattern: RFA#[number]-[version]_[type]_[date]
+      const versionMatch = folderName.match(/RFA#\d+-(\d+)/i);
+      
+      if (versionMatch) {
+        const version = parseInt(versionMatch[1]);
+        console.log(`🔢 Extracted RFA version ${version} from: ${folderName}`);
+        return version;
+      }
+      
+      console.warn(`⚠️ Could not extract RFA version from: ${folderName}`);
+      return null;
+    } catch (error) {
+      console.error(`❌ Error extracting RFA version from ${rfaFolderPath}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Generate renamed VSP filename with updated version and current date
+   * @param {string} originalFilename - Original VSP filename
+   * @param {number} newRFAVersion - New RFA version number
+   * @returns {string} New filename with updated version and date
+   */
+  generateRenamedVSPFilename(originalFilename, newRFAVersion) {
+    try {
+      console.log(`🏷️ Renaming VSP file: "${originalFilename}" with RFA version ${newRFAVersion}`);
+      
+      // Current date in MMDDYYYY format
+      const currentDate = new Date();
+      const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+      const day = String(currentDate.getDate()).padStart(2, '0');
+      const year = currentDate.getFullYear();
+      const dateString = `${month}${day}${year}`;
+      
+      // Parse original filename pattern: PROJECTNAME_VERSION_MMDDYYYY.vsp
+      const nameWithoutExt = originalFilename.replace(/\.vsp$/i, '');
+      
+      // Split by underscores to get parts
+      const parts = nameWithoutExt.split('_');
+      
+      if (parts.length >= 3) {
+        // Standard format: [PROJECTNAME, VERSION, DATE]
+        const projectName = parts.slice(0, -2).join('_'); // Everything except last 2 parts
+        const oldVersion = parts[parts.length - 2]; // Second to last part
+        const oldDate = parts[parts.length - 1]; // Last part
+        
+        // Generate new version string
+        const newVersion = `REV${newRFAVersion}`;
+        
+        const newFilename = `${projectName}_${newVersion}_${dateString}.vsp`;
+        
+        console.log(`✅ VSP Rename: "${originalFilename}" → "${newFilename}"`);
+        console.log(`   Project: "${projectName}", Old Version: "${oldVersion}", New Version: "${newVersion}"`);
+        console.log(`   Old Date: "${oldDate}", New Date: "${dateString}"`);
+        
+        return newFilename;
+      } else {
+        // Fallback for non-standard naming - just append version and date
+        const baseName = nameWithoutExt.replace(/_?(ORIG|REV\d+)_?\d{8}?$/i, '');
+        const newFilename = `${baseName}_REV${newRFAVersion}_${dateString}.vsp`;
+        
+        console.log(`⚠️ VSP Non-standard rename: "${originalFilename}" → "${newFilename}"`);
+        return newFilename;
+      }
+      
+    } catch (error) {
+      console.error(`❌ Error renaming VSP file "${originalFilename}":`, error);
+      // Fallback: return original filename
+      return originalFilename;
+    }
+  }
+
+  /**
    * Copy all revision assets from previous revision to new revision
    * @param {string} previousRevisionPath - Path to previous RFA folder
    * @param {string} newRevisionPath - Path to new RFA folder
@@ -229,7 +309,7 @@ class RevisionFileCopyService {
   }
 
   /**
-   * Copy files by extension (implements HTA file copy logic)
+   * Copy files by extension with smart VSP renaming (implements HTA file copy logic)
    * @param {string} sourcePath - Source RFA path
    * @param {string} targetPath - Target RFA path
    * @param {Array} extensions - Array of extensions to copy (e.g., ['.vsp', '.dwg'])
@@ -249,26 +329,46 @@ class RevisionFileCopyService {
         };
       }
 
+      // Extract RFA version for VSP renaming
+      const newRFAVersion = this.extractRFAVersionFromPath(targetPath);
+      
       // OPTIMIZATION: Get files with their stats in one pass
       const files = await fs.readdir(sourcePath, { withFileTypes: true });
       const copiedFiles = [];
       const errors = [];
 
-      // OPTIMIZATION: Filter and process files in parallel
+      // OPTIMIZATION: Filter and process files in parallel with smart VSP renaming
       const targetExtensions = extensions.map(ext => ext.toLowerCase());
       const filePromises = files
         .filter(dirent => dirent.isFile() && targetExtensions.includes(path.extname(dirent.name).toLowerCase()))
         .map(async (dirent) => {
           try {
             const sourceFile = path.join(sourcePath, dirent.name);
-            const targetFile = path.join(targetPath, dirent.name);
+            const originalFilename = dirent.name;
+            
+            // Check if this is a VSP file that needs renaming
+            const isVSPFile = path.extname(originalFilename).toLowerCase() === '.vsp';
+            let targetFilename = originalFilename;
+            
+            if (isVSPFile && newRFAVersion !== null) {
+              // Generate new VSP filename with updated version and date
+              targetFilename = this.generateRenamedVSPFilename(originalFilename, newRFAVersion);
+              console.log(`🎯 VSP Auto-Rename: "${originalFilename}" → "${targetFilename}"`);
+            }
+            
+            const targetFile = path.join(targetPath, targetFilename);
             
             await fs.copy(sourceFile, targetFile, { 
               overwrite: true, 
               preserveTimestamps: false 
             });
             
-            return { success: true, file: dirent.name };
+            return { 
+              success: true, 
+              file: originalFilename,
+              targetFile: targetFilename,
+              renamed: isVSPFile && targetFilename !== originalFilename
+            };
           } catch (fileError) {
             console.error(`RevisionFileCopyService: Error copying file ${dirent.name}:`, fileError);
             return { success: false, file: dirent.name, error: fileError.message };
@@ -278,11 +378,21 @@ class RevisionFileCopyService {
       // Wait for all file operations to complete
       const fileResults = await Promise.all(filePromises);
       
-      // Process results
+      // Process results with renaming information
+      const renamedFiles = [];
       fileResults.forEach(result => {
         if (result.success) {
-          copiedFiles.push(result.file);
-          console.log(`RevisionFileCopyService: Copied file ${result.file}`);
+          copiedFiles.push(result.targetFile || result.file);
+          
+          if (result.renamed) {
+            renamedFiles.push({
+              original: result.file,
+              renamed: result.targetFile
+            });
+            console.log(`✅ RevisionFileCopyService: Copied and renamed: ${result.file} → ${result.targetFile}`);
+          } else {
+            console.log(`✅ RevisionFileCopyService: Copied file: ${result.file}`);
+          }
         } else {
           errors.push({ file: result.file, error: result.error });
         }
@@ -293,6 +403,7 @@ class RevisionFileCopyService {
         extensions: extensions,
         totalFiles: copiedFiles.length,
         copiedFiles: copiedFiles,
+        renamedFiles: renamedFiles,
         errors: errors
       };
 
