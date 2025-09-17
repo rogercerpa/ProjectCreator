@@ -3,6 +3,7 @@ import WizardLayout from '../components/WizardLayout';
 import RevisionConfigurationDialog from '../components/RevisionConfigurationDialog';
 import dropdownOptionsService from '../../../services/DropdownOptionsService';
 import triageCalculationService from '../../../services/TriageCalculationService';
+import MultiSelectDropdown from '../../MultiSelectDropdown';
 
 /**
  * ProjectWizardStep1 - Basic Project Information
@@ -1144,33 +1145,18 @@ const ProjectWizardStep1 = ({
               {isFieldImported('status') && <span className="import-indicator">📋 Imported</span>}
             </div>
 
-            <div className={`form-group ${isFieldImported('products') ? 'imported-field' : ''}`}>
-              <label>Products</label>
-              <div className="checkbox-group">
-                {dropdownOptions.productOptions.map(product => (
-                  <label key={product} className="checkbox-item">
-                    <input
-                      type="checkbox"
-                      name="products"
-                      value={product}
-                      checked={Array.isArray(formData.products) ? formData.products.includes(product) : false}
-                      onChange={(e) => {
-                        const currentProducts = Array.isArray(formData.products) ? formData.products : [];
-                        let newProducts;
-                        if (e.target.checked) {
-                          newProducts = [...currentProducts, product];
-                        } else {
-                          newProducts = currentProducts.filter(p => p !== product);
-                        }
-                        onFormDataChange({ ...formData, products: newProducts });
-                      }}
-                    />
-                    <span className="checkbox-label">{product}</span>
-                  </label>
-                ))}
-              </div>
+            <div className="form-group">
+              <MultiSelectDropdown
+                label="Products"
+                options={dropdownOptions.productOptions}
+                selectedValues={Array.isArray(formData.products) ? formData.products : []}
+                onChange={(selectedProducts) => {
+                  onFormDataChange({ ...formData, products: selectedProducts });
+                }}
+                placeholder="Select products"
+                isFieldImported={isFieldImported('products')}
+              />
               <small className="field-hint">Select one or more products</small>
-              {isFieldImported('products') && <span className="import-indicator">📋 Imported</span>}
             </div>
 
             <div className={`form-group ${isFieldImported('assignedTo') ? 'imported-field' : ''}`}>
