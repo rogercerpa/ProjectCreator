@@ -11,8 +11,8 @@ class RevisionDetectionService {
   constructor() {
     this.config = {
       serverPaths: {
-        currentYear: '\\\\10.3.10.30\\DAS',
-        fileDirectory: '\\\\10.3.10.30\\DAS'
+        currentYear: '\\\\10.3.10.30\\das',  // Fixed: lowercase 'das' to match server
+        fileDirectory: '\\\\10.3.10.30\\das'  // Fixed: lowercase 'das' to match server
       },
       desktopPaths: {
         triage: process.env.USERPROFILE ? 
@@ -145,7 +145,7 @@ class RevisionDetectionService {
       // HTA-like: Skip detection for desktop emergency use
       if (projectData.regionalTeam === 'Desktop Emergency Use only') {
         console.log('RevisionDetectionService: Desktop emergency mode - skipping automatic detection');
-        return {
+      return {
           success: false,
           requiresManualSelection: true,
           reason: 'Desktop emergency mode - automatic detection skipped',
@@ -188,7 +188,7 @@ class RevisionDetectionService {
 
       if (!projectFolderPath) {
         console.log('❌ RevisionDetectionService: Project folder not found in any year - manual selection required');
-        return {
+    return {
           success: false,
           requiresManualSelection: true,
           reason: 'Project folder not found in any year location',
@@ -598,7 +598,7 @@ class RevisionDetectionService {
         allFolders: selectionResult.allFolders
       };
 
-    } catch (error) {
+          } catch (error) {
       console.error('❌ RevisionDetectionService: Error in smart RFA folder selection:', error);
       return null;
     }
@@ -622,7 +622,7 @@ class RevisionDetectionService {
       
       console.log(`⚠️ No version number found in: ${rfaName}`);
       return null;
-    } catch (error) {
+          } catch (error) {
       console.log(`❌ Error extracting version from ${rfaName}:`, error);
       return null;
     }
@@ -678,7 +678,7 @@ class RevisionDetectionService {
       console.log(`RevisionDetectionService: RFA validation for ${path.basename(rfaPath)}: ${isValid} (contents: ${contents.length} items)`);
       
       return isValid;
-      
+
     } catch (error) {
       console.log(`RevisionDetectionService: RFA validation failed for ${rfaPath}:`, error.message);
       return false;

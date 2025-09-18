@@ -10,18 +10,289 @@ import MultiSelectDropdown from '../../MultiSelectDropdown';
  * Extracted from ProjectForm.jsx lines 513-788
  * Preserves ALL original functionality, validation, and behavior
  */
-const ProjectWizardStep1 = ({
-  formData,
-  onFormDataChange,
-  errors = {},
+const ProjectWizardStep1 = ({ 
+  formData, 
+  onFormDataChange, 
+  errors = {}, 
   onFieldError,
   onFieldTouch,
   showImportedFields = false,
   onValidationChange,
-  onWizardReset
+  onWizardReset,
+  onCheckForDuplicates,
+  isDuplicateDetectionRunning = false,
+  onDuplicateCheckStateChange
 }) => {
   const [isPasting, setIsPasting] = useState(false);
   const [importedFields, setImportedFields] = useState([]);
+  
+  // SIMPLIFIED: Single state object for duplicate checking
+  const [duplicateCheckState, setDuplicateCheckState] = useState({
+    status: 'none', // 'none' | 'checking' | 'success' | 'duplicate' | 'error' | 'outdated'
+    source: null,   // 'manual' | 'agile'
+    result: null,   // check results
+    timestamp: null,
+    canOverride: false,
+    showButton: false
+  });
+
+  // CLEAN: RFA version extraction from RFA number
+  const extractRFAVersion = (rfaNumber) => {
+    if (!rfaNumber) return null;
+    
+    // Parse "284443-0" → return "0"
+    // Parse "284443-1" → return "1"
+    const parts = rfaNumber.trim().split('-');
+    return parts.length === 2 ? parts[1] : null;
+  };
+
+  // CLEAN: Project path building based on container year and project name first letter
+  const buildProjectPath = (projectName, projectContainer) => {
+    if (!projectName || !projectContainer) return null;
+    
+    try {
+      console.log('🔧 UPDATED PATH BUILDING - Version 2.0');
+      console.log(`📝 Input: projectName="${projectName}", projectContainer="${projectContainer}"`);
+      
+      // Extract year from container: "24-16071" → "2024"
+      const containerParts = projectContainer.trim().split('-');
+      const year = "20" + containerParts[0]; // "24" → "2024"
+      console.log(`📅 Year extracted: ${containerParts[0]} → ${year}`);
+      
+      // Get first letter of project name: "YOKOTA B118" → "Y"
+      const firstLetter = projectName.trim().charAt(0).toUpperCase();
+      console.log(`🔤 First letter: ${firstLetter}`);
+      
+      // Build full project folder name with proper spacing
+      // Add space before underscore to match actual folder structure
+      const projectFolderName = `${projectName.trim()} _${projectContainer.trim()}`;
+      console.log(`📂 Folder name: "${projectFolderName}" (note space before underscore)`);
+      
+      // Build complete path with lowercase 'das' to match server
+      const projectPath = `\\\\10.3.10.30\\das\\${year} Projects\\${firstLetter}\\${projectFolderName}`;
+      
+      console.log(`📁 FINAL CORRECTED PATH: ${projectPath}`);
+      console.log(`📁 Should match: \\\\10.3.10.30\\das\\2024 Projects\\Y\\YOKOTA B118 _24-16071`);
+      return projectPath;
+    } catch (error) {
+      console.error('❌ Error building project path:', error);
+      return null;
+    }
+  };
+
+  // CLEAN: Check if RFA version is initial (-0) and requires duplicate check
+  const shouldCheckForDuplicate = () => {
+    const rfaVersion = extractRFAVersion(formData.rfaNumber);
+    const isInitialVersion = rfaVersion === "0";
+    
+    console.log(`🔍 RFA version check: "${formData.rfaNumber}" → version "${rfaVersion}" → initial: ${isInitialVersion}`);
+    return isInitialVersion;
+  };
+
+  // SIMPLIFIED: Project container format validation
+  const isValidProjectContainer = (container) => {
+    if (!container) return false;
+    // Format: ##-##### (e.g., "24-61726")
+    const regex = /^\d{2}-\d{5}$/;
+    return regex.test(container.trim());
+  };
+
+  // CLEAN: Check if all required fields are ready for duplicate check
+  const isReadyForDuplicateCheck = () => {
+    const projectName = formData.projectName?.trim();
+    const projectContainer = formData.projectContainer?.trim();
+    const rfaNumber = formData.rfaNumber?.trim();
+    
+    return projectName && 
+           projectName.length > 2 && 
+           isValidProjectContainer(projectContainer) &&
+           rfaNumber &&
+           rfaNumber.length > 2;
+  };
+
+  // CLEAN: "-0 version only" duplicate check for manual entry
+  useEffect(() => {
+    const readyForCheck = isReadyForDuplicateCheck();
+    const isInitialVersion = shouldCheckForDuplicate(); // Only true for "-0" versions
+    
+    // Only show button for manual entry AND initial versions (-0)
+    const shouldShowButton = readyForCheck && 
+                            isInitialVersion &&
+                            duplicateCheckState.source !== 'agile' &&
+                            !isDuplicateDetectionRunning &&
+                            onCheckForDuplicates;
+
+    // Update button visibility
+    setDuplicateCheckState(prev => ({
+      ...prev,
+      showButton: shouldShowButton
+    }));
+
+    // Debounced auto-check for manual entry (only for -0 versions)
+    if (readyForCheck && 
+        isInitialVersion &&
+        duplicateCheckState.status === 'none' && 
+        duplicateCheckState.source !== 'agile' &&
+        !isDuplicateDetectionRunning &&
+        onCheckForDuplicates) {
+      
+      console.log('🎯 Manual entry ready for "-0" version - starting debounced duplicate check...');
+      
+      const timeoutId = setTimeout(async () => {
+        await performDuplicateCheck('manual');
+      }, 500); // 500ms debounce
+
+      return () => clearTimeout(timeoutId);
+    }
+
+    // Mark as outdated if fields ACTUALLY changed after successful check (only for -0 versions)
+    if ((duplicateCheckState.status === 'success' || duplicateCheckState.status === 'duplicate') &&
+        duplicateCheckState.source === 'manual' &&
+        duplicateCheckState.result?.checkedFields &&
+        isInitialVersion) {
+      
+      const checkedFields = duplicateCheckState.result.checkedFields;
+      const fieldsChanged = 
+        checkedFields.projectName !== formData.projectName ||
+        checkedFields.projectContainer !== formData.projectContainer ||
+        checkedFields.rfaNumber !== formData.rfaNumber;
+      
+      if (fieldsChanged) {
+        console.log('🔄 Fields changed after successful check - marking as outdated');
+        setDuplicateCheckState(prev => ({
+          ...prev,
+          status: 'outdated'
+        }));
+      }
+    }
+
+    // Reset state if version changes from -0 to something else
+    if (!isInitialVersion && duplicateCheckState.status !== 'none') {
+      console.log('🔄 RFA version changed from "-0" - resetting duplicate check state');
+      setDuplicateCheckState(prev => ({
+        ...prev,
+        status: 'none',
+        result: null,
+        showButton: false
+      }));
+    }
+  }, [formData.projectName, formData.projectContainer, formData.rfaNumber, isDuplicateDetectionRunning, onCheckForDuplicates]);
+
+  // Notify parent of duplicate check state changes
+  useEffect(() => {
+    if (onDuplicateCheckStateChange) {
+      onDuplicateCheckStateChange({
+        completed: duplicateCheckState.status !== 'none' && duplicateCheckState.status !== 'checking',
+        result: duplicateCheckState.result,
+        canCheck: duplicateCheckState.showButton
+      });
+    }
+  }, [duplicateCheckState, onDuplicateCheckStateChange]);
+
+  // CLEAN: "-0 version only" duplicate check function with simple folder existence
+  const performDuplicateCheck = async (source) => {
+    if (!isReadyForDuplicateCheck() || !shouldCheckForDuplicate()) {
+      console.error('❌ Duplicate check: Invalid conditions or not -0 version');
+      return;
+    }
+
+    try {
+      console.log(`🔍 Starting ${source} duplicate check for RFA "-0" version...`);
+      
+      // Set checking state
+      setDuplicateCheckState(prev => ({
+        ...prev,
+        status: 'checking',
+        source: source,
+        canOverride: false
+      }));
+
+      // Build project path and check if folder exists
+      const projectPath = buildProjectPath(formData.projectName, formData.projectContainer);
+      if (!projectPath) {
+        throw new Error('Could not build project path');
+      }
+
+      console.log(`📁 Simple folder existence check: ${projectPath}`);
+      
+      // Use simple folder existence check instead of complex duplicate detection
+      const folderExists = await window.electronAPI.checkFolderExists(projectPath);
+      
+      // Store current field values for outdated detection
+      const currentFields = {
+        projectName: formData.projectName,
+        projectContainer: formData.projectContainer,
+        rfaNumber: formData.rfaNumber
+      };
+      
+      // Set result state
+      setDuplicateCheckState(prev => ({
+        ...prev,
+        status: folderExists ? 'duplicate' : 'success',
+        result: {
+          isDuplicate: folderExists,
+          projectPath: projectPath,
+          rfaVersion: extractRFAVersion(formData.rfaNumber),
+          timestamp: new Date().toISOString(),
+          source: source,
+          checkedFields: currentFields  // Store for outdated detection
+        },
+        timestamp: new Date().toISOString(),
+        canOverride: false
+      }));
+
+      if (folderExists) {
+        console.log(`🚨 ${source} duplicate check: Project folder EXISTS - triggering dialog`);
+        console.log(`📁 Existing folder: ${projectPath}`);
+        
+        // Trigger the duplicate dialog by calling the original function
+        // This will show the dialog with options (Create Revision, Proceed Anyway, Cancel)
+        if (onCheckForDuplicates) {
+          console.log('🚨 Calling onCheckForDuplicates to trigger dialog...');
+          const dialogTriggered = await onCheckForDuplicates(formData);
+          console.log('🚨 Dialog trigger result:', dialogTriggered);
+        }
+      } else {
+        console.log(`✅ ${source} duplicate check: Project folder NOT FOUND - safe to proceed`);
+      }
+      
+    } catch (error) {
+      console.error(`❌ ${source} duplicate check error:`, error);
+      
+      // Set error state with manual override option
+      setDuplicateCheckState(prev => ({
+        ...prev,
+        status: 'error',
+        result: {
+          error: error.message,
+          timestamp: new Date().toISOString(),
+          source: source
+        },
+        timestamp: new Date().toISOString(),
+        canOverride: true
+      }));
+    }
+  };
+
+  // CLEAN: Manual duplicate check handler
+  const handleManualDuplicateCheck = async () => {
+    await performDuplicateCheck('manual');
+  };
+
+  // CLEAN: Manual override handler for failed checks
+  const handleManualOverride = () => {
+    console.log('🚨 User manual override - proceeding despite check failure');
+    setDuplicateCheckState(prev => ({
+      ...prev,
+      status: 'success',
+      canOverride: false,
+      result: {
+        ...prev.result,
+        overridden: true
+      }
+    }));
+  };
+
   const [dropdownOptions, setDropdownOptions] = useState(() => {
     try {
       return dropdownOptionsService ? dropdownOptionsService.getOptions() : {};
@@ -354,6 +625,86 @@ const ProjectWizardStep1 = ({
         setTimeout(() => {
           setImportedFields([]);
         }, 3000);
+        
+        // CLEAN: "-0 version only" duplicate check for Agile import
+        const rfaVersion = extractRFAVersion(updatedFormData.rfaNumber);
+        const isInitialVersion = rfaVersion === "0";
+        
+        if (onCheckForDuplicates && 
+            updatedFormData.projectName && 
+            updatedFormData.projectContainer && 
+            updatedFormData.rfaNumber &&
+            isInitialVersion) {
+          
+          console.log(`🔍 Agile import: RFA version is "-0" - running duplicate check...`);
+          
+          // Mark as Agile import source
+          setDuplicateCheckState(prev => ({
+            ...prev,
+            source: 'agile',
+            showButton: false // No manual button for Agile imports
+          }));
+          
+          // Run duplicate check immediately during import (only for -0 versions)
+          setTimeout(async () => {
+            try {
+              // Set checking state
+              setDuplicateCheckState(prev => ({
+                ...prev,
+                status: 'checking'
+              }));
+
+              // Build project path and check if folder exists
+              const projectPath = buildProjectPath(updatedFormData.projectName, updatedFormData.projectContainer);
+              console.log(`📁 Agile import: Simple folder existence check: ${projectPath}`);
+
+              const folderExists = await window.electronAPI.checkFolderExists(projectPath);
+              
+              // Set result state
+              setDuplicateCheckState(prev => ({
+                ...prev,
+                status: folderExists ? 'duplicate' : 'success',
+                result: {
+                  isDuplicate: folderExists,
+                  projectPath: projectPath,
+                  rfaVersion: rfaVersion,
+                  timestamp: new Date().toISOString(),
+                  source: 'agile'
+                },
+                timestamp: new Date().toISOString()
+              }));
+
+              if (folderExists) {
+                console.log('🚨 Agile import: Project folder EXISTS for "-0" version - triggering dialog');
+                console.log(`📁 Existing folder: ${projectPath}`);
+                
+                // Trigger the duplicate dialog for Agile import
+                if (onCheckForDuplicates) {
+                  console.log('🚨 Agile import: Calling onCheckForDuplicates to trigger dialog...');
+                  const dialogTriggered = await onCheckForDuplicates(updatedFormData);
+                  console.log('🚨 Agile import: Dialog trigger result:', dialogTriggered);
+                }
+              } else {
+                console.log('✅ Agile import: Project folder NOT FOUND for "-0" version - safe to proceed');
+              }
+            } catch (error) {
+              console.error('❌ Agile import duplicate check error:', error);
+              setDuplicateCheckState(prev => ({
+                ...prev,
+                status: 'error',
+                result: {
+                  error: error.message,
+                  timestamp: new Date().toISOString(),
+                  source: 'agile'
+                },
+                timestamp: new Date().toISOString(),
+                canOverride: true
+              }));
+            }
+          }, 100); // Small delay to ensure UI updates complete first
+        } else if (updatedFormData.rfaNumber && !isInitialVersion) {
+          console.log(`✅ Agile import: RFA version is "${rfaVersion}" (not "-0") - no duplicate check needed`);
+        }
         
       } else {
         alert(`❌ Could not parse RFA information from clipboard.\n\n` +
@@ -876,6 +1227,148 @@ const ProjectWizardStep1 = ({
           </div>
         </div>
       </div>
+
+      {/* CLEAN: Simplified Duplicate Check Section */}
+      {duplicateCheckState.showButton && (
+        <div className="duplicate-check-section" style={{
+          background: 'linear-gradient(135deg, #f8f9fa, #e9ecef)',
+          borderBottom: '1px solid #dee2e6',
+          padding: '15px 20px',
+          display: 'flex',
+          justifyContent: 'center',
+        }}>
+          <div className="duplicate-check-container" style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '15px',
+            maxWidth: '800px',
+            width: '100%',
+          }}>
+            <button
+              type="button"
+              onClick={handleManualDuplicateCheck}
+              disabled={duplicateCheckState.status === 'checking' || isDuplicateDetectionRunning}
+              className={`btn duplicate-check-btn ${
+                duplicateCheckState.status === 'success' ? 'btn-success' :
+                duplicateCheckState.status === 'duplicate' ? 'btn-warning' :
+                duplicateCheckState.status === 'error' ? 'btn-danger' :
+                duplicateCheckState.status === 'outdated' ? 'btn-warning' :
+                'btn-outline'
+              }`}
+              title="Check if this project already exists in the system"
+            >
+              {duplicateCheckState.status === 'checking' ? (
+                <>
+                  <span className="spinner"></span>
+                  Checking for duplicates...
+                </>
+              ) : duplicateCheckState.status === 'success' ? (
+                <>
+                  ✅ No Duplicates Found
+                </>
+              ) : duplicateCheckState.status === 'duplicate' ? (
+                <>
+                  ⚠️ Duplicates Found - Click for Details
+                </>
+              ) : duplicateCheckState.status === 'error' ? (
+                <>
+                  ❌ Check Failed - Try Again
+                </>
+              ) : duplicateCheckState.status === 'outdated' ? (
+                <>
+                  ⚠️ Outdated - Check Again
+                </>
+              ) : (
+                <>
+                  🔍 Check for Existing Projects
+                </>
+              )}
+            </button>
+
+            {/* Manual Override Button for Errors */}
+            {duplicateCheckState.status === 'error' && duplicateCheckState.canOverride && (
+              <button
+                type="button"
+                onClick={handleManualOverride}
+                className="btn btn-secondary"
+                title="Continue despite check failure"
+              >
+                Continue Anyway
+              </button>
+            )}
+            
+            {/* Success Message */}
+            {duplicateCheckState.status === 'success' && (
+              <div className="duplicate-check-success">
+                <span className="success-icon">✅</span>
+                <span className="success-text">
+                  {duplicateCheckState.result?.overridden 
+                    ? 'Proceeding with manual override' 
+                    : 'Safe to proceed - no existing projects found'}
+                </span>
+              </div>
+            )}
+
+            {/* Outdated Warning */}
+            {duplicateCheckState.status === 'outdated' && (
+              <div className="duplicate-check-warning" style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                color: '#856404',
+                fontSize: '14px',
+                fontWeight: '500',
+                padding: '8px 12px',
+                backgroundColor: '#fff3cd',
+                borderRadius: '4px',
+                border: '1px solid #ffeaa7'
+              }}>
+                <span>⚠️ Project details changed - check for duplicates again</span>
+              </div>
+            )}
+
+            {/* Project Container Format Validation */}
+            {formData.projectContainer && !isValidProjectContainer(formData.projectContainer) && (
+              <div className="format-validation-warning" style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                color: '#721c24',
+                fontSize: '14px',
+                fontWeight: '500',
+                padding: '8px 12px',
+                backgroundColor: '#f8d7da',
+                borderRadius: '4px',
+                border: '1px solid #f5c6cb'
+              }}>
+                <span>❌ Invalid project container format. Expected: ##-##### (e.g., "24-61726")</span>
+              </div>
+            )}
+
+            {/* RFA Version Information */}
+            {formData.rfaNumber && (
+              <div className="rfa-version-info" style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                color: extractRFAVersion(formData.rfaNumber) === "0" ? '#0c5460' : '#856404',
+                fontSize: '14px',
+                fontWeight: '500',
+                padding: '8px 12px',
+                backgroundColor: extractRFAVersion(formData.rfaNumber) === "0" ? '#d1ecf1' : '#fff3cd',
+                borderRadius: '4px',
+                border: extractRFAVersion(formData.rfaNumber) === "0" ? '1px solid #b8daff' : '1px solid #ffeaa7'
+              }}>
+                {extractRFAVersion(formData.rfaNumber) === "0" ? (
+                  <span>🆕 Initial RFA version (-0) - will check for existing project</span>
+                ) : (
+                  <span>🔄 Revision RFA version (-{extractRFAVersion(formData.rfaNumber)}) - no duplicate check needed</span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="wizard-content">
         <div className="wizard-step-content">

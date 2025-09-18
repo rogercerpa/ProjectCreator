@@ -12,6 +12,7 @@ const WordService = require('./src/services/WordService');
 const FileService = require('./src/services/FileService');
 const ProjectPersistenceService = require('./src/services/ProjectPersistenceService');
 const ProjectCreationService = require('./src/services/ProjectCreationService');
+const DuplicateProjectDetectionService = require('./src/services/DuplicateProjectDetectionService');
 const FormSettingsService = require('./src/services/FormSettingsService');
 const SecurityLoggingService = require('./src/services/SecurityLoggingService');
 const AgencyService = require('./src/services/AgencyService');
@@ -31,6 +32,7 @@ const wordService = new WordService();
 const fileService = new FileService();
 const projectPersistenceService = new ProjectPersistenceService();
 const projectCreationService = new ProjectCreationService();
+const duplicateProjectDetectionService = new DuplicateProjectDetectionService();
 const formSettingsService = new FormSettingsService();
 const securityLoggingService = new SecurityLoggingService();
 const agencyService = new AgencyService();
@@ -550,6 +552,30 @@ ipcMain.handle('revision-find-previous', async (event, projectData) => {
     return await projectCreationService.findPreviousRevision(projectData);
   } catch (error) {
     return { success: false, error: error.message };
+  }
+});
+
+// Check for duplicate projects
+ipcMain.handle('duplicate-check-project', async (event, projectData) => {
+  try {
+    console.log('Duplicate detection request received for:', projectData.projectName);
+    return await duplicateProjectDetectionService.checkForExistingProject(projectData);
+  } catch (error) {
+    console.error('Duplicate detection error:', error);
+    return { isDuplicate: false, canProceed: true, error: error.message };
+  }
+});
+
+// Simple folder existence check for -0 version duplicate detection
+ipcMain.handle('check-folder-exists', async (event, folderPath) => {
+  try {
+    console.log('Checking folder existence:', folderPath);
+    const exists = await fs.pathExists(folderPath);
+    console.log(`Folder ${exists ? 'EXISTS' : 'NOT FOUND'}:`, folderPath);
+    return exists;
+  } catch (error) {
+    console.error('Error checking folder existence:', error);
+    return false;
   }
 });
 

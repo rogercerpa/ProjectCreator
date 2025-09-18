@@ -63,6 +63,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   revisionHandleFolderMismatch: (selectedPath, expectedPath) => ipcRenderer.invoke('revision-handle-folder-mismatch', selectedPath, expectedPath),
   revisionRenameFolder: (oldPath, newPath) => ipcRenderer.invoke('revision-rename-folder', oldPath, newPath),
   revisionSelectFolder: (startingPath) => ipcRenderer.invoke('revision-select-folder', startingPath),
+  
+  // Duplicate project detection
+  duplicateCheckProject: (projectData) => ipcRenderer.invoke('duplicate-check-project', projectData),
+  
+  // Simple folder existence check
+  checkFolderExists: (folderPath) => ipcRenderer.invoke('check-folder-exists', folderPath),
 
   // Progress tracking events
   onRevisionProgress: (callback) => {

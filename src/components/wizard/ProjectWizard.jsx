@@ -8,6 +8,8 @@ import ProjectWizardStep1 from './steps/ProjectWizardStep1';
 import ProjectWizardStep2 from './steps/ProjectWizardStep2';
 import RevisionProgressModal, { useRevisionProgress } from './components/RevisionProgressModal';
 import ErrorDialog, { useErrorDialog } from './components/ErrorDialog';
+import DuplicateProjectDialog from './components/DuplicateProjectDialog';
+import DuplicateProjectDetectionClient from '../../services/DuplicateProjectDetectionClient';
 import performanceMonitoringService from '../../services/SimplePerformanceMonitoringService';
 import './ProjectWizard.css';
 
@@ -54,6 +56,17 @@ const ProjectWizard = ({
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [lastDraftSave, setLastDraftSave] = useState(null);
   const [currentDraftId, setCurrentDraftId] = useState(null);
+
+  // Duplicate detection state
+  const [duplicateDetectionService] = useState(() => new DuplicateProjectDetectionClient());
+  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
+  const [duplicateWarningData, setDuplicateWarningData] = useState(null);
+  const [isDuplicateDetectionRunning, setIsDuplicateDetectionRunning] = useState(false);
+  const [duplicateCheckState, setDuplicateCheckState] = useState({
+    completed: false,
+    result: null,
+    canCheck: false
+  });
 
   // Revision progress tracking
   const revisionProgress = useRevisionProgress();
@@ -138,6 +151,81 @@ const ProjectWizard = ({
     
   }, [wizard, projectDraft, onWizardReset]);
 
+  // Duplicate detection function
+  const checkForDuplicateProject = useCallback(async (projectData) => {
+    try {
+      console.log('🔍 Running duplicate project detection...');
+      setIsDuplicateDetectionRunning(true);
+      
+      const detectionResult = await duplicateDetectionService.checkForExistingProject(projectData);
+      
+      if (detectionResult.isDuplicate) {
+        console.log('🚨 Duplicate project detected:', detectionResult);
+        const uiData = duplicateDetectionService.formatForUI(detectionResult);
+        setDuplicateWarningData(uiData.warningData);
+        setShowDuplicateDialog(true);
+        return true; // Indicates duplicate found - should block normal flow
+      } else {
+        console.log('✅ No duplicates found - safe to proceed');
+        return false; // No duplicates - can proceed
+      }
+    } catch (error) {
+      console.error('❌ Duplicate detection failed:', error);
+      // On error, allow proceeding with warning
+      return false;
+    } finally {
+      setIsDuplicateDetectionRunning(false);
+    }
+  }, [duplicateDetectionService]);
+
+  // Handle duplicate dialog actions
+  const handleDuplicateCreateRevision = useCallback(async (warningData) => {
+    console.log('🔄 Creating revision from duplicate detection');
+    
+    // Close duplicate dialog
+    setShowDuplicateDialog(false);
+    setDuplicateWarningData(null);
+    
+    // Update form data to revision mode
+    const revisionFormData = {
+      ...formData,
+      isRevision: true,
+      previousRevisionPath: warningData.latestRFA.path
+    };
+    
+    onFormDataChange(revisionFormData);
+    
+    // Navigate or stay on current step (revision workflow will handle the rest)
+    console.log('Revision mode activated from duplicate detection');
+  }, [formData, onFormDataChange]);
+
+  const handleDuplicateProceedAnyway = useCallback(() => {
+    console.log('⚠️ User chose to proceed with new project despite duplicate');
+    setShowDuplicateDialog(false);
+    setDuplicateWarningData(null);
+    // Continue with normal new project flow
+  }, []);
+
+  const handleDuplicateCancel = useCallback(() => {
+    console.log('❌ User cancelled project creation due to duplicate - clearing form data');
+    setShowDuplicateDialog(false);
+    setDuplicateWarningData(null);
+    
+    // Clear the form data so agent can resubmit
+    resetWizardState();
+    
+    // Show confirmation message
+    setNotification({
+      type: 'info',
+      message: 'Project form cleared. Agent can now resubmit the request.'
+    });
+  }, [resetWizardState]);
+
+  // Handle duplicate check state changes from Step1
+  const handleDuplicateCheckStateChange = useCallback((state) => {
+    setDuplicateCheckState(state);
+  }, []);
+
   // Auto-scroll to top when step changes
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -189,6 +277,40 @@ const ProjectWizard = ({
       // Special handling for Step 1 - Create partial project and folders
       if (wizard.currentStep === 1) {
         operationContext = 'step1-completion';
+        
+        // DUPLICATE DETECTION: Check if duplicate check is needed (only if user bypassed auto-check)
+        if (duplicateCheckState.canCheck && !duplicateCheckState.completed) {
+          console.log('🔍 Final duplicate check before Step 2 (user bypassed auto-check)...');
+          operationContext = 'duplicate-check';
+          
+          try {
+            setNotification({
+              type: 'info',
+              message: 'Final duplicate check before proceeding...'
+            });
+            
+            const isDuplicate = await checkForDuplicateProject(formData);
+            
+            if (isDuplicate) {
+              console.log('🚨 Final check found duplicate - blocking Step 2 navigation');
+              setNotification({
+                type: 'warning',
+                message: 'Duplicate project detected - please review the options in the dialog'
+              });
+              return; // Stop navigation, duplicate dialog is showing
+            } else {
+              console.log('✅ Final check passed - safe to proceed to Step 2');
+            }
+          } catch (error) {
+            console.error('❌ Final check failed:', error);
+            // Continue anyway on error (non-blocking)
+            setNotification({
+              type: 'warning',
+              message: 'Duplicate check failed, but proceeding anyway'
+            });
+          }
+        }
+        
         try {
           // Inline step 1 completion logic to avoid circular dependencies
           setNotification({
@@ -292,24 +414,24 @@ const ProjectWizard = ({
               // Standard new project creation
               console.log('ProjectWizard: Creating new project');
               
-              const folderCreationResult = await window.electronAPI.projectCreateWithFolders(formData);
-              
-              if (!folderCreationResult.success) {
-                throw new Error(`Failed to create project folder: ${folderCreationResult.error}`);
-              }
-              
-              // Store folder paths in formData for later use
-              onFormDataChange({
-                ...formData,
-                projectPath: folderCreationResult.projectPath,
-                rfaPath: folderCreationResult.rfaPath,
-                agentFilesPath: folderCreationResult.agentFilesPath
-              });
+            const folderCreationResult = await window.electronAPI.projectCreateWithFolders(formData);
+            
+            if (!folderCreationResult.success) {
+              throw new Error(`Failed to create project folder: ${folderCreationResult.error}`);
+            }
+            
+            // Store folder paths in formData for later use
+            onFormDataChange({
+              ...formData,
+              projectPath: folderCreationResult.projectPath,
+              rfaPath: folderCreationResult.rfaPath,
+              agentFilesPath: folderCreationResult.agentFilesPath
+            });
 
-              setNotification({
-                type: 'success',
-                message: '✅ Project basics saved and folders created! Ready for triage calculation.'
-              });
+            setNotification({
+              type: 'success',
+              message: '✅ Project basics saved and folders created! Ready for triage calculation.'
+            });
             }
           } else {
             setNotification({
@@ -676,6 +798,9 @@ const ProjectWizard = ({
               wizard.setStepValidation(1, isValid, errors);
             }}
             onWizardReset={resetWizardState}
+            onCheckForDuplicates={checkForDuplicateProject}
+            isDuplicateDetectionRunning={isDuplicateDetectionRunning}
+            onDuplicateCheckStateChange={handleDuplicateCheckStateChange}
           />
         );
       
@@ -856,6 +981,15 @@ const ProjectWizard = ({
         showRetry={errorState.showRetry}
         onClose={closeErrorDialog}
         onRetry={errorState.onRetry}
+      />
+
+      {/* Duplicate Project Warning Dialog */}
+      <DuplicateProjectDialog
+        isOpen={showDuplicateDialog}
+        warningData={duplicateWarningData}
+        onCreateRevision={handleDuplicateCreateRevision}
+        onProceedAnyway={handleDuplicateProceedAnyway}
+        onCancel={handleDuplicateCancel}
       />
     </div>
   );
