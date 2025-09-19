@@ -3,6 +3,10 @@ import ProjectDetails from './ProjectDetails';
 import ProjectEditor from './ProjectEditor';
 import './ProjectManagement.css';
 
+// Import services (will be available through electronAPI in production)
+// const ZipService = require('../services/ZipService');
+// const SharePointUploadService = require('../services/SharePointUploadService');
+
 /**
  * ProjectManagement - Main project management interface
  * Handles viewing, editing, and managing individual projects after creation
@@ -19,14 +23,57 @@ const ProjectManagement = ({
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [notification, setNotification] = useState(null);
+  
+  // SharePoint upload state
+  const [uploadStatus, setUploadStatus] = useState({
+    isUploading: false,
+    isUploaded: projectData.sharePointStatus?.isUploaded || false,
+    lastUploadDate: projectData.sharePointStatus?.lastUploadDate || null,
+    sharePointUrl: projectData.sharePointStatus?.sharePointUrl || null,
+    progress: 0,
+    phase: null,
+    error: null
+  });
 
   // Update project data when prop changes
   useEffect(() => {
     if (project) {
       setProjectData(project);
       setHasUnsavedChanges(false);
+      // Update upload status from project data
+      if (project.sharePointStatus) {
+        setUploadStatus(prev => ({
+          ...prev,
+          isUploaded: project.sharePointStatus.isUploaded || false,
+          lastUploadDate: project.sharePointStatus.lastUploadDate || null,
+          sharePointUrl: project.sharePointStatus.sharePointUrl || null
+        }));
+      }
     }
   }, [project]);
+
+  // Listen for SharePoint upload progress (production)
+  useEffect(() => {
+    if (window.electronAPI && window.electronAPI.onSharePointUploadProgress) {
+      const handleProgress = (progressData) => {
+        setUploadStatus(prev => ({
+          ...prev,
+          progress: progressData.progress || 0,
+          phase: progressData.phase || prev.phase,
+          message: progressData.message || ''
+        }));
+      };
+
+      window.electronAPI.onSharePointUploadProgress(handleProgress);
+
+      // Cleanup listener on unmount
+      return () => {
+        if (window.electronAPI.removeSharePointUploadProgressListener) {
+          window.electronAPI.removeSharePointUploadProgressListener(handleProgress);
+        }
+      };
+    }
+  }, []);
 
   // Handle project data changes in edit mode
   const handleProjectDataChange = (newData) => {
@@ -84,6 +131,166 @@ const ProjectManagement = ({
   // Switch to edit mode
   const handleEdit = () => {
     setCurrentMode('edit');
+  };
+
+  // Handle SharePoint upload
+  const handleUploadToSharePoint = async () => {
+    try {
+      console.log('Starting SharePoint upload for project:', projectData.projectName);
+      
+      // Reset upload status
+      setUploadStatus({
+        isUploading: true,
+        isUploaded: false,
+        progress: 0,
+        phase: 'initializing',
+        error: null,
+        lastUploadDate: null,
+        sharePointUrl: null
+      });
+
+      // Check if project has a folder path
+      if (!projectData.projectPath && !projectData.projectFolder) {
+        throw new Error('Project folder path not found. Please ensure the project was created with folder structure.');
+      }
+
+      const projectPath = projectData.projectPath || projectData.projectFolder;
+
+      // Progress callback function
+      const progressCallback = (progressData) => {
+        setUploadStatus(prev => ({
+          ...prev,
+          progress: progressData.progress || 0,
+          phase: progressData.phase || prev.phase,
+          message: progressData.message || ''
+        }));
+      };
+
+      // Use electronAPI for production, mock for development
+      if (window.electronAPI && window.electronAPI.sharePointBrowserUpload) {
+        // Production: Call electron main process for browser automation upload
+        const result = await window.electronAPI.sharePointBrowserUpload({
+          projectPath,
+          projectData,
+          settings: {
+            enabled: true,
+            sharePointUrl: 'https://acuitybrandsinc.sharepoint.com/:f:/r/sites/CIDesignSolutions/Shared%20Documents/LnT?csf=1&web=1&e=kjeeMl'
+          }
+        });
+
+        if (result.success) {
+          const uploadData = {
+            isUploading: false,
+            isUploaded: true,
+            lastUploadDate: new Date().toISOString(),
+            sharePointUrl: result.sharePointUrl,
+            progress: 100,
+            phase: 'complete'
+          };
+
+          setUploadStatus(prev => ({ ...prev, ...uploadData }));
+
+          // Save upload status to project data
+          const updatedProjectData = {
+            ...projectData,
+            sharePointStatus: uploadData,
+            updatedAt: new Date().toISOString()
+          };
+
+          setProjectData(updatedProjectData);
+
+          // Call parent update handler to persist the upload status
+          if (onProjectUpdated) {
+            await onProjectUpdated(updatedProjectData);
+          }
+
+          // Show success notification
+          setNotification({
+            type: 'success',
+            message: 'Project uploaded to SharePoint successfully!'
+          });
+          setTimeout(() => setNotification(null), 5000);
+
+        } else {
+          throw new Error(result.error || 'Upload failed');
+        }
+
+      } else {
+        // Development mode: Simulate browser automation upload
+        console.log('Development mode: Simulating browser automation upload');
+        
+        // Simulate zip creation
+        progressCallback({ phase: 'zipping', progress: 10, message: 'Creating zip archive...' });
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        progressCallback({ phase: 'zipping', progress: 30, message: 'Compressing project files...' });
+        await new Promise(resolve => setTimeout(resolve, 800));
+
+        // Simulate browser launch
+        progressCallback({ phase: 'browser', progress: 50, message: 'Launching browser...' });
+        await new Promise(resolve => setTimeout(resolve, 1200));
+
+        progressCallback({ phase: 'browser', progress: 60, message: 'Navigating to SharePoint...' });
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Simulate upload process
+        progressCallback({ phase: 'uploading', progress: 75, message: 'Uploading file to SharePoint...' });
+        await new Promise(resolve => setTimeout(resolve, 1500));
+
+        progressCallback({ phase: 'uploading', progress: 95, message: 'Finalizing upload...' });
+        await new Promise(resolve => setTimeout(resolve, 800));
+
+        // Simulate success
+        const simulatedFileName = `${projectData.projectName || 'Project'}_${projectData.rfaNumber || 'RFA'}_${new Date().toISOString().split('T')[0]}.zip`;
+        
+        const uploadData = {
+          isUploading: false,
+          isUploaded: true,
+          lastUploadDate: new Date().toISOString(),
+          sharePointUrl: `https://acuitybrandsinc.sharepoint.com/sites/CIDesignSolutions/Shared%20Documents/LnT/${simulatedFileName}`,
+          progress: 100,
+          phase: 'complete'
+        };
+
+        setUploadStatus(prev => ({ ...prev, ...uploadData }));
+
+        // Save upload status to project data
+        const updatedProjectData = {
+          ...projectData,
+          sharePointStatus: uploadData,
+          updatedAt: new Date().toISOString()
+        };
+
+        setProjectData(updatedProjectData);
+
+        // Call parent update handler to persist the upload status
+        if (onProjectUpdated) {
+          await onProjectUpdated(updatedProjectData);
+        }
+
+        setNotification({
+          type: 'success',
+          message: 'Browser automation upload simulated successfully! (Real upload available in production)'
+        });
+        setTimeout(() => setNotification(null), 5000);
+      }
+
+    } catch (error) {
+      console.error('SharePoint upload failed:', error);
+      
+      setUploadStatus(prev => ({
+        ...prev,
+        isUploading: false,
+        error: error.message,
+        phase: 'error'
+      }));
+
+      setNotification({
+        type: 'error',
+        message: `Upload failed: ${error.message}`
+      });
+      setTimeout(() => setNotification(null), 8000);
+    }
   };
 
   console.log('🎯 ProjectManagement: Component rendered');
@@ -158,7 +365,33 @@ const ProjectManagement = ({
                   </button>
                 </div>
               )}
-              {/* Additional action buttons can be added here */}
+              
+              {/* SharePoint Upload Button */}
+              {currentMode === 'view' && (
+                <button
+                  onClick={handleUploadToSharePoint}
+                  className={`btn btn-sharepoint ${uploadStatus.isUploaded ? 'btn-uploaded' : ''}`}
+                  disabled={uploadStatus.isUploading || uploadStatus.isUploaded}
+                  title={uploadStatus.isUploaded ? `Uploaded on ${new Date(uploadStatus.lastUploadDate).toLocaleString()}` : 'Upload project to SharePoint'}
+                >
+                  {uploadStatus.isUploading ? (
+                    <>
+                      <span className="upload-spinner">⏳</span>
+                      {uploadStatus.phase === 'zipping' ? 'Zipping...' : 'Uploading...'}
+                    </>
+                  ) : uploadStatus.isUploaded ? (
+                    <>
+                      <span className="upload-success">✅</span>
+                      Uploaded
+                    </>
+                  ) : (
+                    <>
+                      <span className="upload-icon">📤</span>
+                      Upload to SharePoint
+                    </>
+                  )}
+                </button>
+              )}
             </div>
             
             {/* Overflow Menu for Additional Buttons (if needed) */}
@@ -178,6 +411,41 @@ const ProjectManagement = ({
       {hasUnsavedChanges && (
         <div className="unsaved-changes-banner">
           <span>⚠️ You have unsaved changes</span>
+        </div>
+      )}
+
+      {/* SharePoint Upload Progress Modal */}
+      {uploadStatus.isUploading && (
+        <div className="upload-progress-modal">
+          <div className="upload-progress-content">
+            <h3>Uploading to SharePoint</h3>
+            <div className="progress-info">
+              <div className="progress-bar">
+                <div 
+                  className="progress-fill" 
+                  style={{ width: `${uploadStatus.progress}%` }}
+                />
+              </div>
+              <div className="progress-text">
+                <span className="progress-percentage">{uploadStatus.progress}%</span>
+                <span className="progress-message">{uploadStatus.message}</span>
+              </div>
+            </div>
+            <div className="progress-phase">
+              {uploadStatus.phase === 'zipping' && (
+                <span>📦 Compressing project files...</span>
+              )}
+              {uploadStatus.phase === 'browser' && (
+                <span>🌐 Opening SharePoint in browser...</span>
+              )}
+              {uploadStatus.phase === 'uploading' && (
+                <span>☁️ Uploading to SharePoint...</span>
+              )}
+              {uploadStatus.phase === 'complete' && (
+                <span>✅ Upload completed!</span>
+              )}
+            </div>
+          </div>
         </div>
       )}
 

@@ -46,6 +46,14 @@ function Settings({ initialTab = 'app-info' }) {
         customPath: '{userHome}\\Desktop',
         triagePath: '{userHome}\\Desktop\\1) Triage'
       }
+    },
+    sharePointSettings: {
+      enabled: false,
+      sharePointUrl: 'https://acuitybrandsinc.sharepoint.com/:f:/r/sites/CIDesignSolutions/Shared%20Documents/LnT?csf=1&web=1&e=zjcs2I',
+      uploadOptions: {
+        overwriteExisting: true,
+        zipNaming: '{projectName}_{rfaNumber}_{date}.zip'
+      }
     }
   });
 
@@ -1237,6 +1245,170 @@ function Settings({ initialTab = 'app-info' }) {
                 </div>
               </div>
             </div>
+
+            {/* SharePoint Integration Section */}
+            <div className="sharepoint-section">
+              <h2>SharePoint Integration</h2>
+              <p className="section-description">Configure SharePoint upload settings for automated project deployment.</p>
+              
+              <div className="sharepoint-settings">
+                {/* Enable SharePoint */}
+                <div className="setting-group">
+                  <h3>🔗 SharePoint Upload</h3>
+                  <p className="group-description">Enable automatic project upload to SharePoint</p>
+                  
+                  <div className="setting-row">
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={settings.sharePointSettings.enabled}
+                        onChange={(e) => setSettings(prev => ({
+                          ...prev,
+                          sharePointSettings: {
+                            ...prev.sharePointSettings,
+                            enabled: e.target.checked
+                          }
+                        }))}
+                      />
+                      Enable SharePoint Integration
+                    </label>
+                  </div>
+                </div>
+
+                {/* SharePoint URL Configuration */}
+                <div className="setting-group">
+                  <h3>📁 SharePoint Location</h3>
+                  <p className="group-description">Configure where project files will be uploaded</p>
+                  
+                  <div className="setting-row">
+                    <label>SharePoint Folder URL:</label>
+                    <div className="path-input-group">
+                      <input
+                        type="text"
+                        value={settings.sharePointSettings.sharePointUrl}
+                        onChange={(e) => setSettings(prev => ({
+                          ...prev,
+                          sharePointSettings: {
+                            ...prev.sharePointSettings,
+                            sharePointUrl: e.target.value
+                          }
+                        }))}
+                        placeholder="https://acuitybrandsinc.sharepoint.com/:f:/r/sites/..."
+                        className="path-input"
+                        disabled={!settings.sharePointSettings.enabled}
+                      />
+                      <button 
+                        type="button" 
+                        className="btn btn-secondary btn-sm"
+                        onClick={async () => {
+                          if (electronAPI && electronAPI.testSharePointAccess) {
+                            const result = await electronAPI.testSharePointAccess(settings.sharePointSettings.sharePointUrl);
+                            if (result.success) {
+                              alert(`✅ Access Test Successful!\n\nMethod: ${result.method}\nPath: ${result.path || 'Web API'}\n\n${result.message}`);
+                            } else {
+                              alert(`❌ Access Test Failed!\n\n${result.error}\n\nPlease check if OneDrive is syncing your SharePoint library.`);
+                            }
+                          } else {
+                            alert('✅ Connection test will be available in production.\n\nThe app will automatically detect:\n- OneDrive sync folders\n- Web API access');
+                          }
+                        }}
+                        title="Test SharePoint access"
+                        disabled={!settings.sharePointSettings.enabled}
+                      >
+                        🔍
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Upload Options */}
+                <div className="setting-group">
+                  <h3>⚙️ Upload Options</h3>
+                  <p className="group-description">Configure how projects are uploaded</p>
+                  
+                  <div className="setting-row">
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={settings.sharePointSettings.uploadOptions.overwriteExisting}
+                        onChange={(e) => setSettings(prev => ({
+                          ...prev,
+                          sharePointSettings: {
+                            ...prev.sharePointSettings,
+                            uploadOptions: {
+                              ...prev.sharePointSettings.uploadOptions,
+                              overwriteExisting: e.target.checked
+                            }
+                          }
+                        }))}
+                        disabled={!settings.sharePointSettings.enabled}
+                      />
+                      Automatically overwrite existing files
+                    </label>
+                  </div>
+
+                  <div className="setting-row">
+                    <label>Zip File Naming:</label>
+                    <input
+                      type="text"
+                      value={settings.sharePointSettings.uploadOptions.zipNaming}
+                      onChange={(e) => setSettings(prev => ({
+                        ...prev,
+                        sharePointSettings: {
+                          ...prev.sharePointSettings,
+                          uploadOptions: {
+                            ...prev.sharePointSettings.uploadOptions,
+                            zipNaming: e.target.value
+                          }
+                        }
+                      }))}
+                      placeholder="{projectName}_{rfaNumber}_{date}.zip"
+                      className="path-input"
+                      disabled={!settings.sharePointSettings.enabled}
+                    />
+                    <small className="setting-hint">
+                      Available variables: {'{projectName}'}, {'{rfaNumber}'}, {'{date}'}, {'{time}'}
+                    </small>
+                  </div>
+                </div>
+
+                {/* Access Methods Info */}
+                <div className="setting-group">
+                  <h3>🔒 Upload Methods</h3>
+                  <p className="group-description">The app automatically detects the best upload method available</p>
+                  
+                  <div className="access-info">
+                    <div className="info-item">
+                      <span className="info-icon">⭐</span>
+                      <div className="info-content">
+                        <strong>Method 1: OneDrive Sync (Recommended)</strong>
+                        <p>If you have OneDrive syncing the SharePoint library to your computer, files will be copied to the local sync folder and automatically uploaded to SharePoint.</p>
+                        <small>Setup: Go to SharePoint → Sync to sync the library to your computer</small>
+                      </div>
+                    </div>
+                    
+                    <div className="info-item">
+                      <span className="info-icon">🌐</span>
+                      <div className="info-content">
+                        <strong>Method 2: Web Upload (Fallback)</strong>
+                        <p>If OneDrive sync is not available, the app can upload directly to SharePoint using web APIs.</p>
+                        <small>Setup: Requires Microsoft 365 authentication (IT assistance may be needed)</small>
+                      </div>
+                    </div>
+                    
+                    <div className="info-item">
+                      <span className="info-icon">🔍</span>
+                      <div className="info-content">
+                        <strong>Automatic Detection</strong>
+                        <p>Use the test button above to check which upload method is available on your computer.</p>
+                        <small>The app will use the most reliable method automatically</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         );
 
@@ -1988,6 +2160,14 @@ function Settings({ initialTab = 'app-info' }) {
                   defaultLocation: 'desktop',
                   customPath: '{userHome}\\Desktop',
                   triagePath: '{userHome}\\Desktop\\1) Triage'
+                }
+              },
+              sharePointSettings: {
+                enabled: false,
+                sharePointUrl: 'https://acuitybrandsinc.sharepoint.com/:f:/r/sites/CIDesignSolutions/Shared%20Documents/LnT?csf=1&web=1&e=zjcs2I',
+                uploadOptions: {
+                  overwriteExisting: true,
+                  zipNaming: '{projectName}_{rfaNumber}_{date}.zip'
                 }
               }
             };

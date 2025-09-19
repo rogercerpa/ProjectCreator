@@ -127,6 +127,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onNewProject: (callback) => ipcRenderer.on('new-project', callback),
   onOpenProject: (callback) => ipcRenderer.on('open-project', callback),
   
+  // SharePoint upload
+  sharePointBrowserUpload: (data) => ipcRenderer.invoke('sharePointBrowserUpload', data),
+  testSharePointAccess: (url) => ipcRenderer.invoke('testSharePointAccess', url),
+  onSharePointUploadProgress: (callback) => ipcRenderer.on('sharePointUploadProgress', (event, data) => callback(data)),
+  removeSharePointUploadProgressListener: (callback) => ipcRenderer.removeListener('sharePointUploadProgress', callback),
+  
   // Remove listeners
   removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel)
 });
