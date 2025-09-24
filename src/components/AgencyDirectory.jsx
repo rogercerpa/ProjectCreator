@@ -22,6 +22,8 @@ function AgencyDirectory() {
     const savedViewMode = localStorage.getItem('agencyDirectoryViewMode');
     return savedViewMode || 'table';
   });
+  const [expandedAgencies, setExpandedAgencies] = useState(new Set());
+  const [groupedAgencies, setGroupedAgencies] = useState({});
 
   // Load agencies and filter options
   const loadAgencies = useCallback(async () => {
@@ -97,6 +99,17 @@ function AgencyDirectory() {
     searchAgencies();
   }, [searchAgencies]);
 
+  // Update grouped agencies whenever filtered agencies change
+  useEffect(() => {
+    try {
+      const grouped = groupAgenciesByName(filteredAgencies);
+      setGroupedAgencies(grouped);
+    } catch (error) {
+      console.error('Error grouping agencies:', error);
+      setGroupedAgencies({});
+    }
+  }, [filteredAgencies]);
+
   // Handle filter changes
   const handleFilterChange = (filterType, value) => {
     setFilters(prev => ({
@@ -118,6 +131,75 @@ function AgencyDirectory() {
       region: 'all',
       role: 'all'
     });
+  };
+
+  // Group agencies by agency name
+  const groupAgenciesByName = (agencies) => {
+    const grouped = {};
+    
+    agencies.forEach(agency => {
+      const agencyName = agency.agencyName || 'Unknown Agency';
+      
+      if (!grouped[agencyName]) {
+        grouped[agencyName] = {
+          agencyName,
+          agencyNumber: agency.agencyNumber,
+          region: agency.region,
+          totalAgents: 0,
+          agents: [],
+          // Aggregate info for the group
+          hasEmailContacts: false,
+          regions: new Set(),
+          roles: new Set()
+        };
+      }
+      
+      grouped[agencyName].agents.push(agency);
+      grouped[agencyName].totalAgents++;
+      
+      if (agency.contactEmail) {
+        grouped[agencyName].hasEmailContacts = true;
+      }
+      
+      if (agency.region) {
+        grouped[agencyName].regions.add(agency.region);
+      }
+      
+      if (agency.role) {
+        grouped[agencyName].roles.add(agency.role);
+      }
+    });
+    
+    // Convert Sets to Arrays for easier use
+    Object.values(grouped).forEach(group => {
+      group.regions = Array.from(group.regions);
+      group.roles = Array.from(group.roles);
+    });
+    
+    return grouped;
+  };
+
+  // Toggle agency expansion
+  const toggleAgencyExpansion = (agencyName) => {
+    setExpandedAgencies(prev => {
+      const newExpanded = new Set(prev);
+      if (newExpanded.has(agencyName)) {
+        newExpanded.delete(agencyName);
+      } else {
+        newExpanded.add(agencyName);
+      }
+      return newExpanded;
+    });
+  };
+
+  // Handle agency group email
+  const handleAgencyGroupEmail = async (agencyGroup) => {
+    const emails = agencyGroup.agents
+      .map(agent => agent.contactEmail)
+      .filter(email => email && email.trim() !== '');
+    
+    const subject = `${agencyGroup.agencyName} - Contact (${emails.length} ${emails.length === 1 ? 'Contact' : 'Contacts'})`;
+    await openOutlookWithEmails(emails, subject);
   };
 
   // Email utility functions
@@ -227,6 +309,104 @@ function AgencyDirectory() {
       </div>
     </div>
   );
+
+  // Render individual agent within a group
+  const renderAgentCard = (agent) => (
+    <div key={agent.id} className="agent-card" onClick={() => setSelectedAgency(agent)}>
+      <div className="agent-info">
+        <div className="agent-name">{agent.contactName}</div>
+        <div className="agent-role">{agent.role}</div>
+        {agent.mainContact && (
+          <div className="agent-main-contact">Main: {agent.mainContact}</div>
+        )}
+      </div>
+      
+      <div className="agent-contact">
+        <div className="agent-phone">
+          {agent.phoneNumber && (
+            <a href={`tel:${agent.phoneNumber}`} onClick={(e) => e.stopPropagation()}>
+              {formatPhoneNumber(agent.phoneNumber)}
+            </a>
+          )}
+        </div>
+        <div className="agent-email">
+          {agent.contactEmail && (
+            <div className="agent-email-container">
+              <span className="email-text">{agent.contactEmail}</span>
+              <button
+                className="btn btn-sm email-agent-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleIndividualEmail(agent);
+                }}
+                title={`Email ${agent.contactName}`}
+              >
+                ✉️
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  // Render agency group with expandable agents
+  const renderAgencyGroup = (agencyGroup) => {
+    if (!agencyGroup || !agencyGroup.agencyName) {
+      return null;
+    }
+    
+    const isExpanded = expandedAgencies.has(agencyGroup.agencyName);
+    
+    return (
+      <div key={agencyGroup.agencyName} className="agency-group">
+        <div className="agency-group-header">
+          <div className="agency-group-info">
+            <button
+              className="expand-toggle"
+              onClick={() => toggleAgencyExpansion(agencyGroup.agencyName)}
+              title={isExpanded ? 'Collapse agency' : 'Expand agency'}
+            >
+              {isExpanded ? '📂' : '📁'}
+            </button>
+            
+            <div className="agency-group-details">
+              <h3 className="agency-group-name">{agencyGroup.agencyName}</h3>
+              <div className="agency-group-meta">
+                <span className="agent-count">
+                  {agencyGroup.totalAgents} {agencyGroup.totalAgents === 1 ? 'Agent' : 'Agents'}
+                </span>
+                {agencyGroup.regions.length > 0 && (
+                  <span className="agency-regions">
+                    {agencyGroup.regions.join(', ')}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+          
+          <div className="agency-group-actions">
+            {agencyGroup.hasEmailContacts && (
+              <button
+                className="btn btn-sm email-agency-group-btn"
+                onClick={() => handleAgencyGroupEmail(agencyGroup)}
+                title={`Email all ${agencyGroup.totalAgents} contacts in ${agencyGroup.agencyName}`}
+              >
+                <span className="btn-icon">✉️</span>
+                <span className="btn-text">Email All ({agencyGroup.totalAgents})</span>
+              </button>
+            )}
+          </div>
+        </div>
+        
+        {isExpanded && (
+          <div className="agency-agents">
+            {(agencyGroup.agents || []).map(renderAgentCard)}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   // Render agency details modal
   const renderAgencyModal = () => {
@@ -467,6 +647,14 @@ function AgencyDirectory() {
                   <span className="toggle-icon">📋</span>
                   <span className="toggle-text">Table</span>
                 </button>
+                <button
+                  onClick={() => handleViewModeChange('grouped')}
+                  className={`toggle-btn ${viewMode === 'grouped' ? 'active' : ''}`}
+                  title="Grouped by Agency"
+                >
+                  <span className="toggle-icon">🏢</span>
+                  <span className="toggle-text">Grouped</span>
+                </button>
               </div>
             </div>
           </div>
@@ -488,6 +676,13 @@ function AgencyDirectory() {
                 agencies={filteredAgencies}
                 onAgencySelect={setSelectedAgency}
               />
+            ) : viewMode === 'grouped' ? (
+              <div className="agencies-grouped">
+                {Object.values(groupedAgencies || {})
+                  .filter(group => group && group.agencyName)
+                  .sort((a, b) => a.agencyName.localeCompare(b.agencyName))
+                  .map(renderAgencyGroup)}
+              </div>
             ) : (
               <div className="agencies-grid">
                 {filteredAgencies.map(renderAgencyCard)}
