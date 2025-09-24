@@ -472,3 +472,4 @@ class SharePointService {
 }
 
 module.exports = SharePointService;
+

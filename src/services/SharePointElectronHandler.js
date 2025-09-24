@@ -3,7 +3,7 @@
 
 const { ipcMain } = require('electron');
 const ZipService = require('./ZipService');
-const SharePointBrowserUploadService = require('./SharePointBrowserUploadService');
+const SharePointUploadService = require('./SharePointUploadService');
 
 /**
  * Setup IPC handlers for SharePoint upload functionality
@@ -17,7 +17,7 @@ function setupSharePointHandlers() {
       console.log('Main process: Starting SharePoint browser upload');
       
       const zipService = new ZipService();
-      const uploadService = new SharePointBrowserUploadService();
+      const uploadService = new SharePointUploadService();
       
       // Initialize upload service with settings
       uploadService.initialize(settings || {
@@ -61,7 +61,7 @@ function setupSharePointHandlers() {
     try {
       console.log('Main process: Testing SharePoint access');
       
-      const uploadService = new SharePointBrowserUploadService();
+      const uploadService = new SharePointUploadService();
       uploadService.initialize({
         enabled: true,
         sharePointUrl: sharePointUrl
@@ -93,3 +93,6 @@ function setupSharePointHandlers() {
 }
 
 module.exports = { setupSharePointHandlers };
+
+
+

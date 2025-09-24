@@ -22,7 +22,7 @@ const AgencySyncService = require('./src/services/AgencySyncService');
 
 // Import SharePoint services
 const ZipService = require('./src/services/ZipService');
-const SharePointBrowserUploadService = require('./src/services/SharePointBrowserUploadService');
+const SharePointUploadService = require('./src/services/SharePointUploadService');
 
 // Import package.json for version info
 const packageJson = require('./package.json');
@@ -46,7 +46,7 @@ const agencySyncService = new AgencySyncService(agencyService, settingsService);
 
 // Initialize SharePoint services
 const zipService = new ZipService();
-const sharePointUploadService = new SharePointBrowserUploadService();
+const sharePointUploadService = new SharePointUploadService();
 
 function createWindow() {
   // Create the browser window
@@ -471,6 +471,18 @@ ipcMain.handle('project-open-das-board', async (event, regionalTeam) => {
   try {
     return await projectService.openDASBoard(regionalTeam);
   } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// Open external URLs/applications
+ipcMain.handle('open-external', async (event, url) => {
+  try {
+    const { shell } = require('electron');
+    await shell.openExternal(url);
+    return { success: true };
+  } catch (error) {
+    console.error('Error opening external URL:', error);
     return { success: false, error: error.message };
   }
 });

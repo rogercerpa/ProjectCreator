@@ -47,6 +47,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   projectsExport: (exportPath, format) => ipcRenderer.invoke('projects-export', exportPath, format),
   projectsImport: (importPath, format) => ipcRenderer.invoke('projects-import', importPath, format),
   
+  // External applications
+  openExternal: (url) => ipcRenderer.invoke('open-external', url),
+  
   // Project creation
   projectCreateFolder: (projectData) => ipcRenderer.invoke('project-create-folder', projectData),
   projectCreateWithFolders: (projectData) => ipcRenderer.invoke('project-create-with-folders', projectData),

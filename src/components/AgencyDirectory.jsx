@@ -120,6 +120,56 @@ function AgencyDirectory() {
     });
   };
 
+  // Email utility functions
+  const openOutlookWithEmails = async (emails, subject = '') => {
+    if (!emails || emails.length === 0) {
+      alert('No email addresses found to send to.');
+      return;
+    }
+
+    // Filter out empty/invalid emails
+    const validEmails = emails.filter(email => email && email.includes('@'));
+    
+    if (validEmails.length === 0) {
+      alert('No valid email addresses found to send to.');
+      return;
+    }
+
+    // Create mailto URL
+    const emailList = validEmails.join(';'); // Use semicolon for Outlook compatibility
+    const encodedSubject = encodeURIComponent(subject);
+    const mailtoUrl = `mailto:${emailList}?subject=${encodedSubject}`;
+    
+    try {
+      // Use Electron API to open in default email client (Outlook if configured)
+      await window.electronAPI.openExternal(mailtoUrl);
+    } catch (error) {
+      console.error('Error opening email client:', error);
+      alert('Failed to open email client. Please check your default email application.');
+    }
+  };
+
+  // Handle bulk email for all filtered results
+  const handleBulkEmail = async () => {
+    const emails = filteredAgencies
+      .map(agency => agency.contactEmail)
+      .filter(email => email && email.trim() !== '');
+    
+    const subject = `Agency Contact - ${filteredAgencies.length} ${filteredAgencies.length === 1 ? 'Agency' : 'Agencies'}`;
+    await openOutlookWithEmails(emails, subject);
+  };
+
+  // Handle individual email
+  const handleIndividualEmail = async (agency) => {
+    if (!agency.contactEmail) {
+      alert('No email address available for this agency.');
+      return;
+    }
+    
+    const subject = `Contact: ${agency.agencyName}`;
+    await openOutlookWithEmails([agency.contactEmail], subject);
+  };
+
 
   // Format phone number for display
   const formatPhoneNumber = (phone) => {
@@ -187,12 +237,24 @@ function AgencyDirectory() {
         <div className="agency-modal" onClick={e => e.stopPropagation()}>
           <div className="modal-header">
             <h2>{selectedAgency.agencyName}</h2>
-            <button 
-              className="close-btn"
-              onClick={() => setSelectedAgency(null)}
-            >
-              ✕
-            </button>
+            <div className="modal-header-actions">
+              {selectedAgency.contactEmail && (
+                <button
+                  onClick={() => handleIndividualEmail(selectedAgency)}
+                  className="btn btn-primary email-contact-btn"
+                  title={`Email ${selectedAgency.contactName}`}
+                >
+                  <span className="btn-icon">✉️</span>
+                  <span className="btn-text">Email Contact</span>
+                </button>
+              )}
+              <button 
+                className="close-btn"
+                onClick={() => setSelectedAgency(null)}
+              >
+                ✕
+              </button>
+            </div>
           </div>
           
           <div className="modal-content">
@@ -372,26 +434,40 @@ function AgencyDirectory() {
             {filteredAgencies.length} {filteredAgencies.length === 1 ? 'agency' : 'agencies'} found
           </span>
           
-          {/* View Mode Toggle */}
-          <div className="view-mode-toggle">
-            <span className="control-label">View:</span>
-            <div className="toggle-group">
+          <div className="results-actions">
+            {/* Bulk Email Button */}
+            {filteredAgencies.length > 0 && (
               <button
-                onClick={() => handleViewModeChange('card')}
-                className={`toggle-btn ${viewMode === 'card' ? 'active' : ''}`}
-                title="Card View"
+                onClick={handleBulkEmail}
+                className="btn btn-primary email-all-btn"
+                title={`Email all ${filteredAgencies.length} ${filteredAgencies.length === 1 ? 'agency' : 'agencies'}`}
               >
-                <span className="toggle-icon">🎴</span>
-                <span className="toggle-text">Card</span>
+                <span className="btn-icon">✉️</span>
+                <span className="btn-text">Email All ({filteredAgencies.length})</span>
               </button>
-              <button
-                onClick={() => handleViewModeChange('table')}
-                className={`toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
-                title="Table View"
-              >
-                <span className="toggle-icon">📋</span>
-                <span className="toggle-text">Table</span>
-              </button>
+            )}
+            
+            {/* View Mode Toggle */}
+            <div className="view-mode-toggle">
+              <span className="control-label">View:</span>
+              <div className="toggle-group">
+                <button
+                  onClick={() => handleViewModeChange('card')}
+                  className={`toggle-btn ${viewMode === 'card' ? 'active' : ''}`}
+                  title="Card View"
+                >
+                  <span className="toggle-icon">🎴</span>
+                  <span className="toggle-text">Card</span>
+                </button>
+                <button
+                  onClick={() => handleViewModeChange('table')}
+                  className={`toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
+                  title="Table View"
+                >
+                  <span className="toggle-icon">📋</span>
+                  <span className="toggle-text">Table</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
