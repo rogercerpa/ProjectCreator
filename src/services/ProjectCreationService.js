@@ -1103,11 +1103,8 @@ class ProjectCreationService {
         
         const copyOptions = {
           copyAEMarkups: revisionOptions.copyAEMarkups !== false,
-          copyXREF: revisionOptions.copyXREF !== false,
-          copyLCD: revisionOptions.copyLCD !== false,
           copyBOMCheck: revisionOptions.copyBOMCheck !== false,
           copyVSP: revisionOptions.copyVSP !== false,
-          copyDWG: revisionOptions.copyDWG !== false,
           ...revisionOptions.copyOptions
         };
 
@@ -1116,6 +1113,7 @@ class ProjectCreationService {
           rfaFolderPath,
           {
             copyOptions: copyOptions,
+            aeMarkupsSelectedFiles: revisionOptions.aeMarkupsSelectedFiles, // Pass AE Markups file selection
             onProgress: revisionOptions.onProgress // Now we can pass the progress callback
           }
         );

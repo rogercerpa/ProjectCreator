@@ -68,6 +68,18 @@ const ProjectWizard = ({
     canCheck: false
   });
 
+  // AE Markups file selection state (now integrated into revision progress modal)
+  const [aeMarkupsFiles, setAEMarkupsFiles] = useState([]);
+  const [aeMarkupsSelectedFiles, setAEMarkupsSelectedFiles] = useState([]);
+  const [showAEMarkupsSelection, setShowAEMarkupsSelection] = useState(false);
+  const [isAnalyzingAEMarkups, setIsAnalyzingAEMarkups] = useState(false);
+  
+  // Store form data when AE Markups dialog opens to prevent loss
+  const formDataRef = useRef(null);
+  
+  // Promise resolver for waiting for AE Markups selection
+  const aeMarkupsSelectionResolverRef = useRef(null);
+
   // Revision progress tracking
   const revisionProgress = useRevisionProgress();
   
@@ -226,6 +238,208 @@ const ProjectWizard = ({
     setDuplicateCheckState(state);
   }, []);
 
+  // Wait for AE Markups selection function
+  const waitForAEMarkupsSelection = useCallback(() => {
+    return new Promise((resolve) => {
+      console.log('⏳ Setting up promise to wait for AE Markups selection...');
+      aeMarkupsSelectionResolverRef.current = resolve;
+    });
+  }, []);
+
+  // AE Markups file selection functions
+  const analyzeAEMarkupsFolder = useCallback(async (previousRevisionPath) => {
+    try {
+      console.log('🔍 Analyzing AE Markups folder for file selection...');
+      setIsAnalyzingAEMarkups(true);
+      
+      const analysis = await window.electronAPI.revisionAnalyzeAEMarkups(previousRevisionPath);
+      
+      if (analysis.success && analysis.needsUserSelection) {
+        console.log(`📊 AE Markups: ${analysis.fileCount} files found, showing embedded selection`);
+        console.log('💾 Storing form data before selection:', formData);
+        
+        // Store current form data to prevent loss
+        formDataRef.current = { ...formData };
+        
+        setAEMarkupsFiles(analysis.files);
+        setShowAEMarkupsSelection(true); // Show selection within the progress modal
+        return true; // Indicates user selection is needed
+      } else if (analysis.success && !analysis.needsUserSelection) {
+        console.log(`✅ AE Markups: ${analysis.fileCount} files found, auto-copying all`);
+        // Auto-select all files for copying (≤ 3 files)
+        const allFileNames = analysis.files.map(f => f.name);
+        setAEMarkupsSelectedFiles(allFileNames);
+        return false; // No user selection needed
+      } else {
+        console.log('⚠️ AE Markups folder not found or empty');
+        setAEMarkupsSelectedFiles([]);
+        return false; // No files to copy
+      }
+    } catch (error) {
+      console.error('❌ Error analyzing AE Markups folder:', error);
+      setAEMarkupsSelectedFiles([]);
+      return false; // Fallback to no selection
+    } finally {
+      setIsAnalyzingAEMarkups(false);
+    }
+  }, []);
+
+  const handleAEMarkupsConfirm = useCallback((selectedFiles) => {
+    console.log('✅ AE Markups selection confirmed:', selectedFiles);
+    setAEMarkupsSelectedFiles(selectedFiles);
+    setShowAEMarkupsSelection(false); // Hide selection within the modal
+    
+    // Resolve the waiting promise to continue revision creation
+    if (aeMarkupsSelectionResolverRef.current) {
+      console.log('🔓 Resolving AE Markups selection promise with selected files');
+      aeMarkupsSelectionResolverRef.current(selectedFiles);
+      aeMarkupsSelectionResolverRef.current = null;
+    }
+  }, []);
+
+  const handleAEMarkupsCancel = useCallback(() => {
+    console.log('❌ AE Markups selection cancelled - using default behavior');
+    setShowAEMarkupsSelection(false); // Hide selection within the modal
+    setAEMarkupsSelectedFiles([]); // Default to copying all files (empty array = copy all)
+    
+    // Resolve the waiting promise to continue revision creation with empty selection
+    if (aeMarkupsSelectionResolverRef.current) {
+      console.log('🔓 Resolving AE Markups selection promise with empty selection (copy all)');
+      aeMarkupsSelectionResolverRef.current([]);
+      aeMarkupsSelectionResolverRef.current = null;
+    }
+  }, []);
+
+  // Handle actual revision creation with AE Markups selection
+  const handleRevisionCreation = useCallback(async (updatedFormData) => {
+    try {
+      console.log('🚀 Creating revision project with AE Markups selection...');
+      
+      // Start revision progress tracking
+      revisionProgress.start('Creating Revision Project');
+      
+      // Set up progress event listeners
+      const cleanupProgressListener = window.electronAPI.onRevisionProgress((data) => {
+        revisionProgress.updateProgress(data.step, data.progress, data.details);
+      });
+
+      const cleanupCompleteListener = window.electronAPI.onRevisionComplete((data) => {
+        revisionProgress.complete(data.message);
+      });
+
+      const cleanupErrorListener = window.electronAPI.onRevisionError((data) => {
+        revisionProgress.error(data.error);
+      });
+
+      // Create revision with AE Markups selection
+      const revisionOptions = {
+        previousRevisionPath: updatedFormData.previousRevisionPath,
+        aeMarkupsSelectedFiles: updatedFormData.aeMarkupsSelectedFiles,
+        ...updatedFormData.revisionOptions
+      };
+      
+      console.log('📋 Revision options for creation:', revisionOptions);
+      console.log('📋 Updated form data for creation:', updatedFormData);
+
+      const folderCreationResult = await window.electronAPI.revisionCreate(updatedFormData, revisionOptions);
+
+      // Clean up event listeners
+      cleanupProgressListener();
+      cleanupCompleteListener();
+      cleanupErrorListener();
+      
+      if (!folderCreationResult.success) {
+        throw new Error(`Failed to create revision: ${folderCreationResult.error}`);
+      }
+      
+      // Store folder paths in formData for later use
+      onFormDataChange({
+        ...updatedFormData,
+        projectPath: folderCreationResult.projectPath,
+        rfaPath: folderCreationResult.rfaPath,
+        agentFilesPath: folderCreationResult.agentFilesPath,
+        previousRevisionPath: folderCreationResult.previousRevisionPath
+      });
+
+      setNotification({
+        type: 'success',
+        message: '✅ Revision project created successfully with selected AE Markups files!'
+      });
+      
+    } catch (error) {
+      console.error('❌ Error creating revision:', error);
+      revisionProgress.error(error.message);
+      setError(`Failed to create revision: ${error.message}`);
+    }
+  }, [revisionProgress, onFormDataChange]);
+
+  // Continue revision creation after AE Markups selection (or cancellation)
+  const continueRevisionCreationWithFiles = useCallback(async (selectedFiles) => {
+    try {
+      console.log('🚀 Continuing revision creation with AE Markups selection...');
+      console.log('📋 Current formData prop:', JSON.stringify(formData, null, 2));
+      console.log('💾 Stored formData from ref:', JSON.stringify(formDataRef.current, null, 2));
+      console.log('📋 AE Markups selected files:', selectedFiles);
+      
+      // Use stored form data if current formData is incomplete
+      const sourceFormData = formDataRef.current || formData;
+      
+      // Check if we have valid form data
+      if (!sourceFormData || typeof sourceFormData !== 'object') {
+        console.error('❌ No valid form data available:', {
+          currentFormData: formData,
+          storedFormData: formDataRef.current
+        });
+        throw new Error('Form data is not available - please try again');
+      }
+      
+      // Log all current form data fields
+      console.log('📋 Using form data source:', sourceFormData === formData ? 'current prop' : 'stored ref');
+      console.log('📋 Available form fields:', Object.keys(sourceFormData));
+      console.log('📋 Required fields check:', {
+        projectName: sourceFormData.projectName,
+        rfaType: sourceFormData.rfaType,
+        rfaNumber: sourceFormData.rfaNumber,
+        agentNumber: sourceFormData.agentNumber,
+        projectContainer: sourceFormData.projectContainer,
+        regionalTeam: sourceFormData.regionalTeam
+      });
+      
+      // Ensure all required fields are preserved
+      const updatedFormData = {
+        ...sourceFormData, // Use the best available form data
+        aeMarkupsSelectedFiles: selectedFiles // Add AE Markups selection
+      };
+      
+      console.log('📋 Updated form data keys:', Object.keys(updatedFormData));
+      
+      // Check for the essential required fields
+      const requiredFields = ['projectName', 'rfaType', 'rfaNumber', 'agentNumber', 'projectContainer'];
+      const missingFields = requiredFields.filter(field => !updatedFormData[field] || updatedFormData[field].trim() === '');
+      
+      if (missingFields.length > 0) {
+        console.error('❌ Missing required fields:', {
+          missing: missingFields,
+          projectName: updatedFormData.projectName,
+          rfaType: updatedFormData.rfaType,
+          rfaNumber: updatedFormData.rfaNumber,
+          agentNumber: updatedFormData.agentNumber,
+          projectContainer: updatedFormData.projectContainer,
+          allFields: Object.keys(updatedFormData),
+          formDataType: typeof formData
+        });
+        throw new Error(`Required project fields are missing: ${missingFields.join(', ')}`);
+      }
+      
+      // Trigger actual revision creation with the selected files
+      await handleRevisionCreation(updatedFormData);
+      
+    } catch (error) {
+      console.error('❌ Error continuing revision creation:', error);
+      setError(`Failed to continue revision creation: ${error.message}`);
+    }
+  }, [handleRevisionCreation]);
+
   // Auto-scroll to top when step changes
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -351,9 +565,29 @@ const ProjectWizard = ({
                   revisionProgress.error(data.error);
                 });
 
-                // Create revision with real-time progress tracking
+                // STEP 1: Analyze AE Markups folder before creating revision
+                console.log('🔍 Step 1: Analyzing AE Markups folder...');
+                const needsUserSelection = await analyzeAEMarkupsFolder(formData.previousRevisionPath);
+                
+                let selectedAEMarkupsFiles = aeMarkupsSelectedFiles; // Default to current state
+                
+                if (needsUserSelection) {
+                  // User needs to select files - wait for selection
+                  console.log('📋 AE Markups selection dialog opened - waiting for user input');
+                  revisionProgress.updateProgress('Waiting for AE Markups file selection...', 15, { step: 'user_selection' });
+                  
+                  // Wait for user to make selection - this will return the selected files
+                  selectedAEMarkupsFiles = await waitForAEMarkupsSelection();
+                  
+                  console.log('✅ AE Markups selection completed, continuing with files:', selectedAEMarkupsFiles);
+                  revisionProgress.updateProgress('Continuing with revision creation...', 20, { step: 'resume_creation' });
+                }
+                
+                // STEP 2: Create revision with real-time progress tracking
+                console.log('🚀 Step 2: Creating revision project...');
                 const revisionOptions = {
                   previousRevisionPath: formData.previousRevisionPath,
+                  aeMarkupsSelectedFiles: selectedAEMarkupsFiles, // Use the files from selection
                   ...formData.revisionOptions
                 };
 
@@ -969,6 +1203,10 @@ const ProjectWizard = ({
         operationLog={revisionProgress.operationLog}
         onCancel={revisionProgress.close}
         canCancel={revisionProgress.progress < 100}
+        showAEMarkupsSelection={showAEMarkupsSelection}
+        aeMarkupsFiles={aeMarkupsFiles}
+        onAEMarkupsConfirm={handleAEMarkupsConfirm}
+        onAEMarkupsCancel={handleAEMarkupsCancel}
       />
       
       {/* Error Dialog for Revision Operations */}
@@ -991,6 +1229,7 @@ const ProjectWizard = ({
         onProceedAnyway={handleDuplicateProceedAnyway}
         onCancel={handleDuplicateCancel}
       />
+
     </div>
   );
 };

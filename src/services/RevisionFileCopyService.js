@@ -8,8 +8,8 @@ const path = require('path');
  */
 class RevisionFileCopyService {
   constructor() {
-    this.supportedFolders = ['AE Markups', 'XREF', 'LCD', 'BOM CHECK'];
-    this.supportedExtensions = ['.vsp', '.dwg'];
+    this.supportedFolders = ['AE Markups', 'BOM CHECK'];
+    this.supportedExtensions = ['.vsp'];
   }
 
   /**
@@ -96,7 +96,7 @@ class RevisionFileCopyService {
    * Copy all revision assets from previous revision to new revision
    * @param {string} previousRevisionPath - Path to previous RFA folder
    * @param {string} newRevisionPath - Path to new RFA folder
-   * @param {Object} options - Copy options and progress callback
+   * @param {Object} options - Copy options, progress callback, and AE Markups selection
    * @returns {Promise<Object>} Copy operation result
    */
   async copyRevisionAssets(previousRevisionPath, newRevisionPath, options = {}) {
@@ -107,11 +107,8 @@ class RevisionFileCopyService {
 
       const copyOptions = {
         copyAEMarkups: true,
-        copyXREF: true,
-        copyLCD: true,
         copyBOMCheck: true,
         copyVSP: true,
-        copyDWG: true,
         ...options.copyOptions
       };
 
@@ -120,22 +117,23 @@ class RevisionFileCopyService {
 
       // Define copy operations based on options
       if (copyOptions.copyAEMarkups) {
-        operations.push({ type: 'folder', name: 'AE Markups', weight: 20 });
-      }
-      if (copyOptions.copyXREF) {
-        operations.push({ type: 'folder', name: 'XREF', weight: 20 });
-      }
-      if (copyOptions.copyLCD) {
-        operations.push({ type: 'folder', name: 'LCD', weight: 15 });
+        // Check if selective AE Markups file copying is specified
+        if (options.aeMarkupsSelectedFiles !== undefined) {
+          operations.push({ 
+            type: 'ae_markups_selective', 
+            name: 'AE Markups (Selected Files)', 
+            selectedFiles: options.aeMarkupsSelectedFiles,
+            weight: 20 
+          });
+        } else {
+          operations.push({ type: 'folder', name: 'AE Markups', weight: 20 });
+        }
       }
       if (copyOptions.copyBOMCheck) {
         operations.push({ type: 'folder', name: 'BOM CHECK', weight: 20 });
       }
-      if (copyOptions.copyVSP || copyOptions.copyDWG) {
-        const extensions = [];
-        if (copyOptions.copyVSP) extensions.push('.vsp');
-        if (copyOptions.copyDWG) extensions.push('.dwg');
-        operations.push({ type: 'files', extensions: extensions, weight: 30 });
+      if (copyOptions.copyVSP) {
+        operations.push({ type: 'files', extensions: ['.vsp'], weight: 30 });
       }
 
       // OPTIMIZATION: Execute operations with progress tracking
@@ -171,6 +169,8 @@ class RevisionFileCopyService {
         let result;
         if (operation.type === 'folder') {
           result = await this.copyFolderIfExists(previousRevisionPath, newRevisionPath, operation.name);
+        } else if (operation.type === 'ae_markups_selective') {
+          result = await this.copySelectedAEMarkupsFiles(previousRevisionPath, newRevisionPath, operation.selectedFiles);
         } else if (operation.type === 'files') {
           result = await this.copyFilesByExtension(previousRevisionPath, newRevisionPath, operation.extensions);
         }
@@ -234,6 +234,171 @@ class RevisionFileCopyService {
         error: error.message,
         results: [],
         summary: { totalOperations: 0, successful: 0, failed: 1 }
+      };
+    }
+  }
+
+  /**
+   * Analyze AE Markups folder contents for file selection
+   * @param {string} sourcePath - Source RFA path
+   * @returns {Promise<Object>} Analysis result with file list
+   */
+  async analyzeAEMarkupsFolder(sourcePath) {
+    try {
+      const aeMarkupsPath = path.join(sourcePath, 'AE Markups');
+      console.log('🔍 Analyzing AE Markups folder:', aeMarkupsPath);
+
+      if (!await fs.pathExists(aeMarkupsPath)) {
+        return {
+          success: true,
+          exists: false,
+          fileCount: 0,
+          files: [],
+          needsUserSelection: false
+        };
+      }
+
+      // Get all files in the folder with their details
+      const items = await fs.readdir(aeMarkupsPath, { withFileTypes: true });
+      const files = [];
+
+      for (const item of items) {
+        if (item.isFile()) {
+          const filePath = path.join(aeMarkupsPath, item.name);
+          const stats = await fs.stat(filePath);
+          
+          files.push({
+            name: item.name,
+            size: stats.size,
+            modified: stats.mtime,
+            path: filePath
+          });
+        }
+      }
+
+      const fileCount = files.length;
+      const needsUserSelection = fileCount > 3;
+
+      console.log(`📊 AE Markups analysis: ${fileCount} files found, user selection ${needsUserSelection ? 'needed' : 'not needed'}`);
+
+      return {
+        success: true,
+        exists: true,
+        fileCount: fileCount,
+        files: files,
+        needsUserSelection: needsUserSelection,
+        folderPath: aeMarkupsPath
+      };
+
+    } catch (error) {
+      console.error('❌ Error analyzing AE Markups folder:', error);
+      return {
+        success: false,
+        error: error.message,
+        exists: false,
+        fileCount: 0,
+        files: [],
+        needsUserSelection: false
+      };
+    }
+  }
+
+  /**
+   * Copy selected files from AE Markups folder
+   * @param {string} sourcePath - Source RFA path
+   * @param {string} targetPath - Target RFA path
+   * @param {Array} selectedFiles - Array of filenames to copy
+   * @returns {Promise<Object>} Copy result
+   */
+  async copySelectedAEMarkupsFiles(sourcePath, targetPath, selectedFiles = []) {
+    try {
+      const sourceFolder = path.join(sourcePath, 'AE Markups');
+      const targetFolder = path.join(targetPath, 'AE Markups');
+
+      console.log(`📋 Copying selected AE Markups files: ${selectedFiles.length} files`);
+      console.log('Selected files:', selectedFiles);
+
+      if (!await fs.pathExists(sourceFolder)) {
+        return {
+          success: false,
+          operation: 'AE Markups folder not found',
+          error: 'Source folder does not exist'
+        };
+      }
+
+      if (selectedFiles.length === 0) {
+        console.log('⚠️ No files selected for AE Markups - skipping folder');
+        return {
+          success: true,
+          operation: 'AE Markups folder skipped (no files selected)',
+          details: {
+            source: sourceFolder,
+            target: targetFolder,
+            skipped: true,
+            selectedFiles: []
+          }
+        };
+      }
+
+      // Ensure target folder exists
+      await fs.ensureDir(targetFolder);
+
+      // Copy each selected file
+      const copyResults = [];
+      const errors = [];
+
+      for (const fileName of selectedFiles) {
+        try {
+          const sourceFile = path.join(sourceFolder, fileName);
+          const targetFile = path.join(targetFolder, fileName);
+
+          // Check if source file exists
+          if (await fs.pathExists(sourceFile)) {
+            await fs.copy(sourceFile, targetFile, { 
+              overwrite: true, 
+              preserveTimestamps: false 
+            });
+            
+            copyResults.push(fileName);
+            console.log(`✅ Copied AE Markups file: ${fileName}`);
+          } else {
+            errors.push({ file: fileName, error: 'File not found' });
+            console.warn(`⚠️ AE Markups file not found: ${fileName}`);
+          }
+        } catch (fileError) {
+          errors.push({ file: fileName, error: fileError.message });
+          console.error(`❌ Error copying AE Markups file ${fileName}:`, fileError);
+        }
+      }
+
+      const hasErrors = errors.length > 0;
+      const successCount = copyResults.length;
+
+      return {
+        success: !hasErrors || successCount > 0,
+        operation: `Copied ${successCount} AE Markups files`,
+        details: {
+          source: sourceFolder,
+          target: targetFolder,
+          selectedFiles: selectedFiles,
+          copiedFiles: copyResults,
+          errors: errors,
+          totalSelected: selectedFiles.length,
+          totalCopied: successCount
+        },
+        warnings: hasErrors ? errors : undefined
+      };
+
+    } catch (error) {
+      console.error('❌ Error copying selected AE Markups files:', error);
+      return {
+        success: false,
+        operation: 'Failed to copy selected AE Markups files',
+        error: error.message,
+        details: {
+          selectedFiles: selectedFiles,
+          error: error.message
+        }
       };
     }
   }
@@ -535,10 +700,8 @@ class RevisionFileCopyService {
     if (!analysisResult.success) {
       return {
         copyAEMarkups: false,
-        copyXREF: false,
-        copyLCD: false,
-        copyVSP: false,
-        copyDWG: false
+        copyBOMCheck: false,
+        copyVSP: false
       };
     }
 
@@ -546,10 +709,8 @@ class RevisionFileCopyService {
     
     return {
       copyAEMarkups: available.folders['AE Markups']?.exists || false,
-      copyXREF: available.folders['XREF']?.exists || false,
-      copyLCD: available.folders['LCD']?.exists || false,
-      copyVSP: (available.files['.vsp']?.count || 0) > 0,
-      copyDWG: (available.files['.dwg']?.count || 0) > 0
+      copyBOMCheck: available.folders['BOM CHECK']?.exists || false,
+      copyVSP: (available.files['.vsp']?.count || 0) > 0
     };
   }
 

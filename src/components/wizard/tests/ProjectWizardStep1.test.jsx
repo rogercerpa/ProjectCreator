@@ -18,6 +18,8 @@ const ProjectWizardStep1Test = () => {
     regionalTeam: '',
     nationalAccount: 'Default',
     saveLocation: 'Server',
+    projectType: '',
+    customProjectType: '',
     isRevision: false
   });
   const [errors, setErrors] = React.useState({});
@@ -62,7 +64,7 @@ const ProjectWizardStep1Test = () => {
       // Test 2: Form Data Structure Compatibility
       const expectedFields = [
         'projectName', 'rfaNumber', 'agentNumber', 'projectContainer', 
-        'rfaType', 'regionalTeam', 'nationalAccount', 'saveLocation'
+        'rfaType', 'regionalTeam', 'nationalAccount', 'saveLocation', 'projectType'
       ];
       
       const missingFields = expectedFields.filter(field => !(field in formData));
@@ -402,6 +404,8 @@ Complexity: Level 2`;
             <li>✅ regionalTeam: {typeof formData.regionalTeam}</li>
             <li>✅ nationalAccount: {typeof formData.nationalAccount}</li>
             <li>✅ saveLocation: {typeof formData.saveLocation}</li>
+            <li>✅ projectType: {typeof formData.projectType}</li>
+            <li>✅ customProjectType: {typeof formData.customProjectType}</li>
           </ul>
         </div>
       </div>

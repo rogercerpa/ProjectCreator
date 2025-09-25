@@ -1,5 +1,228 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import './RevisionProgressModal.css';
+
+/**
+ * AEMarkupsFileSelection - Embedded component for AE Markups file selection
+ */
+const AEMarkupsFileSelection = ({ files, onConfirm, onCancel }) => {
+  const [selectedFiles, setSelectedFiles] = useState(new Set());
+  const [selectAll, setSelectAll] = useState(true);
+
+  // Initialize selection state when files change
+  useEffect(() => {
+    if (files && files.length > 0) {
+      console.log('🗂️ AE Markups embedded: Initializing with files:', files);
+      
+      // Start with all files selected by default
+      const allFileNames = files.map(file => file.name);
+      setSelectedFiles(new Set(allFileNames));
+      setSelectAll(true);
+    }
+  }, [files]);
+
+  // Find Design Notes and Assumptions document
+  const findDesignNotesDocument = (fileList) => {
+    if (!fileList) return null;
+    
+    return fileList.find(file => {
+      const fileName = file.name.toLowerCase();
+      return (
+        (fileName.includes('design') && fileName.includes('notes')) ||
+        (fileName.includes('design') && fileName.includes('assumptions')) ||
+        fileName.includes('design notes and assumptions')
+      ) && (fileName.endsWith('.docx') || fileName.endsWith('.doc'));
+    });
+  };
+
+  // Handle individual file selection
+  const handleFileToggle = (fileName) => {
+    const newSelected = new Set(selectedFiles);
+    
+    if (newSelected.has(fileName)) {
+      newSelected.delete(fileName);
+    } else {
+      newSelected.add(fileName);
+    }
+    
+    setSelectedFiles(newSelected);
+    setSelectAll(newSelected.size === files.length);
+  };
+
+  // Handle select all/none
+  const handleSelectAll = () => {
+    if (selectAll) {
+      setSelectedFiles(new Set());
+      setSelectAll(false);
+    } else {
+      const allFileNames = files.map(file => file.name);
+      setSelectedFiles(new Set(allFileNames));
+      setSelectAll(true);
+    }
+  };
+
+  // Quick action handlers
+  const handleCopyAll = () => {
+    const allFileNames = files.map(file => file.name);
+    console.log('📋 Copy All: Selecting all files');
+    onConfirm(allFileNames);
+  };
+
+  const handleCopySelected = () => {
+    const selectedArray = Array.from(selectedFiles);
+    console.log('📝 Copy Selected:', selectedArray);
+    onConfirm(selectedArray);
+  };
+
+  const handleCopyNone = () => {
+    console.log('❌ Skip AE Markups: Copying no files');
+    onConfirm([]);
+  };
+
+  const handleCopyDesignNotesOnly = () => {
+    const designNotesFile = findDesignNotesDocument(files);
+    if (designNotesFile) {
+      console.log('📄 Copy Design Notes Only:', designNotesFile.name);
+      onConfirm([designNotesFile.name]);
+    } else {
+      console.log('⚠️ No Design Notes document found, copying nothing');
+      onConfirm([]);
+    }
+  };
+
+  if (!files || files.length === 0) {
+    return null;
+  }
+
+  const designNotesFile = findDesignNotesDocument(files);
+  const selectedCount = selectedFiles.size;
+  const totalFiles = files.length;
+
+  return (
+    <div className="ae-markups-selection">
+      <div className="ae-markups-header">
+        <h4>📁 AE Markups File Selection</h4>
+        <p>
+          The AE Markups folder contains <strong>{totalFiles} files</strong>. 
+          Choose which files to copy to speed up the revision process.
+        </p>
+        {designNotesFile && (
+          <div className="design-notes-highlight">
+            📝 <strong>Design Notes document found:</strong> {designNotesFile.name}
+          </div>
+        )}
+      </div>
+
+      {/* Quick Actions */}
+      <div className="quick-actions">
+        <button 
+          className="quick-action-btn copy-all"
+          onClick={handleCopyAll}
+          title="Copy all files (slowest)"
+        >
+          📋 Copy All ({totalFiles} files)
+        </button>
+        
+        {designNotesFile && (
+          <button 
+            className="quick-action-btn copy-design-notes"
+            onClick={handleCopyDesignNotesOnly}
+            title="Copy only Design Notes document (recommended)"
+          >
+            📄 Copy Design Notes Only
+          </button>
+        )}
+        
+        <button 
+          className="quick-action-btn copy-none"
+          onClick={handleCopyNone}
+          title="Skip AE Markups folder (fastest)"
+        >
+          ❌ Skip AE Markups
+        </button>
+      </div>
+
+      {/* File List */}
+      <div className="file-selection-section">
+        <div className="file-list-header">
+          <label className="select-all-label">
+            <input
+              type="checkbox"
+              checked={selectAll}
+              onChange={handleSelectAll}
+            />
+            <span>Select All / None</span>
+          </label>
+          <span className="selection-count">
+            {selectedCount} of {totalFiles} selected
+          </span>
+        </div>
+
+        <div className="file-list">
+          {files.map((file, index) => {
+            const isDesignNotes = designNotesFile && file.name === designNotesFile.name;
+            const isSelected = selectedFiles.has(file.name);
+            
+            return (
+              <div 
+                key={index} 
+                className={`file-item ${isDesignNotes ? 'design-notes' : ''} ${isSelected ? 'selected' : ''}`}
+              >
+                <label className="file-checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => handleFileToggle(file.name)}
+                  />
+                  <div className="file-info">
+                    <span className="file-name">
+                      {isDesignNotes && '📝 '}
+                      {file.name}
+                    </span>
+                    {file.size && (
+                      <span className="file-size">
+                        {formatFileSize(file.size)}
+                      </span>
+                    )}
+                    {isDesignNotes && (
+                      <span className="file-badge">Design Notes</span>
+                    )}
+                  </div>
+                </label>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="ae-markups-actions">
+        <button 
+          className="btn btn-primary"
+          onClick={handleCopySelected}
+          disabled={selectedCount === 0}
+        >
+          ✅ Copy Selected ({selectedCount})
+        </button>
+        
+        <button 
+          className="btn btn-secondary"
+          onClick={onCancel}
+        >
+          ❌ Cancel
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// Helper function to format file size
+const formatFileSize = (bytes) => {
+  if (!bytes) return '';
+  
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
+};
 
 /**
  * RevisionProgressModal
@@ -12,7 +235,12 @@ const RevisionProgressModal = ({
   operationLog = [],
   onCancel,
   canCancel = false,
-  title = 'Creating Revision'
+  title = 'Creating Revision',
+  // AE Markups file selection props
+  showAEMarkupsSelection = false,
+  aeMarkupsFiles = [],
+  onAEMarkupsConfirm,
+  onAEMarkupsCancel
 }) => {
   if (!isOpen) return null;
 
@@ -42,6 +270,15 @@ const RevisionProgressModal = ({
               ></div>
             </div>
           </div>
+          
+          {/* AE Markups File Selection */}
+          {showAEMarkupsSelection && (
+            <AEMarkupsFileSelection 
+              files={aeMarkupsFiles}
+              onConfirm={onAEMarkupsConfirm}
+              onCancel={onAEMarkupsCancel}
+            />
+          )}
           
           {/* Operation Log */}
           <div className="operation-log">

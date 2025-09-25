@@ -35,6 +35,7 @@ class DropdownOptionsService {
       statusOptions: ['In Progress', 'Completed', 'Inactive', 'Not Started'],
       productOptions: ['nLight Wired', 'nLight Air', 'SensorSwitch', 'Pathway', 'Fresco', 'Controls - nLight'],
       assignedToOptions: ['John Doe', 'Jane Smith', 'Mike Johnson', 'Sarah Wilson', 'David Brown', 'Cerpa, Roger'],
+      projectTypes: ['Middle School', 'High School', 'University', 'Hospital', 'Office Building', 'Restaurant', 'Government Building', 'Public Building', 'Stadium', 'Park', 'Hotel', 'Other'],
       photoSoftware: ['VL', 'AGI', 'M3', 'M3+VL']
     };
     

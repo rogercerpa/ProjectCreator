@@ -19,6 +19,7 @@ function Settings({ initialTab = 'app-info' }) {
     statusOptions: ['In Progress', 'Completed', 'Inactive', 'Not Started'],
     productOptions: ['nLight Wired', 'nLight Air', 'SensorSwitch', 'Pathway', 'Fresco', 'Controls - nLight'],
     assignedToOptions: ['John Doe', 'Jane Smith', 'Mike Johnson', 'Sarah Wilson', 'David Brown', 'Cerpa, Roger'],
+    projectTypes: ['Middle School', 'High School', 'University', 'Hospital', 'Office Building', 'Restaurant', 'Government Building', 'Public Building', 'Stadium', 'Park', 'Hotel', 'Other'],
     calculationSettings: {
       lmpMultipliers: { small: 15, medium: 30, large: 45 },
       arpMultipliers: { arp8: 5, arp16: 10, arp32: 20, arp48: 25 },
@@ -49,7 +50,7 @@ function Settings({ initialTab = 'app-info' }) {
     },
     sharePointSettings: {
       enabled: false,
-      sharePointUrl: 'https://acuitybrandsinc.sharepoint.com/:f:/r/sites/CIDesignSolutions/Shared%20Documents/LnT?csf=1&web=1&e=zjcs2I',
+      sharePointUrl: 'https://acuitybrandsinc.sharepoint.com/sites/CIDesignSolutions/Shared%20Documents/Forms/AllItems.aspx?id=%2Fsites%2FCIDesignSolutions%2FShared%20Documents%2FLnT&viewid=63bcad0e%2D9263%2D49b7%2Dac03%2D91437bdc82ef',
       uploadOptions: {
         overwriteExisting: true,
         zipNaming: '{projectName}_{rfaNumber}_{date}.zip'
@@ -1424,6 +1425,7 @@ function Settings({ initialTab = 'app-info' }) {
               {renderFieldEditor('statusOptions', 'Status Options', settings.statusOptions)}
               {renderFieldEditor('productOptions', 'Product Options', settings.productOptions)}
               {renderFieldEditor('assignedToOptions', 'Assigned To Options', settings.assignedToOptions)}
+              {renderFieldEditor('projectTypes', 'Project Type Options', settings.projectTypes)}
             </div>
           </div>
         );
@@ -2164,7 +2166,7 @@ function Settings({ initialTab = 'app-info' }) {
               },
               sharePointSettings: {
                 enabled: false,
-                sharePointUrl: 'https://acuitybrandsinc.sharepoint.com/:f:/r/sites/CIDesignSolutions/Shared%20Documents/LnT?csf=1&web=1&e=zjcs2I',
+                sharePointUrl: 'https://acuitybrandsinc.sharepoint.com/sites/CIDesignSolutions/Shared%20Documents/Forms/AllItems.aspx?id=%2Fsites%2FCIDesignSolutions%2FShared%20Documents%2FLnT&viewid=63bcad0e%2D9263%2D49b7%2Dac03%2D91437bdc82ef',
                 uploadOptions: {
                   overwriteExisting: true,
                   zipNaming: '{projectName}_{rfaNumber}_{date}.zip'

@@ -363,3 +363,254 @@
 .log-container::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
 }
+
+/* AE Markups File Selection Embedded Styles */
+.ae-markups-selection {
+  background: #f8f9fa;
+  border: 2px solid #e3f2fd;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 16px 0;
+}
+
+.ae-markups-header h4 {
+  margin: 0 0 8px 0;
+  color: #1976d2;
+  font-size: 16px;
+}
+
+.ae-markups-header p {
+  margin: 0 0 12px 0;
+  color: #555;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.design-notes-highlight {
+  background: #e8f5e8;
+  border: 1px solid #4caf50;
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin: 12px 0;
+  color: #2e7d32;
+  font-size: 13px;
+}
+
+/* Quick Actions */
+.quick-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.quick-action-btn {
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  flex: 1;
+  min-width: 100px;
+}
+
+.quick-action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.quick-action-btn.copy-all {
+  background: #e3f2fd;
+  border-color: #2196f3;
+  color: #1565c0;
+}
+
+.quick-action-btn.copy-design-notes {
+  background: #e8f5e8;
+  border-color: #4caf50;
+  color: #2e7d32;
+}
+
+.quick-action-btn.copy-none {
+  background: #ffebee;
+  border-color: #f44336;
+  color: #c62828;
+}
+
+/* File Selection */
+.file-selection-section {
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.file-list-header {
+  background: #f8f9fa;
+  padding: 12px;
+  border-bottom: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.select-all-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+}
+
+.select-all-label input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+
+.selection-count {
+  color: #666;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.file-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.file-item {
+  border-bottom: 1px solid #f0f0f0;
+  transition: background-color 0.2s ease;
+}
+
+.file-item:last-child {
+  border-bottom: none;
+}
+
+.file-item:hover {
+  background: #f8f9fa;
+}
+
+.file-item.selected {
+  background: #e8f5e8;
+}
+
+.file-item.design-notes {
+  background: #fff8e1;
+  border-left: 3px solid #ff9800;
+}
+
+.file-item.design-notes.selected {
+  background: #e8f5e8;
+  border-left-color: #4caf50;
+}
+
+.file-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  cursor: pointer;
+  width: 100%;
+}
+
+.file-checkbox-label input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.file-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.file-name {
+  font-weight: 500;
+  color: #333;
+  font-size: 13px;
+  word-break: break-word;
+}
+
+.file-size {
+  font-size: 11px;
+  color: #666;
+}
+
+.file-badge {
+  background: #ff9800;
+  color: white;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  align-self: flex-start;
+}
+
+/* Actions */
+.ae-markups-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.ae-markups-actions .btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid;
+}
+
+.ae-markups-actions .btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ae-markups-actions .btn:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.ae-markups-actions .btn-primary {
+  background: #4caf50;
+  border-color: #4caf50;
+  color: white;
+}
+
+.ae-markups-actions .btn-secondary {
+  background: #6c757d;
+  border-color: #6c757d;
+  color: white;
+}
+
+/* Responsive adjustments for embedded view */
+@media (max-width: 640px) {
+  .quick-actions {
+    flex-direction: column;
+  }
+  
+  .quick-action-btn {
+    min-width: auto;
+  }
+  
+  .ae-markups-actions {
+    flex-direction: column;
+  }
+  
+  .ae-markups-actions .btn {
+    width: 100%;
+  }
+}

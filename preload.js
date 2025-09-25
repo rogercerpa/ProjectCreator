@@ -62,6 +62,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   revisionValidateFolder: (folderPath) => ipcRenderer.invoke('revision-validate-folder', folderPath),
   revisionCreate: (projectData, revisionOptions) => ipcRenderer.invoke('revision-create', projectData, revisionOptions),
   revisionAnalyzeContents: (revisionPath) => ipcRenderer.invoke('revision-analyze-contents', revisionPath),
+  revisionAnalyzeAEMarkups: (revisionPath) => ipcRenderer.invoke('revision-analyze-ae-markups', revisionPath),
   revisionGetCopyOptions: (revisionPath) => ipcRenderer.invoke('revision-get-copy-options', revisionPath),
   revisionHandleFolderMismatch: (selectedPath, expectedPath) => ipcRenderer.invoke('revision-handle-folder-mismatch', selectedPath, expectedPath),
   revisionRenameFolder: (oldPath, newPath) => ipcRenderer.invoke('revision-rename-folder', oldPath, newPath),

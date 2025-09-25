@@ -25,6 +25,7 @@ const ProjectWizardStep1 = ({
 }) => {
   const [isPasting, setIsPasting] = useState(false);
   const [importedFields, setImportedFields] = useState([]);
+  const [customProjectType, setCustomProjectType] = useState('');
   
   // SIMPLIFIED: Single state object for duplicate checking
   const [duplicateCheckState, setDuplicateCheckState] = useState({
@@ -362,6 +363,15 @@ const ProjectWizardStep1 = ({
       setHasAutoOpened(false);
     }
   }, [formData.isRevision, revisionConfigured, hasAutoOpened]);
+
+  // Effect to initialize custom project type from saved data
+  useEffect(() => {
+    if (formData.projectType === 'Other' && formData.customProjectType) {
+      setCustomProjectType(formData.customProjectType);
+    } else if (formData.projectType !== 'Other') {
+      setCustomProjectType('');
+    }
+  }, [formData.projectType, formData.customProjectType]);
 
   // HTA-like automatic revision detection (try first before showing dialog)
   const handleAutomaticRevisionDetection = async () => {
@@ -1399,6 +1409,53 @@ const ProjectWizardStep1 = ({
               )}
               {isFieldImported('projectName') && <span className="import-indicator">📋 Imported</span>}
             </div>
+
+            <div className={`form-group ${isFieldImported('projectType') ? 'imported-field' : ''}`}>
+              <label htmlFor="projectType">Project Type</label>
+              <select
+                id="projectType"
+                name="projectType"
+                value={formData.projectType || ''}
+                onChange={(e) => {
+                  handleInputChange(e);
+                  if (e.target.value === 'Other') {
+                    setCustomProjectType('');
+                  }
+                }}
+                className={errors.projectType ? 'error' : ''}
+              >
+                <option value="">Select Project Type</option>
+                {(dropdownOptions.projectTypes || []).map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+              {errors.projectType && <span className="error-message">{errors.projectType}</span>}
+              {isFieldImported('projectType') && <span className="import-indicator">📋 Imported</span>}
+            </div>
+
+            {formData.projectType === 'Other' && (
+              <div className="form-group">
+                <label htmlFor="customProjectType">Custom Project Type</label>
+                <input
+                  type="text"
+                  id="customProjectType"
+                  name="customProjectType"
+                  value={customProjectType}
+                  onChange={(e) => {
+                    setCustomProjectType(e.target.value);
+                    // Update formData with the custom type
+                    onFormDataChange({ 
+                      ...formData, 
+                      projectType: e.target.value || 'Other',
+                      customProjectType: e.target.value 
+                    });
+                  }}
+                  className={errors.customProjectType ? 'error' : ''}
+                  placeholder="Enter custom project type"
+                />
+                {errors.customProjectType && <span className="error-message">{errors.customProjectType}</span>}
+              </div>
+            )}
 
             <div className={`form-group ${getFieldClasses('projectContainer')}`}>
               <label htmlFor="projectContainer">Project Container *</label>

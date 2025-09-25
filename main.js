@@ -22,7 +22,7 @@ const AgencySyncService = require('./src/services/AgencySyncService');
 
 // Import SharePoint services
 const ZipService = require('./src/services/ZipService');
-const SharePointUploadService = require('./src/services/SharePointUploadService');
+const SharePointBrowserUploadService = require('./src/services/SharePointBrowserUploadService');
 
 // Import package.json for version info
 const packageJson = require('./package.json');
@@ -46,7 +46,7 @@ const agencySyncService = new AgencySyncService(agencyService, settingsService);
 
 // Initialize SharePoint services
 const zipService = new ZipService();
-const sharePointUploadService = new SharePointUploadService();
+const sharePointUploadService = new SharePointBrowserUploadService();
 
 function createWindow() {
   // Create the browser window
@@ -653,6 +653,17 @@ ipcMain.handle('revision-analyze-contents', async (event, revisionPath) => {
   try {
     return await projectCreationService.analyzeRevisionContents(revisionPath);
   } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// Analyze AE Markups folder for file selection
+ipcMain.handle('revision-analyze-ae-markups', async (event, revisionPath) => {
+  try {
+    const revisionFileCopyService = new (require('./src/services/RevisionFileCopyService'))();
+    return await revisionFileCopyService.analyzeAEMarkupsFolder(revisionPath);
+  } catch (error) {
+    console.error('Error analyzing AE Markups folder:', error);
     return { success: false, error: error.message };
   }
 });
