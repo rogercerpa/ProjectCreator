@@ -292,19 +292,41 @@ class SharePointBrowserUploadService {
       const urlInfo = this.parseSharePointUrl(this.settings.sharePointUrl);
       const targetUrl = urlInfo.documentsUrl;
       
-      console.log('Navigating to:', targetUrl);
+      console.log('🔍 DEBUGGING NAVIGATION:');
+      console.log('Original URL:', this.settings.sharePointUrl);
+      console.log('Parsed URL Info:', urlInfo);
+      console.log('Target URL for navigation:', targetUrl);
       
       // Navigate to SharePoint
+      console.log('📍 Navigating to target URL...');
       await this.page.goto(targetUrl, { 
         waitUntil: 'networkidle2',
         timeout: 30000 
       });
       
+      // Check actual final URL after navigation
+      const finalUrl = this.page.url();
+      console.log('📍 Final URL after navigation:', finalUrl);
+      
       // Handle potential login
       await this.handleLoginIfRequired();
       
+      // Check URL again after login
+      const postLoginUrl = this.page.url();
+      console.log('📍 URL after login handling:', postLoginUrl);
+      
       // Verify we're on the correct page and can see upload functionality
       await this.verifySharePointPage();
+      
+      // Final URL verification
+      const verifiedUrl = this.page.url();
+      console.log('📍 Final verified URL:', verifiedUrl);
+      
+      // Check if we ended up in the correct folder
+      const isInCorrectFolder = await this.verifyCorrectFolder();
+      if (!isInCorrectFolder) {
+        console.log('⚠️  WARNING: Not in the expected SharePoint folder!');
+      }
       
       console.log('✅ Successfully navigated to SharePoint');
       
@@ -417,6 +439,72 @@ class SharePointBrowserUploadService {
     } catch (error) {
       console.error('❌ SharePoint page verification failed:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Verify we're in the correct SharePoint folder
+   * @returns {Promise<boolean>}
+   */
+  async verifyCorrectFolder() {
+    try {
+      console.log('🔍 Verifying correct SharePoint folder...');
+      
+      const currentUrl = this.page.url();
+      const expectedFolder = 'LnT'; // The folder we want to be in
+      
+      // Check if URL contains the expected folder path
+      const urlContainsFolder = currentUrl.includes(expectedFolder) || 
+                               currentUrl.includes(encodeURIComponent(expectedFolder));
+      
+      // Check page content for folder indicators
+      const folderIndicators = await this.page.evaluate((folderName) => {
+        const pageText = document.body.innerText;
+        const title = document.title;
+        
+        // Check breadcrumb or navigation elements
+        const breadcrumbs = Array.from(document.querySelectorAll('nav, .ms-Breadcrumb, [role="navigation"]'));
+        const hasFolderInBreadcrumb = breadcrumbs.some(nav => 
+          nav.textContent && nav.textContent.includes(folderName)
+        );
+        
+        // Check page title or heading
+        const hasFolderInTitle = title.includes(folderName);
+        
+        // Check for folder name in page content
+        const hasFolderInContent = pageText.includes(folderName);
+        
+        return {
+          inBreadcrumb: hasFolderInBreadcrumb,
+          inTitle: hasFolderInTitle,
+          inContent: hasFolderInContent,
+          pageTitle: title,
+          currentPath: window.location.pathname
+        };
+      }, expectedFolder);
+      
+      console.log('📁 Folder verification results:', {
+        urlContainsFolder,
+        folderIndicators,
+        currentUrl
+      });
+      
+      const isInCorrectFolder = urlContainsFolder || 
+                               folderIndicators.inBreadcrumb || 
+                               folderIndicators.inTitle;
+      
+      if (isInCorrectFolder) {
+        console.log(`✅ Confirmed: In correct folder (${expectedFolder})`);
+      } else {
+        console.log(`❌ WARNING: Not in expected folder (${expectedFolder})`);
+        console.log('Current location indicators:', folderIndicators);
+      }
+      
+      return isInCorrectFolder;
+      
+    } catch (error) {
+      console.error('❌ Folder verification failed:', error);
+      return false;
     }
   }
 
@@ -698,11 +786,13 @@ class SharePointBrowserUploadService {
    */
   async monitorUploadCompletion(fileName, progressCallback) {
     try {
-      console.log('📊 Starting upload monitoring...');
+      console.log('📊 Starting STRICT upload monitoring for:', fileName);
       
       const maxWaitTime = 5 * 60 * 1000; // 5 minutes
-      const checkInterval = 3000; // 3 seconds
+      const checkInterval = 5000; // 5 seconds (longer interval for more reliable checks)
       let waitTime = 0;
+      let consecutiveFailures = 0;
+      const maxConsecutiveFailures = 3; // Require multiple confirmations
       
       return new Promise(async (resolve) => {
         const checkProgress = async () => {
@@ -710,113 +800,126 @@ class SharePointBrowserUploadService {
             waitTime += checkInterval;
             
             const completed = await this.page.evaluate((fileName) => {
-              console.log('🔍 Checking for uploaded file:', fileName);
+              console.log('🔍 STRICT CHECK: Looking for uploaded file:', fileName);
               
-              // STRICT file detection - only count actual file elements in SharePoint
-              const strictFileSelectors = [
-                // SharePoint file table/grid elements
-                `tr[data-automationid="DetailsRow"] a[href*="${fileName}"]`,
-                `div[data-list-index] a[href*="${fileName}"]`,
-                `div[role="gridcell"] a[href*="${fileName}"]`,
-                // SharePoint specific file links
-                `a[data-automation-id="ItemName"][href*="${fileName}"]`,
-                `button[data-automation-id="ItemName"][title*="${fileName}"]`,
-                // File type specific elements
-                `div[data-automation-key*="${fileName}"]`,
+              // EXTREMELY STRICT file detection - must find actual file in SharePoint document library
+              let foundElements = [];
+              
+              // 1. Look for the file in SharePoint document list with EXACT filename
+              const exactFileSelectors = [
+                `a[href*="${fileName}"][data-automation-id="ItemName"]`,
+                `button[title="${fileName}"][data-automation-id="ItemName"]`,
+                `a[title="${fileName}"]`,
                 `span[title="${fileName}"]`
               ];
-
-              console.log('🔍 Trying strict file selectors...');
-              for (const selector of strictFileSelectors) {
-                const element = document.querySelector(selector);
-                if (element) {
-                  console.log('✅ Found file element with selector:', selector);
-                  console.log('Element details:', {
-                    tagName: element.tagName,
-                    href: element.href,
-                    title: element.title,
-                    textContent: element.textContent?.substring(0, 50)
-                  });
-                  return { success: true, method: 'strict_file_selector', selector: selector };
-                }
-              }
-
-              // Check for file name in the document list area only (not entire page)
-              const listAreas = [
-                'div[data-automationid="FileList"]',
-                'div[role="grid"]',
-                'div[data-automationid="DetailsPane"]',
-                'div[class*="ms-DetailsList"]'
-              ];
-
-              for (const listSelector of listAreas) {
-                const listArea = document.querySelector(listSelector);
-                if (listArea && listArea.textContent.includes(fileName)) {
-                  console.log('✅ Found file name in list area:', listSelector);
-                  return { success: true, method: 'file_in_list_area', area: listSelector };
-                }
-              }
-
-              // Check for actual download/file link elements
-              const downloadLinks = document.querySelectorAll('a[href]');
-              for (const link of downloadLinks) {
-                if (link.href && link.href.includes(fileName)) {
-                  console.log('✅ Found download link for file:', link.href);
-                  return { success: true, method: 'download_link_found' };
-                }
-              }
-
-              // Check for error messages (strict detection)
-              const errorSelectors = [
-                'div[role="alert"]',
-                'div[data-automation-id="errorMessage"]',
-                'div[class*="error"]'
-              ];
-
-              for (const errorSelector of errorSelectors) {
-                const errorElement = document.querySelector(errorSelector);
-                if (errorElement) {
-                  const errorText = errorElement.textContent.toLowerCase();
-                  if (errorText.includes('upload') && (errorText.includes('failed') || errorText.includes('error'))) {
-                    console.log('❌ Upload error detected:', errorText);
-                    return { success: false, error: 'Upload error detected in UI' };
+              
+              for (const selector of exactFileSelectors) {
+                const elements = Array.from(document.querySelectorAll(selector));
+                for (const element of elements) {
+                  if (element.title === fileName || 
+                      (element.href && element.href.endsWith(fileName)) ||
+                      element.textContent?.trim() === fileName) {
+                    foundElements.push({
+                      selector,
+                      element: {
+                        tagName: element.tagName,
+                        title: element.title,
+                        href: element.href,
+                        textContent: element.textContent?.trim()
+                      }
+                    });
                   }
                 }
               }
-
-              // If nothing found, check for generic upload progress indicators
-              const progressSelectors = [
-                'div[role="progressbar"]',
-                'div[data-automation-id="uploadProgress"]',
-                'div[class*="progress"]'
-              ];
-
-              let hasProgress = false;
-              for (const progressSelector of progressSelectors) {
-                if (document.querySelector(progressSelector)) {
-                  hasProgress = true;
-                  break;
+              
+              if (foundElements.length > 0) {
+                console.log('✅ CONFIRMED: Found exact file match:', foundElements);
+                return { 
+                  success: true, 
+                  method: 'exact_file_match', 
+                  elements: foundElements,
+                  confidence: 'high'
+                };
+              }
+              
+              // 2. Check document library table/grid for the file (more specific)
+              const documentRows = Array.from(document.querySelectorAll(
+                'tr[data-automationid="DetailsRow"], div[data-list-index], div[role="row"]'
+              ));
+              
+              for (const row of documentRows) {
+                const rowText = row.textContent || '';
+                const rowLinks = Array.from(row.querySelectorAll('a[href]'));
+                
+                // Check if this row contains our exact filename
+                if (rowText.includes(fileName)) {
+                  for (const link of rowLinks) {
+                    if (link.href && link.href.includes(fileName)) {
+                      console.log('✅ CONFIRMED: Found file in document row:', {
+                        rowText: rowText.substring(0, 100),
+                        linkHref: link.href
+                      });
+                      return { 
+                        success: true, 
+                        method: 'document_row_match',
+                        confidence: 'high'
+                      };
+                    }
+                  }
                 }
               }
-
-              if (hasProgress) {
-                console.log('⏳ Upload still in progress...');
+              
+              // 3. Check for upload progress/errors before declaring failure
+              const progressElements = document.querySelectorAll(
+                'div[role="progressbar"], div[data-automation-id*="progress"], div[class*="progress"]'
+              );
+              
+              if (progressElements.length > 0) {
+                console.log('⏳ Upload still in progress - found progress indicators');
                 return { success: false, error: null, inProgress: true };
               }
-
-              console.log('❌ File not found in SharePoint document list');
-              return { success: false, error: null };
+              
+              // 4. Check for upload errors
+              const errorElements = document.querySelectorAll(
+                'div[role="alert"], div[data-automation-id*="error"], div[class*="error"]'
+              );
+              
+              for (const errorEl of errorElements) {
+                const errorText = errorEl.textContent?.toLowerCase() || '';
+                if (errorText.includes('upload') && 
+                   (errorText.includes('failed') || errorText.includes('error'))) {
+                  console.log('❌ Upload error detected:', errorText);
+                  return { success: false, error: 'Upload failed - error detected in UI' };
+                }
+              }
+              
+              // 5. Check page title and breadcrumb to ensure we're in right location
+              const pageTitle = document.title;
+              const currentUrl = window.location.href;
+              
+              if (!currentUrl.includes('LnT') && !pageTitle.includes('LnT')) {
+                console.log('❌ Not in correct SharePoint folder - URL/title check failed');
+                return { success: false, error: 'Not in correct SharePoint folder' };
+              }
+              
+              console.log('❌ STRICT CHECK FAILED: File not found in SharePoint');
+              console.log('Current URL:', currentUrl);
+              console.log('Page title:', pageTitle);
+              console.log('Looking for file:', fileName);
+              
+              return { success: false, error: 'File not found after strict verification' };
 
             }, fileName);
 
             if (completed.success) {
-              console.log(`✅ Upload completed via ${completed.method}`);
+              console.log(`✅ UPLOAD CONFIRMED via ${completed.method} with ${completed.confidence} confidence`);
+              consecutiveFailures = 0; // Reset failure counter
               
               if (progressCallback) {
                 progressCallback({
                   phase: 'complete',
                   progress: 100,
-                  message: 'Upload completed successfully!'
+                  message: 'Upload verified successfully in SharePoint!'
                 });
               }
 
@@ -826,24 +929,39 @@ class SharePointBrowserUploadService {
             }
 
             if (completed.error) {
+              console.log('❌ Upload error detected:', completed.error);
               throw new Error(completed.error);
+            }
+
+            // Track consecutive failures to avoid infinite monitoring
+            if (!completed.inProgress) {
+              consecutiveFailures++;
+              console.log(`⚠️  File not found (attempt ${consecutiveFailures}/${maxConsecutiveFailures})`);
+              
+              if (consecutiveFailures >= maxConsecutiveFailures) {
+                console.log('❌ Multiple consecutive failures - upload likely failed');
+                throw new Error(`File not found after ${maxConsecutiveFailures} attempts - upload failed`);
+              }
+            } else {
+              consecutiveFailures = 0; // Reset if upload is still in progress
+              console.log('⏳ Upload in progress - continuing to monitor...');
             }
 
             // Check timeout
             if (waitTime >= maxWaitTime) {
               console.log('⏰ Upload monitoring timeout reached');
-              throw new Error('Upload monitoring timeout - file may still be processing');
+              throw new Error('Upload monitoring timeout - file was not verified in SharePoint');
             }
 
             // Update progress
             const progress = Math.min(95, 70 + (waitTime / maxWaitTime) * 25);
             const remainingTime = Math.ceil((maxWaitTime - waitTime) / 60000);
             
-            if (progressCallback) {
+            if (progressCallback && waitTime % 15000 === 0) { // Update every 15 seconds
               progressCallback({
                 phase: 'monitoring',
                 progress: progress,
-                message: `Monitoring upload progress... (${remainingTime} min remaining)`
+                message: `Strict verification in progress... (${remainingTime} min remaining)`
               });
             }
 

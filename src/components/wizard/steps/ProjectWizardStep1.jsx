@@ -26,6 +26,7 @@ const ProjectWizardStep1 = ({
   const [isPasting, setIsPasting] = useState(false);
   const [importedFields, setImportedFields] = useState([]);
   const [customProjectType, setCustomProjectType] = useState('');
+  const [isCustomProjectTypeMode, setIsCustomProjectTypeMode] = useState(false);
   
   // SIMPLIFIED: Single state object for duplicate checking
   const [duplicateCheckState, setDuplicateCheckState] = useState({
@@ -364,14 +365,13 @@ const ProjectWizardStep1 = ({
     }
   }, [formData.isRevision, revisionConfigured, hasAutoOpened]);
 
-  // Effect to initialize custom project type from saved data
+  // Initialize custom project type from saved data only on mount
   useEffect(() => {
     if (formData.projectType === 'Other' && formData.customProjectType) {
       setCustomProjectType(formData.customProjectType);
-    } else if (formData.projectType !== 'Other') {
-      setCustomProjectType('');
+      setIsCustomProjectTypeMode(true);
     }
-  }, [formData.projectType, formData.customProjectType]);
+  }, []); // Empty dependency array - only run on mount
 
   // HTA-like automatic revision detection (try first before showing dialog)
   const handleAutomaticRevisionDetection = async () => {
@@ -1140,6 +1140,63 @@ const ProjectWizardStep1 = ({
     setImportedFields([]);
   };
 
+  // Save custom project type to dropdown options
+  const saveCustomProjectType = async (customType) => {
+    try {
+      // Don't save if it's already in the list or if it's empty
+      if (!customType || !customType.trim() || dropdownOptions.projectTypes?.includes(customType.trim())) {
+        return;
+      }
+
+      const trimmedType = customType.trim();
+      
+      // Add to dropdown options (insert before "Other")
+      const currentTypes = dropdownOptions.projectTypes || [];
+      const otherIndex = currentTypes.indexOf('Other');
+      let newTypes;
+      
+      if (otherIndex !== -1) {
+        // Insert before "Other"
+        newTypes = [...currentTypes.slice(0, otherIndex), trimmedType, ...currentTypes.slice(otherIndex)];
+      } else {
+        // If "Other" not found, just add at the end
+        newTypes = [...currentTypes, trimmedType];
+      }
+
+      // Update dropdown options service
+      if (dropdownOptionsService && typeof dropdownOptionsService.updateOptions === 'function') {
+        dropdownOptionsService.updateOptions({
+          ...dropdownOptions,
+          projectTypes: newTypes
+        });
+      }
+
+      // Also save to settings for persistence
+      if (window.electronAPI && window.electronAPI.settingsLoad) {
+        try {
+          const result = await window.electronAPI.settingsLoad();
+          if (result && result.success && result.data) {
+            const updatedSettings = {
+              ...result.data,
+              projectTypes: newTypes
+            };
+            
+            if (window.electronAPI.settingsSave) {
+              await window.electronAPI.settingsSave(updatedSettings);
+            }
+          }
+        } catch (error) {
+          console.warn('Could not save custom project type to settings:', error);
+        }
+      }
+
+      console.log(`✅ Custom project type "${trimmedType}" saved to options`);
+      
+    } catch (error) {
+      console.error('Error saving custom project type:', error);
+    }
+  };
+
   // Progress calculation for validation feedback
   const getValidationProgress = () => {
     const requiredFields = ['projectName', 'rfaNumber', 'agentNumber', 'projectContainer', 'rfaType', 'regionalTeam'];
@@ -1412,50 +1469,107 @@ const ProjectWizardStep1 = ({
 
             <div className={`form-group ${isFieldImported('projectType') ? 'imported-field' : ''}`}>
               <label htmlFor="projectType">Project Type</label>
-              <select
-                id="projectType"
-                name="projectType"
-                value={formData.projectType || ''}
-                onChange={(e) => {
-                  handleInputChange(e);
-                  if (e.target.value === 'Other') {
-                    setCustomProjectType('');
-                  }
-                }}
-                className={errors.projectType ? 'error' : ''}
-              >
-                <option value="">Select Project Type</option>
-                {(dropdownOptions.projectTypes || []).map(type => (
-                  <option key={type} value={type}>{type}</option>
-                ))}
-              </select>
-              {errors.projectType && <span className="error-message">{errors.projectType}</span>}
-              {isFieldImported('projectType') && <span className="import-indicator">📋 Imported</span>}
-            </div>
-
-            {formData.projectType === 'Other' && (
-              <div className="form-group">
-                <label htmlFor="customProjectType">Custom Project Type</label>
+              {isCustomProjectTypeMode ? (
                 <input
                   type="text"
-                  id="customProjectType"
-                  name="customProjectType"
+                  id="projectType"
+                  name="projectType"
                   value={customProjectType}
                   onChange={(e) => {
                     setCustomProjectType(e.target.value);
-                    // Update formData with the custom type
+                    // Only update formData with the custom type value, keep projectType as 'Other'
                     onFormDataChange({ 
                       ...formData, 
-                      projectType: e.target.value || 'Other',
+                      projectType: 'Other',
                       customProjectType: e.target.value 
                     });
                   }}
-                  className={errors.customProjectType ? 'error' : ''}
-                  placeholder="Enter custom project type"
+                  onKeyDown={(e) => {
+                    // Allow user to press Escape to revert to dropdown
+                    if (e.key === 'Escape') {
+                      setIsCustomProjectTypeMode(false);
+                      setCustomProjectType('');
+                      onFormDataChange({ 
+                        ...formData, 
+                        projectType: '',
+                        customProjectType: '' 
+                      });
+                    }
+                    // Save custom type when user presses Enter
+                    if (e.key === 'Enter' && customProjectType.trim()) {
+                      const trimmedType = customProjectType.trim();
+                      saveCustomProjectType(trimmedType);
+                      // Update formData with the final custom type name
+                      onFormDataChange({ 
+                        ...formData, 
+                        projectType: trimmedType,
+                        customProjectType: trimmedType 
+                      });
+                      setIsCustomProjectTypeMode(false);
+                    }
+                  }}
+                  onBlur={(e) => {
+                    // Save custom type when user finishes editing
+                    if (e.target.value.trim()) {
+                      const trimmedType = e.target.value.trim();
+                      saveCustomProjectType(trimmedType);
+                      // Update formData with the final custom type name
+                      onFormDataChange({ 
+                        ...formData, 
+                        projectType: trimmedType,
+                        customProjectType: trimmedType 
+                      });
+                      setIsCustomProjectTypeMode(false);
+                    } else {
+                      // If field is empty, revert back to dropdown
+                      setIsCustomProjectTypeMode(false);
+                      setCustomProjectType('');
+                      onFormDataChange({ 
+                        ...formData, 
+                        projectType: '',
+                        customProjectType: '' 
+                      });
+                    }
+                  }}
+                  className={errors.projectType ? 'error' : ''}
+                  placeholder="Enter custom project type (press Enter to save, Esc to cancel)"
+                  autoFocus
                 />
-                {errors.customProjectType && <span className="error-message">{errors.customProjectType}</span>}
-              </div>
-            )}
+              ) : (
+                <select
+                  id="projectType"
+                  name="projectType"
+                  value={formData.projectType || ''}
+                  onChange={(e) => {
+                    if (e.target.value === 'Other') {
+                      setIsCustomProjectTypeMode(true);
+                      setCustomProjectType('');
+                      onFormDataChange({ 
+                        ...formData, 
+                        projectType: 'Other',
+                        customProjectType: '' 
+                      });
+                    } else {
+                      setIsCustomProjectTypeMode(false);
+                      setCustomProjectType('');
+                      onFormDataChange({ 
+                        ...formData, 
+                        projectType: e.target.value,
+                        customProjectType: '' 
+                      });
+                    }
+                  }}
+                  className={errors.projectType ? 'error' : ''}
+                >
+                  <option value="">Select Project Type</option>
+                  {(dropdownOptions.projectTypes || []).map(type => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+              )}
+              {errors.projectType && <span className="error-message">{errors.projectType}</span>}
+              {isFieldImported('projectType') && <span className="import-indicator">📋 Imported</span>}
+            </div>
 
             <div className={`form-group ${getFieldClasses('projectContainer')}`}>
               <label htmlFor="projectContainer">Project Container *</label>
