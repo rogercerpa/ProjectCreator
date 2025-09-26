@@ -62,9 +62,28 @@ function Settings({ initialTab = 'app-info' }) {
   const [editingIndex, setEditingIndex] = useState(-1);
   const [newValue, setNewValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  
+  // New state for improved Form Settings UX
+  const [selectedCategory, setSelectedCategory] = useState('rfaTypes');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [viewMode, setViewMode] = useState('compact'); // 'compact' or 'detailed'
+  
+  // Category configuration for improved Form Settings
+  const formCategories = [
+    { key: 'rfaTypes', label: 'RFA Types', icon: '📝', description: 'Request for Assistance types' },
+    { key: 'regionalTeams', label: 'Regional Teams', icon: '🌎', description: 'Available regional team options' },
+    { key: 'nationalAccounts', label: 'National Accounts', icon: '🏢', description: 'National account customer options' },
+    { key: 'saveLocations', label: 'Save Locations', icon: '💾', description: 'Available save location options' },
+    { key: 'complexityLevels', label: 'Complexity Levels', icon: '⚡', description: 'Project complexity classifications' },
+    { key: 'statusOptions', label: 'Status Options', icon: '📊', description: 'Project status options' },
+    { key: 'productOptions', label: 'Product Options', icon: '💡', description: 'Available product categories' },
+    { key: 'assignedToOptions', label: 'Assigned To', icon: '👥', description: 'Team member assignment options' },
+    { key: 'projectTypes', label: 'Project Types', icon: '🏗️', description: 'Building and project type categories' }
+  ];
 
   // Agency management state
   const [agencies, setAgencies] = useState([]);
+  const [filteredAgencies, setFilteredAgencies] = useState([]);
   const [agencyStats, setAgencyStats] = useState(null);
   const [showAgencyForm, setShowAgencyForm] = useState(false);
   const [editingAgency, setEditingAgency] = useState(null);
@@ -80,6 +99,19 @@ function Settings({ initialTab = 'app-info' }) {
     sae: 'No'
   });
   const [importStatus, setImportStatus] = useState(null);
+  
+  // Pagination and search state for agencies
+  const [agencySearchTerm, setAgencySearchTerm] = useState('');
+  const [agencyFilters, setAgencyFilters] = useState({
+    region: 'all',
+    role: 'all'
+  });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [agencyFilterOptions, setAgencyFilterOptions] = useState({
+    regions: [],
+    roles: []
+  });
 
   // Agency sync state
   const [syncSettings, setSyncSettings] = useState({
@@ -102,6 +134,7 @@ function Settings({ initialTab = 'app-info' }) {
     loadSettings();
     loadAgencies();
     loadAgencyStats();
+    loadAgencyFilterOptions();
     loadSyncSettings();
     // Scroll to top when settings page loads - ensure DOM is ready
     const scrollToTop = () => {
@@ -165,7 +198,30 @@ function Settings({ initialTab = 'app-info' }) {
         setNewValue('');
       }
       
-      // Also scroll to top when returning to the page
+      // Only scroll to top on window focus events, not on internal state changes
+      // This prevents scrolling when user is actively adding/editing items
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // Reset state when tab becomes visible again
+        handleFocus();
+        // Scroll to top only when returning to the page from outside
+        const scrollToTop = () => {
+          const mainContent = document.querySelector('.main-content');
+          if (mainContent) {
+            mainContent.scrollTo({ top: 0, behavior: 'auto' });
+          } else {
+            window.scrollTo({ top: 0, behavior: 'auto' });
+          }
+        };
+        requestAnimationFrame(scrollToTop);
+      }
+    };
+
+    const handleWindowFocus = () => {
+      handleFocus();
+      // Scroll to top only when window gains focus from outside
       const scrollToTop = () => {
         const mainContent = document.querySelector('.main-content');
         if (mainContent) {
@@ -174,19 +230,7 @@ function Settings({ initialTab = 'app-info' }) {
           window.scrollTo({ top: 0, behavior: 'auto' });
         }
       };
-      
       requestAnimationFrame(scrollToTop);
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        // Reset state when tab becomes visible again
-        handleFocus();
-      }
-    };
-
-    const handleWindowFocus = () => {
-      handleFocus();
     };
 
     const handleWindowBlur = () => {
@@ -200,16 +244,13 @@ function Settings({ initialTab = 'app-info' }) {
     window.addEventListener('focus', handleWindowFocus);
     window.addEventListener('blur', handleWindowBlur);
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    // Also reset state when component mounts
-    handleFocus();
 
     return () => {
       window.removeEventListener('focus', handleWindowFocus);
       window.removeEventListener('blur', handleWindowBlur);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [editingField, editingIndex]);
+  }, []); // Remove editingField, editingIndex from dependencies to prevent unwanted scrolling
 
   // Fix input field interactivity issue - ensure fields are properly initialized and interactive
   useEffect(() => {
@@ -226,6 +267,11 @@ function Settings({ initialTab = 'app-info' }) {
 
     return () => clearTimeout(timer);
   }, []); // Empty dependency array - only run once on mount
+
+  // Apply filters whenever search term or filters change
+  useEffect(() => {
+    filterAgencies();
+  }, [agencySearchTerm, agencyFilters, agencies]); // Re-filter when search/filters/agencies change
 
   const loadSettings = async () => {
     try {
@@ -251,11 +297,104 @@ function Settings({ initialTab = 'app-info' }) {
       const result = await window.electronAPI.agenciesLoadAll();
       if (result && result.success) {
         setAgencies(result.agencies || []);
+        setFilteredAgencies(result.agencies || []); // Initialize filtered agencies
       }
     } catch (error) {
       console.error('Error loading agencies:', error);
       setAgencies([]);
+      setFilteredAgencies([]);
     }
+  };
+
+  // Load filter options for agencies
+  const loadAgencyFilterOptions = async () => {
+    try {
+      const result = await window.electronAPI.agenciesGetFilterOptions();
+      if (result && result.success) {
+        setAgencyFilterOptions(result.options || {
+          regions: [],
+          roles: []
+        });
+      }
+    } catch (error) {
+      console.error('Error loading agency filter options:', error);
+    }
+  };
+
+  // Filter and search agencies
+  const filterAgencies = () => {
+    let filtered = [...agencies];
+
+    // Apply search term
+    if (agencySearchTerm.trim()) {
+      const searchLower = agencySearchTerm.toLowerCase();
+      filtered = filtered.filter(agency => 
+        agency.agencyName?.toLowerCase().includes(searchLower) ||
+        agency.contactName?.toLowerCase().includes(searchLower) ||
+        agency.contactEmail?.toLowerCase().includes(searchLower) ||
+        agency.region?.toLowerCase().includes(searchLower) ||
+        agency.role?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Apply region filter
+    if (agencyFilters.region && agencyFilters.region !== 'all') {
+      filtered = filtered.filter(agency => agency.region === agencyFilters.region);
+    }
+
+    // Apply role filter
+    if (agencyFilters.role && agencyFilters.role !== 'all') {
+      filtered = filtered.filter(agency => agency.role === agencyFilters.role);
+    }
+
+    setFilteredAgencies(filtered);
+    setCurrentPage(1); // Reset to first page when filters change
+  };
+
+  // Get paginated agencies for current page
+  const getPaginatedAgencies = () => {
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    return filteredAgencies.slice(startIndex, endIndex);
+  };
+
+  // Get pagination info
+  const getPaginationInfo = () => {
+    const totalItems = filteredAgencies.length;
+    const totalPages = Math.ceil(totalItems / pageSize);
+    const startItem = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+    const endItem = Math.min(currentPage * pageSize, totalItems);
+    
+    return {
+      totalItems,
+      totalPages,
+      startItem,
+      endItem,
+      currentPage,
+      pageSize
+    };
+  };
+
+  // Handle page change
+  const handlePageChange = (newPage) => {
+    const paginationInfo = getPaginationInfo();
+    if (newPage >= 1 && newPage <= paginationInfo.totalPages) {
+      setCurrentPage(newPage);
+    }
+  };
+
+  // Handle page size change
+  const handlePageSizeChange = (newPageSize) => {
+    setPageSize(newPageSize);
+    setCurrentPage(1); // Reset to first page
+  };
+
+  // Handle filter change
+  const handleAgencyFilterChange = (filterType, value) => {
+    setAgencyFilters(prev => ({
+      ...prev,
+      [filterType]: value
+    }));
   };
 
   const loadAgencyStats = async () => {
@@ -761,6 +900,226 @@ function Settings({ initialTab = 'app-info' }) {
     });
   };
 
+  // Helper function to filter items based on search
+  const getFilteredItems = (items) => {
+    if (!searchTerm.trim()) return items;
+    return items.filter(item => 
+      item.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  };
+
+  // Get current category data
+  const getCurrentCategory = () => {
+    return formCategories.find(cat => cat.key === selectedCategory);
+  };
+
+  // Compact grid-based field editor for improved UX
+  const renderCompactFieldEditor = (field, items) => {
+    const filteredItems = getFilteredItems(items);
+    
+    return (
+      <div className="compact-field-editor">
+        <div className="field-items-grid">
+          {/* Add new item card */}
+          <div className="field-item-card add-new-card">
+            {editingField === field && editingIndex === -1 ? (
+              <div className="add-new-input">
+                <input
+                  type="text"
+                  value={newValue}
+                  onChange={(e) => setNewValue(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
+                  onBlur={() => {}}
+                  placeholder="Enter new value..."
+                  autoFocus
+                  className="compact-input"
+                />
+                <div className="inline-actions">
+                  <button className="btn-icon success" onClick={saveEdit} title="Save">✓</button>
+                  <button className="btn-icon cancel" onClick={cancelEditing} title="Cancel">✗</button>
+                </div>
+              </div>
+            ) : (
+              <button 
+                className="add-new-button"
+                onClick={() => startEditing(field)}
+                title="Add new item"
+              >
+                <span className="add-icon">+</span>
+                <span className="add-text">Add New</span>
+              </button>
+            )}
+          </div>
+
+          {/* Existing items */}
+          {filteredItems.map((item, index) => {
+            const originalIndex = items.indexOf(item);
+            return (
+              <div key={originalIndex} className="field-item-card">
+                {editingField === field && editingIndex === originalIndex ? (
+                  <div className="edit-input">
+                    <input
+                      type="text"
+                      value={newValue}
+                      onChange={(e) => setNewValue(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
+                      onBlur={() => {}}
+                      autoFocus
+                      className="compact-input"
+                    />
+                    <div className="inline-actions">
+                      <button className="btn-icon success" onClick={saveEdit} title="Save">✓</button>
+                      <button className="btn-icon cancel" onClick={cancelEditing} title="Cancel">✗</button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="item-text" title={item}>{item}</div>
+                    <div className="item-actions">
+                      <button 
+                        className="btn-icon edit" 
+                        onClick={() => startEditing(field, originalIndex)}
+                        title="Edit"
+                      >
+                        ✏️
+                      </button>
+                      <button 
+                        className="btn-icon delete" 
+                        onClick={() => deleteItem(field, originalIndex)}
+                        title="Delete"
+                      >
+                        🗑️
+                      </button>
+                      <div className="move-actions">
+                        <button 
+                          className="btn-icon move" 
+                          onClick={() => moveItem(field, originalIndex, -1)}
+                          disabled={originalIndex === 0}
+                          title="Move Up"
+                        >
+                          ↑
+                        </button>
+                        <button 
+                          className="btn-icon move" 
+                          onClick={() => moveItem(field, originalIndex, 1)}
+                          disabled={originalIndex === items.length - 1}
+                          title="Move Down"
+                        >
+                          ↓
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        
+        {filteredItems.length === 0 && searchTerm && (
+          <div className="no-results">
+            <p>No items found matching "{searchTerm}"</p>
+            <button 
+              className="btn btn-primary btn-sm"
+              onClick={() => setSearchTerm('')}
+            >
+              Clear Search
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Pagination component for agencies
+  const renderPagination = (paginationInfo) => {
+    const { totalItems, totalPages, startItem, endItem, currentPage } = paginationInfo;
+    
+    if (totalPages <= 1) return null;
+
+    const getPageNumbers = () => {
+      const pages = [];
+      const maxVisible = 5;
+      
+      let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+      let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+      
+      if (endPage - startPage + 1 < maxVisible) {
+        startPage = Math.max(1, endPage - maxVisible + 1);
+      }
+      
+      for (let i = startPage; i <= endPage; i++) {
+        pages.push(i);
+      }
+      
+      return pages;
+    };
+
+    return (
+      <div className="pagination-container">
+        <div className="pagination-info">
+          <span>Showing {startItem}-{endItem} of {totalItems} agencies</span>
+          <select 
+            value={pageSize} 
+            onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+            className="page-size-select"
+          >
+            <option value={25}>25 per page</option>
+            <option value={50}>50 per page</option>
+            <option value={100}>100 per page</option>
+          </select>
+        </div>
+        
+        <div className="pagination-controls">
+          <button 
+            className="pagination-btn"
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1}
+            title="First page"
+          >
+            ⟪
+          </button>
+          <button 
+            className="pagination-btn"
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            title="Previous page"
+          >
+            ‹
+          </button>
+          
+          {getPageNumbers().map(pageNum => (
+            <button
+              key={pageNum}
+              className={`pagination-btn ${pageNum === currentPage ? 'active' : ''}`}
+              onClick={() => handlePageChange(pageNum)}
+            >
+              {pageNum}
+            </button>
+          ))}
+          
+          <button 
+            className="pagination-btn"
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            title="Next page"
+          >
+            ›
+          </button>
+          <button 
+            className="pagination-btn"
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages}
+            title="Last page"
+          >
+            ⟫
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  // Original detailed field editor (kept for comparison/fallback)
   const renderFieldEditor = (field, label, items) => (
     <div className="settings-field">
       <div className="field-header">
@@ -1414,18 +1773,101 @@ function Settings({ initialTab = 'app-info' }) {
         );
 
       case 'project-form':
+        const currentCategory = getCurrentCategory();
+        const currentItems = settings[selectedCategory] || [];
+        
         return (
           <div className="tab-content">
-            <div className="settings-content">
-              {renderFieldEditor('rfaTypes', 'RFA Type Options', settings.rfaTypes)}
-              {renderFieldEditor('regionalTeams', 'Regional Team Options', settings.regionalTeams)}
-              {renderFieldEditor('nationalAccounts', 'National Account Options', settings.nationalAccounts)}
-              {renderFieldEditor('saveLocations', 'Save Location Options', settings.saveLocations)}
-              {renderFieldEditor('complexityLevels', 'Complexity Level Options', settings.complexityLevels)}
-              {renderFieldEditor('statusOptions', 'Status Options', settings.statusOptions)}
-              {renderFieldEditor('productOptions', 'Product Options', settings.productOptions)}
-              {renderFieldEditor('assignedToOptions', 'Assigned To Options', settings.assignedToOptions)}
-              {renderFieldEditor('projectTypes', 'Project Type Options', settings.projectTypes)}
+            <div className="form-settings-layout">
+              {/* Sidebar with categories */}
+              <div className="form-categories-sidebar">
+                <div className="sidebar-header">
+                  <h3>Categories</h3>
+                  <div className="view-mode-toggle">
+                    <button 
+                      className={`view-btn ${viewMode === 'compact' ? 'active' : ''}`}
+                      onClick={() => setViewMode('compact')}
+                      title="Compact View"
+                    >
+                      ⊞
+                    </button>
+                    <button 
+                      className={`view-btn ${viewMode === 'detailed' ? 'active' : ''}`}
+                      onClick={() => setViewMode('detailed')}
+                      title="Detailed View"
+                    >
+                      ☰
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="categories-list">
+                  {formCategories.map(category => (
+                    <button
+                      key={category.key}
+                      className={`category-item ${selectedCategory === category.key ? 'active' : ''}`}
+                      onClick={() => {
+                        setSelectedCategory(category.key);
+                        setSearchTerm(''); // Clear search when switching categories
+                        cancelEditing(); // Cancel any active editing
+                      }}
+                    >
+                      <span className="category-icon">{category.icon}</span>
+                      <div className="category-info">
+                        <span className="category-label">{category.label}</span>
+                        <span className="category-count">({settings[category.key]?.length || 0})</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Main content area */}
+              <div className="form-settings-main">
+                {/* Header with search and actions */}
+                <div className="main-header">
+                  <div className="header-info">
+                    <h2>
+                      <span className="header-icon">{currentCategory?.icon}</span>
+                      {currentCategory?.label}
+                    </h2>
+                    <p className="header-description">{currentCategory?.description}</p>
+                  </div>
+                  
+                  <div className="header-actions">
+                    <div className="search-box">
+                      <input
+                        type="text"
+                        placeholder="Search items..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="search-input"
+                      />
+                      {searchTerm && (
+                        <button 
+                          className="clear-search"
+                          onClick={() => setSearchTerm('')}
+                          title="Clear search"
+                        >
+                          ✗
+                        </button>
+                      )}
+                    </div>
+                    
+                    <div className="item-count">
+                      {getFilteredItems(currentItems).length} of {currentItems.length} items
+                    </div>
+                  </div>
+                </div>
+
+                {/* Items display */}
+                <div className="items-container">
+                  {viewMode === 'compact' ? 
+                    renderCompactFieldEditor(selectedCategory, currentItems) :
+                    renderFieldEditor(selectedCategory, currentCategory?.label, currentItems)
+                  }
+                </div>
+              </div>
             </div>
           </div>
         );
@@ -1434,21 +1876,6 @@ function Settings({ initialTab = 'app-info' }) {
         return (
           <div className="tab-content">
             <div className="agencies-management compact-layout">
-              {/* Header with inline stats */}
-              <div className="header-with-stats">
-                <div className="header-content">
-                  <h2>Agency Management</h2>
-                  <p className="section-description">Manage your agency database</p>
-                </div>
-                {agencyStats && (
-                  <div className="inline-stats">
-                    <span className="stat-item">{agencyStats.totalAgencies} Agencies</span>
-                    <span className="stat-item">{Object.keys(agencyStats.byRegion || {}).length} Regions</span>
-                    <span className="stat-item">{Object.keys(agencyStats.byRole || {}).length} Roles</span>
-                  </div>
-                )}
-              </div>
-
               {/* Sync Configuration */}
               <div className="settings-section">
                 <h3>🔄 Auto-Sync Configuration</h3>
@@ -1827,6 +2254,69 @@ function Settings({ initialTab = 'app-info' }) {
                   </div>
                 ) : (
                   <div className="agencies-list">
+                    {/* Search and Filter Controls */}
+                    <div className="agencies-controls">
+                      <div className="search-and-filters">
+                        <div className="search-box">
+                          <input
+                            type="text"
+                            placeholder="Search agencies, contacts, regions..."
+                            value={agencySearchTerm}
+                            onChange={(e) => setAgencySearchTerm(e.target.value)}
+                            className="search-input"
+                          />
+                          {agencySearchTerm && (
+                            <button 
+                              className="clear-search"
+                              onClick={() => setAgencySearchTerm('')}
+                              title="Clear search"
+                            >
+                              ✗
+                            </button>
+                          )}
+                        </div>
+                        
+                        <div className="filter-controls">
+                          <select
+                            value={agencyFilters.region}
+                            onChange={(e) => handleAgencyFilterChange('region', e.target.value)}
+                            className="filter-select"
+                          >
+                            <option value="all">All Regions</option>
+                            {agencyFilterOptions.regions.map(region => (
+                              <option key={region} value={region}>{region}</option>
+                            ))}
+                          </select>
+                          
+                          <select
+                            value={agencyFilters.role}
+                            onChange={(e) => handleAgencyFilterChange('role', e.target.value)}
+                            className="filter-select"
+                          >
+                            <option value="all">All Roles</option>
+                            {agencyFilterOptions.roles.map(role => (
+                              <option key={role} value={role}>{role}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      
+                      {/* Results Summary */}
+                      <div className="results-summary">
+                        {filteredAgencies.length !== agencies.length && (
+                          <span className="filter-info">
+                            {filteredAgencies.length} of {agencies.length} agencies
+                          </span>
+                        )}
+                        {filteredAgencies.length === agencies.length && (
+                          <span className="total-info">
+                            {agencies.length} total agencies
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Agencies Table */}
                     <div className="agencies-table">
                       <div className="table-header">
                         <span>Agency Name</span>
@@ -1836,42 +2326,56 @@ function Settings({ initialTab = 'app-info' }) {
                         <span>Actions</span>
                       </div>
                       
-                      {agencies.slice(0, 50).map(agency => (
-                        <div key={agency.id} className="table-row">
-                          <span className="agency-name" title={agency.agencyName}>
-                            {agency.agencyName}
-                          </span>
-                          <span className="contact-info">
-                            <div>{agency.contactName}</div>
-                            <div className="contact-email">{agency.contactEmail}</div>
-                          </span>
-                          <span className="region">{agency.region}</span>
-                          <span className="role">{agency.role}</span>
-                          <span className="actions">
-                            <button 
-                              className="btn-icon edit-btn"
-                              onClick={() => handleEditAgency(agency)}
-                              title="Edit agency"
-                            >
-                              ✏️
-                            </button>
-                            <button 
-                              className="btn-icon delete-btn"
-                              onClick={() => handleDeleteAgency(agency)}
-                              title="Delete agency"
-                            >
-                              🗑️
-                            </button>
-                          </span>
+                      {filteredAgencies.length === 0 ? (
+                        <div className="no-results">
+                          <p>No agencies found matching your search criteria.</p>
+                          <button 
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => {
+                              setAgencySearchTerm('');
+                              setAgencyFilters({ region: 'all', role: 'all' });
+                            }}
+                          >
+                            Clear Filters
+                          </button>
                         </div>
-                      ))}
-                      
-                      {agencies.length > 50 && (
-                        <div className="table-footer">
-                          <p>Showing first 50 agencies. Use the Agency Directory to search all agencies.</p>
-                        </div>
+                      ) : (
+                        <>
+                          {getPaginatedAgencies().map(agency => (
+                            <div key={agency.id} className="table-row">
+                              <span className="agency-name" title={agency.agencyName}>
+                                {agency.agencyName}
+                              </span>
+                              <span className="contact-info">
+                                <div>{agency.contactName}</div>
+                                <div className="contact-email">{agency.contactEmail}</div>
+                              </span>
+                              <span className="region">{agency.region}</span>
+                              <span className="role">{agency.role}</span>
+                              <span className="actions">
+                                <button 
+                                  className="btn-icon edit-btn"
+                                  onClick={() => handleEditAgency(agency)}
+                                  title="Edit agency"
+                                >
+                                  ✏️
+                                </button>
+                                <button 
+                                  className="btn-icon delete-btn"
+                                  onClick={() => handleDeleteAgency(agency)}
+                                  title="Delete agency"
+                                >
+                                  🗑️
+                                </button>
+                              </span>
+                            </div>
+                          ))}
+                        </>
                       )}
                     </div>
+
+                    {/* Pagination */}
+                    {filteredAgencies.length > 0 && renderPagination(getPaginationInfo())}
                   </div>
                 )}
 
