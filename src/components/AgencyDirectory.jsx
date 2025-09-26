@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import './AgencyDirectory.css';
 import AgencyTableView from './AgencyTableView';
+import AgencySelectionModal from './AgencySelectionModal';
+import EmailTemplateLibrary from './EmailTemplateLibrary';
 
 function AgencyDirectory() {
   const [agencies, setAgencies] = useState([]);
@@ -24,6 +26,10 @@ function AgencyDirectory() {
   });
   const [expandedAgencies, setExpandedAgencies] = useState(new Set());
   const [groupedAgencies, setGroupedAgencies] = useState({});
+  
+  // Email template functionality
+  const [showAgencySelection, setShowAgencySelection] = useState(false);
+  const [showTemplateLibrary, setShowTemplateLibrary] = useState(false);
 
   // Load agencies and filter options
   const loadAgencies = useCallback(async () => {
@@ -250,6 +256,16 @@ function AgencyDirectory() {
     
     const subject = `Contact: ${agency.agencyName}`;
     await openOutlookWithEmails([agency.contactEmail], subject);
+  };
+
+  // Handle email template workflow
+  const handleEmailTemplate = () => {
+    setShowAgencySelection(true);
+  };
+
+  // Handle manage templates
+  const handleManageTemplates = () => {
+    setShowTemplateLibrary(true);
   };
 
 
@@ -610,22 +626,26 @@ function AgencyDirectory() {
       {/* Results */}
       <div className="results-section">
         <div className="results-header">
-          <span className="results-count">
-            {filteredAgencies.length} {filteredAgencies.length === 1 ? 'agency' : 'agencies'} found
-          </span>
-          
           <div className="results-actions">
-            {/* Bulk Email Button */}
-            {filteredAgencies.length > 0 && (
-              <button
-                onClick={handleBulkEmail}
-                className="btn btn-primary email-all-btn"
-                title={`Email all ${filteredAgencies.length} ${filteredAgencies.length === 1 ? 'agency' : 'agencies'}`}
-              >
-                <span className="btn-icon">✉️</span>
-                <span className="btn-text">Email All ({filteredAgencies.length})</span>
-              </button>
-            )}
+            {/* Email Template Button */}
+            <button
+              onClick={handleEmailTemplate}
+              className="btn btn-primary email-template-btn"
+              title="Create personalized emails using templates"
+            >
+              <span className="btn-icon">📧</span>
+              <span className="btn-text">Email Template</span>
+            </button>
+            
+            {/* Manage Templates Button */}
+            <button
+              onClick={handleManageTemplates}
+              className="btn btn-primary manage-templates-btn"
+              title="Manage email templates"
+            >
+              <span className="btn-icon">📋</span>
+              <span className="btn-text">Manage Template</span>
+            </button>
             
             {/* View Mode Toggle */}
             <div className="view-mode-toggle">
@@ -694,6 +714,22 @@ function AgencyDirectory() {
 
       {/* Modals */}
       {renderAgencyModal()}
+      
+      {/* Email Template Modals */}
+      {showAgencySelection && (
+        <AgencySelectionModal
+          isOpen={showAgencySelection}
+          onClose={() => setShowAgencySelection(false)}
+          allAgencies={agencies}
+        />
+      )}
+      
+      {showTemplateLibrary && (
+        <EmailTemplateLibrary
+          isOpen={showTemplateLibrary}
+          onClose={() => setShowTemplateLibrary(false)}
+        />
+      )}
     </div>
   );
 }

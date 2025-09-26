@@ -1606,8 +1606,9 @@ function Settings({ initialTab = 'app-info' }) {
               </div>
             </div>
 
-            {/* SharePoint Integration Section */}
-            <div className="sharepoint-section">
+            {/* SharePoint Integration Section - TEMPORARILY HIDDEN */}
+            {/* TODO: Re-enable after fixing navigation and verification issues */}
+            {false && <div className="sharepoint-section">
               <h2>SharePoint Integration</h2>
               <p className="section-description">Configure SharePoint upload settings for automated project deployment.</p>
               
@@ -1768,7 +1769,7 @@ function Settings({ initialTab = 'app-info' }) {
                   </div>
                 </div>
               </div>
-            </div>
+            </div>}
           </div>
         );
 

@@ -366,8 +366,9 @@ const ProjectManagement = ({
                 </div>
               )}
               
-              {/* SharePoint Upload Button */}
-              {currentMode === 'view' && (
+              {/* SharePoint Upload Button - TEMPORARILY HIDDEN */}
+              {/* TODO: Re-enable after fixing navigation and verification issues */}
+              {false && currentMode === 'view' && (
                 <button
                   onClick={handleUploadToSharePoint}
                   className={`btn btn-sharepoint ${uploadStatus.isUploaded ? 'btn-uploaded' : ''}`}
@@ -414,8 +415,8 @@ const ProjectManagement = ({
         </div>
       )}
 
-      {/* SharePoint Upload Progress Modal */}
-      {uploadStatus.isUploading && (
+      {/* SharePoint Upload Progress Modal - TEMPORARILY HIDDEN */}
+      {false && uploadStatus.isUploading && (
         <div className="upload-progress-modal">
           <div className="upload-progress-content">
             <h3>Uploading to SharePoint</h3>

@@ -166,11 +166,11 @@
 }
 
 .results-header {
-  padding: 20px 24px;
+  padding: 16px 24px;
   border-bottom: 1px solid #e2e8f0;
   background: #f7fafc;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
 }
 
@@ -182,23 +182,26 @@
 .results-actions {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 /* Email Buttons */
 .email-all-btn {
   background: #28a745;
   color: white;
-  font-weight: 600;
+  font-weight: 500;
   border: none;
-  border-radius: 8px;
-  padding: 10px 16px;
+  border-radius: 6px;
+  padding: 8px 12px;
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 14px;
+  gap: 6px;
+  font-size: 13px;
+  white-space: nowrap;
+  min-width: fit-content;
 }
 
 .email-all-btn:hover {
@@ -862,17 +865,19 @@
 
 /* Button Styles */
 .btn {
-  padding: 10px 16px;
+  padding: 8px 12px;
   border: none;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
   text-decoration: none;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  white-space: nowrap;
+  min-width: fit-content;
 }
 
 .btn-primary {
@@ -895,7 +900,109 @@
   background: #cbd5e0;
 }
 
+.btn-success {
+  background: #28a745;
+  color: white;
+}
+
+.btn-success:hover {
+  background: #218838;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+}
+
+.btn-outline {
+  background: transparent;
+  color: #007bff;
+  border: 1px solid #007bff;
+}
+
+.btn-outline:hover {
+  background: #007bff;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
+}
+
+/* Email Template Button Styles - removed special styling for uniformity */
+
+.manage-templates-btn {
+  min-width: fit-content;
+  flex-shrink: 0;
+}
+
+/* Results Actions Button Improvements */
+.results-actions .btn {
+  padding: 10px 16px;
+  font-size: 13px;
+  min-height: 40px;
+  min-width: 140px;
+  justify-content: center;
+}
+
+.results-actions .btn-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.results-actions .btn-text {
+  font-size: 13px;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
 /* Responsive Design */
+
+/* Large screens - default Electron window size optimization */
+@media (max-width: 1200px) {
+  .results-actions {
+    gap: 10px;
+  }
+  
+  .results-actions .btn {
+    padding: 7px 9px;
+    font-size: 12px;
+  }
+  
+  .results-actions .btn-text {
+    font-size: 12px;
+  }
+  
+  .view-mode-toggle {
+    gap: 8px;
+  }
+  
+  .toggle-btn {
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+  
+  .toggle-text {
+    font-size: 11px;
+  }
+}
+
+/* Medium screens - tablet/small desktop */
+@media (max-width: 1024px) {
+  .results-actions {
+    gap: 8px;
+  }
+  
+  .results-actions .btn {
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+  
+  .results-actions .btn-text {
+    font-size: 11px;
+  }
+  
+  .results-actions .btn-icon {
+    font-size: 13px;
+  }
+}
+
+/* Small screens - mobile */
 @media (max-width: 768px) {
   .agency-directory {
     padding: 16px;
@@ -928,7 +1035,15 @@
   
   .results-actions {
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
+    align-items: stretch;
+  }
+  
+  .results-actions .btn {
+    width: 100%;
+    justify-content: center;
+    padding: 10px 16px;
+    font-size: 13px;
   }
   
   .view-mode-toggle {

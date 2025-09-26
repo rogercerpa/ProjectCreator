@@ -126,6 +126,28 @@ contextBridge.exposeInMainWorld('electronAPI', {
   syncGetStatus: () => ipcRenderer.invoke('sync-get-status'),
   syncExportToExcel: (filePath, options) => ipcRenderer.invoke('sync-export-to-excel', filePath, options),
   
+  // Email template operations
+  emailTemplatesLoadAll: () => ipcRenderer.invoke('email-templates-load-all'),
+  emailTemplatesCreate: (templateData) => ipcRenderer.invoke('email-templates-create', templateData),
+  emailTemplatesUpdate: (templateId, updates) => ipcRenderer.invoke('email-templates-update', templateId, updates),
+  emailTemplatesDelete: (templateId) => ipcRenderer.invoke('email-templates-delete', templateId),
+  emailTemplatesGet: (templateId) => ipcRenderer.invoke('email-templates-get', templateId),
+  emailTemplatesGetByCategory: (category) => ipcRenderer.invoke('email-templates-get-by-category', category),
+  emailTemplatesGetCategories: () => ipcRenderer.invoke('email-templates-get-categories'),
+  emailTemplatesGetVariables: () => ipcRenderer.invoke('email-templates-get-variables'),
+  emailTemplatesGeneratePersonalized: (templateId, agencyData) => ipcRenderer.invoke('email-templates-generate-personalized', templateId, agencyData),
+  emailTemplatesIncrementUsage: (templateId) => ipcRenderer.invoke('email-templates-increment-usage', templateId),
+  emailTemplatesGetStatistics: () => ipcRenderer.invoke('email-templates-get-statistics'),
+  emailTemplatesExport: (filePath) => ipcRenderer.invoke('email-templates-export', filePath),
+  emailTemplatesImport: (filePath, options) => ipcRenderer.invoke('email-templates-import', filePath, options),
+  
+  // Enhanced email operations
+  emailOpenOutlookWithTemplate: (emailData) => ipcRenderer.invoke('email-open-outlook-with-template', emailData),
+  emailOpenOutlookBatch: (emailsData) => ipcRenderer.invoke('email-open-outlook-batch', emailsData),
+  
+  // Image processing for email templates
+  emailConvertImageToBase64: (filePath) => ipcRenderer.invoke('email-convert-image-to-base64', filePath),
+  
   // Error handling
   onError: (callback) => ipcRenderer.on('error', callback),
   onNewProject: (callback) => ipcRenderer.on('new-project', callback),
