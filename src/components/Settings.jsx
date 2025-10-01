@@ -55,6 +55,12 @@ function Settings({ initialTab = 'app-info' }) {
         overwriteExisting: true,
         zipNaming: '{projectName}_{rfaNumber}_{date}.zip'
       }
+    },
+    oneDriveSyncSettings: {
+      enabled: false,
+      syncFolderPath: '', // Auto-detected or manual path
+      cleanupStrategy: 'manual', // 'auto-delete', 'keep-recent', 'manual' - DEFAULT TO MANUAL FOR SAFETY
+      keepRecentCount: 10
     }
   });
 
@@ -1770,6 +1776,258 @@ function Settings({ initialTab = 'app-info' }) {
                 </div>
               </div>
             </div>}
+
+            {/* OneDrive Sync Integration Section */}
+            <div className="onedrive-sync-section">
+              <h2>📂 OneDrive Sync Integration</h2>
+              <p className="section-description">Upload projects to SharePoint via OneDrive sync folder. No authentication required!</p>
+              
+              <div className="onedrive-sync-settings">
+                {/* Enable OneDrive Sync */}
+                <div className="setting-group">
+                  <h3>🔗 Enable OneDrive Sync Upload</h3>
+                  <p className="group-description">Use your local OneDrive sync folder to upload projects to SharePoint</p>
+                  
+                  <div className="setting-row">
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={settings.oneDriveSyncSettings.enabled}
+                        onChange={(e) => setSettings(prev => ({
+                          ...prev,
+                          oneDriveSyncSettings: {
+                            ...prev.oneDriveSyncSettings,
+                            enabled: e.target.checked
+                          }
+                        }))}
+                      />
+                      Enable OneDrive Sync Integration
+                    </label>
+                  </div>
+                </div>
+
+                {/* OneDrive Sync Folder Configuration */}
+                <div className="setting-group">
+                  <h3>📁 OneDrive Sync Folder</h3>
+                  <p className="group-description">Select the local OneDrive folder that syncs to your SharePoint library</p>
+                  
+                  <div className="setting-row">
+                    <label>OneDrive Sync Folder Path:</label>
+                    <div className="path-input-group">
+                      <input
+                        type="text"
+                        value={settings.oneDriveSyncSettings.syncFolderPath}
+                        onChange={(e) => setSettings(prev => ({
+                          ...prev,
+                          oneDriveSyncSettings: {
+                            ...prev.oneDriveSyncSettings,
+                            syncFolderPath: e.target.value
+                          }
+                        }))}
+                        placeholder="C:\\Users\\...\\OneDrive - Acuity Brands, Inc\\CIDesignSolutions - Shared Documents\\LnT"
+                        className="path-input"
+                        disabled={!settings.oneDriveSyncSettings.enabled}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={async () => {
+                          if (electronAPI && electronAPI.detectOneDriveSync) {
+                            const result = await electronAPI.detectOneDriveSync();
+                            if (result.success && result.folders && result.folders.length > 0) {
+                              const selectedFolder = result.folders[0].path;
+                              if (selectedFolder) {
+                                setSettings(prev => ({
+                                  ...prev,
+                                  oneDriveSyncSettings: {
+                                    ...prev.oneDriveSyncSettings,
+                                    syncFolderPath: selectedFolder
+                                  }
+                                }));
+                              }
+                            } else {
+                              alert('No OneDrive sync folders detected. Please manually enter the path or sync your SharePoint library.');
+                            }
+                          }
+                        }}
+                        disabled={!settings.oneDriveSyncSettings.enabled}
+                      >
+                        🔍 Detect
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={async () => {
+                          if (electronAPI && electronAPI.browseForSyncFolder) {
+                            const result = await electronAPI.browseForSyncFolder();
+                            if (result.success && result.folderPath) {
+                              setSettings(prev => ({
+                                ...prev,
+                                oneDriveSyncSettings: {
+                                  ...prev.oneDriveSyncSettings,
+                                  syncFolderPath: result.folderPath
+                                }
+                              }));
+
+                              if (result.verification && result.verification.valid) {
+                                alert(`✅ Folder selected successfully!\n\n${result.folderPath}`);
+                              }
+                            }
+                          }
+                        }}
+                        disabled={!settings.oneDriveSyncSettings.enabled}
+                      >
+                        📂 Browse
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={async () => {
+                          if (electronAPI && electronAPI.testSyncFolder) {
+                            const result = await electronAPI.testSyncFolder(settings.oneDriveSyncSettings.syncFolderPath);
+                            if (result.success) {
+                              alert(`✅ Sync folder test successful!\n\n${result.message}`);
+                            } else {
+                              alert(`❌ Sync folder test failed!\n\n${result.error}\n\nPlease check the folder path and OneDrive sync status.`);
+                            }
+                          }
+                        }}
+                        disabled={!settings.oneDriveSyncSettings.enabled || !settings.oneDriveSyncSettings.syncFolderPath}
+                      >
+                        ✓ Test
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* File Cleanup Strategy */}
+                <div className="setting-group">
+                  <h3>🧹 File Cleanup</h3>
+                  <p className="group-description">Choose how to handle uploaded files in your local OneDrive folder</p>
+
+                  <div className="setting-row">
+                    <label>
+                      <input
+                        type="radio"
+                        name="cleanup"
+                        value="auto-delete"
+                        checked={settings.oneDriveSyncSettings.cleanupStrategy === 'auto-delete'}
+                        onChange={(e) => setSettings(prev => ({
+                          ...prev,
+                          oneDriveSyncSettings: {
+                            ...prev.oneDriveSyncSettings,
+                            cleanupStrategy: e.target.value
+                          }
+                        }))}
+                        disabled={!settings.oneDriveSyncSettings.enabled}
+                      />
+                      Auto-delete after sync verification
+                    </label>
+                    <small>⚠️ Files are removed from OneDrive ONLY after confirmed SharePoint sync (uses PowerShell verification)</small>
+                  </div>
+
+                  <div className="setting-row">
+                    <label>
+                      <input
+                        type="radio"
+                        name="cleanup"
+                        value="keep-recent"
+                        checked={settings.oneDriveSyncSettings.cleanupStrategy === 'keep-recent'}
+                        onChange={(e) => setSettings(prev => ({
+                          ...prev,
+                          oneDriveSyncSettings: {
+                            ...prev.oneDriveSyncSettings,
+                            cleanupStrategy: e.target.value
+                          }
+                        }))}
+                        disabled={!settings.oneDriveSyncSettings.enabled}
+                      />
+                      Keep recent files
+                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '5px' }}>
+                      <label style={{ fontSize: '0.9em', margin: 0 }}>Keep last</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="100"
+                        value={settings.oneDriveSyncSettings.keepRecentCount}
+                        onChange={(e) => setSettings(prev => ({
+                          ...prev,
+                          oneDriveSyncSettings: {
+                            ...prev.oneDriveSyncSettings,
+                            keepRecentCount: parseInt(e.target.value) || 10
+                          }
+                        }))}
+                        style={{ width: '60px', padding: '2px 4px', fontSize: '0.9em' }}
+                        disabled={!settings.oneDriveSyncSettings.enabled || settings.oneDriveSyncSettings.cleanupStrategy !== 'keep-recent'}
+                      />
+                      <label style={{ fontSize: '0.9em', margin: 0 }}>files</label>
+                    </div>
+                  </div>
+
+                  <div className="setting-row">
+                    <label>
+                      <input
+                        type="radio"
+                        name="cleanup"
+                        value="manual"
+                        checked={settings.oneDriveSyncSettings.cleanupStrategy === 'manual'}
+                        onChange={(e) => setSettings(prev => ({
+                          ...prev,
+                          oneDriveSyncSettings: {
+                            ...prev.oneDriveSyncSettings,
+                            cleanupStrategy: e.target.value
+                          }
+                        }))}
+                        disabled={!settings.oneDriveSyncSettings.enabled}
+                      />
+                      Manual cleanup only (recommended for safety)
+                    </label>
+                    <small>✅ Files stay in OneDrive - you manage cleanup manually. Safest option.</small>
+                  </div>
+                </div>
+
+                {/* Setup Instructions */}
+                <div className="setting-group">
+                  <h3>📋 Setup Instructions</h3>
+                  <div className="access-info">
+                    <div className="info-item">
+                      <span className="info-icon">1️⃣</span>
+                      <div className="info-content">
+                        <strong>Sync SharePoint Library to OneDrive</strong>
+                        <p>1. Open your SharePoint site in a browser<br/>
+                        2. Navigate to the document library (e.g., "Shared Documents")<br/>
+                        3. Click the "Sync" button in the toolbar<br/>
+                        4. OneDrive will create a local folder that automatically syncs to SharePoint</p>
+                      </div>
+                    </div>
+                    
+                    <div className="info-item">
+                      <span className="info-icon">2️⃣</span>
+                      <div className="info-content">
+                        <strong>Configure App to Use Sync Folder</strong>
+                        <p>1. Click "Detect" to automatically find your OneDrive sync folder<br/>
+                        2. Or use "Browse" to manually select the folder<br/>
+                        3. Click "Test" to verify the folder is syncing properly<br/>
+                        4. The folder path will look like: C:\\Users\\YourName\\OneDrive - Acuity Brands, Inc\\...</p>
+                      </div>
+                    </div>
+                    
+                    <div className="info-item">
+                      <span className="info-icon">3️⃣</span>
+                      <div className="info-content">
+                        <strong>Upload Projects</strong>
+                        <p>1. Create a project in the app<br/>
+                        2. Go to Project Management page<br/>
+                        3. Click "Upload to SharePoint" button<br/>
+                        4. App will zip the project and copy it to OneDrive<br/>
+                        5. OneDrive automatically syncs the file to SharePoint</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         );
 
@@ -2676,6 +2934,12 @@ function Settings({ initialTab = 'app-info' }) {
                   overwriteExisting: true,
                   zipNaming: '{projectName}_{rfaNumber}_{date}.zip'
                 }
+              },
+              oneDriveSyncSettings: {
+                enabled: false,
+                syncFolderPath: '',
+                cleanupStrategy: 'manual', // Default to manual for safety
+                keepRecentCount: 10
               }
             };
             setSettings(defaultSettings);

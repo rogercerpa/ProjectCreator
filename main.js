@@ -23,7 +23,7 @@ const EmailTemplateService = require('./src/services/EmailTemplateService');
 
 // Import SharePoint services
 const ZipService = require('./src/services/ZipService');
-const SharePointBrowserUploadService = require('./src/services/SharePointBrowserUploadService');
+const OneDriveSyncService = require('./src/services/OneDriveSyncService');
 
 // Import package.json for version info
 const packageJson = require('./package.json');
@@ -48,7 +48,7 @@ const emailTemplateService = new EmailTemplateService();
 
 // Initialize SharePoint services
 const zipService = new ZipService();
-const sharePointUploadService = new SharePointBrowserUploadService();
+const oneDriveSyncService = new OneDriveSyncService();
 
 function createWindow() {
   // Create the browser window
@@ -1464,44 +1464,76 @@ ipcMain.handle('email-open-outlook-batch', async (event, emailsData) => {
   }
 });
 
-// SharePoint upload handlers
-ipcMain.handle('sharePointBrowserUpload', async (event, { projectPath, projectData, settings }) => {
+// OneDrive sync upload handlers
+ipcMain.handle('oneDriveSyncUpload', async (event, { projectPath, projectData, settings }) => {
   try {
-    console.log('Main process: Starting SharePoint browser upload');
-    
-    // Initialize upload service with settings
-    sharePointUploadService.initialize(settings || {
+    console.log('Main process: Starting OneDrive sync upload');
+
+    // Initialize sync service with settings
+    oneDriveSyncService.initialize(settings || {
       enabled: true,
-      sharePointUrl: 'https://acuitybrandsinc.sharepoint.com/:f:/r/sites/CIDesignSolutions/Shared%20Documents/LnT?csf=1&web=1&e=kjeeMl'
+      syncFolderPath: '',
+      cleanupStrategy: 'auto-delete'
     });
-    
+
     // Progress callback to send updates to renderer
     const progressCallback = (progressData) => {
       console.log('Progress update:', progressData);
-      event.sender.send('sharePointUploadProgress', progressData);
+      event.sender.send('oneDriveSyncProgress', progressData);
     };
-    
+
     // Create ZIP file in project directory
     progressCallback({ phase: 'zipping', progress: 10, message: 'Creating zip archive...' });
     const zipPath = await zipService.zipProjectFolder(projectPath, projectData, progressCallback);
-    
+
     console.log('ZIP file created at:', zipPath);
-    
-    // Upload via browser automation
-    progressCallback({ phase: 'browser', progress: 40, message: 'Launching browser for upload...' });
-    const sharePointUrl = await sharePointUploadService.performUpload(zipPath, progressCallback);
-    
-    console.log('Main process: SharePoint upload completed successfully');
-    
+
+    // Upload via OneDrive sync with progress monitoring
+    progressCallback({ phase: 'syncing', progress: 40, message: 'Copying to OneDrive sync folder...' });
+    const uploadResult = await oneDriveSyncService.uploadToSync(
+      zipPath,
+      settings.syncFolderPath,
+      {
+        overwrite: true,
+        waitForSync: true,
+        syncTimeout: 120000, // 2 minutes
+        cleanupStrategy: settings.cleanupStrategy || 'auto-delete',
+        progressCallback: progressCallback // Pass through for sync status updates
+      }
+    );
+
+    console.log('Main process: OneDrive sync upload completed');
+    console.log('Sync status:', uploadResult.syncStatus);
+    console.log('Sync message:', uploadResult.syncMessage);
+
+    // Final progress update based on sync status
+    if (uploadResult.synced) {
+      progressCallback({ 
+        phase: 'complete', 
+        progress: 100, 
+        message: 'File synced to SharePoint successfully!',
+        syncStatus: 'synced'
+      });
+    } else {
+      progressCallback({ 
+        phase: 'complete', 
+        progress: 95, 
+        message: uploadResult.syncMessage || 'File copied to OneDrive - syncing in background',
+        syncStatus: uploadResult.syncStatus || 'pending'
+      });
+    }
+
     return {
       success: true,
-      sharePointUrl: sharePointUrl,
-      zipPath: zipPath
+      uploadResult: uploadResult,
+      zipPath: zipPath,
+      syncStatus: uploadResult.syncStatus,
+      synced: uploadResult.synced
     };
-    
+
   } catch (error) {
-    console.error('Main process: SharePoint upload failed:', error);
-    
+    console.error('Main process: OneDrive sync upload failed:', error);
+
     return {
       success: false,
       error: error.message
@@ -1509,35 +1541,84 @@ ipcMain.handle('sharePointBrowserUpload', async (event, { projectPath, projectDa
   }
 });
 
-// Handler for testing SharePoint access
-ipcMain.handle('testSharePointAccess', async (event, sharePointUrl) => {
+// Handler for detecting OneDrive sync folders
+ipcMain.handle('detectOneDriveSync', async () => {
   try {
-    console.log('Main process: Testing SharePoint access');
-    
-    sharePointUploadService.initialize({
-      enabled: true,
-      sharePointUrl: sharePointUrl
-    });
-    
-    // Parse URL to validate format
-    const urlInfo = sharePointUploadService.parseSharePointUrl(sharePointUrl);
-    
+    console.log('Main process: Detecting OneDrive sync folders');
+
+    const syncFolders = await oneDriveSyncService.findSharePointSyncFolders();
+
     return {
       success: true,
-      method: 'browser',
-      message: 'SharePoint URL parsed successfully - browser automation ready',
-      siteUrl: urlInfo.siteUrl,
-      siteName: urlInfo.siteName,
-      folderPath: urlInfo.folderPath
+      syncFolders: syncFolders,
+      message: `Found ${syncFolders.length} potential SharePoint sync folders`
     };
-    
+
   } catch (error) {
-    console.error('Main process: SharePoint access test failed:', error);
-    
+    console.error('Main process: OneDrive sync detection failed:', error);
+
+    return {
+      success: false,
+      error: error.message,
+      syncFolders: []
+    };
+  }
+});
+
+// Handler for testing sync folder
+ipcMain.handle('testSyncFolder', async (event, syncFolderPath) => {
+  try {
+    console.log('Main process: Testing sync folder:', syncFolderPath);
+
+    const verification = await oneDriveSyncService.verifySyncFolder(syncFolderPath);
+
+    return {
+      success: verification.valid,
+      writable: verification.writable,
+      hasSyncIndicators: verification.hasSyncIndicators,
+      message: verification.valid ?
+        'Sync folder is valid and ready for uploads' :
+        `Invalid sync folder: ${verification.error}`
+    };
+
+  } catch (error) {
+    console.error('Main process: Sync folder test failed:', error);
+
     return {
       success: false,
       error: error.message
     };
+  }
+});
+
+// Handler for browsing sync folder
+ipcMain.handle('browseForSyncFolder', async () => {
+  try {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openDirectory'],
+      title: 'Select OneDrive SharePoint Sync Folder',
+      message: 'Choose the OneDrive folder that syncs with your SharePoint site'
+    });
+
+    if (result.canceled) {
+      return { success: false, canceled: true };
+    }
+
+    const selectedPath = result.filePaths[0];
+    console.log('User selected sync folder:', selectedPath);
+
+    // Test the selected folder
+    const verification = await oneDriveSyncService.verifySyncFolder(selectedPath);
+
+    return {
+      success: true,
+      folderPath: selectedPath,
+      verification: verification
+    };
+
+  } catch (error) {
+    console.error('Error browsing for sync folder:', error);
+    return { success: false, error: error.message };
   }
 });
 

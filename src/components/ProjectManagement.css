@@ -514,3 +514,71 @@
     gap: 0.25rem;
   }
 }
+
+/* OneDrive Sync Status Badges */
+.sync-status {
+  margin-top: 0.5rem;
+  display: flex;
+  justify-content: center;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  gap: 0.3rem;
+}
+
+.status-pending {
+  background-color: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fbbf24;
+}
+
+.status-syncing {
+  background-color: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #3b82f6;
+  animation: pulse 1.5s infinite;
+}
+
+.status-synced {
+  background-color: #d1fae5;
+  color: #065f46;
+  border: 1px solid #10b981;
+}
+
+.status-timeout {
+  background-color: #fed7aa;
+  color: #9a3412;
+  border: 1px solid #f59e0b;
+}
+
+.status-error {
+  background-color: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #ef4444;
+}
+
+.sync-warning {
+  margin-top: 0.5rem;
+  padding: 0.6rem;
+  background-color: #fef3c7;
+  border: 1px solid #fbbf24;
+  border-radius: 6px;
+  color: #92400e;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}

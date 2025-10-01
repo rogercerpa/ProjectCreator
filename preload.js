@@ -154,10 +154,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onOpenProject: (callback) => ipcRenderer.on('open-project', callback),
   
   // SharePoint upload
-  sharePointBrowserUpload: (data) => ipcRenderer.invoke('sharePointBrowserUpload', data),
-  testSharePointAccess: (url) => ipcRenderer.invoke('testSharePointAccess', url),
-  onSharePointUploadProgress: (callback) => ipcRenderer.on('sharePointUploadProgress', (event, data) => callback(data)),
-  removeSharePointUploadProgressListener: (callback) => ipcRenderer.removeListener('sharePointUploadProgress', callback),
+  oneDriveSyncUpload: (data) => ipcRenderer.invoke('oneDriveSyncUpload', data),
+  detectOneDriveSync: () => ipcRenderer.invoke('detectOneDriveSync'),
+  testSyncFolder: (path) => ipcRenderer.invoke('testSyncFolder', path),
+  browseForSyncFolder: () => ipcRenderer.invoke('browseForSyncFolder'),
+  onOneDriveSyncProgress: (callback) => ipcRenderer.on('oneDriveSyncProgress', (event, data) => callback(data)),
+  removeOneDriveSyncProgressListener: (callback) => ipcRenderer.removeListener('oneDriveSyncProgress', callback),
   
   // Remove listeners
   removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel)

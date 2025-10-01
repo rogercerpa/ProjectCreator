@@ -23,6 +23,9 @@ const ProjectManagement = ({
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [notification, setNotification] = useState(null);
+
+  // App settings state
+  const [appSettings, setAppSettings] = useState(null);
   
   // SharePoint upload state
   const [uploadStatus, setUploadStatus] = useState({
@@ -32,7 +35,8 @@ const ProjectManagement = ({
     sharePointUrl: projectData.sharePointStatus?.sharePointUrl || null,
     progress: 0,
     phase: null,
-    error: null
+    error: null,
+    syncStatus: null // Track OneDrive sync status: 'pending', 'syncing', 'synced', 'timeout', 'error'
   });
 
   // Update project data when prop changes
@@ -52,24 +56,43 @@ const ProjectManagement = ({
     }
   }, [project]);
 
-  // Listen for SharePoint upload progress (production)
+  // Load app settings on component mount
   useEffect(() => {
-    if (window.electronAPI && window.electronAPI.onSharePointUploadProgress) {
+    const loadSettings = async () => {
+      try {
+        if (window.electronAPI && window.electronAPI.settingsLoad) {
+          const settingsResult = await window.electronAPI.settingsLoad();
+          if (settingsResult.success) {
+            setAppSettings(settingsResult.data || {});
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load app settings:', error);
+      }
+    };
+
+    loadSettings();
+  }, []);
+
+  // Listen for OneDrive sync upload progress (production)
+  useEffect(() => {
+    if (window.electronAPI && window.electronAPI.onOneDriveSyncProgress) {
       const handleProgress = (progressData) => {
         setUploadStatus(prev => ({
           ...prev,
           progress: progressData.progress || 0,
           phase: progressData.phase || prev.phase,
-          message: progressData.message || ''
+          message: progressData.message || '',
+          syncStatus: progressData.syncStatus || prev.syncStatus
         }));
       };
 
-      window.electronAPI.onSharePointUploadProgress(handleProgress);
+      window.electronAPI.onOneDriveSyncProgress(handleProgress);
 
       // Cleanup listener on unmount
       return () => {
-        if (window.electronAPI.removeSharePointUploadProgressListener) {
-          window.electronAPI.removeSharePointUploadProgressListener(handleProgress);
+        if (window.electronAPI.removeOneDriveSyncProgressListener) {
+          window.electronAPI.removeOneDriveSyncProgressListener(handleProgress);
         }
       };
     }
@@ -136,8 +159,8 @@ const ProjectManagement = ({
   // Handle SharePoint upload
   const handleUploadToSharePoint = async () => {
     try {
-      console.log('Starting SharePoint upload for project:', projectData.projectName);
-      
+      console.log('Starting OneDrive sync upload for project:', projectData.projectName);
+
       // Reset upload status
       setUploadStatus({
         isUploading: true,
@@ -148,6 +171,15 @@ const ProjectManagement = ({
         lastUploadDate: null,
         sharePointUrl: null
       });
+
+      // Check if OneDrive sync is configured
+      if (!appSettings?.oneDriveSyncSettings?.enabled) {
+        throw new Error('OneDrive sync is not enabled. Please go to Settings and configure OneDrive sync integration.');
+      }
+
+      if (!appSettings?.oneDriveSyncSettings?.syncFolderPath) {
+        throw new Error('OneDrive sync folder is not configured. Please go to Settings and select your SharePoint sync folder.');
+      }
 
       // Check if project has a folder path
       if (!projectData.projectPath && !projectData.projectFolder) {
@@ -167,14 +199,15 @@ const ProjectManagement = ({
       };
 
       // Use electronAPI for production, mock for development
-      if (window.electronAPI && window.electronAPI.sharePointBrowserUpload) {
-        // Production: Call electron main process for browser automation upload
-        const result = await window.electronAPI.sharePointBrowserUpload({
+      if (window.electronAPI && window.electronAPI.oneDriveSyncUpload) {
+        // Production: Call electron main process for OneDrive sync upload
+        const result = await window.electronAPI.oneDriveSyncUpload({
           projectPath,
           projectData,
           settings: {
-            enabled: true,
-            sharePointUrl: 'https://acuitybrandsinc.sharepoint.com/:f:/r/sites/CIDesignSolutions/Shared%20Documents/LnT?csf=1&web=1&e=kjeeMl'
+            enabled: appSettings.oneDriveSyncSettings.enabled,
+            syncFolderPath: appSettings.oneDriveSyncSettings.syncFolderPath,
+            cleanupStrategy: appSettings.oneDriveSyncSettings.cleanupStrategy || 'auto-delete'
           }
         });
 
@@ -212,7 +245,7 @@ const ProjectManagement = ({
           setTimeout(() => setNotification(null), 5000);
 
         } else {
-          throw new Error(result.error || 'Upload failed');
+          throw new Error(result.error || 'OneDrive sync upload failed');
         }
 
       } else {
@@ -366,14 +399,21 @@ const ProjectManagement = ({
                 </div>
               )}
               
-              {/* SharePoint Upload Button - TEMPORARILY HIDDEN */}
-              {/* TODO: Re-enable after fixing navigation and verification issues */}
-              {false && currentMode === 'view' && (
+              {/* OneDrive Sync Upload Button */}
+              {currentMode === 'view' && (
                 <button
                   onClick={handleUploadToSharePoint}
                   className={`btn btn-sharepoint ${uploadStatus.isUploaded ? 'btn-uploaded' : ''}`}
-                  disabled={uploadStatus.isUploading || uploadStatus.isUploaded}
-                  title={uploadStatus.isUploaded ? `Uploaded on ${new Date(uploadStatus.lastUploadDate).toLocaleString()}` : 'Upload project to SharePoint'}
+                  disabled={uploadStatus.isUploading || uploadStatus.isUploaded || !appSettings?.oneDriveSyncSettings?.enabled || !appSettings?.oneDriveSyncSettings?.syncFolderPath}
+                  title={
+                    uploadStatus.isUploaded
+                      ? `Uploaded on ${new Date(uploadStatus.lastUploadDate).toLocaleString()}`
+                      : !appSettings?.oneDriveSyncSettings?.enabled
+                        ? 'OneDrive sync not enabled - configure in Settings'
+                        : !appSettings?.oneDriveSyncSettings?.syncFolderPath
+                          ? 'OneDrive sync folder not configured - set up in Settings'
+                          : 'Upload project to SharePoint via OneDrive sync'
+                  }
                 >
                   {uploadStatus.isUploading ? (
                     <>
@@ -415,11 +455,11 @@ const ProjectManagement = ({
         </div>
       )}
 
-      {/* SharePoint Upload Progress Modal - TEMPORARILY HIDDEN */}
-      {false && uploadStatus.isUploading && (
+      {/* OneDrive Sync Upload Progress Modal */}
+      {uploadStatus.isUploading && (
         <div className="upload-progress-modal">
           <div className="upload-progress-content">
-            <h3>Uploading to SharePoint</h3>
+            <h3>Uploading to SharePoint via OneDrive Sync</h3>
             <div className="progress-info">
               <div className="progress-bar">
                 <div 
@@ -436,14 +476,29 @@ const ProjectManagement = ({
               {uploadStatus.phase === 'zipping' && (
                 <span>📦 Compressing project files...</span>
               )}
-              {uploadStatus.phase === 'browser' && (
-                <span>🌐 Opening SharePoint in browser...</span>
-              )}
-              {uploadStatus.phase === 'uploading' && (
-                <span>☁️ Uploading to SharePoint...</span>
+              {uploadStatus.phase === 'syncing' && (
+                <>
+                  <span>🔄 {uploadStatus.message}</span>
+                  {uploadStatus.syncStatus && (
+                    <div className="sync-status">
+                      {uploadStatus.syncStatus === 'pending' && <span className="status-badge status-pending">⏳ Waiting for sync...</span>}
+                      {uploadStatus.syncStatus === 'syncing' && <span className="status-badge status-syncing">📤 Syncing to SharePoint...</span>}
+                      {uploadStatus.syncStatus === 'synced' && <span className="status-badge status-synced">✅ Synced to cloud!</span>}
+                      {uploadStatus.syncStatus === 'timeout' && <span className="status-badge status-timeout">⚠️ Sync monitoring timeout</span>}
+                      {uploadStatus.syncStatus === 'error' && <span className="status-badge status-error">❌ Sync error</span>}
+                    </div>
+                  )}
+                </>
               )}
               {uploadStatus.phase === 'complete' && (
-                <span>✅ Upload completed!</span>
+                <>
+                  <span>✅ {uploadStatus.message}</span>
+                  {uploadStatus.syncStatus && uploadStatus.syncStatus !== 'synced' && (
+                    <div className="sync-warning">
+                      <span>⚠️ File uploaded to OneDrive folder but cloud sync may still be in progress</span>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
