@@ -55,17 +55,18 @@
 }
 
 .column-dropdown {
-  position: absolute;
-  top: 100%;
-  right: 0;
+  position: fixed;
+  top: auto;
+  right: auto;
   background: white;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 1000;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  z-index: 9999;
   min-width: 200px;
   margin-top: 0.25rem;
   overflow: hidden;
+  max-height: 400px;
 }
 
 .column-dropdown-header {

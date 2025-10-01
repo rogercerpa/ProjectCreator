@@ -5,14 +5,23 @@ import ColumnVisibilityControl from './ColumnVisibilityControl';
 function ProjectTableView({ 
   projects, 
   onProjectSelect, 
+  onProjectDelete,
   density = 'standard',
   sortBy,
   sortOrder,
   onSort
 }) {
-  const [visibleColumns, setVisibleColumns] = useState([
-    'projectName', 'rfaNumber', 'agentNumber', 'rfaType', 'regionalTeam', 'status', 'triage', 'createdAt'
-  ]);
+  const [visibleColumns, setVisibleColumns] = useState(() => {
+    const saved = localStorage.getItem('projectTableVisibleColumns');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.warn('Failed to parse saved column visibility settings, using defaults');
+      }
+    }
+    return ['projectName', 'rfaNumber', 'agentNumber', 'projectContainer', 'ecd', 'requestedDate', 'actions'];
+  });
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
@@ -53,30 +62,30 @@ function ProjectTableView({
 
   const handleColumnToggle = (columnKey) => {
     setVisibleColumns(prev => {
-      if (prev.includes(columnKey)) {
-        return prev.filter(key => key !== columnKey);
-      } else {
-        return [...prev, columnKey];
-      }
+      const newColumns = prev.includes(columnKey)
+        ? prev.filter(key => key !== columnKey)
+        : [...prev, columnKey];
+      
+      // Save to localStorage
+      localStorage.setItem('projectTableVisibleColumns', JSON.stringify(newColumns));
+      return newColumns;
     });
   };
 
   const handleResetColumns = () => {
-    setVisibleColumns([
-      'projectName', 'rfaNumber', 'agentNumber', 'rfaType', 'regionalTeam', 'status', 'triage', 'createdAt'
-    ]);
+    const defaultColumns = ['projectName', 'rfaNumber', 'agentNumber', 'projectContainer', 'ecd', 'requestedDate', 'actions'];
+    setVisibleColumns(defaultColumns);
+    localStorage.setItem('projectTableVisibleColumns', JSON.stringify(defaultColumns));
   };
 
   const columns = [
     { key: 'projectName', label: 'Project Name', sortable: true, width: '250px' },
-    { key: 'rfaNumber', label: 'RFA', sortable: true, width: '100px' },
-    { key: 'agentNumber', label: 'Agent', sortable: true, width: '80px' },
-    { key: 'rfaType', label: 'Type', sortable: true, width: '120px' },
-    { key: 'regionalTeam', label: 'Team', sortable: true, width: '120px' },
-    { key: 'status', label: 'Priority', sortable: false, width: '80px' },
-    { key: 'triage', label: 'Triage', sortable: false, width: '70px' },
-    { key: 'createdAt', label: 'Created', sortable: true, width: '100px' },
-    { key: 'updatedAt', label: 'Updated', sortable: true, width: '100px' }
+    { key: 'rfaNumber', label: 'RFA Number', sortable: true, width: '120px' },
+    { key: 'agentNumber', label: 'Agent Number', sortable: true, width: '120px' },
+    { key: 'projectContainer', label: 'Project Container', sortable: true, width: '150px' },
+    { key: 'ecd', label: 'ECD', sortable: true, width: '120px' },
+    { key: 'requestedDate', label: 'Requested Date', sortable: true, width: '140px' },
+    { key: 'actions', label: 'Actions', sortable: false, width: '80px' }
   ];
 
   if (projects.length === 0) {
@@ -137,11 +146,6 @@ function ProjectTableView({
                             <span className="project-name" title={project.projectName}>
                               {project.projectName || 'Untitled Project'}
                             </span>
-                            {project.projectContainer && (
-                              <span className="project-container" title={project.projectContainer}>
-                                {project.projectContainer}
-                              </span>
-                            )}
                           </div>
                         </td>
                       );
@@ -157,49 +161,41 @@ function ProjectTableView({
                           <span className="agent-number">{project.agentNumber || 'N/A'}</span>
                         </td>
                       );
-                    case 'rfaType':
+                    case 'projectContainer':
                       return (
-                        <td key={column.key} className="type-cell">
-                          <span className="rfa-type">{project.rfaType || 'N/A'}</span>
+                        <td key={column.key} className="container-cell">
+                          <span className="project-container">{project.projectContainer || 'N/A'}</span>
                         </td>
                       );
-                    case 'regionalTeam':
-                      return (
-                        <td key={column.key} className="team-cell">
-                          <span className="regional-team">{project.regionalTeam || 'N/A'}</span>
-                        </td>
-                      );
-                    case 'status':
-                      return (
-                        <td key={column.key} className="status-cell">
-                          <span className={`status-badge ${getStatusColor(project)}`}>
-                            {getStatusColor(project).toUpperCase()}
-                          </span>
-                        </td>
-                      );
-                    case 'triage':
-                      return (
-                        <td key={column.key} className="triage-cell">
-                          <span className={`triage-value ${getStatusColor(project)}`}>
-                            {getTriageDisplay(project)}
-                          </span>
-                        </td>
-                      );
-                    case 'createdAt':
+                    case 'ecd':
                       return (
                         <td key={column.key} className="date-cell">
-                          <span className="date-value">{formatDate(project.createdAt)}</span>
+                          <span className="date-value">{project.ecd ? formatDate(project.ecd) : 'N/A'}</span>
                         </td>
                       );
-                    case 'updatedAt':
+                    case 'requestedDate':
                       return (
                         <td key={column.key} className="date-cell">
-                          <span className="date-value">
-                            {project.updatedAt !== project.createdAt 
-                              ? formatDate(project.updatedAt) 
-                              : '—'
-                            }
-                          </span>
+                          <span className="date-value">{project.requestedDate ? formatDate(project.requestedDate) : 'N/A'}</span>
+                        </td>
+                      );
+                    case 'actions':
+                      return (
+                        <td key={column.key} className="actions-cell">
+                          <div className="row-actions">
+                            {onProjectDelete && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onProjectDelete(project.id, project.projectName);
+                                }}
+                                className="delete-btn"
+                                title="Delete Project"
+                              >
+                                ×
+                              </button>
+                            )}
+                          </div>
                         </td>
                       );
                     default:

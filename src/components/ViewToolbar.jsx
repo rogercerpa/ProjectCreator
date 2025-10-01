@@ -12,8 +12,6 @@ function ViewToolbar({
   sortOrder,
   onSortChange,
   onSortOrderToggle,
-  searchTerm,
-  onSearchChange,
   projectCount,
   filteredCount
 }) {
@@ -59,19 +57,6 @@ function ViewToolbar({
           </span>
         </div>
 
-        {/* Search */}
-        <div className="search-container">
-          <div className="search-box">
-            <input
-              type="text"
-              placeholder="Search projects..."
-              value={searchTerm}
-              onChange={(e) => onSearchChange(e.target.value)}
-              className="search-input"
-            />
-            <span className="search-icon">🔍</span>
-          </div>
-        </div>
 
         {/* View Mode Toggle */}
         <div className="view-mode-toggle">

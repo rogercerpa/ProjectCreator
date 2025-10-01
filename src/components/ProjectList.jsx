@@ -124,9 +124,6 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onRefresh }) 
             <h3 className="card-title" title={project.projectName}>
               {project.projectName || 'Untitled Project'}
             </h3>
-            <span className={`priority-badge ${getStatusColor(project)}`}>
-              {getStatusColor(project)}
-            </span>
           </div>
           {onProjectDelete && (
             <button 
@@ -150,55 +147,21 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onRefresh }) 
               <span className="detail-val">{project.rfaNumber || 'N/A'}</span>
             </div>
             <div className="detail-row">
-              <span className="detail-key">Agent</span>
+              <span className="detail-key">Agent Number</span>
               <span className="detail-val">{project.agentNumber || 'N/A'}</span>
             </div>
             <div className="detail-row">
-              <span className="detail-key">Team</span>
-              <span className="detail-val">{project.regionalTeam || 'N/A'}</span>
+              <span className="detail-key">Project Container</span>
+              <span className="detail-val">{project.projectContainer || 'N/A'}</span>
             </div>
             <div className="detail-row">
-              <span className="detail-key">Type</span>
-              <span className="detail-val">{project.rfaType || 'N/A'}</span>
+              <span className="detail-key">ECD</span>
+              <span className="detail-val">{project.ecd ? formatDate(project.ecd) : 'N/A'}</span>
             </div>
-            {project.projectContainer && (
-              <div className="detail-row">
-                <span className="detail-key">Container</span>
-                <span className="detail-val">{project.projectContainer}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Triage Information */}
-          {project.triageResults && (
-            <div className="card-triage-section">
-              <div className="triage-header">
-                <span className="triage-title">Triage Summary</span>
-                <span className={`triage-total ${getStatusColor(project)}`}>
-                  {project.triageResults.totalTriage}h
-                </span>
-              </div>
-              <div className="triage-details">
-                <span className="triage-detail">LMPs: {project.triageResults.totalLMPs || 0}</span>
-                <span className="triage-detail">ARPs: {project.triageResults.totalARPs || 0}</span>
-              </div>
+            <div className="detail-row">
+              <span className="detail-key">Requested Date</span>
+              <span className="detail-val">{project.requestedDate ? formatDate(project.requestedDate) : 'N/A'}</span>
             </div>
-          )}
-        </div>
-
-        {/* Card Footer with Dates */}
-        <div className="card-footer">
-          <div className="card-timestamps">
-            <div className="timestamp">
-              <span className="timestamp-label">Created</span>
-              <span className="timestamp-value">{formatDate(project.createdAt)}</span>
-            </div>
-            {project.updatedAt !== project.createdAt && (
-              <div className="timestamp">
-                <span className="timestamp-label">Updated</span>
-                <span className="timestamp-value">{formatDate(project.updatedAt)}</span>
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -210,6 +173,7 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onRefresh }) 
       <ProjectTableView
         projects={projectsToRender}
         onProjectSelect={onProjectSelect}
+        onProjectDelete={onProjectDelete}
         density={density}
         sortBy={sortBy}
         sortOrder={sortOrder}
@@ -302,8 +266,6 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onRefresh }) 
             localStorage.setItem('projectListSortBy', field);
           }}
           onSortOrderToggle={handleSortOrderToggle}
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
           projectCount={projects.length}
           filteredCount={filteredProjects.length}
         />

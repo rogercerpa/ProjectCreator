@@ -314,7 +314,8 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  min-height: 280px;
+  min-height: 240px;
+  height: auto;
 }
 
 .project-card:hover {
@@ -348,12 +349,12 @@
 
 /* Density Variations */
 .project-card.density-compact {
-  min-height: 240px;
+  min-height: 200px;
   border-radius: 8px;
 }
 
 .project-card.density-comfortable {
-  min-height: 320px;
+  min-height: 280px;
   border-radius: 16px;
 }
 
@@ -381,6 +382,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  max-width: 100%;
 }
 
 .priority-badge {
@@ -436,9 +438,10 @@
 /* Card Body */
 .card-body {
   flex: 1;
-  padding: 0 1.25rem;
+  padding: 0 1.25rem 1.25rem 1.25rem;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 .card-details-grid {
@@ -449,8 +452,9 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.5rem 0;
+  padding: 0.375rem 0;
   border-bottom: 1px solid #f7fafc;
+  min-height: 2rem;
 }
 
 .detail-row:last-child {
@@ -475,98 +479,6 @@
   max-width: 60%;
 }
 
-/* Triage Section */
-.card-triage-section {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  padding: 0.75rem;
-  margin-top: auto;
-}
-
-.triage-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.5rem;
-}
-
-.triage-title {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #4a5568;
-}
-
-.triage-total {
-  font-size: 1rem;
-  font-weight: 700;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-}
-
-.triage-total.high {
-  background: #fed7d7;
-  color: #c53030;
-}
-
-.triage-total.medium {
-  background: #feebc8;
-  color: #c05621;
-}
-
-.triage-total.low {
-  background: #c6f6d5;
-  color: #22543d;
-}
-
-.triage-details {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.75rem;
-  color: #718096;
-}
-
-.triage-detail {
-  font-weight: 500;
-}
-
-/* Card Footer */
-.card-footer {
-  padding: 1rem 1.25rem 1.25rem 1.25rem;
-  border-top: 1px solid #f1f5f9;
-  background: #fafbfc;
-}
-
-.card-timestamps {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.timestamp {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  flex: 1;
-  text-align: center;
-}
-
-.timestamp-label {
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: #718096;
-  margin-bottom: 0.25rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.timestamp-value {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #4a5568;
-  line-height: 1.2;
-}
 
 /* Density-specific adjustments */
 .project-card.density-compact .card-header {
@@ -575,11 +487,26 @@
 }
 
 .project-card.density-compact .card-body {
-  padding: 0 1rem;
+  padding: 0 1rem 1rem 1rem;
 }
 
-.project-card.density-compact .card-footer {
-  padding: 0.75rem 1rem 1rem 1rem;
+.project-card.density-compact .detail-row {
+  padding: 0.25rem 0;
+  min-height: 1.75rem;
+}
+
+.project-card.density-comfortable .card-header {
+  padding: 1.5rem 1.5rem 0 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.project-card.density-comfortable .card-body {
+  padding: 0 1.5rem 1.5rem 1.5rem;
+}
+
+.project-card.density-comfortable .detail-row {
+  padding: 0.5rem 0;
+  min-height: 2.25rem;
 }
 
 .project-card.density-compact .card-title {
@@ -668,6 +595,28 @@
     padding: 8px 12px;
   }
   
+  .projects-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+  }
+  
+  .project-card {
+    min-height: 300px;
+  }
+  
+  .card-header {
+    padding: 1rem 1rem 0 1rem;
+    margin-bottom: 0.75rem;
+  }
+  
+  .card-body {
+    padding: 0 1rem;
+  }
+  
+  .card-footer {
+    padding: 0.75rem 1rem 1rem 1rem;
+  }
+  
   .project-stats {
     flex-direction: column;
   }
@@ -720,29 +669,7 @@
   }
   
   .card-body {
-    padding: 0 1rem;
-  }
-  
-  .card-footer {
-    padding: 0.75rem 1rem 1rem 1rem;
-  }
-  
-  .card-timestamps {
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-  
-  .timestamp {
-    align-items: flex-start;
-    text-align: left;
-  }
-  
-  .timestamp-label {
-    font-size: 0.7rem;
-  }
-  
-  .timestamp-value {
-    font-size: 0.7rem;
+    padding: 0 1rem 1rem 1rem;
   }
 }
 
@@ -751,25 +678,31 @@
     font-size: 1.5rem;
   }
   
+  .projects-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+  
+  .project-card {
+    min-height: 280px;
+  }
+  
   .card-header {
-    padding: 0.75rem;
+    padding: 0.75rem 0.75rem 0 0.75rem;
     margin-bottom: 0.5rem;
   }
   
   .card-body {
-    padding: 0 0.75rem;
+    padding: 0 0.75rem 0.75rem 0.75rem;
   }
   
-  .card-footer {
-    padding: 0.5rem 0.75rem 0.75rem 0.75rem;
+  .detail-row {
+    padding: 0.25rem 0;
+    min-height: 1.5rem;
   }
   
   .card-title {
     font-size: 1rem;
-  }
-  
-  .detail-row {
-    padding: 0.375rem 0;
   }
   
   .detail-key,
