@@ -1779,17 +1779,29 @@ function Settings({ initialTab = 'app-info' }) {
 
             {/* OneDrive Sync Integration Section */}
             <div className="onedrive-sync-section">
-              <h2>📂 OneDrive Sync Integration</h2>
-              <p className="section-description">Upload projects to SharePoint via OneDrive sync folder. No authentication required!</p>
+              <div className="onedrive-section-header">
+                <div className="header-content">
+                  <div className="header-icon">📂</div>
+                  <div className="header-text">
+                    <h2>OneDrive Sync Integration</h2>
+                    <p className="header-description">Upload projects to SharePoint via OneDrive sync folder. No authentication required!</p>
+                  </div>
+                </div>
+              </div>
               
               <div className="onedrive-sync-settings">
                 {/* Enable OneDrive Sync */}
-                <div className="setting-group">
-                  <h3>🔗 Enable OneDrive Sync Upload</h3>
-                  <p className="group-description">Use your local OneDrive sync folder to upload projects to SharePoint</p>
+                <div className="setting-card">
+                  <div className="setting-header">
+                    <div className="setting-icon">🔗</div>
+                    <div className="setting-title">
+                      <h3>Enable OneDrive Sync Upload</h3>
+                      <p className="setting-description">Use your local OneDrive sync folder to upload projects to SharePoint</p>
+                    </div>
+                  </div>
                   
-                  <div className="setting-row">
-                    <label>
+                  <div className="setting-control">
+                    <label className="modern-checkbox">
                       <input
                         type="checkbox"
                         checked={settings.oneDriveSyncSettings.enabled}
@@ -1801,18 +1813,24 @@ function Settings({ initialTab = 'app-info' }) {
                           }
                         }))}
                       />
-                      Enable OneDrive Sync Integration
+                      <span className="checkmark"></span>
+                      <span className="label-text">Enable OneDrive Sync Integration</span>
                     </label>
                   </div>
                 </div>
 
                 {/* OneDrive Sync Folder Configuration */}
-                <div className="setting-group">
-                  <h3>📁 OneDrive Sync Folder</h3>
-                  <p className="group-description">Select the local OneDrive folder that syncs to your SharePoint library</p>
+                <div className="setting-card">
+                  <div className="setting-header">
+                    <div className="setting-icon">📁</div>
+                    <div className="setting-title">
+                      <h3>Sync Folder Configuration</h3>
+                      <p className="setting-description">Select the local OneDrive folder that syncs to your SharePoint library</p>
+                    </div>
+                  </div>
                   
-                  <div className="setting-row">
-                    <label>OneDrive Sync Folder Path:</label>
+                  <div className="setting-control">
+                    <label className="control-label">OneDrive Sync Folder Path</label>
                     <div className="path-input-group">
                       <input
                         type="text"
@@ -1828,200 +1846,231 @@ function Settings({ initialTab = 'app-info' }) {
                         className="path-input"
                         disabled={!settings.oneDriveSyncSettings.enabled}
                       />
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-sm"
-                        onClick={async () => {
-                          if (electronAPI && electronAPI.detectOneDriveSync) {
-                            const result = await electronAPI.detectOneDriveSync();
-                            if (result.success && result.folders && result.folders.length > 0) {
-                              const selectedFolder = result.folders[0].path;
-                              if (selectedFolder) {
+                      <div className="path-actions">
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-sm"
+                          onClick={async () => {
+                            if (electronAPI && electronAPI.detectOneDriveSync) {
+                              const result = await electronAPI.detectOneDriveSync();
+                              if (result.success && result.folders && result.folders.length > 0) {
+                                const selectedFolder = result.folders[0].path;
+                                if (selectedFolder) {
+                                  setSettings(prev => ({
+                                    ...prev,
+                                    oneDriveSyncSettings: {
+                                      ...prev.oneDriveSyncSettings,
+                                      syncFolderPath: selectedFolder
+                                    }
+                                  }));
+                                }
+                              } else {
+                                alert('No OneDrive sync folders detected. Please manually enter the path or sync your SharePoint library.');
+                              }
+                            }
+                          }}
+                          disabled={!settings.oneDriveSyncSettings.enabled}
+                        >
+                          🔍 Detect
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-sm"
+                          onClick={async () => {
+                            if (electronAPI && electronAPI.browseForSyncFolder) {
+                              const result = await electronAPI.browseForSyncFolder();
+                              if (result.success && result.folderPath) {
                                 setSettings(prev => ({
                                   ...prev,
                                   oneDriveSyncSettings: {
                                     ...prev.oneDriveSyncSettings,
-                                    syncFolderPath: selectedFolder
+                                    syncFolderPath: result.folderPath
                                   }
                                 }));
-                              }
-                            } else {
-                              alert('No OneDrive sync folders detected. Please manually enter the path or sync your SharePoint library.');
-                            }
-                          }
-                        }}
-                        disabled={!settings.oneDriveSyncSettings.enabled}
-                      >
-                        🔍 Detect
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-sm"
-                        onClick={async () => {
-                          if (electronAPI && electronAPI.browseForSyncFolder) {
-                            const result = await electronAPI.browseForSyncFolder();
-                            if (result.success && result.folderPath) {
-                              setSettings(prev => ({
-                                ...prev,
-                                oneDriveSyncSettings: {
-                                  ...prev.oneDriveSyncSettings,
-                                  syncFolderPath: result.folderPath
-                                }
-                              }));
 
-                              if (result.verification && result.verification.valid) {
-                                alert(`✅ Folder selected successfully!\n\n${result.folderPath}`);
+                                if (result.verification && result.verification.valid) {
+                                  alert(`✅ Folder selected successfully!\n\n${result.folderPath}`);
+                                }
                               }
                             }
-                          }
-                        }}
-                        disabled={!settings.oneDriveSyncSettings.enabled}
-                      >
-                        📂 Browse
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-sm"
-                        onClick={async () => {
-                          if (electronAPI && electronAPI.testSyncFolder) {
-                            const result = await electronAPI.testSyncFolder(settings.oneDriveSyncSettings.syncFolderPath);
-                            if (result.success) {
-                              alert(`✅ Sync folder test successful!\n\n${result.message}`);
-                            } else {
-                              alert(`❌ Sync folder test failed!\n\n${result.error}\n\nPlease check the folder path and OneDrive sync status.`);
+                          }}
+                          disabled={!settings.oneDriveSyncSettings.enabled}
+                        >
+                          📂 Browse
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-sm"
+                          onClick={async () => {
+                            if (electronAPI && electronAPI.testSyncFolder) {
+                              const result = await electronAPI.testSyncFolder(settings.oneDriveSyncSettings.syncFolderPath);
+                              if (result.success) {
+                                alert(`✅ Sync folder test successful!\n\n${result.message}`);
+                              } else {
+                                alert(`❌ Sync folder test failed!\n\n${result.error}\n\nPlease check the folder path and OneDrive sync status.`);
+                              }
                             }
-                          }
-                        }}
-                        disabled={!settings.oneDriveSyncSettings.enabled || !settings.oneDriveSyncSettings.syncFolderPath}
-                      >
-                        ✓ Test
-                      </button>
+                          }}
+                          disabled={!settings.oneDriveSyncSettings.enabled || !settings.oneDriveSyncSettings.syncFolderPath}
+                        >
+                          ✓ Test
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 {/* File Cleanup Strategy */}
-                <div className="setting-group">
-                  <h3>🧹 File Cleanup</h3>
-                  <p className="group-description">Choose how to handle uploaded files in your local OneDrive folder</p>
-
-                  <div className="setting-row">
-                    <label>
-                      <input
-                        type="radio"
-                        name="cleanup"
-                        value="auto-delete"
-                        checked={settings.oneDriveSyncSettings.cleanupStrategy === 'auto-delete'}
-                        onChange={(e) => setSettings(prev => ({
-                          ...prev,
-                          oneDriveSyncSettings: {
-                            ...prev.oneDriveSyncSettings,
-                            cleanupStrategy: e.target.value
-                          }
-                        }))}
-                        disabled={!settings.oneDriveSyncSettings.enabled}
-                      />
-                      Auto-delete after sync verification
-                    </label>
-                    <small>⚠️ Files are removed from OneDrive ONLY after confirmed SharePoint sync (uses PowerShell verification)</small>
+                <div className="file-cleanup-section">
+                  <div className="section-header">
+                    <h2>File Cleanup</h2>
+                    <p className="section-description">Choose how to handle uploaded files in your local OneDrive folder</p>
                   </div>
 
-                  <div className="setting-row">
-                    <label>
-                      <input
-                        type="radio"
-                        name="cleanup"
-                        value="keep-recent"
-                        checked={settings.oneDriveSyncSettings.cleanupStrategy === 'keep-recent'}
-                        onChange={(e) => setSettings(prev => ({
-                          ...prev,
-                          oneDriveSyncSettings: {
-                            ...prev.oneDriveSyncSettings,
-                            cleanupStrategy: e.target.value
-                          }
-                        }))}
-                        disabled={!settings.oneDriveSyncSettings.enabled}
-                      />
-                      Keep recent files
-                    </label>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '5px' }}>
-                      <label style={{ fontSize: '0.9em', margin: 0 }}>Keep last</label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="100"
-                        value={settings.oneDriveSyncSettings.keepRecentCount}
-                        onChange={(e) => setSettings(prev => ({
-                          ...prev,
-                          oneDriveSyncSettings: {
-                            ...prev.oneDriveSyncSettings,
-                            keepRecentCount: parseInt(e.target.value) || 10
-                          }
-                        }))}
-                        style={{ width: '60px', padding: '2px 4px', fontSize: '0.9em' }}
-                        disabled={!settings.oneDriveSyncSettings.enabled || settings.oneDriveSyncSettings.cleanupStrategy !== 'keep-recent'}
-                      />
-                      <label style={{ fontSize: '0.9em', margin: 0 }}>files</label>
+                  <div className="cleanup-options">
+                    {/* Auto-delete Option */}
+                    <div className="cleanup-card">
+                      <label className="cleanup-radio">
+                        <input
+                          type="radio"
+                          name="cleanup"
+                          value="auto-delete"
+                          checked={settings.oneDriveSyncSettings.cleanupStrategy === 'auto-delete'}
+                          onChange={(e) => setSettings(prev => ({
+                            ...prev,
+                            oneDriveSyncSettings: {
+                              ...prev.oneDriveSyncSettings,
+                              cleanupStrategy: e.target.value
+                            }
+                          }))}
+                          disabled={!settings.oneDriveSyncSettings.enabled}
+                        />
+                        <span className="radio-mark"></span>
+                        <div className="radio-content">
+                          <span className="radio-title">Auto-delete after sync verification</span>
+                          <span className="radio-description">⚠️ Files are removed from OneDrive ONLY after confirmed SharePoint sync (uses PowerShell verification)</span>
+                        </div>
+                      </label>
                     </div>
-                  </div>
 
-                  <div className="setting-row">
-                    <label>
-                      <input
-                        type="radio"
-                        name="cleanup"
-                        value="manual"
-                        checked={settings.oneDriveSyncSettings.cleanupStrategy === 'manual'}
-                        onChange={(e) => setSettings(prev => ({
-                          ...prev,
-                          oneDriveSyncSettings: {
-                            ...prev.oneDriveSyncSettings,
-                            cleanupStrategy: e.target.value
-                          }
-                        }))}
-                        disabled={!settings.oneDriveSyncSettings.enabled}
-                      />
-                      Manual cleanup only (recommended for safety)
-                    </label>
-                    <small>✅ Files stay in OneDrive - you manage cleanup manually. Safest option.</small>
+                    {/* Keep Recent Option */}
+                    <div className="cleanup-card">
+                      <label className="cleanup-radio">
+                        <input
+                          type="radio"
+                          name="cleanup"
+                          value="keep-recent"
+                          checked={settings.oneDriveSyncSettings.cleanupStrategy === 'keep-recent'}
+                          onChange={(e) => setSettings(prev => ({
+                            ...prev,
+                            oneDriveSyncSettings: {
+                              ...prev.oneDriveSyncSettings,
+                              cleanupStrategy: e.target.value
+                            }
+                          }))}
+                          disabled={!settings.oneDriveSyncSettings.enabled}
+                        />
+                        <span className="radio-mark"></span>
+                        <div className="radio-content">
+                          <span className="radio-title">Keep recent files</span>
+                        </div>
+                      </label>
+                      <div className="keep-count-controls">
+                        <label className="count-label">Keep last</label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="100"
+                          value={settings.oneDriveSyncSettings.keepRecentCount}
+                          onChange={(e) => setSettings(prev => ({
+                            ...prev,
+                            oneDriveSyncSettings: {
+                              ...prev.oneDriveSyncSettings,
+                              keepRecentCount: parseInt(e.target.value) || 10
+                            }
+                          }))}
+                          className="count-input"
+                          disabled={!settings.oneDriveSyncSettings.enabled || settings.oneDriveSyncSettings.cleanupStrategy !== 'keep-recent'}
+                        />
+                        <label className="count-label">files</label>
+                      </div>
+                    </div>
+
+                    {/* Manual Cleanup Option */}
+                    <div className="cleanup-card">
+                      <label className="cleanup-radio">
+                        <input
+                          type="radio"
+                          name="cleanup"
+                          value="manual"
+                          checked={settings.oneDriveSyncSettings.cleanupStrategy === 'manual'}
+                          onChange={(e) => setSettings(prev => ({
+                            ...prev,
+                            oneDriveSyncSettings: {
+                              ...prev.oneDriveSyncSettings,
+                              cleanupStrategy: e.target.value
+                            }
+                          }))}
+                          disabled={!settings.oneDriveSyncSettings.enabled}
+                        />
+                        <span className="radio-mark"></span>
+                        <div className="radio-content">
+                          <span className="radio-title">Manual cleanup only (recommended for safety)</span>
+                          <span className="radio-description">✅ Files stay in OneDrive - you manage cleanup manually. Safest option.</span>
+                        </div>
+                      </label>
+                    </div>
                   </div>
                 </div>
 
                 {/* Setup Instructions */}
-                <div className="setting-group">
-                  <h3>📋 Setup Instructions</h3>
-                  <div className="access-info">
-                    <div className="info-item">
-                      <span className="info-icon">1️⃣</span>
-                      <div className="info-content">
-                        <strong>Sync SharePoint Library to OneDrive</strong>
-                        <p>1. Open your SharePoint site in a browser<br/>
-                        2. Navigate to the document library (e.g., "Shared Documents")<br/>
-                        3. Click the "Sync" button in the toolbar<br/>
-                        4. OneDrive will create a local folder that automatically syncs to SharePoint</p>
+                <div className="setup-instructions-section">
+                  <div className="section-header">
+                    <h2>Setup Instructions</h2>
+                    <p className="section-description">Follow these steps to configure OneDrive sync for SharePoint integration</p>
+                  </div>
+                  
+                  <div className="instructions-container">
+                    {/* Step 1 */}
+                    <div className="instruction-card">
+                      <div className="step-number">1</div>
+                      <div className="step-content">
+                        <h3>Sync SharePoint Library to OneDrive</h3>
+                        <ul className="step-list">
+                          <li>Open your SharePoint site in a browser</li>
+                          <li>Navigate to the document library (e.g., "Shared Documents")</li>
+                          <li>Click the "Sync" button in the toolbar</li>
+                          <li>OneDrive will create a local folder that automatically syncs to SharePoint</li>
+                        </ul>
                       </div>
                     </div>
                     
-                    <div className="info-item">
-                      <span className="info-icon">2️⃣</span>
-                      <div className="info-content">
-                        <strong>Configure App to Use Sync Folder</strong>
-                        <p>1. Click "Detect" to automatically find your OneDrive sync folder<br/>
-                        2. Or use "Browse" to manually select the folder<br/>
-                        3. Click "Test" to verify the folder is syncing properly<br/>
-                        4. The folder path will look like: C:\\Users\\YourName\\OneDrive - Acuity Brands, Inc\\...</p>
+                    {/* Step 2 */}
+                    <div className="instruction-card">
+                      <div className="step-number">2</div>
+                      <div className="step-content">
+                        <h3>Configure App to Use Sync Folder</h3>
+                        <ul className="step-list">
+                          <li>Click "Detect" to automatically find your OneDrive sync folder</li>
+                          <li>Or use "Browse" to manually select the folder</li>
+                          <li>Click "Test" to verify the folder is syncing properly</li>
+                          <li>The folder path will look like: <code>C:\Users\YourName\OneDrive - Acuity Brands, Inc\...</code></li>
+                        </ul>
                       </div>
                     </div>
                     
-                    <div className="info-item">
-                      <span className="info-icon">3️⃣</span>
-                      <div className="info-content">
-                        <strong>Upload Projects</strong>
-                        <p>1. Create a project in the app<br/>
-                        2. Go to Project Management page<br/>
-                        3. Click "Upload to SharePoint" button<br/>
-                        4. App will zip the project and copy it to OneDrive<br/>
-                        5. OneDrive automatically syncs the file to SharePoint</p>
+                    {/* Step 3 */}
+                    <div className="instruction-card">
+                      <div className="step-number">3</div>
+                      <div className="step-content">
+                        <h3>Upload Projects</h3>
+                        <ul className="step-list">
+                          <li>Create a project in the app</li>
+                          <li>Go to Project Management page</li>
+                          <li>Click "Upload to SharePoint" button</li>
+                          <li>App will zip the project and copy it to OneDrive</li>
+                          <li>OneDrive automatically syncs the file to SharePoint</li>
+                        </ul>
                       </div>
                     </div>
                   </div>
@@ -2134,19 +2183,26 @@ function Settings({ initialTab = 'app-info' }) {
       case 'agencies':
         return (
           <div className="tab-content">
-            <div className="agencies-management compact-layout">
-              {/* Sync Configuration */}
-              <div className="settings-section">
-                <h3>🔄 Auto-Sync Configuration</h3>
-                <p className="field-description">
-                  Configure automatic sync with your Excel file
-                </p>
+            <div className="agencies-management">
+              {/* Auto-Sync Configuration Section */}
+              <div className="sync-configuration-section">
+                <div className="section-header">
+                  <h2>Auto-Sync Configuration</h2>
+                  <p className="section-description">Configure automatic sync with your Excel file</p>
+                </div>
                 
-                <div className="sync-config">
-                  {/* Enable/Disable Sync + Import Controls */}
-                  <div className="form-group toggle-with-import">
-                    <div className="toggle-section">
-                      <label className="checkbox-label">
+                <div className="sync-cards-grid">
+                  {/* Excel Sync Feature Card */}
+                  <div className="sync-card">
+                    <div className="card-header">
+                      <div className="card-icon">⚙️</div>
+                      <div className="card-content">
+                        <h3>Excel Sync Feature</h3>
+                        <p>Enable or disable Excel synchronization for agency data</p>
+                      </div>
+                    </div>
+                    <div className="card-control">
+                      <label className="sync-checkbox">
                         <input
                           type="checkbox"
                           checked={syncSettings.enabled}
@@ -2156,21 +2212,33 @@ function Settings({ initialTab = 'app-info' }) {
                             handleSyncSettingsUpdate(newSettings);
                           }}
                         />
-                        <div className={`toggle-switch ${syncSettings.enabled ? 'checked' : ''}`}>
-                          <div className={`toggle-slider ${syncSettings.enabled ? 'checked' : ''}`}></div>
-                        </div>
-                        <span className="checkmark">Enable Auto-Sync</span>
+                        <span className="checkmark"></span>
+                        <span className="label-text">Enable Excel Sync</span>
                       </label>
-                    </div>
-                    
-                    <div className={`import-section ${syncSettings.enabled ? 'disabled' : ''}`}>
-                      <h4>📥 Import from Excel</h4>
-                      <p className="import-description">
+                      <div className="info-text">
                         {syncSettings.enabled 
-                          ? 'Manual import disabled - Auto-sync is handling imports'
-                          : 'One-time import of agency data from Excel file'
+                          ? '✅ Sync feature is active - Configure sync mode below'
+                          : '❌ Sync feature is disabled - Manual import available'
                         }
-                      </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Manual Import Card */}
+                  <div className={`sync-card ${syncSettings.enabled ? 'disabled' : ''}`}>
+                    <div className="card-header">
+                      <div className="card-icon">📥</div>
+                      <div className="card-content">
+                        <h3>Manual Import</h3>
+                        <p>
+                          {syncSettings.enabled 
+                            ? 'Disabled when Excel Sync is enabled - Use sync mode instead'
+                            : 'One-time import of agency data from Excel file'
+                          }
+                        </p>
+                      </div>
+                    </div>
+                    <div className="card-control">
                       <div className="import-buttons">
                         <button 
                           className="btn btn-secondary"
@@ -2197,167 +2265,234 @@ function Settings({ initialTab = 'app-info' }) {
                       )}
                     </div>
                   </div>
+                </div>
 
-                  {/* Sync Mode Selection */}
-                  <div className="form-group">
-                    <label>Sync Mode</label>
-                    <div className="radio-group">
-                      <label className="radio-label">
-                        <input
-                          type="radio"
-                          name="syncMode"
-                          value="manual"
-                          checked={syncSettings.mode === 'manual'}
-                          onChange={(e) => {
-                            const newSettings = { ...syncSettings, mode: e.target.value };
-                            setSyncSettings(newSettings);
-                            handleSyncSettingsUpdate(newSettings);
-                          }}
-                        />
-                        <span className="radio-mark"></span>
-                        Manual (Import on demand)
-                      </label>
-                      <label className="radio-label">
-                        <input
-                          type="radio"
-                          name="syncMode"
-                          value="auto"
-                          checked={syncSettings.mode === 'auto'}
-                          onChange={(e) => {
-                            const newSettings = { ...syncSettings, mode: e.target.value };
-                            setSyncSettings(newSettings);
-                            handleSyncSettingsUpdate(newSettings);
-                          }}
-                        />
-                        <span className="radio-mark"></span>
-                        Automatic (Monitor file changes)
-                      </label>
+                {/* Sync Mode Card - Only visible when sync is enabled */}
+                {syncSettings.enabled && (
+                  <div className="sync-card sync-mode-card">
+                    <div className="card-header">
+                      <div className="card-icon">🔄</div>
+                      <div className="card-content">
+                        <h3>Sync Trigger Mode</h3>
+                        <p>Choose when to sync data from Excel file</p>
+                      </div>
+                    </div>
+                    <div className="card-control">
+                      <div className="sync-mode-options">
+                        <label className="sync-radio">
+                          <input
+                            type="radio"
+                            name="syncMode"
+                            value="manual"
+                            checked={syncSettings.mode === 'manual'}
+                            onChange={(e) => {
+                              const newSettings = { ...syncSettings, mode: e.target.value };
+                              setSyncSettings(newSettings);
+                              handleSyncSettingsUpdate(newSettings);
+                            }}
+                          />
+                          <span className="radio-mark"></span>
+                          <div className="radio-content">
+                            <span className="radio-title">Manual Trigger</span>
+                            <span className="radio-description">Click "Sync Now" button to import when you're ready</span>
+                          </div>
+                        </label>
+                        <label className="sync-radio">
+                          <input
+                            type="radio"
+                            name="syncMode"
+                            value="auto"
+                            checked={syncSettings.mode === 'auto'}
+                            onChange={(e) => {
+                              const newSettings = { ...syncSettings, mode: e.target.value };
+                              setSyncSettings(newSettings);
+                              handleSyncSettingsUpdate(newSettings);
+                            }}
+                          />
+                          <span className="radio-mark"></span>
+                          <div className="radio-content">
+                            <span className="radio-title">Automatic Monitoring</span>
+                            <span className="radio-description">Automatically detect and sync when Excel file changes</span>
+                          </div>
+                        </label>
+                      </div>
+                      <div className="mode-explanation">
+                        {syncSettings.mode === 'manual' 
+                          ? '💡 With manual trigger, the Excel file path is configured, but syncing only happens when you click the "Sync Now" button below.'
+                          : '💡 With automatic monitoring, the app watches your Excel file and syncs data automatically whenever changes are detected.'
+                        }
+                      </div>
                     </div>
                   </div>
+                )}
 
-                  {/* File Path Configuration */}
-                  <div className="form-group">
-                    <label>Excel File Path</label>
-                    <div className={`file-path-input ${filePathValid === false ? 'error' : filePathValid === true ? 'success' : ''}`}>
-                      <input
-                        type="text"
-                        value={syncSettings.filePath}
-                        onChange={(e) => {
-                          const newSettings = { ...syncSettings, filePath: e.target.value };
-                          setSyncSettings(newSettings);
-                          setFilePathValid(null); // Reset validation
-                        }}
-                        placeholder="Enter or browse to select Excel file path..."
-                      />
-                      <button 
-                        type="button"
-                        className="btn btn-secondary"
-                        onClick={handleBrowseFilePath}
-                      >
-                        📁 Browse
-                      </button>
+                {/* Excel File Path Card */}
+                <div className="sync-card">
+                  <div className="card-header">
+                    <div className="card-icon">📁</div>
+                    <div className="card-content">
+                      <h3>Excel File Path</h3>
+                      <p>Select the Excel file to sync with</p>
                     </div>
-                    {syncSettings.filePath && (
-                      <div className="file-path-actions">
-                        <button 
-                          type="button"
-                          className="btn btn-small"
-                          onClick={() => handleFilePathTest(syncSettings.filePath)}
-                        >
-                          🔍 Test Path
-                        </button>
-                        <button 
-                          type="button"
-                          className="btn btn-small"
-                          onClick={() => {
-                            const newSettings = { ...syncSettings, filePath: syncSettings.filePath };
-                            handleSyncSettingsUpdate(newSettings);
+                  </div>
+                  <div className="card-control">
+                    <div className="file-path-section">
+                      <label className="file-path-label">File Path</label>
+                      <div className={`file-path-input ${filePathValid === false ? 'error' : filePathValid === true ? 'success' : ''}`}>
+                        <input
+                          type="text"
+                          value={syncSettings.filePath}
+                          onChange={(e) => {
+                            const newSettings = { ...syncSettings, filePath: e.target.value };
+                            setSyncSettings(newSettings);
+                            setFilePathValid(null);
                           }}
+                          placeholder="Enter or browse to select Excel file path..."
+                        />
+                        <button 
+                          type="button"
+                          className="btn btn-secondary"
+                          onClick={handleBrowseFilePath}
                         >
-                          💾 Save Path
+                          📁 Browse
                         </button>
                       </div>
-                    )}
-                  </div>
-
-                  {/* Manual Sync Button */}
-                  {syncSettings.filePath && (
-                    <div className="form-group">
-                      <button 
-                        type="button"
-                        className="btn btn-primary sync-now-btn"
-                        onClick={handleManualSync}
-                        disabled={!syncSettings.filePath || filePathValid === false}
-                      >
-                        🔄 Sync Now
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Sync Status */}
-                  {syncStatus && (
-                    <div className={`status-message ${syncStatus.type}`}>
-                      {syncStatus.type === 'loading' && <span className="spinner">⏳</span>}
-                      {syncStatus.message}
-                    </div>
-                  )}
-
-                  {/* Last Sync Info */}
-                  {syncSettings.lastSync && (
-                    <div className="sync-info">
-                      <small>
-                        Last sync: {new Date(syncSettings.lastSync).toLocaleString()}
-                      </small>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Actions Panel - Export + Manual Entry Combined */}
-              <div className="actions-panel">
-                <div className="action-group">
-                  {syncSettings.filePath ? (
-                    <div className="compact-export">
-                      <button 
-                        type="button"
-                        className="btn btn-primary compact-btn"
-                        onClick={handleExportToExcel}
-                        disabled={!syncSettings.filePath || filePathValid === false}
-                      >
-                        📤 Export to Excel
-                      </button>
-                      {syncSettings.lastExport && (
-                        <small className="last-action">
-                          Last export: {new Date(syncSettings.lastExport).toLocaleString()}
-                        </small>
+                      {syncSettings.filePath && (
+                        <div className="file-path-actions">
+                          <button 
+                            type="button"
+                            className="btn btn-small"
+                            onClick={() => handleFilePathTest(syncSettings.filePath)}
+                          >
+                            🔍 Test Path
+                          </button>
+                          <button 
+                            type="button"
+                            className="btn btn-small"
+                            onClick={() => {
+                              const newSettings = { ...syncSettings, filePath: syncSettings.filePath };
+                              handleSyncSettingsUpdate(newSettings);
+                            }}
+                          >
+                            💾 Save Path
+                          </button>
+                        </div>
                       )}
                     </div>
-                  ) : (
-                    <p className="action-disabled">Configure Excel file path to enable export</p>
-                  )}
+                  </div>
+                </div>
+
+                {/* Sync Now Button */}
+                {syncSettings.filePath && (
+                  <div className="sync-now-section">
+                    <button 
+                      type="button"
+                      className="btn btn-primary btn-large sync-now-btn"
+                      onClick={handleManualSync}
+                      disabled={!syncSettings.filePath || filePathValid === false}
+                    >
+                      🔄 Sync Now
+                    </button>
+                    {syncSettings.lastSync && (
+                      <p className="last-sync-time">
+                        Last sync: {new Date(syncSettings.lastSync).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Sync Status */}
+                {syncStatus && (
+                  <div className={`status-message ${syncStatus.type}`}>
+                    {syncStatus.type === 'loading' && <span className="spinner">⏳</span>}
+                    {syncStatus.message}
+                  </div>
+                )}
+              </div>
+
+              {/* Agency Management Section */}
+              <div className="agency-management-section">
+                <div className="agency-section-header">
+                  <div className="header-content">
+                    <div className="header-icon">🏢</div>
+                    <div className="header-text">
+                      <h2>Agency Management</h2>
+                      <p className="header-description">Export agency data to Excel or manually add new agencies to the system</p>
+                    </div>
+                  </div>
                 </div>
                 
-                <div className="action-group">
-                  <button 
-                    className="btn btn-secondary compact-btn"
-                    onClick={() => {
-                      setShowAgencyForm(true);
-                      setEditingAgency(null);
-                      setAgencyFormData({
-                        agencyNumber: '',
-                        agencyName: '',
-                        contactName: '',
-                        contactEmail: '',
-                        phoneNumber: '',
-                        role: '',
-                        region: '',
-                        mainContact: '',
-                        sae: 'No'
-                      });
-                    }}
-                  >
-                    ➕ Add New Agency
-                  </button>
+                <div className="agency-actions-grid">
+                  {/* Export to Excel Card */}
+                  <div className="action-card">
+                    <div className="action-card-header">
+                      <div className="action-icon">📊</div>
+                      <div className="action-content">
+                        <h3>Export to Excel</h3>
+                        <p>Export all agency data to the configured Excel file</p>
+                      </div>
+                    </div>
+                    <div className="action-card-body">
+                      {syncSettings.filePath ? (
+                        <>
+                          <button 
+                            type="button"
+                            className="btn btn-primary btn-block"
+                            onClick={handleExportToExcel}
+                            disabled={!syncSettings.filePath || filePathValid === false}
+                          >
+                            📊 Export to Excel
+                          </button>
+                          {syncSettings.lastExport && (
+                            <p className="action-timestamp">
+                              Last export: {new Date(syncSettings.lastExport).toLocaleString()}
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <div className="action-disabled-message">
+                          <span className="disabled-icon">⚠️</span>
+                          <p>Configure Excel file path above to enable export</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Add New Agency Card */}
+                  <div className="action-card">
+                    <div className="action-card-header">
+                      <div className="action-icon">➕</div>
+                      <div className="action-content">
+                        <h3>Add New Agency</h3>
+                        <p>Manually add a new agency to the system database</p>
+                      </div>
+                    </div>
+                    <div className="action-card-body">
+                      <button 
+                        className="btn btn-secondary btn-block"
+                        onClick={() => {
+                          setShowAgencyForm(true);
+                          setEditingAgency(null);
+                          setAgencyFormData({
+                            agencyNumber: '',
+                            agencyName: '',
+                            contactName: '',
+                            contactEmail: '',
+                            phoneNumber: '',
+                            role: '',
+                            region: '',
+                            mainContact: '',
+                            sae: 'No'
+                          });
+                        }}
+                      >
+                        ➕ Add New Agency
+                      </button>
+                      <p className="action-info">
+                        💡 Add agencies manually when not syncing from Excel
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
