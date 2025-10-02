@@ -8,7 +8,7 @@ import { getFullVersionInfo, getVersionDisplay, BUILD_INFO } from '../utils/vers
 // Access secure electron API through contextBridge
 const { electronAPI } = window;
 
-function Settings({ initialTab = 'app-info' }) {
+function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [settings, setSettings] = useState({
     rfaTypes: ['BOM (No Layout)', 'BOM with Layout', 'Controls BOM - Budget', 'Controls BOM - Layout', 'BUDGET', 'LAYOUT', 'SUBMITTAL', 'RELEASE', 'GRAPHICS', 'PHOTOMETRICS', 'Consultation'],
@@ -1278,9 +1278,15 @@ function Settings({ initialTab = 'app-info' }) {
   const tabs = [
     {
       id: 'app-info',
-      label: 'App Settings',
+      label: 'App Info',
       icon: 'ℹ️',
-      fullLabel: 'Application Info & Settings'
+      fullLabel: 'Application Information'
+    },
+    {
+      id: 'advanced-settings',
+      label: 'Advanced Settings',
+      icon: '⚙️',
+      fullLabel: 'System Configuration'
     },
     {
       id: 'project-form',
@@ -1329,6 +1335,61 @@ function Settings({ initialTab = 'app-info' }) {
               </div>
             </div>
 
+            {/* Onboarding Tutorial Section */}
+            <div className="onboarding-section">
+              <h2>🎓 Onboarding Tutorial</h2>
+              <p className="section-description">
+                Learn how to use Project Creator with our interactive tutorial. Perfect for new users or as a refresher.
+              </p>
+              
+              <div className="onboarding-content">
+                <div className="onboarding-info">
+                  <div className="info-item">
+                    <span className="info-icon">📚</span>
+                    <div className="info-text">
+                      <strong>6 Quick Steps</strong>
+                      <p>Learn the main features in just a few minutes</p>
+                    </div>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-icon">🚀</span>
+                    <div className="info-text">
+                      <strong>Interactive Walkthroughs</strong>
+                      <p>See how to use the wizard, projects, agencies, and more</p>
+                    </div>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-icon">💡</span>
+                    <div className="info-text">
+                      <strong>Practical Tips</strong>
+                      <p>Get actionable advice for each feature</p>
+                    </div>
+                  </div>
+                </div>
+
+                <button 
+                  className="btn btn-primary btn-large"
+                  onClick={() => {
+                    if (onLaunchOnboarding) {
+                      onLaunchOnboarding();
+                    }
+                  }}
+                  style={{ marginTop: '20px' }}
+                >
+                  🎉 Launch Tutorial
+                </button>
+
+                <p className="help-text" style={{ marginTop: '15px' }}>
+                  💡 You can exit the tutorial at any time by clicking the X button or "Skip Tutorial"
+                </p>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'advanced-settings':
+        return (
+          <div className="tab-content">
             {/* File Paths Configuration Section */}
             <div className="file-paths-section">
               <h2>File Path Configuration</h2>

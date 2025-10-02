@@ -190,13 +190,12 @@ function App() {
           }
         }
         
-        // Determine if migration assistant should be shown
-        const shouldShowAssistant = featureFlagService.shouldShowMigrationAssistant() && 
-                                   !hasVisitedBefore && 
-                                   !savedPreference;
+        // Determine if onboarding tutorial should be shown for new users only
+        const hasCompletedOnboarding = localStorage.getItem('onboarding-completed') === 'true';
+        const shouldShowOnboarding = !hasVisitedBefore && !hasCompletedOnboarding;
         
-        if (shouldShowAssistant) {
-          // Show migration assistant after a brief delay
+        if (shouldShowOnboarding) {
+          // Show onboarding tutorial after a brief delay for new users
           setTimeout(() => {
             setShowMigrationAssistant(true);
           }, 2000);
@@ -730,7 +729,10 @@ function App() {
         case 'agencies':
           return <AgencyDirectory />;
         case 'settings':
-          return <Settings initialTab={settingsTab} />;
+          return <Settings 
+            initialTab={settingsTab} 
+            onLaunchOnboarding={() => setShowMigrationAssistant(true)} 
+          />;
         case 'welcome':
         default:
           return (
@@ -788,11 +790,8 @@ function App() {
                   <div className="project-type">
                     <span className="type-badge">Reloc</span>
                     <span className="type-badge">Photometrics</span>
-                    <span className="type-badge">Standard</span>
-                    <span className="type-badge">Metric</span>
-                    <span className="type-badge">Holophane</span>
-                    <span className="type-badge">Agency</span>
-                    <span className="type-badge">LCD Preprogramming</span>
+                    <span className="type-badge">Standard Controls</span>
+                    <span className="type-badge">DC2DC</span>
                   </div>
                 </div>
               </div>
@@ -847,11 +846,11 @@ function App() {
                   
                   {getRecommendedInterface() !== 'form' && !featureFlagService.isWizardForced() && (
                     <button 
-                      onClick={() => handleSmartViewChange('form')}
+                      onClick={() => setCurrentView('agencies')}
                       className="btn btn-secondary btn-large"
                     >
-                      📝 Advanced Form
-                      <span className="btn-subtitle">For experienced users</span>
+                      📇 Agency Directory
+                      <span className="btn-subtitle">Manage agency contacts</span>
                     </button>
                   )}
                   
@@ -870,16 +869,6 @@ function App() {
                     ⚙️ Application Settings
                     <span className="btn-subtitle">Configure preferences</span>
                   </button>
-                  
-                  {(isFirstVisit || !userInterfacePreference) && featureFlagService.shouldShowMigrationAssistant() && (
-                    <button 
-                      onClick={() => setShowMigrationAssistant(true)}
-                      className="btn btn-tertiary btn-large"
-                    >
-                      🔄 Interface Tour
-                      <span className="btn-subtitle">Learn about the enhanced experience</span>
-                    </button>
-                  )}
                 </div>
               </div>
 
@@ -887,7 +876,10 @@ function App() {
                 <div className="recent-projects">
                   <h2>📋 Recent Projects</h2>
                   <div className="recent-projects-grid">
-                    {projects.slice(0, 3).map(project => (
+                    {[...projects]
+                      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                      .slice(0, 3)
+                      .map(project => (
                       <div key={project.id} className="recent-project-card">
                         <h4>{project.projectName}</h4>
                         <p><strong>RFA:</strong> {project.rfaNumber}</p>
@@ -917,28 +909,6 @@ function App() {
                   )}
                 </div>
               )}
-
-              <div className="welcome-info">
-                <h3>📊 Application Status</h3>
-                <div className="status-grid">
-                  <div className="status-item">
-                    <span className="status-label">Components:</span>
-                    <span className="status-value">✅ All Loaded</span>
-                  </div>
-                  <div className="status-item">
-                    <span className="status-label">Database:</span>
-                    <span className="status-value">✅ Connected</span>
-                  </div>
-                  <div className="status-item">
-                    <span className="status-label">Templates:</span>
-                    <span className="status-value">✅ Available</span>
-                  </div>
-                  <div className="status-item">
-                    <span className="status-label">File System:</span>
-                    <span className="status-value">✅ Accessible</span>
-                  </div>
-                </div>
-              </div>
 
               <div className="welcome-footer">
                 <p>💡 <strong>Pro Tip:</strong> Use the sidebar navigation to quickly switch between different views and manage your projects efficiently.</p>

@@ -3937,3 +3937,110 @@ input:focus {
     text-align: center;
   }
 }
+
+/* ===== ONBOARDING SECTION STYLES ===== */
+
+.onboarding-section {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background: #f0f9ff;
+  border: 2px solid #0ea5e9;
+  border-radius: 12px;
+}
+
+.onboarding-section h2 {
+  margin: 0 0 0.5rem 0;
+  color: #0369a1;
+  font-size: 1.5rem;
+}
+
+.onboarding-section .section-description {
+  margin: 0 0 1.5rem 0;
+  color: #475569;
+  font-size: 1rem;
+}
+
+.onboarding-content {
+  margin-top: 1rem;
+}
+
+.onboarding-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.onboarding-info .info-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e0f2fe;
+}
+
+.onboarding-info .info-icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+.onboarding-info .info-text {
+  flex: 1;
+}
+
+.onboarding-info .info-text strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: #0f172a;
+  font-size: 1.1rem;
+}
+
+.onboarding-info .info-text p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.onboarding-section .help-text {
+  margin: 0;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+/* Tutorial step tip styling */
+.step-tip {
+  margin-top: 1.5rem;
+  padding: 1rem 1.25rem;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-left: 4px solid #f59e0b;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.1);
+}
+
+.step-tip p {
+  margin: 0;
+  color: #78350f;
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+/* Responsive styling for onboarding section */
+@media (max-width: 768px) {
+  .onboarding-section {
+    padding: 1rem;
+  }
+  
+  .onboarding-info .info-item {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .onboarding-info .info-icon {
+    font-size: 1.5rem;
+  }
+}
