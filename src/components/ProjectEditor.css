@@ -65,11 +65,20 @@
   gap: 6px;
 }
 
+.form-group-full {
+  grid-column: 1 / -1;
+}
+
 .form-group label {
   font-size: 14px;
   font-weight: 500;
   color: #495057;
   margin: 0;
+}
+
+.form-group .required-indicator {
+  color: #dc3545;
+  font-weight: 600;
 }
 
 .form-group input,

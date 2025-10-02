@@ -7,6 +7,7 @@
   "scripts": {
     "start": "electron .",
     "dev": "concurrently \"npm run start\" \"npm run watch\"",
+    "dev:fast": "npm run build:dev && electron .",
     "watch": "webpack --mode development --watch",
     "build": "webpack --mode production",
     "build:dev": "webpack --mode development",

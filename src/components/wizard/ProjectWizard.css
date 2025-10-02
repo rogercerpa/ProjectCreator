@@ -1625,6 +1625,10 @@
   position: relative;
 }
 
+.wizard-step-content .form-group-full {
+  grid-column: 1 / -1;
+}
+
 .wizard-step-content .form-group label {
   margin-bottom: 0.4rem; /* Reduced from 8px */
   font-weight: 600;
@@ -1633,17 +1637,25 @@
 }
 
 .wizard-step-content .form-group input,
-.wizard-step-content .form-group select {
+.wizard-step-content .form-group select,
+.wizard-step-content .form-group textarea {
   padding: 0.6rem 0.7rem; /* Reduced from 12px 14px */
   border: 2px solid #e9ecef;
   border-radius: 6px;
   font-size: 0.8rem; /* Reduced from 14px */
   transition: all 0.2s ease;
   background: white;
+  font-family: inherit;
+}
+
+.wizard-step-content .form-group textarea {
+  resize: vertical;
+  min-height: 80px;
 }
 
 .wizard-step-content .form-group input:focus,
-.wizard-step-content .form-group select:focus {
+.wizard-step-content .form-group select:focus,
+.wizard-step-content .form-group textarea:focus {
   outline: none;
   border-color: #007bff;
   box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
@@ -1651,12 +1663,14 @@
 }
 
 .wizard-step-content .form-group input:hover,
-.wizard-step-content .form-group select:hover {
+.wizard-step-content .form-group select:hover,
+.wizard-step-content .form-group textarea:hover {
   border-color: #adb5bd;
 }
 
 .wizard-step-content .form-group input.error,
-.wizard-step-content .form-group select.error {
+.wizard-step-content .form-group select.error,
+.wizard-step-content .form-group textarea.error {
   border-color: #dc3545;
   background-color: #fff5f5;
 }

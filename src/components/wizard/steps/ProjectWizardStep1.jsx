@@ -1809,6 +1809,20 @@ const ProjectWizardStep1 = ({
               {isFieldImported('status') && <span className="import-indicator">📋 Imported</span>}
             </div>
 
+            <div className={`form-group form-group-full ${isFieldImported('projectNotes') ? 'imported-field' : ''}`}>
+              <label htmlFor="projectNotes">Project Notes</label>
+              <textarea
+                id="projectNotes"
+                name="projectNotes"
+                value={formData.projectNotes || ''}
+                onChange={handleInputChange}
+                placeholder="Enter project notes or comments (optional)"
+                rows="3"
+              />
+              <small className="field-hint">Optional notes about the project. Required when marking project as completed.</small>
+              {isFieldImported('projectNotes') && <span className="import-indicator">📋 Imported</span>}
+            </div>
+
             <div className="form-group">
               <MultiSelectDropdown
                 label="Products"

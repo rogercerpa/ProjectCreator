@@ -7,6 +7,16 @@ import './ProjectDetails.css';
  */
 const ProjectDetails = ({ project, onEdit }) => {
   const [isExporting, setIsExporting] = useState(false);
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+
+  // Show toast notification
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => {
+      setToast({ show: false, message: '', type: 'success' });
+    }, 3000);
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return 'Not set';
     const date = new Date(dateString);
@@ -78,7 +88,7 @@ const ProjectDetails = ({ project, onEdit }) => {
   // Export to DAS Board
   const handleExportToDASBoard = async () => {
     if (!project.rfaNumber || !project.projectName) {
-      alert('Project must have RFA Number and Project Name to export to DAS Board.');
+      showToast('Project must have RFA Number and Project Name to export to DAS Board.', 'error');
       return;
     }
 
@@ -95,13 +105,13 @@ const ProjectDetails = ({ project, onEdit }) => {
         const exportText = `${result.data.firstColumn}\t${result.data.projectName}\t${result.data.dueDate}\t${result.data.triageTime}`;
         
         await navigator.clipboard.writeText(exportText);
-        alert('Project data exported to DAS Board format and copied to clipboard!');
+        showToast('✓ Copied to DAS Board format!', 'success');
       } else {
-        alert(`Failed to export to DAS Board: ${result.error}`);
+        showToast(`Failed to export to DAS Board: ${result.error}`, 'error');
       }
     } catch (error) {
       console.error('Export to DAS Board failed:', error);
-      alert('Failed to export to DAS Board.');
+      showToast('Failed to export to DAS Board.', 'error');
     } finally {
       setIsExporting(false);
     }
@@ -128,25 +138,77 @@ const ProjectDetails = ({ project, onEdit }) => {
         const exportText = exportLines.join('\n');
         
         await navigator.clipboard.writeText(exportText);
-        alert('Project triage breakdown exported to Agile format and copied to clipboard!');
+        showToast('✓ Copied to Agile format!', 'success');
       } else {
-        alert(`Failed to export to Agile: ${result.error || 'Unknown error'}`);
+        showToast(`Failed to export to Agile: ${result.error || 'Unknown error'}`, 'error');
       }
     } catch (error) {
       console.error('Export to Agile failed:', error);
-      alert('Failed to export to Agile.');
+      showToast('Failed to export to Agile.', 'error');
     } finally {
       setIsExporting(false);
     }
   };
 
+  // Copy dates to clipboard
+  const handleCopyDates = async () => {
+    try {
+      // Format dates as MM/DD
+      const formatDateToMMDD = (dateString) => {
+        if (!dateString) return 'N/A';
+        const date = new Date(dateString);
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${month}/${day}`;
+      };
+
+      const ecdFormatted = formatDateToMMDD(project.ecd);
+      const requestedDateFormatted = formatDateToMMDD(project.requestedDate);
+      
+      const datesText = `ECD ${ecdFormatted} - RD ${requestedDateFormatted}`;
+      
+      await navigator.clipboard.writeText(datesText);
+      showToast('✓ Dates copied!', 'success');
+    } catch (error) {
+      console.error('Copy dates failed:', error);
+      showToast('Failed to copy dates.', 'error');
+    }
+  };
+
+  // Copy project notes to clipboard
+  const handleCopyNotes = async () => {
+    try {
+      if (project.projectNotes) {
+        await navigator.clipboard.writeText(project.projectNotes);
+        showToast('✓ Notes copied!', 'success');
+      }
+    } catch (error) {
+      console.error('Copy notes failed:', error);
+      showToast('Failed to copy notes.', 'error');
+    }
+  };
+
   return (
     <div className="project-details">
+      {/* Toast Notification */}
+      {toast.show && (
+        <div className={`toast-notification toast-${toast.type}`}>
+          {toast.message}
+        </div>
+      )}
+
       {/* Project Overview */}
       <div className="details-section">
         <div className="section-header">
           <h2>📋 Project Overview</h2>
           <div className="header-actions">
+            <button 
+              onClick={handleCopyDates}
+              className="btn btn-outline btn-small"
+              title="Copy ECD and Requested Date to clipboard"
+            >
+              📅 Copy Dates
+            </button>
             <button 
               onClick={handleExportToDASBoard}
               disabled={isExporting || !project.rfaNumber || !project.projectName}
@@ -203,6 +265,22 @@ const ProjectDetails = ({ project, onEdit }) => {
               {project.status || 'Active'}
             </span>
           </div>
+          
+          {project.projectNotes && (
+            <div className="detail-item detail-item-full">
+              <label>Project Notes</label>
+              <div className="project-notes-container">
+                <span className="project-notes">{project.projectNotes}</span>
+                <button 
+                  onClick={handleCopyNotes}
+                  className="copy-notes-btn"
+                  title="Copy notes to clipboard"
+                >
+                  📋
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

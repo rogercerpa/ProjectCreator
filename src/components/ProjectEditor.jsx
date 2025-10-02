@@ -54,6 +54,20 @@ const ProjectEditor = ({
     }
     
     const newFormData = { ...formData, [name]: processedValue };
+    
+    // Validate if status is changing to 'Completed'
+    if (name === 'status' && processedValue === 'Completed') {
+      if (!newFormData.projectNotes || newFormData.projectNotes.trim() === '') {
+        setErrors(prev => ({ 
+          ...prev, 
+          projectNotes: 'Project Notes are required when marking a project as Completed' 
+        }));
+        // Prevent status change
+        alert('Please add Project Notes before marking the project as Completed.');
+        return;
+      }
+    }
+    
     setFormData(newFormData);
     onProjectDataChange(newFormData);
     
@@ -234,12 +248,31 @@ const ProjectEditor = ({
                 name="status"
                 value={formData.status || 'Active'}
                 onChange={handleInputChange}
+                className={errors.status ? 'error' : ''}
               >
                 <option value="Active">Active</option>
                 <option value="On Hold">On Hold</option>
                 <option value="Completed">Completed</option>
                 <option value="Cancelled">Cancelled</option>
               </select>
+              {errors.status && <span className="error-message">{errors.status}</span>}
+            </div>
+
+            <div className="form-group form-group-full">
+              <label htmlFor="projectNotes">
+                Project Notes {formData.status === 'Completed' && <span className="required-indicator">*</span>}
+              </label>
+              <textarea
+                id="projectNotes"
+                name="projectNotes"
+                value={formData.projectNotes || ''}
+                onChange={handleInputChange}
+                className={errors.projectNotes ? 'error' : ''}
+                placeholder="Enter project notes or comments (required when marking as Completed)"
+                rows="4"
+              />
+              {errors.projectNotes && <span className="error-message">{errors.projectNotes}</span>}
+              <small className="field-hint">Required when marking project as Completed</small>
             </div>
           </div>
         </div>

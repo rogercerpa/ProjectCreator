@@ -86,10 +86,20 @@ module.exports = (env, argv) => {
         ]
       })
     ],
-    devtool: isProduction ? false : 'eval-source-map',
+    devtool: isProduction ? false : 'eval-cheap-module-source-map', // Faster than eval-source-map
     target: 'electron-renderer',
     externals: {
       'electron': 'commonjs electron'
+    },
+    watchOptions: {
+      // Reduce CPU usage from file watching
+      ignored: ['**/node_modules', '**/dist', '**/coverage', '**/docs', '**/.git'],
+      aggregateTimeout: 600, // Delay rebuild after first change (ms)
+      poll: false // Don't use polling, use native file watching
+    },
+    cache: {
+      type: 'filesystem', // Cache compiled modules to disk
+      cacheDirectory: path.resolve(__dirname, '.webpack_cache')
     },
     // SECURITY: Add security optimizations
     optimization: {
