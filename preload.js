@@ -162,7 +162,103 @@ contextBridge.exposeInMainWorld('electronAPI', {
   removeOneDriveSyncProgressListener: (callback) => ipcRenderer.removeListener('oneDriveSyncProgress', callback),
   
   // Remove listeners
-  removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel)
+  removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel),
+  
+  // ===== WORKLOAD DASHBOARD APIs =====
+  
+  // Workload data operations
+  workloadLoadAll: () => ipcRenderer.invoke('workload:load-all'),
+  workloadLoadUser: (userId) => ipcRenderer.invoke('workload:load-user', userId),
+  workloadSave: (userId, workload) => ipcRenderer.invoke('workload:save', userId, workload),
+  
+  // User operations
+  workloadUsersLoadAll: () => ipcRenderer.invoke('workload:users-load-all'),
+  workloadUserSave: (user) => ipcRenderer.invoke('workload:user-save', user),
+  workloadUserGet: (userId) => ipcRenderer.invoke('workload:user-get', userId),
+  workloadUserDelete: (userId) => ipcRenderer.invoke('workload:user-delete', userId),
+  
+  // Assignment operations
+  workloadAssignmentsLoadAll: () => ipcRenderer.invoke('workload:assignments-load-all'),
+  workloadAssignmentSave: (assignment) => ipcRenderer.invoke('workload:assignment-save', assignment),
+  workloadAssignmentDelete: (assignmentId) => ipcRenderer.invoke('workload:assignment-delete', assignmentId),
+  workloadAssignmentsByDateRange: (startDate, endDate) => ipcRenderer.invoke('workload:assignments-by-date-range', startDate, endDate),
+  
+  // Statistics
+  workloadStats: () => ipcRenderer.invoke('workload:stats'),
+  
+  // Configuration
+  workloadConfigSave: (config) => ipcRenderer.invoke('workload:config-save', config),
+  workloadConfigLoad: () => ipcRenderer.invoke('workload:config-load'),
+  workloadSetDataDirectory: (directoryPath) => ipcRenderer.invoke('workload:set-data-directory', directoryPath),
+  
+  // File watcher operations
+  workloadFileWatcherStart: (directoryPath) => ipcRenderer.invoke('workload:file-watcher-start', directoryPath),
+  workloadFileWatcherStop: () => ipcRenderer.invoke('workload:file-watcher-stop'),
+  workloadFileWatcherStatus: () => ipcRenderer.invoke('workload:file-watcher-status'),
+  
+  // WebSocket operations
+  websocketConnect: (serverUrl, userId, userName) => ipcRenderer.invoke('websocket:connect', serverUrl, userId, userName),
+  websocketDisconnect: () => ipcRenderer.invoke('websocket:disconnect'),
+  websocketSend: (message) => ipcRenderer.invoke('websocket:send', message),
+  websocketBroadcastAssignment: (assignment) => ipcRenderer.invoke('websocket:broadcast-assignment', assignment),
+  websocketBroadcastStatus: (projectId, oldStatus, newStatus) => ipcRenderer.invoke('websocket:broadcast-status', projectId, oldStatus, newStatus),
+  websocketUpdatePresence: (status) => ipcRenderer.invoke('websocket:update-presence', status),
+  websocketStatus: () => ipcRenderer.invoke('websocket:status'),
+  
+  // Backup operations
+  workloadBackupCreate: () => ipcRenderer.invoke('workload:backup-create'),
+  
+  // Event listeners for real-time updates
+  onWorkloadFileChanged: (callback) => {
+    ipcRenderer.on('workload:file-changed', (event, data) => callback(data));
+    return () => ipcRenderer.removeAllListeners('workload:file-changed');
+  },
+  onWorkloadUsersFileChanged: (callback) => {
+    ipcRenderer.on('workload:users-file-changed', (event, data) => callback(data));
+    return () => ipcRenderer.removeAllListeners('workload:users-file-changed');
+  },
+  onWorkloadAssignmentsFileChanged: (callback) => {
+    ipcRenderer.on('workload:assignments-file-changed', (event, data) => callback(data));
+    return () => ipcRenderer.removeAllListeners('workload:assignments-file-changed');
+  },
+  
+  // WebSocket event listeners
+  onWebSocketConnected: (callback) => {
+    ipcRenderer.on('websocket:connected', (event, data) => callback(data));
+    return () => ipcRenderer.removeAllListeners('websocket:connected');
+  },
+  onWebSocketDisconnected: (callback) => {
+    ipcRenderer.on('websocket:disconnected', (event, data) => callback(data));
+    return () => ipcRenderer.removeAllListeners('websocket:disconnected');
+  },
+  onWebSocketError: (callback) => {
+    ipcRenderer.on('websocket:error', (event, data) => callback(data));
+    return () => ipcRenderer.removeAllListeners('websocket:error');
+  },
+  onWebSocketUserPresence: (callback) => {
+    ipcRenderer.on('websocket:user-presence', (event, data) => callback(data));
+    return () => ipcRenderer.removeAllListeners('websocket:user-presence');
+  },
+  onWebSocketProjectAssigned: (callback) => {
+    ipcRenderer.on('websocket:project-assigned', (event, data) => callback(data));
+    return () => ipcRenderer.removeAllListeners('websocket:project-assigned');
+  },
+  onWebSocketProjectStatus: (callback) => {
+    ipcRenderer.on('websocket:project-status', (event, data) => callback(data));
+    return () => ipcRenderer.removeAllListeners('websocket:project-status');
+  },
+  onWebSocketWorkloadUpdated: (callback) => {
+    ipcRenderer.on('websocket:workload-updated', (event, data) => callback(data));
+    return () => ipcRenderer.removeAllListeners('websocket:workload-updated');
+  },
+  onWebSocketAssignmentChanged: (callback) => {
+    ipcRenderer.on('websocket:assignment-changed', (event, data) => callback(data));
+    return () => ipcRenderer.removeAllListeners('websocket:assignment-changed');
+  },
+  onWebSocketConflictDetected: (callback) => {
+    ipcRenderer.on('websocket:conflict-detected', (event, data) => callback(data));
+    return () => ipcRenderer.removeAllListeners('websocket:conflict-detected');
+  }
 });
 
 // SECURITY: Prevent access to Node.js APIs

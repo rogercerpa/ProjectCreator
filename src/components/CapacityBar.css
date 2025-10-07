@@ -1,0 +1,82 @@
+/* Capacity Bar Styles */
+
+.capacity-bar-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.capacity-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.capacity-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+.capacity-status {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.capacity-bar {
+  height: 8px;
+  background: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.capacity-fill {
+  height: 100%;
+  background: #3498db;
+  border-radius: 4px;
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.capacity-hours {
+  font-size: 11px;
+  color: #6c757d;
+  text-align: center;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .capacity-label {
+    font-size: 12px;
+  }
+
+  .capacity-status {
+    font-size: 10px;
+  }
+
+  .capacity-bar {
+    height: 6px;
+  }
+
+  .capacity-hours {
+    font-size: 10px;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .capacity-label {
+    color: #e0e0e0;
+  }
+
+  .capacity-bar {
+    background: #2d2d2d;
+  }
+
+  .capacity-hours {
+    color: #a0a0a0;
+  }
+}
+

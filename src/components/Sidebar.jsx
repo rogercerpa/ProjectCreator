@@ -22,6 +22,12 @@ function Sidebar({ currentView, onViewChange, projectCount }) {
       description: `View projects (${projectCount})`
     },
     {
+      id: 'workload',
+      label: 'Workload Dashboard',
+      icon: '📊',
+      description: 'Team workload'
+    },
+    {
       id: 'agencies',
       label: 'Agency Directory',
       icon: '📋',

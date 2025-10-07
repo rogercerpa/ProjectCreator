@@ -6,6 +6,7 @@ import ProjectWizard from './components/wizard/ProjectWizard';
 import ProjectManagement from './components/ProjectManagement';
 import ProjectList from './components/ProjectList';
 import AgencyDirectory from './components/AgencyDirectory';
+import WorkloadDashboard from './components/WorkloadDashboard';
 import DraftRecoveryModal from './components/wizard/components/DraftRecoveryModal';
 import MigrationAssistant from './components/wizard/components/MigrationAssistant';
 import Settings from './components/Settings';
@@ -728,6 +729,8 @@ function App() {
           );
         case 'agencies':
           return <AgencyDirectory />;
+        case 'workload':
+          return <WorkloadDashboard />;
         case 'settings':
           return <Settings 
             initialTab={settingsTab} 

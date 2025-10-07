@@ -25,6 +25,11 @@ const EmailTemplateService = require('./src/services/EmailTemplateService');
 const ZipService = require('./src/services/ZipService');
 const OneDriveSyncService = require('./src/services/OneDriveSyncService');
 
+// Import workload services
+const WorkloadPersistenceService = require('./src/services/WorkloadPersistenceService');
+const FileWatcherService = require('./src/services/FileWatcherService');
+const WebSocketService = require('./src/services/WebSocketService');
+
 // Import package.json for version info
 const packageJson = require('./package.json');
 
@@ -49,6 +54,11 @@ const emailTemplateService = new EmailTemplateService();
 // Initialize SharePoint services
 const zipService = new ZipService();
 const oneDriveSyncService = new OneDriveSyncService();
+
+// Initialize workload services
+const workloadPersistenceService = new WorkloadPersistenceService();
+let fileWatcherService = null; // Initialized when user configures shared folder
+const webSocketService = new WebSocketService();
 
 function createWindow() {
   // Create the browser window
@@ -1618,6 +1628,387 @@ ipcMain.handle('browseForSyncFolder', async () => {
 
   } catch (error) {
     console.error('Error browsing for sync folder:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// ===== WORKLOAD DASHBOARD IPC HANDLERS =====
+
+// Workload data operations
+ipcMain.handle('workload:load-all', async () => {
+  try {
+    return await workloadPersistenceService.loadWorkloads();
+  } catch (error) {
+    console.error('Error loading workloads:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('workload:load-user', async (event, userId) => {
+  try {
+    return await workloadPersistenceService.loadUserWorkload(userId);
+  } catch (error) {
+    console.error('Error loading user workload:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('workload:save', async (event, userId, workload) => {
+  try {
+    return await workloadPersistenceService.saveUserWorkload(userId, workload);
+  } catch (error) {
+    console.error('Error saving workload:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// User operations
+ipcMain.handle('workload:users-load-all', async () => {
+  try {
+    return await workloadPersistenceService.loadUsers();
+  } catch (error) {
+    console.error('Error loading users:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('workload:user-save', async (event, user) => {
+  try {
+    return await workloadPersistenceService.saveUser(user);
+  } catch (error) {
+    console.error('Error saving user:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('workload:user-get', async (event, userId) => {
+  try {
+    return await workloadPersistenceService.getUser(userId);
+  } catch (error) {
+    console.error('Error getting user:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('workload:user-delete', async (event, userId) => {
+  try {
+    return await workloadPersistenceService.deleteUser(userId);
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Assignment operations
+ipcMain.handle('workload:assignments-load-all', async () => {
+  try {
+    return await workloadPersistenceService.loadAssignments();
+  } catch (error) {
+    console.error('Error loading assignments:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('workload:assignment-save', async (event, assignment) => {
+  try {
+    const result = await workloadPersistenceService.saveAssignment(assignment);
+    
+    // Broadcast assignment change via WebSocket if connected
+    if (webSocketService.isConnected) {
+      webSocketService.sendNotification('ASSIGNMENT_CREATED', assignment);
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Error saving assignment:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('workload:assignment-delete', async (event, assignmentId) => {
+  try {
+    const result = await workloadPersistenceService.deleteAssignment(assignmentId);
+    
+    // Broadcast assignment deletion via WebSocket if connected
+    if (webSocketService.isConnected) {
+      webSocketService.sendNotification('ASSIGNMENT_DELETED', { assignmentId });
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Error deleting assignment:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('workload:assignments-by-date-range', async (event, startDate, endDate) => {
+  try {
+    return await workloadPersistenceService.getAssignmentsByDateRange(startDate, endDate);
+  } catch (error) {
+    console.error('Error getting assignments by date range:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Statistics
+ipcMain.handle('workload:stats', async () => {
+  try {
+    return await workloadPersistenceService.getStats();
+  } catch (error) {
+    console.error('Error getting workload stats:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Configuration
+ipcMain.handle('workload:config-save', async (event, config) => {
+  try {
+    return await workloadPersistenceService.saveConfig(config);
+  } catch (error) {
+    console.error('Error saving workload config:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('workload:config-load', async () => {
+  try {
+    return await workloadPersistenceService.loadConfig();
+  } catch (error) {
+    console.error('Error loading workload config:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('workload:set-data-directory', async (event, directoryPath) => {
+  try {
+    await workloadPersistenceService.setDataDirectory(directoryPath);
+    
+    // Restart file watcher with new directory
+    if (fileWatcherService) {
+      await fileWatcherService.stopWatching();
+    }
+    
+    fileWatcherService = new FileWatcherService(directoryPath);
+    await fileWatcherService.startWatching();
+    
+    // Setup file watcher event handlers
+    fileWatcherService.on('workload:changed', (data) => {
+      if (mainWindow) {
+        mainWindow.webContents.send('workload:file-changed', data);
+      }
+    });
+    
+    fileWatcherService.on('users:changed', (data) => {
+      if (mainWindow) {
+        mainWindow.webContents.send('workload:users-file-changed', data);
+      }
+    });
+    
+    fileWatcherService.on('assignments:changed', (data) => {
+      if (mainWindow) {
+        mainWindow.webContents.send('workload:assignments-file-changed', data);
+      }
+    });
+    
+    return { success: true, message: 'Data directory updated' };
+  } catch (error) {
+    console.error('Error setting data directory:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// File watcher operations
+ipcMain.handle('workload:file-watcher-start', async (event, directoryPath) => {
+  try {
+    if (!fileWatcherService) {
+      fileWatcherService = new FileWatcherService(directoryPath);
+    }
+    
+    const result = await fileWatcherService.startWatching();
+    
+    // Setup event handlers if not already set
+    if (result.success) {
+      fileWatcherService.removeAllListeners(); // Remove any old listeners
+      
+      fileWatcherService.on('workload:changed', (data) => {
+        if (mainWindow) {
+          mainWindow.webContents.send('workload:file-changed', data);
+        }
+      });
+      
+      fileWatcherService.on('users:changed', (data) => {
+        if (mainWindow) {
+          mainWindow.webContents.send('workload:users-file-changed', data);
+        }
+      });
+      
+      fileWatcherService.on('assignments:changed', (data) => {
+        if (mainWindow) {
+          mainWindow.webContents.send('workload:assignments-file-changed', data);
+        }
+      });
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Error starting file watcher:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('workload:file-watcher-stop', async () => {
+  try {
+    if (fileWatcherService) {
+      return await fileWatcherService.stopWatching();
+    }
+    return { success: true, message: 'File watcher not running' };
+  } catch (error) {
+    console.error('Error stopping file watcher:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('workload:file-watcher-status', async () => {
+  try {
+    if (fileWatcherService) {
+      return { success: true, status: fileWatcherService.getStatus() };
+    }
+    return { success: true, status: { isWatching: false } };
+  } catch (error) {
+    console.error('Error getting file watcher status:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// WebSocket operations
+ipcMain.handle('websocket:connect', async (event, serverUrl, userId, userName) => {
+  try {
+    const result = webSocketService.connect(serverUrl, userId, userName);
+    
+    // Setup WebSocket event handlers
+    webSocketService.removeAllListeners(); // Remove any old listeners
+    
+    webSocketService.on('connected', (data) => {
+      if (mainWindow) {
+        mainWindow.webContents.send('websocket:connected', data);
+      }
+    });
+    
+    webSocketService.on('disconnected', (data) => {
+      if (mainWindow) {
+        mainWindow.webContents.send('websocket:disconnected', data);
+      }
+    });
+    
+    webSocketService.on('error', (data) => {
+      if (mainWindow) {
+        mainWindow.webContents.send('websocket:error', data);
+      }
+    });
+    
+    webSocketService.on('user:presence', (data) => {
+      if (mainWindow) {
+        mainWindow.webContents.send('websocket:user-presence', data);
+      }
+    });
+    
+    webSocketService.on('project:assigned', (data) => {
+      if (mainWindow) {
+        mainWindow.webContents.send('websocket:project-assigned', data);
+      }
+    });
+    
+    webSocketService.on('project:status', (data) => {
+      if (mainWindow) {
+        mainWindow.webContents.send('websocket:project-status', data);
+      }
+    });
+    
+    webSocketService.on('workload:updated', (data) => {
+      if (mainWindow) {
+        mainWindow.webContents.send('websocket:workload-updated', data);
+      }
+    });
+    
+    webSocketService.on('assignment:changed', (data) => {
+      if (mainWindow) {
+        mainWindow.webContents.send('websocket:assignment-changed', data);
+      }
+    });
+    
+    webSocketService.on('conflict:detected', (data) => {
+      if (mainWindow) {
+        mainWindow.webContents.send('websocket:conflict-detected', data);
+      }
+    });
+    
+    return result;
+  } catch (error) {
+    console.error('Error connecting to WebSocket:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('websocket:disconnect', async () => {
+  try {
+    return webSocketService.disconnect();
+  } catch (error) {
+    console.error('Error disconnecting from WebSocket:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('websocket:send', async (event, message) => {
+  try {
+    return webSocketService.send(message);
+  } catch (error) {
+    console.error('Error sending WebSocket message:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('websocket:broadcast-assignment', async (event, assignment) => {
+  try {
+    return webSocketService.broadcastProjectAssignment(assignment);
+  } catch (error) {
+    console.error('Error broadcasting assignment:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('websocket:broadcast-status', async (event, projectId, oldStatus, newStatus) => {
+  try {
+    return webSocketService.broadcastProjectStatus(projectId, oldStatus, newStatus);
+  } catch (error) {
+    console.error('Error broadcasting status:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('websocket:update-presence', async (event, status) => {
+  try {
+    return webSocketService.updatePresence(status);
+  } catch (error) {
+    console.error('Error updating presence:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('websocket:status', async () => {
+  try {
+    return { success: true, status: webSocketService.getStatus() };
+  } catch (error) {
+    console.error('Error getting WebSocket status:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Backup operations
+ipcMain.handle('workload:backup-create', async () => {
+  try {
+    return await workloadPersistenceService.createBackup();
+  } catch (error) {
+    console.error('Error creating backup:', error);
     return { success: false, error: error.message };
   }
 });

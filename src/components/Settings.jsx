@@ -61,6 +61,16 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
       syncFolderPath: '', // Auto-detected or manual path
       cleanupStrategy: 'manual', // 'auto-delete', 'keep-recent', 'manual' - DEFAULT TO MANUAL FOR SAFETY
       keepRecentCount: 10
+    },
+    workloadSettings: {
+      enableRealTimeSync: true,
+      dataDirectory: '',
+      websocketServer: 'ws://localhost:8080',
+      userName: '',
+      userEmail: '',
+      weeklyCapacity: 40,
+      showNotifications: true,
+      onlyMyAssignments: false
     }
   });
 
@@ -1299,6 +1309,12 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
       label: 'Agencies',
       icon: '🏢',
       fullLabel: 'Agency Management'
+    },
+    {
+      id: 'workload',
+      label: 'Workload',
+      icon: '📊',
+      fullLabel: 'Workload Dashboard Settings'
     },
     {
       id: 'triage-calc',
@@ -2841,6 +2857,240 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
                 agency={editingAgencyModal}
                 onSave={handleModalSave}
               />
+            </div>
+          </div>
+        );
+
+      case 'workload':
+        return (
+          <div className="tab-content">
+            <div className="settings-field">
+              <h3>📊 Workload Dashboard Settings</h3>
+              <p className="field-description">Configure settings for the real-time workload dashboard</p>
+              
+              <div className="setting-group" style={{marginTop: '20px'}}>
+                <h4>🟢 Real-Time Sync</h4>
+                <div className="setting-row">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={settings.workloadSettings?.enableRealTimeSync !== false}
+                      onChange={(e) => setSettings(prev => ({
+                        ...prev,
+                        workloadSettings: {
+                          ...prev.workloadSettings,
+                          enableRealTimeSync: e.target.checked
+                        }
+                      }))}
+                    />
+                    Enable Real-Time Sync
+                  </label>
+                  <span className="setting-hint">
+                    Enables WebSocket connections for instant updates
+                  </span>
+                </div>
+              </div>
+
+              <div className="setting-group" style={{marginTop: '20px'}}>
+                <h4>📁 Shared Folder Path</h4>
+                <div className="setting-row">
+                  <label>Data Directory:</label>
+                  <div style={{display: 'flex', gap: '10px', flex: 1}}>
+                    <input
+                      type="text"
+                      value={settings.workloadSettings?.dataDirectory || ''}
+                      onChange={(e) => setSettings(prev => ({
+                        ...prev,
+                        workloadSettings: {
+                          ...prev.workloadSettings,
+                          dataDirectory: e.target.value
+                        }
+                      }))}
+                      placeholder="C:\Users\...\OneDrive\ProjectCreator\Shared"
+                      style={{flex: 1}}
+                    />
+                    <button
+                      onClick={async () => {
+                        try {
+                          const result = await electronAPI.selectDirectory();
+                          if (result) {
+                            setSettings(prev => ({
+                              ...prev,
+                              workloadSettings: {
+                                ...prev.workloadSettings,
+                                dataDirectory: result
+                              }
+                            }));
+                          }
+                        } catch (error) {
+                          console.error('Error selecting directory:', error);
+                        }
+                      }}
+                      className="btn-secondary"
+                    >
+                      Browse
+                    </button>
+                  </div>
+                  <span className="setting-hint">
+                    Path to shared OneDrive folder for multi-user collaboration
+                  </span>
+                </div>
+              </div>
+
+              <div className="setting-group" style={{marginTop: '20px'}}>
+                <h4>🔌 WebSocket Server</h4>
+                <div className="setting-row">
+                  <label>Server URL:</label>
+                  <input
+                    type="text"
+                    value={settings.workloadSettings?.websocketServer || 'ws://localhost:8080'}
+                    onChange={(e) => setSettings(prev => ({
+                      ...prev,
+                      workloadSettings: {
+                        ...prev.workloadSettings,
+                        websocketServer: e.target.value
+                      }
+                    }))}
+                    placeholder="ws://localhost:8080"
+                  />
+                  <span className="setting-hint">
+                    WebSocket server URL for real-time notifications
+                  </span>
+                </div>
+                <div className="setting-row">
+                  <button
+                    onClick={async () => {
+                      try {
+                        const serverUrl = settings.workloadSettings?.websocketServer || 'ws://localhost:8080';
+                        const currentUser = JSON.parse(localStorage.getItem('workload-current-user') || '{}');
+                        const result = await electronAPI.websocketConnect(
+                          serverUrl,
+                          currentUser.id || 'test-user',
+                          currentUser.name || 'Test User'
+                        );
+                        alert(result.success ? '✅ Connected successfully!' : '❌ Connection failed');
+                      } catch (error) {
+                        alert('❌ Connection failed: ' + error.message);
+                      }
+                    }}
+                    className="btn-primary"
+                  >
+                    Test Connection
+                  </button>
+                </div>
+              </div>
+
+              <div className="setting-group" style={{marginTop: '20px'}}>
+                <h4>👤 User Profile</h4>
+                <div className="setting-row">
+                  <label>Your Name:</label>
+                  <input
+                    type="text"
+                    value={settings.workloadSettings?.userName || process.env.USERNAME || ''}
+                    onChange={(e) => setSettings(prev => ({
+                      ...prev,
+                      workloadSettings: {
+                        ...prev.workloadSettings,
+                        userName: e.target.value
+                      }
+                    }))}
+                    placeholder="John Smith"
+                  />
+                </div>
+                <div className="setting-row">
+                  <label>Your Email:</label>
+                  <input
+                    type="email"
+                    value={settings.workloadSettings?.userEmail || ''}
+                    onChange={(e) => setSettings(prev => ({
+                      ...prev,
+                      workloadSettings: {
+                        ...prev.workloadSettings,
+                        userEmail: e.target.value
+                      }
+                    }))}
+                    placeholder="john.smith@acuity.com"
+                  />
+                </div>
+                <div className="setting-row">
+                  <label>Weekly Capacity (hours):</label>
+                  <input
+                    type="number"
+                    value={settings.workloadSettings?.weeklyCapacity || 40}
+                    onChange={(e) => setSettings(prev => ({
+                      ...prev,
+                      workloadSettings: {
+                        ...prev.workloadSettings,
+                        weeklyCapacity: parseInt(e.target.value) || 40
+                      }
+                    }))}
+                    min="0"
+                    max="168"
+                  />
+                  <span className="setting-hint">
+                    Your working hours per week (default: 40)
+                  </span>
+                </div>
+              </div>
+
+              <div className="setting-group" style={{marginTop: '20px'}}>
+                <h4>🔔 Notifications</h4>
+                <div className="setting-row">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={settings.workloadSettings?.showNotifications !== false}
+                      onChange={(e) => setSettings(prev => ({
+                        ...prev,
+                        workloadSettings: {
+                          ...prev.workloadSettings,
+                          showNotifications: e.target.checked
+                        }
+                      }))}
+                    />
+                    Show Notifications
+                  </label>
+                </div>
+                <div className="setting-row">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={settings.workloadSettings?.onlyMyAssignments === true}
+                      onChange={(e) => setSettings(prev => ({
+                        ...prev,
+                        workloadSettings: {
+                          ...prev.workloadSettings,
+                          onlyMyAssignments: e.target.checked
+                        }
+                      }))}
+                    />
+                    Only Notify for My Assignments
+                  </label>
+                </div>
+              </div>
+
+              <div className="settings-actions" style={{marginTop: '30px'}}>
+                <button onClick={handleSaveSettings} className="btn-save" disabled={isLoading}>
+                  {isLoading ? 'Saving...' : 'Save Workload Settings'}
+                </button>
+                <button 
+                  onClick={async () => {
+                    try {
+                      const result = await electronAPI.workloadBackupCreate();
+                      if (result.success) {
+                        alert('✅ Backup created successfully!\n\nPath: ' + result.backupPath);
+                      } else {
+                        alert('❌ Backup failed: ' + result.error);
+                      }
+                    } catch (error) {
+                      alert('❌ Backup failed: ' + error.message);
+                    }
+                  }}
+                  className="btn-secondary"
+                >
+                  Create Backup
+                </button>
+              </div>
             </div>
           </div>
         );

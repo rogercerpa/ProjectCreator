@@ -1,0 +1,32 @@
+{
+  "name": "project-creator-websocket-server",
+  "version": "1.0.0",
+  "description": "WebSocket notification server for Project Creator workload dashboard",
+  "main": "websocket-server.js",
+  "scripts": {
+    "start": "node websocket-server.js",
+    "dev": "node websocket-server.js",
+    "test": "echo \"No tests configured yet\"",
+    "pm2:start": "pm2 start websocket-server.js --name project-creator-ws",
+    "pm2:stop": "pm2 stop project-creator-ws",
+    "pm2:restart": "pm2 restart project-creator-ws",
+    "pm2:logs": "pm2 logs project-creator-ws"
+  },
+  "keywords": [
+    "websocket",
+    "real-time",
+    "notifications",
+    "project-creator"
+  ],
+  "author": "Acuity Brands, Inc.",
+  "license": "ISC",
+  "dependencies": {
+    "ws": "^8.17.0",
+    "dotenv": "^16.0.3"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
+

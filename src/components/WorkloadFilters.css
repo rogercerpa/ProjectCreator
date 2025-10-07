@@ -1,0 +1,284 @@
+/* Workload Filters Styles */
+
+.workload-filters {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.filters-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.filters-right {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+/* View Mode Selector */
+.view-mode-selector {
+  display: flex;
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 4px;
+}
+
+.view-mode-btn {
+  padding: 8px 20px;
+  border: none;
+  background: transparent;
+  color: #6c757d;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.view-mode-btn:hover {
+  background: #e9ecef;
+  color: #495057;
+}
+
+.view-mode-btn.active {
+  background: white;
+  color: #3498db;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Date Navigation */
+.date-navigation {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.date-nav-btn {
+  width: 36px;
+  height: 36px;
+  border: 1px solid #dee2e6;
+  background: white;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.date-nav-btn:hover {
+  background: #f8f9fa;
+  border-color: #adb5bd;
+}
+
+.date-nav-btn:active {
+  transform: scale(0.95);
+}
+
+.date-today-btn {
+  padding: 8px 16px;
+  border: 1px solid #dee2e6;
+  background: white;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #3498db;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.date-today-btn:hover {
+  background: #e7f3ff;
+  border-color: #3498db;
+}
+
+.date-display {
+  min-width: 200px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+/* Filter Select */
+.filter-select {
+  padding: 8px 16px;
+  border: 1px solid #dee2e6;
+  background: white;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #495057;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 150px;
+}
+
+.filter-select:hover {
+  border-color: #adb5bd;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+/* Search Box */
+.search-box {
+  position: relative;
+  min-width: 250px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 8px 16px 8px 40px;
+  border: 1px solid #dee2e6;
+  background: white;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #495057;
+  transition: all 0.2s;
+}
+
+.search-input:hover {
+  border-color: #adb5bd;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.search-input::placeholder {
+  color: #adb5bd;
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .workload-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filters-left,
+  .filters-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .date-display {
+    min-width: auto;
+    flex: 1;
+  }
+
+  .search-box {
+    min-width: auto;
+    flex: 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .filters-left {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .date-navigation {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .view-mode-selector {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .view-mode-btn {
+    flex: 1;
+  }
+
+  .filters-right {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .filter-select,
+  .search-box {
+    width: 100%;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .workload-filters {
+    background: #2d2d2d;
+  }
+
+  .view-mode-selector {
+    background: #3d3d3d;
+  }
+
+  .view-mode-btn {
+    color: #a0a0a0;
+  }
+
+  .view-mode-btn:hover {
+    background: #4d4d4d;
+    color: #e0e0e0;
+  }
+
+  .view-mode-btn.active {
+    background: #1a1a1a;
+    color: #3498db;
+  }
+
+  .date-nav-btn,
+  .date-today-btn,
+  .filter-select,
+  .search-input {
+    background: #3d3d3d;
+    border-color: #4d4d4d;
+    color: #e0e0e0;
+  }
+
+  .date-nav-btn:hover,
+  .date-today-btn:hover,
+  .filter-select:hover,
+  .search-input:hover {
+    background: #4d4d4d;
+    border-color: #5d5d5d;
+  }
+
+  .date-display {
+    color: #e0e0e0;
+  }
+
+  .search-input::placeholder {
+    color: #6d6d6d;
+  }
+}
+
