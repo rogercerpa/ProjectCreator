@@ -295,7 +295,22 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
       if (electronAPI && electronAPI.settingsLoad) {
         const savedSettings = await electronAPI.settingsLoad();
         if (savedSettings && savedSettings.success) {
-          setSettings(prev => ({ ...prev, ...savedSettings.data }));
+          // Ensure workloadSettings exists in saved data
+          const mergedData = {
+            ...savedSettings.data,
+            workloadSettings: {
+              enableRealTimeSync: true,
+              dataDirectory: '',
+              websocketServer: 'ws://localhost:8080',
+              userName: '',
+              userEmail: '',
+              weeklyCapacity: 40,
+              showNotifications: true,
+              onlyMyAssignments: false,
+              ...savedSettings.data?.workloadSettings
+            }
+          };
+          setSettings(prev => ({ ...prev, ...mergedData }));
         }
       } else {
         console.log('electronAPI not available, using default settings');
@@ -2912,15 +2927,17 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
                     <button
                       onClick={async () => {
                         try {
-                          const result = await electronAPI.selectDirectory();
-                          if (result) {
-                            setSettings(prev => ({
-                              ...prev,
-                              workloadSettings: {
-                                ...prev.workloadSettings,
-                                dataDirectory: result
-                              }
-                            }));
+                          if (window.electronAPI && window.electronAPI.selectDirectory) {
+                            const result = await window.electronAPI.selectDirectory();
+                            if (result) {
+                              setSettings(prev => ({
+                                ...prev,
+                                workloadSettings: {
+                                  ...prev.workloadSettings,
+                                  dataDirectory: result
+                                }
+                              }));
+                            }
                           }
                         } catch (error) {
                           console.error('Error selecting directory:', error);
@@ -2961,14 +2978,18 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
                   <button
                     onClick={async () => {
                       try {
-                        const serverUrl = settings.workloadSettings?.websocketServer || 'ws://localhost:8080';
-                        const currentUser = JSON.parse(localStorage.getItem('workload-current-user') || '{}');
-                        const result = await electronAPI.websocketConnect(
-                          serverUrl,
-                          currentUser.id || 'test-user',
-                          currentUser.name || 'Test User'
-                        );
-                        alert(result.success ? '✅ Connected successfully!' : '❌ Connection failed');
+                        if (window.electronAPI && window.electronAPI.websocketConnect) {
+                          const serverUrl = settings.workloadSettings?.websocketServer || 'ws://localhost:8080';
+                          const currentUser = JSON.parse(localStorage.getItem('workload-current-user') || '{}');
+                          const result = await window.electronAPI.websocketConnect(
+                            serverUrl,
+                            currentUser.id || 'test-user',
+                            currentUser.name || 'Test User'
+                          );
+                          alert(result.success ? '✅ Connected successfully!' : '❌ Connection failed');
+                        } else {
+                          alert('⚠️ WebSocket API not available. Make sure the app is fully loaded.');
+                        }
                       } catch (error) {
                         alert('❌ Connection failed: ' + error.message);
                       }
@@ -2986,7 +3007,7 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
                   <label>Your Name:</label>
                   <input
                     type="text"
-                    value={settings.workloadSettings?.userName || process.env.USERNAME || ''}
+                    value={settings.workloadSettings?.userName || ''}
                     onChange={(e) => setSettings(prev => ({
                       ...prev,
                       workloadSettings: {
@@ -3069,27 +3090,34 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
                 </div>
               </div>
 
-              <div className="settings-actions" style={{marginTop: '30px'}}>
-                <button onClick={handleSaveSettings} className="btn-save" disabled={isLoading}>
-                  {isLoading ? 'Saving...' : 'Save Workload Settings'}
-                </button>
-                <button 
-                  onClick={async () => {
-                    try {
-                      const result = await electronAPI.workloadBackupCreate();
-                      if (result.success) {
-                        alert('✅ Backup created successfully!\n\nPath: ' + result.backupPath);
-                      } else {
-                        alert('❌ Backup failed: ' + result.error);
+              <div className="setting-group" style={{marginTop: '30px'}}>
+                <h4>🔄 Data Management</h4>
+                <div className="setting-row">
+                  <button 
+                    onClick={async () => {
+                      try {
+                        if (window.electronAPI && window.electronAPI.workloadBackupCreate) {
+                          const result = await window.electronAPI.workloadBackupCreate();
+                          if (result.success) {
+                            alert('✅ Backup created successfully!\n\nPath: ' + result.backupPath);
+                          } else {
+                            alert('❌ Backup failed: ' + result.error);
+                          }
+                        } else {
+                          alert('⚠️ Backup API not available. Make sure the app is fully loaded.');
+                        }
+                      } catch (error) {
+                        alert('❌ Backup failed: ' + error.message);
                       }
-                    } catch (error) {
-                      alert('❌ Backup failed: ' + error.message);
-                    }
-                  }}
-                  className="btn-secondary"
-                >
-                  Create Backup
-                </button>
+                    }}
+                    className="btn-secondary"
+                  >
+                    Create Backup
+                  </button>
+                  <span className="setting-hint">
+                    Create a backup of all workload data
+                  </span>
+                </div>
               </div>
             </div>
           </div>

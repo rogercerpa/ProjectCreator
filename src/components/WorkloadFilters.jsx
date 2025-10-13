@@ -11,7 +11,8 @@ const WorkloadFilters = ({
   viewMode,
   onViewModeChange,
   selectedDate,
-  onDateChange
+  onDateChange,
+  users = []
 }) => {
   
   const handleSearchChange = (e) => {
@@ -20,6 +21,10 @@ const WorkloadFilters = ({
 
   const handleTeamFilterChange = (e) => {
     onFilterChange({ teamFilter: e.target.value });
+  };
+
+  const handleUserFilterChange = (e) => {
+    onFilterChange({ userFilter: e.target.value });
   };
 
   const handleViewModeChange = (mode) => {
@@ -127,6 +132,20 @@ const WorkloadFilters = ({
 
       {/* Right side - Filters and search */}
       <div className="filters-right">
+        {/* User filter */}
+        <select
+          className="filter-select"
+          value={filters.userFilter || 'all'}
+          onChange={handleUserFilterChange}
+        >
+          <option value="all">👥 All Users</option>
+          {users && users.filter(u => u.isActive).map(user => (
+            <option key={user.id} value={user.id}>
+              {user.name}
+            </option>
+          ))}
+        </select>
+
         {/* Team filter */}
         <select
           className="filter-select"

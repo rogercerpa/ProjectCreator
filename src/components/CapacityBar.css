@@ -65,18 +65,3 @@
   }
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .capacity-label {
-    color: #e0e0e0;
-  }
-
-  .capacity-bar {
-    background: #2d2d2d;
-  }
-
-  .capacity-hours {
-    color: #a0a0a0;
-  }
-}
-
