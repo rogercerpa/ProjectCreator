@@ -730,7 +730,12 @@ function App() {
         case 'agencies':
           return <AgencyDirectory />;
         case 'workload':
-          return <WorkloadDashboard />;
+          return <WorkloadDashboard 
+            onNavigateToProject={(project) => {
+              setCurrentProject(project);
+              setCurrentView('project-management');
+            }}
+          />;
         case 'settings':
           return <Settings 
             initialTab={settingsTab} 

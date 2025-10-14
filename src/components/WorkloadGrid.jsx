@@ -12,6 +12,7 @@ const WorkloadGrid = ({
   viewMode,
   selectedDate,
   onlineUsers,
+  onAssignmentClick,
   onCreateAssignment,
   onUpdateAssignment,
   onDeleteAssignment
@@ -125,8 +126,12 @@ const WorkloadGrid = ({
    * Handle assignment click
    */
   const handleAssignmentClick = (assignment) => {
-    // TODO: Open assignment details modal
-    console.log('Assignment clicked:', assignment);
+    // Pass to parent handler if provided
+    if (onAssignmentClick) {
+      onAssignmentClick(assignment);
+    } else {
+      console.log('Assignment clicked:', assignment);
+    }
   };
 
   const dateRange = useMemo(() => getDateRange(), [selectedDate, viewMode]);

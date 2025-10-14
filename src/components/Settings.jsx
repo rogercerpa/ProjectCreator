@@ -304,9 +304,12 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
               websocketServer: 'ws://localhost:8080',
               userName: '',
               userEmail: '',
+              position: '',
+              yearsExperience: 0,
               weeklyCapacity: 40,
               showNotifications: true,
               onlyMyAssignments: false,
+              productKnowledge: {},
               ...savedSettings.data?.workloadSettings
             }
           };
@@ -3034,6 +3037,49 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
                   />
                 </div>
                 <div className="setting-row">
+                  <label>Position / Seniority:</label>
+                  <select
+                    value={settings.workloadSettings?.position || ''}
+                    onChange={(e) => setSettings(prev => ({
+                      ...prev,
+                      workloadSettings: {
+                        ...prev.workloadSettings,
+                        position: e.target.value
+                      }
+                    }))}
+                  >
+                    <option value="">Select your position...</option>
+                    <option value="L&T Junior Design Application Analyst">L&T Junior Design Application Analyst</option>
+                    <option value="L&T Senior Design Application Analyst">L&T Senior Design Application Analyst</option>
+                    <option value="Junior Design Application Analyst">Junior Design Application Analyst</option>
+                    <option value="Senior Design Application Analyst">Senior Design Application Analyst</option>
+                    <option value="Lead Design Application Analyst">Lead Design Application Analyst</option>
+                    <option value="Manager Design Application Analyst">Manager Design Application Analyst</option>
+                  </select>
+                  <span className="setting-hint">
+                    Your position level (used for smart project assignment)
+                  </span>
+                </div>
+                <div className="setting-row">
+                  <label>Years of Experience:</label>
+                  <input
+                    type="number"
+                    value={settings.workloadSettings?.yearsExperience || 0}
+                    onChange={(e) => setSettings(prev => ({
+                      ...prev,
+                      workloadSettings: {
+                        ...prev.workloadSettings,
+                        yearsExperience: parseInt(e.target.value) || 0
+                      }
+                    }))}
+                    min="0"
+                    max="50"
+                  />
+                  <span className="setting-hint">
+                    Years of professional experience
+                  </span>
+                </div>
+                <div className="setting-row">
                   <label>Weekly Capacity (hours):</label>
                   <input
                     type="number"
@@ -3088,6 +3134,122 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
                     Only Notify for My Assignments
                   </label>
                 </div>
+              </div>
+
+              <div className="setting-group" style={{marginTop: '30px'}}>
+                <h4>🎯 Product Knowledge</h4>
+                <p className="field-description" style={{marginBottom: '15px'}}>
+                  Rate your knowledge level for each product (0 = No Knowledge, 5 = Master). 
+                  This helps with smart project assignment recommendations.
+                </p>
+                
+                {(() => {
+                  const PRODUCTS = [
+                    'nLight Wired', 'nLight Air', 'SensorSwitch', 'SensorSwitch Air',
+                    'Visual Installer', 'Visual Controls', 'Fresco', 'Pathway',
+                    'Animate', 'Pharos', 'DALI', 'Atrius',
+                    'Modulus', 'DC2DC', 'Envysion Graphics', 'nFloorplan Graphics',
+                    'SensorView', 'BACnet'
+                  ];
+                  
+                  const SKILL_LABELS = ['No Knowledge', 'Basic', 'Intermediate', 'Advanced', 'Expert', 'Master'];
+                  const SKILL_COLORS = ['#95a5a6', '#e74c3c', '#f39c12', '#f1c40f', '#3498db', '#27ae60'];
+                  
+                  const getSkillColor = (level) => SKILL_COLORS[level] || SKILL_COLORS[0];
+                  const getSkillLabel = (level) => SKILL_LABELS[level] || SKILL_LABELS[0];
+                  
+                  const handleProductKnowledgeChange = (product, value) => {
+                    const level = parseInt(value);
+                    setSettings(prev => ({
+                      ...prev,
+                      workloadSettings: {
+                        ...prev.workloadSettings,
+                        productKnowledge: {
+                          ...(prev.workloadSettings?.productKnowledge || {}),
+                          [product]: level
+                        }
+                      }
+                    }));
+                  };
+                  
+                  const getProductKnowledge = (product) => {
+                    return settings.workloadSettings?.productKnowledge?.[product] || 0;
+                  };
+                  
+                  return (
+                    <div className="product-knowledge-grid" style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))',
+                      gap: '15px',
+                      marginTop: '15px'
+                    }}>
+                      {PRODUCTS.map(product => {
+                        const level = getProductKnowledge(product);
+                        return (
+                          <div key={product} className="product-skill-item" style={{
+                            padding: '12px',
+                            background: '#f8f9fa',
+                            borderRadius: '8px',
+                            border: '1px solid #dee2e6'
+                          }}>
+                            <div style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              marginBottom: '8px'
+                            }}>
+                              <label style={{
+                                fontWeight: 500,
+                                fontSize: '13px',
+                                color: '#495057'
+                              }}>
+                                {product}
+                              </label>
+                              <span style={{
+                                fontSize: '11px',
+                                fontWeight: 600,
+                                padding: '2px 8px',
+                                borderRadius: '4px',
+                                background: getSkillColor(level),
+                                color: 'white'
+                              }}>
+                                {level}/5
+                              </span>
+                            </div>
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '10px'
+                            }}>
+                              <input
+                                type="range"
+                                min="0"
+                                max="5"
+                                value={level}
+                                onChange={(e) => handleProductKnowledgeChange(product, e.target.value)}
+                                style={{
+                                  flex: 1,
+                                  height: '6px',
+                                  borderRadius: '3px',
+                                  outline: 'none',
+                                  background: `linear-gradient(to right, ${getSkillColor(level)} 0%, ${getSkillColor(level)} ${(level / 5) * 100}%, #e0e0e0 ${(level / 5) * 100}%, #e0e0e0 100%)`
+                                }}
+                              />
+                              <span style={{
+                                fontSize: '11px',
+                                color: '#6c757d',
+                                minWidth: '80px',
+                                textAlign: 'right'
+                              }}>
+                                {getSkillLabel(level)}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="setting-group" style={{marginTop: '30px'}}>

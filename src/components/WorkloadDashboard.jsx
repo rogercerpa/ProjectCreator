@@ -11,7 +11,7 @@ import UserPresenceIndicator from './UserPresenceIndicator';
 import AssignmentDialog from './AssignmentDialog';
 import './WorkloadDashboard.css';
 
-const WorkloadDashboard = () => {
+const WorkloadDashboard = ({ onNavigateToProject }) => {
   // State management
   const [users, setUsers] = useState([]);
   const [assignments, setAssignments] = useState([]);
@@ -633,6 +633,48 @@ const WorkloadDashboard = () => {
     }
   };
 
+  /**
+   * Handle assignment card click - Navigate to project
+   */
+  const handleAssignmentCardClick = async (assignment) => {
+    try {
+      console.log('Assignment clicked:', assignment);
+      
+      if (!assignment.projectId) {
+        showNotification('Project ID not found', 'error');
+        return;
+      }
+
+      // Find the project in loaded projects
+      let project = projects.find(p => p.id === assignment.projectId);
+      
+      // If not found in loaded projects, try to load it
+      if (!project) {
+        console.log('Project not in loaded list, fetching...');
+        const result = await window.electronAPI.projectsLoadAll();
+        if (result.success) {
+          project = result.projects.find(p => p.id === assignment.projectId);
+        }
+      }
+
+      if (!project) {
+        showNotification('Project not found', 'error');
+        return;
+      }
+
+      // Navigate to project management view
+      if (onNavigateToProject) {
+        onNavigateToProject(project);
+      } else {
+        console.warn('onNavigateToProject prop not provided');
+        showNotification('Navigation not configured', 'warning');
+      }
+    } catch (error) {
+      console.error('Error navigating to project:', error);
+      showNotification('Failed to open project', 'error');
+    }
+  };
+
   // Render loading state
   if (isLoading) {
     return (
@@ -744,6 +786,7 @@ const WorkloadDashboard = () => {
         viewMode={viewMode}
         selectedDate={selectedDate}
         onlineUsers={onlineUsers}
+        onAssignmentClick={handleAssignmentCardClick}
         onCreateAssignment={handleCreateAssignment}
         onUpdateAssignment={handleUpdateAssignment}
         onDeleteAssignment={handleDeleteAssignment}

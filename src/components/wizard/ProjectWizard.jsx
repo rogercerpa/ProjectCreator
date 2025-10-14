@@ -51,6 +51,9 @@ const ProjectWizard = ({
   const [error, setError] = useState(null);
   const [notification, setNotification] = useState(null);
   
+  // Smart assignment state
+  const [selectedAssignee, setSelectedAssignee] = useState(null);
+  
   // Draft service state
   const [draftService] = useState(() => ProjectDraftService ? new ProjectDraftService() : null);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
@@ -725,6 +728,54 @@ const ProjectWizard = ({
           // Use the saved project with proper ID and timestamps
           const savedProject = saveResult.project;
 
+          // Create assignment for selected assignee if available
+          if (selectedAssignee) {
+            try {
+              setNotification({
+                type: 'info',
+                message: `Assigning project to ${selectedAssignee.name}...`
+              });
+
+              const assignment = {
+                id: `assignment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                userId: selectedAssignee.id,
+                projectId: savedProject.id,
+                projectName: savedProject.projectName,
+                rfaNumber: savedProject.rfaNumber,
+                estimatedHours: savedProject.totalTriage || 0,
+                startDate: new Date().toISOString().split('T')[0],
+                dueDate: savedProject.dueDate || null,
+                status: 'assigned',
+                priority: savedProject.priority || 'medium',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+              };
+
+              const assignmentResult = await window.electronAPI.workloadAssignmentSave(assignment);
+              
+              if (assignmentResult.success) {
+                console.log('ProjectWizard: Assignment created successfully:', assignment);
+                setNotification({
+                  type: 'success',
+                  message: `✅ Project assigned to ${selectedAssignee.name}!`
+                });
+              } else {
+                console.error('ProjectWizard: Failed to create assignment:', assignmentResult.error);
+                setNotification({
+                  type: 'warning',
+                  message: '⚠️ Project saved, but assignment failed. You can assign it manually from the Workload Dashboard.'
+                });
+              }
+            } catch (assignmentError) {
+              console.error('ProjectWizard: Error creating assignment:', assignmentError);
+              // Don't fail the whole process if assignment fails
+              setNotification({
+                type: 'warning',
+                message: '⚠️ Project saved, but assignment failed. You can assign it manually from the Workload Dashboard.'
+              });
+            }
+          }
+
           // Navigate to project management
           console.log('ProjectWizard: About to call navigation function');
           console.log('ProjectWizard: mode =', mode);
@@ -1056,6 +1107,7 @@ const ProjectWizard = ({
                 wizard.setStepValidation(2, isValid, errors);
               }}
               onNavigateToSettings={onNavigateToSettings}
+              onAssigneeSelected={setSelectedAssignee}
             />
           </WizardErrorBoundary>
         );

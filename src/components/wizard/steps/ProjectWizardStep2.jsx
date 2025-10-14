@@ -1,7 +1,78 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import WizardLayout from '../components/WizardLayout';
 import dropdownOptionsService from '../../../services/DropdownOptionsService';
 import triageCalculationService from '../../../services/TriageCalculationService';
+import SmartAssignmentService from '../../../services/SmartAssignmentService';
+
+// Tooltip Component
+const Tooltip = ({ text, children }) => (
+  <span className="tooltip-container">
+    {children}
+    <span className="tooltip-text">{text}</span>
+  </span>
+);
+
+// Animated Counter Component
+const AnimatedCounter = ({ value, duration = 1000 }) => {
+  const [displayValue, setDisplayValue] = useState(0);
+  const rafRef = useRef(null);
+
+  useEffect(() => {
+    let startTime = null;
+    const startValue = 0;
+    const endValue = value;
+
+    const animate = (currentTime) => {
+      if (!startTime) startTime = currentTime;
+      const progress = Math.min((currentTime - startTime) / duration, 1);
+      const easeOutQuad = progress * (2 - progress); // Ease out animation
+      setDisplayValue(Math.floor(startValue + (endValue - startValue) * easeOutQuad));
+
+      if (progress < 1) {
+        rafRef.current = requestAnimationFrame(animate);
+      }
+    };
+
+    rafRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+      }
+    };
+  }, [value, duration]);
+
+  return <>{displayValue}</>;
+};
+
+// Confetti Component
+const Confetti = ({ active }) => {
+  if (!active) return null;
+
+  const colors = ['#007bff', '#28a745', '#ffc107', '#dc3545', '#17a2b8', '#6f42c1'];
+  const confettiPieces = Array.from({ length: 50 }, (_, i) => ({
+    id: i,
+    left: Math.random() * 100,
+    delay: Math.random() * 0.5,
+    color: colors[Math.floor(Math.random() * colors.length)]
+  }));
+
+  return (
+    <div className="confetti-container">
+      {confettiPieces.map((piece) => (
+        <div
+          key={piece.id}
+          className="confetti"
+          style={{
+            left: `${piece.left}%`,
+            backgroundColor: piece.color,
+            animationDelay: `${piece.delay}s`
+          }}
+        />
+      ))}
+    </div>
+  );
+};
 
 /**
  * ProjectWizardStep2 - Simplified Triage Calculation
@@ -15,7 +86,8 @@ const ProjectWizardStep2 = ({
   onFieldError,
   onFieldTouch,
   onValidationChange,
-  onNavigateToSettings
+  onNavigateToSettings,
+  onAssigneeSelected // NEW: callback to pass selected assignee to parent
 }) => {
   // Simple state - no complex optimizations
   // Initialize triageResults from formData if totalTriage exists
@@ -35,6 +107,12 @@ const ProjectWizardStep2 = ({
     return null;
   });
   const [dropdownOptions, setDropdownOptions] = useState(dropdownOptionsService.getOptions());
+  
+  // Smart Assignment state
+  const [recommendations, setRecommendations] = useState([]);
+  const [selectedAssignee, setSelectedAssignee] = useState(null);
+  const [loadingRecommendations, setLoadingRecommendations] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   // Load dropdown options (simple version)
   useEffect(() => {
@@ -87,6 +165,50 @@ const ProjectWizardStep2 = ({
     }
   }, [formData, triageResults, onValidationChange]);
 
+  // Load smart assignment recommendations
+  const loadRecommendations = async (triageData) => {
+    setLoadingRecommendations(true);
+    try {
+      const smartAssignmentService = new SmartAssignmentService();
+      
+      // Build project details from formData and triage results
+      const projectDetails = {
+        totalHours: triageData.totalTriage || 0,
+        complexity: formData.complexity || 'medium',
+        products: formData.products || [],
+        dueDate: formData.dueDate,
+        priority: formData.priority || 'medium',
+        rfaType: formData.rfaType,
+        regionalTeam: formData.regionalTeam
+      };
+
+      const topRecommendations = await smartAssignmentService.getRecommendations(projectDetails, 3);
+      setRecommendations(topRecommendations);
+      
+      // Auto-select the top recommendation if available
+      if (topRecommendations.length > 0) {
+        const topUser = topRecommendations[0].user;
+        setSelectedAssignee(topUser);
+        if (onAssigneeSelected) {
+          onAssigneeSelected(topUser);
+        }
+        
+        // Trigger confetti celebration for finding perfect match
+        if (topRecommendations[0].matchLevel === 'excellent') {
+          setTimeout(() => {
+            setShowConfetti(true);
+            setTimeout(() => setShowConfetti(false), 3000);
+          }, 500);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load recommendations:', error);
+      setRecommendations([]);
+    } finally {
+      setLoadingRecommendations(false);
+    }
+  };
+
   // Simple input handler - DIRECT COPY from ProjectForm.jsx
   const handleInputChange = (e) => {
     const { name, value, type } = e.target;
@@ -111,7 +233,7 @@ const ProjectWizardStep2 = ({
   };
 
   // Simple triage calculation - DIRECT COPY from ProjectForm.jsx
-  const calculateTriage = () => {
+  const calculateTriage = async () => {
     // Use the triage calculation service to get accurate results
     const triageCalculationResults = triageCalculationService.calculateTriage(formData);
     
@@ -131,6 +253,9 @@ const ProjectWizardStep2 = ({
     onFormDataChange(updatedFormData);
     setTriageResults(triageCalculationResults);
     
+    // Load smart assignment recommendations after triage calculation
+    await loadRecommendations(triageCalculationResults);
+    
     // Mark Step 2 as completed and valid after successful triage calculation
     // The useEffect above will automatically handle validation, but we can also do it explicitly here
     if (onValidationChange && triageCalculationResults.totalTriage > 0) {
@@ -145,6 +270,7 @@ const ProjectWizardStep2 = ({
       step={2}
       totalSteps={2}
     >
+      <Confetti active={showConfetti} />
       <div className="wizard-step-content">
         {/* Project Context Summary */}
         <div className="project-context">
@@ -697,6 +823,139 @@ const ProjectWizardStep2 = ({
                 ✅ Triage calculation complete! Ready to create project.
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Smart Assignment Recommendations */}
+        {triageResults && (
+          <div className="smart-assignment-section">
+            <h4>🎯 Recommended Assignees</h4>
+            <p className="assignment-subtitle">
+              Based on availability, expertise, and project requirements
+            </p>
+
+            {loadingRecommendations ? (
+              <>
+                <p style={{ textAlign: 'center', color: '#6c757d', marginBottom: '20px' }}>
+                  <span style={{ fontSize: '20px', marginRight: '8px' }}>🔍</span>
+                  Analyzing team availability and expertise...
+                </p>
+                <div className="loading-skeleton">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="skeleton-card">
+                      <div className="skeleton-header">
+                        <div className="skeleton-name"></div>
+                        <div className="skeleton-score"></div>
+                      </div>
+                      <div className="skeleton-detail"></div>
+                      <div className="skeleton-detail"></div>
+                      <div className="skeleton-detail"></div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : recommendations.length > 0 ? (
+              <div className="recommendations-grid">
+                {recommendations.map((rec, index) => (
+                  <div
+                    key={rec.user.id}
+                    className={`recommendation-card ${
+                      selectedAssignee?.id === rec.user.id ? 'selected' : ''
+                    } match-${rec.matchLevel}`}
+                    onClick={() => {
+                      setSelectedAssignee(rec.user);
+                      if (onAssigneeSelected) {
+                        onAssigneeSelected(rec.user);
+                      }
+                      // Trigger confetti for top pick selection
+                      if (index === 0) {
+                        setShowConfetti(true);
+                        setTimeout(() => setShowConfetti(false), 3000);
+                      }
+                    }}
+                  >
+                    <div className="recommendation-header">
+                      <div className="user-info">
+                        <div className="user-name">
+                          {index === 0 && <span className="badge-top">⭐ Top Pick</span>}
+                          {rec.user.name}
+                        </div>
+                        <div className="user-position">{rec.user.position}</div>
+                      </div>
+                      <Tooltip text="Overall match score based on availability, experience, and product knowledge">
+                        <div className="score-badge animating">
+                          <AnimatedCounter value={Math.round(rec.score)} duration={800} />
+                          <span className="score-label">Score</span>
+                        </div>
+                      </Tooltip>
+                    </div>
+
+                    <div className="recommendation-details">
+                      <Tooltip text="Available hours this week (40% of total score)">
+                        <div className="detail-row">
+                          <span className="detail-icon">📊</span>
+                          <span className="detail-text">
+                            Availability: {rec.availableHours.toFixed(0)}h available
+                          </span>
+                          <span className="detail-score">
+                            {rec.breakdown.availability.toFixed(0)}%
+                          </span>
+                        </div>
+                      </Tooltip>
+                      <Tooltip text="Experience level matched to project complexity (30% of total score)">
+                        <div className="detail-row">
+                          <span className="detail-icon">🎓</span>
+                          <span className="detail-text">
+                            Experience: {rec.user.position.includes('Senior') ? 'Senior' : rec.user.position.includes('Lead') ? 'Lead' : 'Junior'}
+                          </span>
+                          <span className="detail-score">
+                            {rec.breakdown.seniority.toFixed(0)}%
+                          </span>
+                        </div>
+                      </Tooltip>
+                      <Tooltip text="Expertise in required products (30% of total score)">
+                        <div className="detail-row">
+                          <span className="detail-icon">🔧</span>
+                          <span className="detail-text">
+                            Product Knowledge: {rec.user.getAverageProductKnowledge().toFixed(1)}/5
+                          </span>
+                          <span className="detail-score">
+                            {rec.breakdown.productKnowledge.toFixed(0)}%
+                          </span>
+                        </div>
+                      </Tooltip>
+                    </div>
+
+                    <div className="recommendation-reasoning">
+                      <p>{rec.reasoning}</p>
+                    </div>
+
+                    {selectedAssignee?.id === rec.user.id && (
+                      <div className="selected-indicator">
+                        ✓ Selected
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="no-recommendations">
+                <div className="no-recommendations-icon">🤷‍♂️</div>
+                <p><strong>No team members available at this time</strong></p>
+                <p className="hint">
+                  💡 <strong>Tip:</strong> Make sure users have set up their profiles in<br />
+                  Settings → Workload Dashboard → User Profile
+                </p>
+              </div>
+            )}
+
+            {selectedAssignee && (
+              <div className="assignment-confirmation">
+                <p>
+                  <strong>{selectedAssignee.name}</strong> will be assigned to this project upon creation.
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>

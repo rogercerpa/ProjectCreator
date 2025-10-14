@@ -36,7 +36,10 @@
     "version:patch": "npm version patch --no-git-tag-version",
     "version:minor": "npm version minor --no-git-tag-version",
     "version:major": "npm version major --no-git-tag-version",
-    "version:show": "node -p \"require('./package.json').version\""
+    "version:show": "node -p \"require('./package.json').version\"",
+    "safety-check": "node scripts/safety-check.js",
+    "lint": "echo 'Install ESLint: npm install --save-dev eslint' && exit 0",
+    "format": "echo 'Install Prettier: npm install --save-dev prettier' && exit 0"
   },
   "keywords": [
     "electron",
