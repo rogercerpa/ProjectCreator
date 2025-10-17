@@ -277,8 +277,13 @@ class WebSocketService extends EventEmitter {
    */
   send(message) {
     if (!this.isConnected || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      console.log('⚠️ WebSocket not connected, queuing message');
-      this.messageQueue.push(message);
+      // Limit queue size to prevent infinite growth
+      if (this.messageQueue.length < 100) {
+        console.log('⚠️ WebSocket not connected, queuing message');
+        this.messageQueue.push(message);
+      } else {
+        console.warn('⚠️ Message queue full, dropping message');
+      }
       return { success: false, message: 'Not connected, message queued' };
     }
 
@@ -287,7 +292,9 @@ class WebSocketService extends EventEmitter {
       return { success: true };
     } catch (error) {
       console.error('❌ Error sending WebSocket message:', error);
-      this.messageQueue.push(message);
+      if (this.messageQueue.length < 100) {
+        this.messageQueue.push(message);
+      }
       return { success: false, error: error.message };
     }
   }

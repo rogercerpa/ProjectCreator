@@ -7,10 +7,11 @@ require('dotenv').config();
 module.exports = {
   // Server configuration
   server: {
-    port: process.env.WS_PORT || 8080,
+    // Railway provides PORT, fallback to WS_PORT or 8080
+    port: process.env.PORT || process.env.WS_PORT || 8080,
     host: process.env.WS_HOST || '0.0.0.0',
     pingInterval: 30000, // 30 seconds
-    maxClients: 100
+    maxClients: parseInt(process.env.MAX_CLIENTS) || 100
   },
 
   // Logging configuration
@@ -37,8 +38,12 @@ module.exports = {
 
   // Connection configuration
   connection: {
-    heartbeatInterval: 30000, // 30 seconds
-    connectionTimeout: 60000 // 60 seconds
-  }
+    heartbeatInterval: parseInt(process.env.HEARTBEAT_INTERVAL) || 30000, // 30 seconds
+    connectionTimeout: parseInt(process.env.CONNECTION_TIMEOUT) || 60000 // 60 seconds
+  },
+
+  // Environment
+  env: process.env.NODE_ENV || 'development',
+  isProduction: process.env.NODE_ENV === 'production'
 };
 

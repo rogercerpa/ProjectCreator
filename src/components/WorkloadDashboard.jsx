@@ -278,19 +278,35 @@ const WorkloadDashboard = ({ onNavigateToProject }) => {
    * Setup WebSocket connection for real-time updates
    */
   const setupWebSocket = async () => {
+    console.log('🚀 setupWebSocket called!');
     try {
-      // Get WebSocket configuration
-      const configResult = await window.electronAPI.workloadConfigLoad();
-      const config = configResult.config;
+      // Get main app settings (where WebSocket URL is stored)
+      console.log('📞 Loading main app settings...');
+      const settingsResult = await window.electronAPI.settingsLoad();
+      const settings = settingsResult.settings || settingsResult;
+      console.log('📦 Settings loaded:', settings);
       
-      if (!config?.settings?.enableRealTimeSync) {
-        console.log('Real-time sync is disabled');
+      // Check if real-time sync is enabled
+      const workloadConfig = await window.electronAPI.workloadConfigLoad();
+      if (!workloadConfig?.config?.settings?.enableRealTimeSync) {
+        console.log('⚠️ Real-time sync is DISABLED in workload config');
         return;
       }
+      
+      console.log('✅ Real-time sync is ENABLED');
 
       // Get current user info (from settings or create default)
       const currentUser = getCurrentUser();
-      const serverUrl = config.websocketServer || 'ws://localhost:8080';
+      
+      // Get WebSocket URL from main settings (where it's actually saved!)
+      const serverUrl = settings?.workloadSettings?.websocketServer || 
+                        'ws://localhost:8080';
+      
+      console.log('🔌 Attempting WebSocket connection to:', serverUrl);
+      console.log('📋 Settings structure:', {
+        hasWorkloadSettings: !!settings.workloadSettings,
+        websocketServer: settings.workloadSettings?.websocketServer
+      });
       
       // Connect to WebSocket server
       await window.electronAPI.websocketConnect(

@@ -675,58 +675,102 @@
 /* ===== END AGENCIES SEARCH & PAGINATION ===== */
 
 .settings-page {
-  max-width: 1200px; /* Reduced from 1400px for better 1200px window usage */
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 1rem; /* Reduced from 1.5rem */
+  padding: 1rem;
 }
 
 .settings-header {
   text-align: left;
-  margin-bottom: 1.5rem; /* Reduced from 2rem */
-  padding-bottom: 1rem; /* Reduced from 1.5rem */
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
   border-bottom: 2px solid #e2e8f0;
 }
 
 .settings-header h1 {
-  font-size: 1.75rem; /* Reduced from 2rem */
+  font-size: 1.75rem;
   color: #1a202c;
-  margin-bottom: 0.25rem; /* Reduced from 0.5rem */
+  margin-bottom: 0.25rem;
   font-weight: 600;
 }
 
 .settings-header p {
   color: #4a5568;
-  font-size: 0.9rem; /* Reduced from 1rem */
+  font-size: 0.9rem;
   margin: 0;
 }
 
-/* Tab Navigation - Optimized for 1200x900 */
+/* Responsive adjustments for settings page */
+@media (max-width: 1000px) {
+  .settings-page {
+    padding: 0.75rem;
+  }
+  
+  .settings-header {
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+  }
+  
+  .settings-header h1 {
+    font-size: 1.5rem;
+  }
+  
+  .settings-header p {
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 800px) {
+  .settings-page {
+    padding: 0.5rem;
+  }
+  
+  .settings-header {
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+  }
+  
+  .settings-header h1 {
+    font-size: 1.25rem;
+  }
+  
+  .settings-header p {
+    font-size: 0.8rem;
+  }
+}
+
+/* Tab Navigation - Optimized for smaller windows */
 .settings-tabs {
   display: flex;
+  flex-wrap: wrap;
   background: #f8fafc;
   border-radius: 8px;
   border: 1px solid #e2e8f0;
-  margin-bottom: 1.5rem; /* Reduced from 2rem */
+  margin-bottom: 1.5rem;
   overflow: hidden;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  gap: 2px;
 }
 
 .tab-button {
-  flex: 1;
+  flex: 1 1 auto;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.4rem; /* Reduced from 0.5rem */
-  padding: 0.75rem 1rem; /* Reduced from 1rem 1.5rem */
+  gap: 0.25rem;
+  padding: 0.5rem 0.4rem;
   background: transparent;
   border: none;
   color: #4a5568;
-  font-size: 0.8rem; /* Reduced from 0.875rem */
+  font-size: 0.7rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
   position: relative;
-  min-height: 50px; /* Reduced from 60px */
+  min-height: 45px;
+  min-width: 80px;
+  white-space: nowrap;
 }
 
 .tab-button:hover {
@@ -752,13 +796,50 @@
 }
 
 .tab-icon {
-  font-size: 1.125rem;
+  font-size: 1rem;
   line-height: 1;
+  display: block;
 }
 
 .tab-label {
-  font-size: 0.875rem;
-  line-height: 1;
+  font-size: 0.7rem;
+  line-height: 1.2;
+  text-align: center;
+  display: block;
+}
+
+/* Responsive adjustments for smaller windows */
+@media (max-width: 1000px) {
+  .tab-button {
+    min-width: 70px;
+    padding: 0.4rem 0.3rem;
+    font-size: 0.65rem;
+  }
+  
+  .tab-icon {
+    font-size: 0.9rem;
+  }
+  
+  .tab-label {
+    font-size: 0.65rem;
+  }
+}
+
+/* For very small windows, show icon + abbreviated text */
+@media (max-width: 800px) {
+  .tab-button {
+    min-width: 60px;
+    padding: 0.4rem 0.25rem;
+    gap: 0.2rem;
+  }
+  
+  .tab-icon {
+    font-size: 0.85rem;
+  }
+  
+  .tab-label {
+    font-size: 0.6rem;
+  }
 }
 
 /* Tab Content */
@@ -1097,26 +1178,54 @@
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
-  padding: 1.5rem;
+  padding: 1rem;
   background: #f8fafc;
   border-radius: 8px;
   border: 1px solid #e2e8f0;
+  margin-top: 1rem;
 }
 
 .settings-actions .btn {
-  padding: 0.75rem 2rem;
-  font-size: 1rem;
+  padding: 0.625rem 1.5rem;
+  font-size: 0.9rem;
   font-weight: 500;
   border-radius: 8px;
   border: none;
   cursor: pointer;
   transition: all 0.2s ease;
-  min-width: 150px;
+  min-width: 120px;
 }
 
 .settings-actions .btn:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Responsive adjustments for settings actions */
+@media (max-width: 1000px) {
+  .settings-actions {
+    padding: 0.75rem;
+    gap: 0.5rem;
+  }
+  
+  .settings-actions .btn {
+    padding: 0.5rem 1.25rem;
+    font-size: 0.85rem;
+    min-width: 100px;
+  }
+}
+
+@media (max-width: 800px) {
+  .settings-actions {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0.5rem;
+  }
+  
+  .settings-actions .btn {
+    width: 100%;
+    min-width: unset;
+  }
 }
 
 .settings-loading {
@@ -1155,45 +1264,9 @@
 }
 
 @media (max-width: 768px) {
-  .settings-page {
-    padding: 0.75rem; /* Reduced from 1rem */
-  }
-  
-  /* Tab responsive styles */
-  .settings-tabs {
-    flex-direction: column;
-    border-radius: 8px;
-  }
-  
-  .tab-button {
-    padding: 0.75rem 1rem;
-    min-height: 50px;
-    border-bottom: 1px solid #e2e8f0;
-  }
-  
-  .tab-button:last-child {
-    border-bottom: none;
-  }
-  
-  .tab-button.active {
-    box-shadow: none;
-  }
-  
-  .tab-button.active::after {
-    display: none;
-  }
-  
-  .tab-label {
-    font-size: 0.8rem;
-  }
-  
-  .tab-icon {
-    font-size: 1rem;
-  }
-  
   .settings-content {
     grid-template-columns: 1fr;
-    gap: 1.25rem; /* Reduced from 1.5rem */
+    gap: 1.25rem;
   }
   
   .calculation-settings {
@@ -1229,40 +1302,11 @@
   .edit-actions {
     justify-content: center;
   }
-  
-  .settings-actions {
-    flex-direction: column;
-    align-items: center;
-  }
-  
-  .settings-actions .btn {
-    width: 100%;
-    max-width: 300px;
-  }
 }
 
 @media (max-width: 480px) {
-  .settings-header h1 {
-    font-size: 1.5rem;
-  }
-  
-  .settings-header p {
-    font-size: 0.9rem;
-  }
-  
-  /* Very small screen tab styles */
-  .tab-button {
-    padding: 0.5rem 0.75rem;
-    min-height: 45px;
-    gap: 0.25rem;
-  }
-  
-  .tab-label {
-    font-size: 0.75rem;
-  }
-  
-  .tab-icon {
-    font-size: 0.9rem;
+  .calculation-settings {
+    gap: 1rem;
   }
   
   .field-header {

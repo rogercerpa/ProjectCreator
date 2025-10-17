@@ -6,6 +6,22 @@ Lightweight WebSocket notification server for real-time workload dashboard updat
 
 This server acts as a **message relay only** - it does NOT store any data. It simply broadcasts notifications between connected Project Creator clients to enable real-time updates.
 
+---
+
+## ☁️ **Cloud Deployment with Fly.io (FREE)** ⭐
+
+**Deploy to Fly.io for production use - Free tier available!**
+
+- ✅ **All users can connect** from anywhere
+- ✅ **Always online** (24/7 uptime)
+- ✅ **Auto SSL/TLS** encryption
+- ✅ **Easy deployment** in 10 minutes
+- ✅ **Completely FREE** for typical usage
+
+**→ [Quick Start Guide: Deploy to Fly.io](./QUICK-START-FLY.IO.md)** - **5-MINUTE SETUP**
+
+---
+
 ## Features
 
 - ✅ Real-time message broadcasting

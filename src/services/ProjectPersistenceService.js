@@ -301,16 +301,7 @@ class ProjectPersistenceService {
     try {
       const settingsPath = this.getDataFilePath(this.config.settingsFile);
       
-      if (await fs.pathExists(settingsPath)) {
-        const data = await fs.readFile(settingsPath, 'utf8');
-        return {
-          success: true,
-          data: JSON.parse(data),
-          message: 'Settings loaded successfully'
-        };
-      }
-      
-      // Return default settings if file doesn't exist
+      // Define default settings structure
       const defaultSettings = {
         rfaTypes: ['BOM (No Layout)', 'BOM with Layout', 'Controls BOM - Budget', 'Controls BOM - Layout'],
         regionalTeams: ['Region 1', 'Region 2', 'Region 3', 'Region 4', 'Region 5', 'NAVS'],
@@ -331,9 +322,46 @@ class ProjectPersistenceService {
           selfQCLow: 4,
           selfQCDefault: 0.5,
           fluffPercentage: 10
+        },
+        workloadSettings: {
+          websocketServer: 'wss://projectcreatorv5.fly.dev',
+          enableRealTimeSync: true,
+          dataDirectory: '',
+          userName: '',
+          userEmail: '',
+          weeklyCapacity: 40,
+          showNotifications: true,
+          onlyMyAssignments: false
         }
       };
       
+      if (await fs.pathExists(settingsPath)) {
+        const data = await fs.readFile(settingsPath, 'utf8');
+        const savedSettings = JSON.parse(data);
+        
+        // Merge saved settings with defaults to ensure all fields exist
+        // This handles cases where new settings are added in updates
+        const mergedSettings = {
+          ...defaultSettings,
+          ...savedSettings,
+          calculationSettings: {
+            ...defaultSettings.calculationSettings,
+            ...(savedSettings.calculationSettings || {})
+          },
+          workloadSettings: {
+            ...defaultSettings.workloadSettings,
+            ...(savedSettings.workloadSettings || {})
+          }
+        };
+        
+        return {
+          success: true,
+          data: mergedSettings,
+          message: 'Settings loaded successfully'
+        };
+      }
+      
+      // Return default settings if file doesn't exist
       return {
         success: true,
         data: defaultSettings,

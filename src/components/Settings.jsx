@@ -1329,6 +1329,12 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
       fullLabel: 'Agency Management'
     },
     {
+      id: 'user-profile',
+      label: 'User Profile',
+      icon: '👤',
+      fullLabel: 'User Profile & Knowledge'
+    },
+    {
       id: 'workload',
       label: 'Workload',
       icon: '📊',
@@ -2879,131 +2885,13 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
           </div>
         );
 
-      case 'workload':
+      case 'user-profile':
         return (
           <div className="tab-content">
             <div className="settings-field">
-              <h3>📊 Workload Dashboard Settings</h3>
-              <p className="field-description">Configure settings for the real-time workload dashboard</p>
+              <h3>👤 User Profile & Knowledge</h3>
+              <p className="field-description">Manage your personal information and skill levels</p>
               
-              <div className="setting-group" style={{marginTop: '20px'}}>
-                <h4>🟢 Real-Time Sync</h4>
-                <div className="setting-row">
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={settings.workloadSettings?.enableRealTimeSync !== false}
-                      onChange={(e) => setSettings(prev => ({
-                        ...prev,
-                        workloadSettings: {
-                          ...prev.workloadSettings,
-                          enableRealTimeSync: e.target.checked
-                        }
-                      }))}
-                    />
-                    Enable Real-Time Sync
-                  </label>
-                  <span className="setting-hint">
-                    Enables WebSocket connections for instant updates
-                  </span>
-                </div>
-              </div>
-
-              <div className="setting-group" style={{marginTop: '20px'}}>
-                <h4>📁 Shared Folder Path</h4>
-                <div className="setting-row">
-                  <label>Data Directory:</label>
-                  <div style={{display: 'flex', gap: '10px', flex: 1}}>
-                    <input
-                      type="text"
-                      value={settings.workloadSettings?.dataDirectory || ''}
-                      onChange={(e) => setSettings(prev => ({
-                        ...prev,
-                        workloadSettings: {
-                          ...prev.workloadSettings,
-                          dataDirectory: e.target.value
-                        }
-                      }))}
-                      placeholder="C:\Users\...\OneDrive\ProjectCreator\Shared"
-                      style={{flex: 1}}
-                    />
-                    <button
-                      onClick={async () => {
-                        try {
-                          if (window.electronAPI && window.electronAPI.selectDirectory) {
-                            const result = await window.electronAPI.selectDirectory();
-                            if (result) {
-                              setSettings(prev => ({
-                                ...prev,
-                                workloadSettings: {
-                                  ...prev.workloadSettings,
-                                  dataDirectory: result
-                                }
-                              }));
-                            }
-                          }
-                        } catch (error) {
-                          console.error('Error selecting directory:', error);
-                        }
-                      }}
-                      className="btn-secondary"
-                    >
-                      Browse
-                    </button>
-                  </div>
-                  <span className="setting-hint">
-                    Path to shared OneDrive folder for multi-user collaboration
-                  </span>
-                </div>
-              </div>
-
-              <div className="setting-group" style={{marginTop: '20px'}}>
-                <h4>🔌 WebSocket Server</h4>
-                <div className="setting-row">
-                  <label>Server URL:</label>
-                  <input
-                    type="text"
-                    value={settings.workloadSettings?.websocketServer || 'ws://localhost:8080'}
-                    onChange={(e) => setSettings(prev => ({
-                      ...prev,
-                      workloadSettings: {
-                        ...prev.workloadSettings,
-                        websocketServer: e.target.value
-                      }
-                    }))}
-                    placeholder="ws://localhost:8080"
-                  />
-                  <span className="setting-hint">
-                    WebSocket server URL for real-time notifications
-                  </span>
-                </div>
-                <div className="setting-row">
-                  <button
-                    onClick={async () => {
-                      try {
-                        if (window.electronAPI && window.electronAPI.websocketConnect) {
-                          const serverUrl = settings.workloadSettings?.websocketServer || 'ws://localhost:8080';
-                          const currentUser = JSON.parse(localStorage.getItem('workload-current-user') || '{}');
-                          const result = await window.electronAPI.websocketConnect(
-                            serverUrl,
-                            currentUser.id || 'test-user',
-                            currentUser.name || 'Test User'
-                          );
-                          alert(result.success ? '✅ Connected successfully!' : '❌ Connection failed');
-                        } else {
-                          alert('⚠️ WebSocket API not available. Make sure the app is fully loaded.');
-                        }
-                      } catch (error) {
-                        alert('❌ Connection failed: ' + error.message);
-                      }
-                    }}
-                    className="btn-primary"
-                  >
-                    Test Connection
-                  </button>
-                </div>
-              </div>
-
               <div className="setting-group" style={{marginTop: '20px'}}>
                 <h4>👤 User Profile</h4>
                 <div className="setting-row">
@@ -3097,42 +2985,6 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
                   <span className="setting-hint">
                     Your working hours per week (default: 40)
                   </span>
-                </div>
-              </div>
-
-              <div className="setting-group" style={{marginTop: '20px'}}>
-                <h4>🔔 Notifications</h4>
-                <div className="setting-row">
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={settings.workloadSettings?.showNotifications !== false}
-                      onChange={(e) => setSettings(prev => ({
-                        ...prev,
-                        workloadSettings: {
-                          ...prev.workloadSettings,
-                          showNotifications: e.target.checked
-                        }
-                      }))}
-                    />
-                    Show Notifications
-                  </label>
-                </div>
-                <div className="setting-row">
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={settings.workloadSettings?.onlyMyAssignments === true}
-                      onChange={(e) => setSettings(prev => ({
-                        ...prev,
-                        workloadSettings: {
-                          ...prev.workloadSettings,
-                          onlyMyAssignments: e.target.checked
-                        }
-                      }))}
-                    />
-                    Only Notify for My Assignments
-                  </label>
                 </div>
               </div>
 
@@ -3250,6 +3102,206 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
                     </div>
                   );
                 })()}
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'workload':
+        return (
+          <div className="tab-content">
+            <div className="settings-field">
+              <h3>📊 Workload Dashboard Settings</h3>
+              <p className="field-description">Configure settings for the real-time workload dashboard</p>
+              
+              <div className="setting-group" style={{marginTop: '20px'}}>
+                <h4>🟢 Real-Time Sync</h4>
+                <div className="setting-row">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={settings.workloadSettings?.enableRealTimeSync !== false}
+                      onChange={(e) => setSettings(prev => ({
+                        ...prev,
+                        workloadSettings: {
+                          ...prev.workloadSettings,
+                          enableRealTimeSync: e.target.checked
+                        }
+                      }))}
+                    />
+                    Enable Real-Time Sync
+                  </label>
+                  <span className="setting-hint">
+                    Enables WebSocket connections for instant updates
+                  </span>
+                </div>
+              </div>
+
+              <div className="setting-group" style={{marginTop: '20px'}}>
+                <h4>📁 Shared Folder Path</h4>
+                <div className="setting-row">
+                  <label>Data Directory:</label>
+                  <div style={{display: 'flex', gap: '10px', flex: 1}}>
+                    <input
+                      type="text"
+                      value={settings.workloadSettings?.dataDirectory || ''}
+                      onChange={(e) => setSettings(prev => ({
+                        ...prev,
+                        workloadSettings: {
+                          ...prev.workloadSettings,
+                          dataDirectory: e.target.value
+                        }
+                      }))}
+                      placeholder="C:\Users\...\OneDrive\ProjectCreator\Shared"
+                      style={{flex: 1}}
+                    />
+                    <button
+                      onClick={async () => {
+                        try {
+                          if (window.electronAPI && window.electronAPI.selectDirectory) {
+                            const result = await window.electronAPI.selectDirectory();
+                            if (result) {
+                              setSettings(prev => ({
+                                ...prev,
+                                workloadSettings: {
+                                  ...prev.workloadSettings,
+                                  dataDirectory: result
+                                }
+                              }));
+                            }
+                          }
+                        } catch (error) {
+                          console.error('Error selecting directory:', error);
+                        }
+                      }}
+                      className="btn-secondary"
+                    >
+                      Browse
+                    </button>
+                  </div>
+                  <span className="setting-hint">
+                    Path to shared OneDrive folder for multi-user collaboration
+                  </span>
+                </div>
+              </div>
+
+              <div className="setting-group" style={{marginTop: '20px'}}>
+                <h4>🔌 WebSocket Server</h4>
+                <div className="setting-row">
+                  <label>Server URL:</label>
+                  <input
+                    type="text"
+                    value={settings.workloadSettings?.websocketServer || 'ws://localhost:8080'}
+                    onChange={(e) => setSettings(prev => ({
+                      ...prev,
+                      workloadSettings: {
+                        ...prev.workloadSettings,
+                        websocketServer: e.target.value
+                      }
+                    }))}
+                    placeholder="wss://your-app.fly.dev"
+                  />
+                  <span className="setting-hint">
+                    WebSocket server URL for real-time notifications<br/>
+                    <strong>Important:</strong> Use <code>wss://</code> for Fly.io (not https://) or <code>ws://</code> for localhost<br/>
+                    Example: <code>wss://projectcreatorv5.fly.dev</code>
+                  </span>
+                </div>
+                <div className="setting-row">
+                  <button
+                    onClick={async () => {
+                      try {
+                        if (window.electronAPI && window.electronAPI.websocketConnect) {
+                          let serverUrl = settings.workloadSettings?.websocketServer || 'ws://localhost:8080';
+                          serverUrl = serverUrl.trim();
+                          
+                          // Auto-correct common URL mistakes
+                          let corrected = false;
+                          let correctionMsg = '';
+                          
+                          if (serverUrl.startsWith('https://')) {
+                            const oldUrl = serverUrl;
+                            serverUrl = serverUrl.replace('https://', 'wss://');
+                            corrected = true;
+                            correctionMsg = `Auto-corrected:\n${oldUrl}\n→ ${serverUrl}\n\n`;
+                          } else if (serverUrl.startsWith('http://') && !serverUrl.includes('localhost')) {
+                            const oldUrl = serverUrl;
+                            serverUrl = serverUrl.replace('http://', 'wss://');
+                            corrected = true;
+                            correctionMsg = `Auto-corrected:\n${oldUrl}\n→ ${serverUrl}\n\n`;
+                          }
+                          
+                          // Update settings with corrected URL
+                          if (corrected) {
+                            setSettings(prev => ({
+                              ...prev,
+                              workloadSettings: {
+                                ...prev.workloadSettings,
+                                websocketServer: serverUrl
+                              }
+                            }));
+                          }
+                          
+                          const currentUser = JSON.parse(localStorage.getItem('workload-current-user') || '{}');
+                          const result = await window.electronAPI.websocketConnect(
+                            serverUrl,
+                            currentUser.id || 'test-user',
+                            currentUser.name || 'Test User'
+                          );
+                          
+                          if (result.success) {
+                            alert(correctionMsg + '✅ Connection successful!\n\nServer: ' + serverUrl + '\n\nReal-time features are now active.');
+                          } else {
+                            alert(correctionMsg + '❌ Connection failed\n\nError: ' + (result.message || result.error || 'Unknown error') + '\n\nTroubleshooting:\n• Verify URL starts with wss:// (not https://)\n• Check server is running\n• Test internet connection');
+                          }
+                        } else {
+                          alert('⚠️ WebSocket API not available. Make sure the app is fully loaded.');
+                        }
+                      } catch (error) {
+                        alert('❌ Connection failed: ' + error.message);
+                      }
+                    }}
+                    className="btn-primary"
+                  >
+                    Test Connection
+                  </button>
+                </div>
+              </div>
+
+              <div className="setting-group" style={{marginTop: '20px'}}>
+                <h4>🔔 Notifications</h4>
+                <div className="setting-row">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={settings.workloadSettings?.showNotifications !== false}
+                      onChange={(e) => setSettings(prev => ({
+                        ...prev,
+                        workloadSettings: {
+                          ...prev.workloadSettings,
+                          showNotifications: e.target.checked
+                        }
+                      }))}
+                    />
+                    Show Notifications
+                  </label>
+                </div>
+                <div className="setting-row">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={settings.workloadSettings?.onlyMyAssignments === true}
+                      onChange={(e) => setSettings(prev => ({
+                        ...prev,
+                        workloadSettings: {
+                          ...prev.workloadSettings,
+                          onlyMyAssignments: e.target.checked
+                        }
+                      }))}
+                    />
+                    Only Notify for My Assignments
+                  </label>
+                </div>
               </div>
 
               <div className="setting-group" style={{marginTop: '30px'}}>
