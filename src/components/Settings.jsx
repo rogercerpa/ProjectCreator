@@ -301,7 +301,7 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
             workloadSettings: {
               enableRealTimeSync: true,
               dataDirectory: '',
-              websocketServer: 'ws://localhost:8080',
+              websocketServer: 'wss://projectcreatorv5.fly.dev',
               userName: '',
               userEmail: '',
               position: '',
@@ -3191,7 +3191,7 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
                   <label>Server URL:</label>
                   <input
                     type="text"
-                    value={settings.workloadSettings?.websocketServer || 'ws://localhost:8080'}
+                    value={settings.workloadSettings?.websocketServer || 'wss://projectcreatorv5.fly.dev'}
                     onChange={(e) => setSettings(prev => ({
                       ...prev,
                       workloadSettings: {
@@ -3199,7 +3199,7 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
                         websocketServer: e.target.value
                       }
                     }))}
-                    placeholder="wss://your-app.fly.dev"
+                    placeholder="wss://projectcreatorv5.fly.dev"
                   />
                   <span className="setting-hint">
                     WebSocket server URL for real-time notifications<br/>
@@ -3212,7 +3212,7 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
                     onClick={async () => {
                       try {
                         if (window.electronAPI && window.electronAPI.websocketConnect) {
-                          let serverUrl = settings.workloadSettings?.websocketServer || 'ws://localhost:8080';
+                          let serverUrl = settings.workloadSettings?.websocketServer || 'wss://projectcreatorv5.fly.dev';
                           serverUrl = serverUrl.trim();
                           
                           // Auto-correct common URL mistakes

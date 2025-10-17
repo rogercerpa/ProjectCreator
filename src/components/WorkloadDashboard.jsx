@@ -283,8 +283,9 @@ const WorkloadDashboard = ({ onNavigateToProject }) => {
       // Get main app settings (where WebSocket URL is stored)
       console.log('📞 Loading main app settings...');
       const settingsResult = await window.electronAPI.settingsLoad();
-      const settings = settingsResult.settings || settingsResult;
+      const settings = settingsResult.data || settingsResult.settings || settingsResult;
       console.log('📦 Settings loaded:', settings);
+      console.log('📦 Full settingsResult:', settingsResult);
       
       // Check if real-time sync is enabled
       const workloadConfig = await window.electronAPI.workloadConfigLoad();
@@ -300,7 +301,7 @@ const WorkloadDashboard = ({ onNavigateToProject }) => {
       
       // Get WebSocket URL from main settings (where it's actually saved!)
       const serverUrl = settings?.workloadSettings?.websocketServer || 
-                        'ws://localhost:8080';
+                        'wss://projectcreatorv5.fly.dev';
       
       console.log('🔌 Attempting WebSocket connection to:', serverUrl);
       console.log('📋 Settings structure:', {
