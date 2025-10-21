@@ -245,6 +245,18 @@ class RevisionFileCopyService {
    */
   async analyzeAEMarkupsFolder(sourcePath) {
     try {
+      // Safety check for null/undefined sourcePath
+      if (!sourcePath) {
+        console.log('⚠️ Cannot analyze AE Markups: source path is null/undefined');
+        return {
+          success: true,
+          exists: false,
+          fileCount: 0,
+          files: [],
+          needsUserSelection: false
+        };
+      }
+
       const aeMarkupsPath = path.join(sourcePath, 'AE Markups');
       console.log('🔍 Analyzing AE Markups folder:', aeMarkupsPath);
 
@@ -611,6 +623,16 @@ class RevisionFileCopyService {
   async analyzeRevisionContents(revisionPath) {
     try {
       console.log('RevisionFileCopyService: Analyzing revision contents at:', revisionPath);
+
+      // Safety check for null/undefined revisionPath
+      if (!revisionPath) {
+        console.log('⚠️ Cannot analyze revision contents: path is null/undefined');
+        return {
+          success: false,
+          error: 'Revision path is required',
+          available: {}
+        };
+      }
 
       if (!await fs.pathExists(revisionPath)) {
         return {

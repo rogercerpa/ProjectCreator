@@ -159,40 +159,74 @@ class RevisionDetectionService {
       console.log(`🔍 RevisionDetectionService: Raw project name from form: "${projectData.projectName}"`);
       
       const sanitizedProjectName = this.sanitizeProjectName(projectData.projectName);
+      const originalProjectName = projectData.projectName.trim();
       const firstLetter = this.getFirstLetter(sanitizedProjectName);
-      const projectFolderName = `${sanitizedProjectName}_${projectData.projectContainer}`;
       
-      console.log(`✅ RevisionDetectionService: After sanitization: "${sanitizedProjectName}"`);
-      console.log(`📁 RevisionDetectionService: Project folder to find: "${projectFolderName}" (${firstLetter})`);
-      console.log(`🎯 RevisionDetectionService: Will search for PROJECT FOLDER first, then RFA folders inside it`);
+      console.log(`✅ RevisionDetectionService: Sanitized: "${sanitizedProjectName}", Original: "${originalProjectName}"`);
+      console.log(`🎯 RevisionDetectionService: Will try MULTIPLE folder name patterns to find project`);
       
-      // Build HTA-like intelligent search paths
-      const searchPaths = this.buildProjectSearchPaths(projectData, firstLetter, projectFolderName);
+      // Generate multiple folder name patterns
+      const folderPatterns = this.buildProjectSearchPathsWithPatterns(projectData, firstLetter);
       
-      // HTA-like: Search hierarchically with detailed logging
+      // HTA-like: Search hierarchically trying all patterns
       let projectFolderPath = null;
       let foundInYear = null;
+      let matchedPattern = null;
       
-      for (const searchPath of searchPaths) {
-        console.log(`🔍 UPDATED CODE: Checking ${searchPath.year} (${searchPath.reasoning}): ${searchPath.path}`);
+      // Build year list for searching
+      const currentYear = new Date().getFullYear();
+      const projectYear = parseInt('20' + projectData.projectContainer.substring(0, 2));
+      const yearOffset = projectYear - currentYear;
+      
+      let searchYears = [];
+      if (yearOffset === 0) {
+        searchYears = [currentYear, currentYear - 1, currentYear - 2];
+      } else if (yearOffset === -1) {
+        searchYears = [currentYear - 1, currentYear, currentYear - 2];
+      } else if (yearOffset === -2) {
+        searchYears = [currentYear - 2, currentYear - 1, currentYear];
+      } else {
+        searchYears = [projectYear, currentYear, currentYear - 1].filter(y => y >= 2020 && y <= 2030);
+      }
+      
+      const serverBasePath = this.config?.serverPaths?.currentYear || '\\\\10.3.10.30\\das';
+      const sanitizedNationalAccount = this.sanitizeNationalAccount(projectData.nationalAccount);
+      
+      for (const year of searchYears) {
+        console.log(`\n🔍 Searching in ${year}:`);
         
-        if (await fs.pathExists(searchPath.path)) {
-          projectFolderPath = searchPath.path;
-          foundInYear = searchPath.year;
-          console.log(`✅ RevisionDetectionService: Found project folder in ${foundInYear} (${searchPath.reasoning})`);
-          break;
-        } else {
-          console.log(`❌ RevisionDetectionService: Project not found in ${searchPath.year}`);
+        // Build base path for this year
+        let basePath = `${serverBasePath}\\${year} Projects\\${firstLetter}`;
+        if (sanitizedNationalAccount && sanitizedNationalAccount !== 'Default') {
+          basePath = `${basePath}\\${sanitizedNationalAccount}`;
         }
+        
+        // Try each naming pattern
+        for (const pattern of folderPatterns) {
+          const testPath = `${basePath}\\${pattern}`;
+          console.log(`   Testing: ${testPath}`);
+          
+          if (await fs.pathExists(testPath)) {
+            projectFolderPath = testPath;
+            foundInYear = year;
+            matchedPattern = pattern;
+            console.log(`✅ FOUND! Pattern "${pattern}" matched in ${foundInYear}`);
+            break;
+          }
+        }
+        
+        if (projectFolderPath) break;
+        console.log(`❌ RevisionDetectionService: Project not found in ${year} with any pattern`);
       }
 
       if (!projectFolderPath) {
-        console.log('❌ RevisionDetectionService: Project folder not found in any year - manual selection required');
+        console.log('❌ RevisionDetectionService: Project folder not found in any year with any naming pattern - manual selection required');
     return {
           success: false,
           requiresManualSelection: true,
-          reason: 'Project folder not found in any year location',
-          searchedPaths: searchPaths.map(p => ({ path: p.path, year: p.year, reasoning: p.reasoning })),
+          reason: 'Project folder not found in any year location with any naming pattern',
+          searchedYears: searchYears,
+          triedPatterns: folderPatterns,
           searchMethod: 'automatic_failed',
           // Ensure backwards compatibility
           revisionPath: null,
@@ -200,7 +234,9 @@ class RevisionDetectionService {
         };
       }
 
-      console.log(`✅ RevisionDetectionService: Project found in ${foundInYear}, scanning for RFA folders...`);
+      console.log(`✅ RevisionDetectionService: Project found in ${foundInYear} using pattern "${matchedPattern}"`);
+      console.log(`📁 Full path: ${projectFolderPath}`);
+      console.log(`🔍 Now scanning for RFA folders...`);
 
       // HTA-like: Find the most recent RFA folder within the discovered project
       const rfaSelectionResult = await this.findMostRecentRFAFolder(projectFolderPath, projectData.rfaType);
@@ -357,10 +393,38 @@ class RevisionDetectionService {
   }
 
   /**
+   * Build search paths with multiple naming patterns to match server conventions
+   * @param {Object} projectData - Project information
+   * @param {string} firstLetter - First letter for folder organization
+   * @returns {Array} Array of search path objects with multiple patterns
+   */
+  buildProjectSearchPathsWithPatterns(projectData, firstLetter) {
+    const currentYear = new Date().getFullYear();
+    
+    // Generate multiple folder name patterns to match different conventions
+    const sanitizedProjectName = this.sanitizeProjectName(projectData.projectName);
+    const originalProjectName = projectData.projectName.trim();
+    const container = projectData.projectContainer;
+    
+    // Try multiple patterns in order of likelihood
+    const folderPatterns = [
+      `${originalProjectName} ${container}`,                    // Most common: "Jacksonville Jaguars Stadium 25-57145"
+      `${sanitizedProjectName} _${container}`,                  // Uppercase with space-underscore: "JACKSONVILLE JAGUARS _25-57145"
+      `${sanitizedProjectName}_${container}`,                   // Uppercase with underscore: "JACKSONVILLE JAGUARS_25-57145"
+      `${originalProjectName} _${container}`,                   // Original with space-underscore: "Jacksonville Jaguars _25-57145"
+      `${originalProjectName}_${container}`                     // Original with underscore: "Jacksonville Jaguars_25-57145"
+    ];
+    
+    console.log('📋 Will try folder name patterns:', folderPatterns);
+    
+    return folderPatterns;
+  }
+
+  /**
    * Build search paths for project detection (implements HTA multi-year logic)
    * @param {Object} projectData - Project information
    * @param {string} firstLetter - First letter for folder organization
-   * @param {string} projectFolderName - Project folder name
+   * @param {string} projectFolderName - Project folder name (legacy parameter)
    * @returns {Array} Array of search path objects
    */
   buildProjectSearchPaths(projectData, firstLetter, projectFolderName) {

@@ -123,7 +123,7 @@ const RevisionConfigurationDialog = ({
   const handleManualSelection = async () => {
     try {
       console.log('RevisionConfigurationDialog: Opening manual selection dialog');
-      console.log('Starting path:', detectionResult?.searchResult?.projectPath);
+      console.log('Starting path:', detectionResult?.projectPath);
       
       // Check if the API exists
       if (!window.electronAPI || !window.electronAPI.revisionSelectFolder) {
@@ -136,7 +136,7 @@ const RevisionConfigurationDialog = ({
         return;
       }
       
-      const result = await window.electronAPI.revisionSelectFolder(detectionResult?.searchResult?.projectPath);
+      const result = await window.electronAPI.revisionSelectFolder(detectionResult?.projectPath);
       
       console.log('RevisionConfigurationDialog: Folder selection result:', result);
       

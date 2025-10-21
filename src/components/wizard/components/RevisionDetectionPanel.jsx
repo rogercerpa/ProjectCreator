@@ -129,7 +129,7 @@ const RevisionDetectionPanel = ({
     try {
       console.log('RevisionDetectionPanel: Opening manual selection dialog');
       
-      const result = await window.electronAPI.revisionSelectFolder(detectionResult?.searchResult?.projectPath);
+      const result = await window.electronAPI.revisionSelectFolder(detectionResult?.projectPath);
       
       if (result.success && !result.canceled) {
         if (result.validation.isValid) {

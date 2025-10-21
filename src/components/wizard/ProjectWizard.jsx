@@ -568,6 +568,23 @@ const ProjectWizard = ({
                   revisionProgress.error(data.error);
                 });
 
+                // SAFETY CHECK: Verify previousRevisionPath exists before proceeding
+                if (!formData.previousRevisionPath) {
+                  console.error('❌ Cannot create revision: previousRevisionPath is not set');
+                  showError({
+                    title: 'Previous Revision Required',
+                    message: 'Please select the previous RFA folder manually before creating the revision.',
+                    details: 'The previous revision path must be configured in Step 1 before proceeding.',
+                    type: 'warning'
+                  });
+                  revisionProgress.close();
+                  // Clean up event listeners
+                  cleanupProgressListener();
+                  cleanupCompleteListener();
+                  cleanupErrorListener();
+                  return;
+                }
+
                 // STEP 1: Analyze AE Markups folder before creating revision
                 console.log('🔍 Step 1: Analyzing AE Markups folder...');
                 const needsUserSelection = await analyzeAEMarkupsFolder(formData.previousRevisionPath);
