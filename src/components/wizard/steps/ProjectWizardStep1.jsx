@@ -27,6 +27,7 @@ const ProjectWizardStep1 = ({
   const [importedFields, setImportedFields] = useState([]);
   const [customProjectType, setCustomProjectType] = useState('');
   const [isCustomProjectTypeMode, setIsCustomProjectTypeMode] = useState(false);
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   
   // SIMPLIFIED: Single state object for duplicate checking
   const [duplicateCheckState, setDuplicateCheckState] = useState({
@@ -544,31 +545,99 @@ const ProjectWizardStep1 = ({
     };
   };
 
+  // Show toast notification
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => {
+      setToast({ show: false, message: '', type: 'success' });
+    }, 3000);
+  };
+
   // Check if form has any data (to conditionally show Start Fresh button)
   const hasFormData = () => {
-    const nonEmptyFields = ['projectName', 'rfaNumber', 'agentNumber', 'projectContainer', 'rfaType', 'regionalTeam'];
+    const nonEmptyFields = ['projectName', 'rfaNumber', 'agentNumber', 'projectContainer', 'rfaType'];
     return nonEmptyFields.some(field => formData[field] && formData[field].toString().trim() !== '');
   };
 
-  // Handle manual wizard reset with confirmation
+  // Handle manual wizard reset with toast notification
   const handleStartFresh = () => {
     if (!hasFormData()) {
-      // If form is already empty, just show a message
-      alert('✨ Form is already clear and ready for new project creation!');
+      // If form is already empty, just show a toast
+      showToast('✨ Form is already clear and ready for new project creation!', 'info');
       return;
     }
 
-    const confirmed = window.confirm(
-      '🗑️ Clear all form data?\n\nThis will reset all fields and start fresh. This action cannot be undone.\n\nAre you sure you want to continue?'
-    );
+    // Capture default regional team BEFORE reset
+    const defaultRegion = dropdownOptions.defaultRegionalTeam;
     
-    if (confirmed && onWizardReset) {
+    // Reset the form (this clears all data via App.jsx handleFormReset)
+    if (onWizardReset) {
       onWizardReset();
       
-      // Show success feedback
-      setTimeout(() => {
-        alert('✅ Form cleared successfully! Ready to create a new project.');
-      }, 100);
+      // If there's a default regional team, set it after reset completes
+      // We need to wait for the reset state to propagate, then set just the regional team
+      if (defaultRegion) {
+        // Wait for reset to complete and re-render
+        setTimeout(() => {
+          // Create a clean form object matching App.jsx's handleFormReset structure
+          // with ONLY the regional team field populated
+          const cleanFormWithRegion = {
+            projectName: '',
+            rfaNumber: '',
+            agentNumber: '',
+            projectContainer: '',
+            rfaType: '',
+            regionalTeam: defaultRegion,  // Only this field should be set
+            ecd: '',
+            nationalAccount: 'Default',
+            complexity: '',
+            rfaValue: '',
+            status: '',
+            products: '',
+            assignedTo: '',
+            repContacts: '',
+            requestedDate: '',
+            submittedDate: '',
+            largeLMPs: 0,
+            mediumLMPs: 0,
+            smallLMPs: 0,
+            arp8: 0,
+            arp16: 0,
+            arp32: 0,
+            arp48: 0,
+            esheetsSchedules: 2,
+            showPanelSchedules: false,
+            numOfRooms: 0,
+            overrideRooms: 0,
+            roomMultiplier: 2,
+            reviewSetup: 0.5,
+            numOfPages: 1,
+            specReview: 0,
+            numOfSubRooms: 0,
+            overrideSubRooms: 0,
+            riserMultiplier: 1,
+            soo: 0.5,
+            photoSoftware: 'VL',
+            saveLocation: 'Server',
+            isRevision: false,
+            dueDate: '',
+            totalTriage: 0,
+            panelTime: 0,
+            layoutTime: 0,
+            submittalTime: 0,
+            pageBonus: 0,
+            baseTotal: 0,
+            selfQC: 0,
+            fluff: 0,
+            firstAvailable: false
+          };
+          
+          onFormDataChange(cleanFormWithRegion);
+        }, 200);
+      }
+      
+      // Show success toast
+      showToast('✅ Form cleared! Ready to create a new project.', 'success');
     }
   };
 
@@ -802,6 +871,164 @@ const ProjectWizardStep1 = ({
     return 'Default';
   };
 
+  // SMART RFA TYPE MATCHER - Intelligently matches clipboard RFA types to dropdown options
+  const smartMatchRFAType = (clipboardRFAType) => {
+    if (!clipboardRFAType) return null;
+    
+    const inputText = clipboardRFAType.toLowerCase().trim();
+    const availableTypes = dropdownOptions.rfaTypes || [];
+    
+    console.log('🔍 Smart RFA Type Matching:', { input: clipboardRFAType, availableTypes });
+    
+    // Step 1: Try exact match (case-insensitive)
+    const exactMatch = availableTypes.find(type => type.toLowerCase() === inputText);
+    if (exactMatch) {
+      console.log('✅ Exact match found:', exactMatch);
+      return exactMatch;
+    }
+    
+    // Step 2: Hardcoded mapping for known Agile formats (backwards compatibility)
+    const hardcodedMapping = {
+      'controls bom - budget': 'BUDGET',
+      'controls bom - bom (no layout)': 'BOM (No Layout)',
+      'controls bom - bom (with layout)': 'BOM (With Layout)',
+      'controls submittal - submittal': 'SUBMITTAL',
+      'controls submittal - preprogramming': 'RELEASE',
+      'controls design - layout': 'BOM (With Layout)',
+      'controls design - controls layout': 'BOM (With Layout)',
+      'controls post-installation - graphical interface': 'GRAPHICS',
+      'design - photometric lighting layout': 'PHOTOMETRICS',
+      'controls design - design consultation': 'Consultation',
+      'lithonia reloc bom - budget': 'RelocBOM',
+      'lithonia reloc / controls bom - budget': 'RelocControlsBOM',
+      'lithonia reloc bom - bom (with layout)': 'RelocBOM',
+      'lithonia reloc submittal - submittal': 'RelocSUB',
+      'lithonia reloc / controls submittal - submittal': 'RelocControlsSUB',
+      'controls / lithonia reloc submittal - submittal': 'RelocControlsSUB',
+      'atrius bom - bom (no layout)': 'AtriusBOM',
+      'atrius bom - bom (with layout)': 'AtriusLAYOUT',
+      'atrius submittal - submittal': 'AtriusSub',
+      'controls / atrius submittal - submittal': 'ControlsAtriusSub',
+      'atrius locator / atrius wayfinder bom - bom (with layout)': 'ControlsAtriusLayout',
+      'atrius / controls bom - bom (with layout)': 'ControlsAtriusLayout',
+      'controls / atrius bom - bom (no layout)': 'ControlsAtriusLayout',
+      'controls / lithonia commercial indoor / controls submittal - submittal': 'SUBMITTAL',
+      'controls / lithonia commercial indoor / mark architectural lighting submittal - submittal': 'SUBMITTAL',
+      'controls submittal - one-line diagram': 'SUBMITTAL',
+      'controls submittal - record submittal': 'SUBMITTAL',
+      'controls / peerless bom - bom (with layout)': 'BOM (With Layout)',
+      'controls dc2dc / controls bom - bom (with layout)': 'CONTROLSDCLAYOUT',
+      'lithonia outdoor / other design - photometric lighting layout': 'PHOTOMETRICS',
+      'other / lithonia outdoor design - photometric lighting layout': 'PHOTOMETRICS'
+    };
+    
+    const hardcoded = hardcodedMapping[inputText];
+    if (hardcoded && availableTypes.includes(hardcoded)) {
+      console.log('✅ Hardcoded mapping found:', hardcoded);
+      return hardcoded;
+    }
+    
+    // Step 3: Intelligent keyword-based matching with priority scoring
+    const keywords = {
+      // High priority keywords (specific types)
+      'consultation': { match: 'Consultation', priority: 100 },
+      'photometric': { match: 'PHOTOMETRICS', priority: 100 },
+      'graphics': { match: 'GRAPHICS', priority: 100 },
+      'graphical interface': { match: 'GRAPHICS', priority: 100 },
+      'preprogramming': { match: 'RELEASE', priority: 100 },
+      
+      // Reloc variations
+      'reloc': { match: 'Reloc', priority: 90, partial: true },
+      'relocation': { match: 'Reloc', priority: 90, partial: true },
+      
+      // Atrius variations
+      'atrius': { match: 'Atrius', priority: 85, partial: true },
+      
+      // Controls variations
+      'controls bom - budget': { match: 'Controls BOM - Budget', priority: 95 },
+      'controls bom - layout': { match: 'Controls BOM - Layout', priority: 95 },
+      
+      // BOM with layout keywords (higher priority)
+      'with layout': { match: 'BOM (With Layout)', priority: 80 },
+      'bom with layout': { match: 'BOM (With Layout)', priority: 80 },
+      'bom (with layout)': { match: 'BOM (With Layout)', priority: 80 },
+      'layout': { match: 'LAYOUT', priority: 75 },
+      
+      // BOM without layout
+      'no layout': { match: 'BOM (No Layout)', priority: 80 },
+      'bom (no layout)': { match: 'BOM (No Layout)', priority: 80 },
+      'bom no layout': { match: 'BOM (No Layout)', priority: 80 },
+      
+      // Budget keywords
+      'budget': { match: 'BUDGET', priority: 70 },
+      
+      // Submittal keywords
+      'submittal': { match: 'SUBMITTAL', priority: 70 },
+      'submittals': { match: 'SUBMITTAL', priority: 70 },
+      
+      // Release keywords
+      'release': { match: 'RELEASE', priority: 70 }
+    };
+    
+    let bestMatch = null;
+    let highestScore = 0;
+    
+    // Check each keyword
+    for (const [keyword, config] of Object.entries(keywords)) {
+      if (inputText.includes(keyword)) {
+        // Find matching type in available options
+        const matchingTypes = availableTypes.filter(type => {
+          if (config.partial) {
+            return type.toLowerCase().includes(config.match.toLowerCase());
+          }
+          return type.toLowerCase() === config.match.toLowerCase() || 
+                 type.toLowerCase().includes(config.match.toLowerCase());
+        });
+        
+        if (matchingTypes.length > 0) {
+          // Handle multiple matches - prefer more specific ones
+          let selectedType = matchingTypes[0];
+          
+          // Special handling for reloc/controls combinations
+          if (keyword === 'reloc' || keyword === 'relocation') {
+            if (inputText.includes('controls') && matchingTypes.some(t => t.toLowerCase().includes('controls'))) {
+              selectedType = matchingTypes.find(t => t.toLowerCase().includes('controls')) || selectedType;
+            }
+            if (inputText.includes('submittal') && matchingTypes.some(t => t.toLowerCase().includes('sub'))) {
+              selectedType = matchingTypes.find(t => t.toLowerCase().includes('sub')) || selectedType;
+            }
+            if (inputText.includes('bom') && matchingTypes.some(t => t.toLowerCase().includes('bom'))) {
+              selectedType = matchingTypes.find(t => t.toLowerCase().includes('bom')) || selectedType;
+            }
+          }
+          
+          if (config.priority > highestScore) {
+            highestScore = config.priority;
+            bestMatch = selectedType;
+          }
+        }
+      }
+    }
+    
+    if (bestMatch) {
+      console.log('✅ Keyword match found:', bestMatch, '(score:', highestScore + ')');
+      return bestMatch;
+    }
+    
+    // Step 4: Fallback - partial substring matching
+    const partialMatch = availableTypes.find(type => 
+      type.toLowerCase().includes(inputText) || inputText.includes(type.toLowerCase())
+    );
+    
+    if (partialMatch) {
+      console.log('⚠️ Partial match found:', partialMatch);
+      return partialMatch;
+    }
+    
+    console.log('❌ No match found for:', clipboardRFAType);
+    return null;
+  };
+
   // PRESERVED: Complete parseRFAInfo function from original component
   const parseRFAInfo = (clipboardText) => {
     // Enhanced parsing based on actual Agile data format
@@ -822,47 +1049,23 @@ const ProjectWizardStep1 = ({
       parsedData.isRevision = revisionNumber !== '0';
     }
     
-    // Extract RFA Type from the title line
+    // Extract RFA Type from the title line with SMART MATCHING
     const titleMatch = clipboardText.match(/Request for Assistance \d+-\d+ - (.+)/);
     if (titleMatch) {
       const rfaTypeText = titleMatch[1].trim();
+      console.log('📋 Extracted RFA Type from clipboard:', rfaTypeText);
       
-      // Map Agile RFA types to our form types
-      const rfaTypeMapping = {
-        'Controls BOM - Budget': 'BUDGET',
-        'Controls BOM - BOM (No Layout)': 'BOM (No Layout)',
-        'Controls BOM - BOM (With Layout)': 'BOM (With Layout)',
-        'Controls Submittal - Submittal': 'SUBMITTAL',
-        'Controls Submittal - Preprogramming': 'RELEASE',
-        'Controls Design - Layout': 'BOM (With Layout)',
-        'Controls Design - Controls Layout': 'BOM (With Layout)',
-        'Controls Post-Installation - Graphical Interface': 'GRAPHICS',
-        'Design - Photometric Lighting Layout': 'PHOTOMETRICS',
-        'Controls Design - Design Consultation': 'Consultation',
-        'Lithonia Reloc BOM - Budget': 'RelocBOM',
-        'Lithonia Reloc / Controls BOM - Budget': 'RelocControlsBOM',
-        'Lithonia Reloc BOM - BOM (With Layout)': 'RelocBOM',
-        'Lithonia Reloc Submittal - Submittal': 'RelocSUB',
-        'Lithonia Reloc / Controls Submittal - Submittal': 'RelocControlsSUB',
-        'Controls / Lithonia Reloc Submittal - Submittal': 'RelocControlsSUB',
-        'Atrius BOM - BOM (No Layout)': 'AtriusBOM',
-        'Atrius BOM - BOM (With Layout)': 'AtriusLAYOUT',
-        'Atrius Submittal - Submittal': 'AtriusSub',
-        'Controls / Atrius Submittal - Submittal': 'ControlsAtriusSub',
-        'Atrius Locator / Atrius Wayfinder BOM - BOM (With Layout)': 'ControlsAtriusLayout',
-        'Atrius / Controls BOM - BOM (With Layout)': 'ControlsAtriusLayout',
-        'Controls / Atrius BOM - BOM (No Layout)': 'ControlsAtriusLayout',
-        'Controls / Lithonia Commercial Indoor / Controls Submittal - Submittal': 'SUBMITTAL',
-        'Controls / Lithonia Commercial Indoor / Mark Architectural Lighting Submittal - Submittal': 'SUBMITTAL',
-        'Controls Submittal - One-Line Diagram': 'SUBMITTAL',
-        'Controls Submittal - Record Submittal': 'SUBMITTAL',
-        'Controls / Peerless BOM - BOM (With Layout)': 'BOM (With Layout)',
-        'Controls DC2DC / Controls BOM - BOM (With Layout)': 'CONTROLSDCLAYOUT',
-        'Lithonia Outdoor / Other Design - Photometric Lighting Layout': 'PHOTOMETRICS',
-        'Other / Lithonia Outdoor Design - Photometric Lighting Layout': 'PHOTOMETRICS'
-      };
+      // Use smart matching function
+      const matchedType = smartMatchRFAType(rfaTypeText);
       
-      parsedData.rfaType = rfaTypeMapping[rfaTypeText] || rfaTypeText;
+      if (matchedType) {
+        parsedData.rfaType = matchedType;
+        console.log('✅ RFA Type set to:', matchedType);
+      } else {
+        // If no match found, leave as-is for user to manually select
+        console.warn('⚠️ Could not automatically match RFA type:', rfaTypeText);
+        parsedData.rfaType = null;
+      }
     }
     
     // Extract Project Name and Container - Enhanced pattern matching
@@ -1224,6 +1427,13 @@ const ProjectWizardStep1 = ({
 
   return (
     <>
+    {/* Toast Notification */}
+    {toast.show && (
+      <div className={`toast-notification toast-${toast.type}`}>
+        {toast.message}
+      </div>
+    )}
+    
     <div className="wizard-layout">
       {/* Unified Modern Header with Import Actions */}
       <div className="unified-header">
