@@ -105,3 +105,5 @@ temp/
 
 # Refactoring documentation (local only)
 REFACTORING-*.md
+.refactoring-*.md
+.git-workflow.md
