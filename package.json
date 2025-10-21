@@ -1,6 +1,6 @@
 {
   "name": "project-creator",
-  "version": "5.0.98",
+  "version": "5.0.99",
   "description": "Project Creator - Modern Electron application for creating and managing projects",
   "main": "main.js",
   "homepage": "./",
