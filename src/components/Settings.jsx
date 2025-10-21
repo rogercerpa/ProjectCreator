@@ -2960,7 +2960,7 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
                   />
                 </div>
                 <div className="setting-row">
-                  <label>Position / Seniority:</label>
+                  <label>Role:</label>
                   <select
                     value={settings.workloadSettings?.position || ''}
                     onChange={(e) => setSettings(prev => ({
@@ -2970,8 +2970,9 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
                         position: e.target.value
                       }
                     }))}
+                    className="role-select"
                   >
-                    <option value="">Select your position...</option>
+                    <option value="">Select your role...</option>
                     <option value="L&T Junior Design Application Analyst">L&T Junior Design Application Analyst</option>
                     <option value="L&T Senior Design Application Analyst">L&T Senior Design Application Analyst</option>
                     <option value="Junior Design Application Analyst">Junior Design Application Analyst</option>
@@ -2979,9 +2980,6 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
                     <option value="Lead Design Application Analyst">Lead Design Application Analyst</option>
                     <option value="Manager Design Application Analyst">Manager Design Application Analyst</option>
                   </select>
-                  <span className="setting-hint">
-                    Your position level (used for smart project assignment)
-                  </span>
                 </div>
                 <div className="setting-row">
                   <label>Years of Experience:</label>
@@ -2997,10 +2995,8 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
                     }))}
                     min="0"
                     max="50"
+                    className="profile-number-input"
                   />
-                  <span className="setting-hint">
-                    Years of professional experience
-                  </span>
                 </div>
                 <div className="setting-row">
                   <label>Weekly Capacity (hours):</label>
@@ -3016,18 +3012,15 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
                     }))}
                     min="0"
                     max="168"
+                    className="profile-number-input"
                   />
-                  <span className="setting-hint">
-                    Your working hours per week (default: 40)
-                  </span>
                 </div>
               </div>
 
               <div className="setting-group" style={{marginTop: '30px'}}>
                 <h4>🎯 Product Knowledge</h4>
                 <p className="field-description" style={{marginBottom: '15px'}}>
-                  Rate your knowledge level for each product (0 = No Knowledge, 5 = Master). 
-                  This helps with smart project assignment recommendations.
+                  Rate your knowledge level for each product (0 = No Knowledge, 5 = Master).
                 </p>
                 
                 {(() => {
@@ -3174,9 +3167,9 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
 
               <div className="setting-group" style={{marginTop: '20px'}}>
                 <h4>📁 Shared Folder Path</h4>
-                <div className="setting-row">
+                <div className="setting-row-vertical">
                   <label>Data Directory:</label>
-                  <div style={{display: 'flex', gap: '10px', flex: 1}}>
+                  <div style={{display: 'flex', gap: '10px', width: '100%'}}>
                     <input
                       type="text"
                       value={settings.workloadSettings?.dataDirectory || ''}
@@ -3188,7 +3181,7 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
                         }
                       }))}
                       placeholder="C:\Users\...\OneDrive\ProjectCreator\Shared"
-                      style={{flex: 1}}
+                      className="workload-path-input"
                     />
                     <button
                       onClick={async () => {
@@ -3209,20 +3202,20 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
                           console.error('Error selecting directory:', error);
                         }
                       }}
-                      className="btn-secondary"
+                      className="btn-secondary browse-button"
                     >
                       Browse
                     </button>
                   </div>
-                  <span className="setting-hint">
+                  <p className="field-description-below">
                     Path to shared OneDrive folder for multi-user collaboration
-                  </span>
+                  </p>
                 </div>
               </div>
 
               <div className="setting-group" style={{marginTop: '20px'}}>
                 <h4>🔌 WebSocket Server</h4>
-                <div className="setting-row">
+                <div className="setting-row-vertical">
                   <label>Server URL:</label>
                   <input
                     type="text"
@@ -3235,12 +3228,13 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
                       }
                     }))}
                     placeholder="wss://projectcreatorv5.fly.dev"
+                    className="workload-server-input"
                   />
-                  <span className="setting-hint">
+                  <p className="field-description-below">
                     WebSocket server URL for real-time notifications<br/>
                     <strong>Important:</strong> Use <code>wss://</code> for Fly.io (not https://) or <code>ws://</code> for localhost<br/>
                     Example: <code>wss://projectcreatorv5.fly.dev</code>
-                  </span>
+                  </p>
                 </div>
                 <div className="setting-row">
                   <button

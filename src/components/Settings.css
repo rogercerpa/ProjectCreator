@@ -1425,10 +1425,139 @@ input:focus {
   text-align: center;
 }
 
+/* User Profile input fields - wider for text content */
+.setting-row input[type="text"],
+.setting-row input[type="email"] {
+  width: 350px;
+  max-width: 100%;
+  text-align: left;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.9rem;
+}
+
 .setting-row input:focus {
   outline: none;
   border-color: #3182ce;
   box-shadow: 0 0 0 2px rgba(49, 130, 206, 0.1);
+}
+
+/* Role select dropdown - matches ProjectForm styling */
+.setting-row .role-select {
+  width: 350px;
+  max-width: 100%;
+  padding: 10px 12px;
+  border: 2px solid #e9ecef;
+  border-radius: 6px;
+  font-size: 14px;
+  background-color: white;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.setting-row .role-select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.setting-row .role-select:hover {
+  border-color: #cbd5e0;
+}
+
+/* Number input fields for User Profile - matches ProjectForm styling */
+.setting-row .profile-number-input {
+  width: 350px;
+  max-width: 100%;
+  padding: 10px 12px;
+  border: 2px solid #e9ecef;
+  border-radius: 6px;
+  font-size: 14px;
+  background-color: white;
+  text-align: left;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.setting-row .profile-number-input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.setting-row .profile-number-input:hover {
+  border-color: #cbd5e0;
+}
+
+/* Vertical setting row for fields with descriptions below */
+.setting-row-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0;
+}
+
+.setting-row-vertical label {
+  font-weight: 600;
+  color: #4a5568;
+  font-size: 14px;
+  margin-bottom: 0.25rem;
+}
+
+/* Workload settings input fields - matches ProjectForm styling */
+.workload-path-input,
+.workload-server-input {
+  flex: 1;
+  width: 100%;
+  padding: 10px 12px;
+  border: 2px solid #e9ecef;
+  border-radius: 6px;
+  font-size: 14px;
+  background-color: white;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  font-family: 'Courier New', monospace;
+}
+
+.workload-path-input:focus,
+.workload-server-input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.workload-path-input:hover,
+.workload-server-input:hover {
+  border-color: #cbd5e0;
+}
+
+/* Browse button styling */
+.browse-button {
+  padding: 10px 20px;
+  font-size: 14px;
+  white-space: nowrap;
+  min-width: 90px;
+}
+
+/* Field description below input - small gray text */
+.field-description-below {
+  margin: 0.25rem 0 0 0;
+  color: #718096;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.field-description-below strong {
+  color: #4a5568;
+  font-weight: 600;
+}
+
+.field-description-below code {
+  background: #f7fafc;
+  padding: 0.125rem 0.375rem;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.75rem;
+  color: #2d3748;
+  border: 1px solid #e2e8f0;
 }
 
 .field-description {
