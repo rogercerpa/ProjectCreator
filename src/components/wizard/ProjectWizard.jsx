@@ -91,6 +91,17 @@ const ProjectWizard = ({
 
   // Debounced validation to prevent excessive validation calls
   const [validationTimeout, setValidationTimeout] = useState(null);
+  
+  // Auto-dismiss notification after 3 seconds
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => {
+        setNotification(null);
+      }, 3000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
 
   // Handle form data changes with debounced validation
   const handleFormDataChange = useCallback((newFormData) => {

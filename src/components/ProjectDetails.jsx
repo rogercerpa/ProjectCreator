@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
+import TriageCalculatorModal from './TriageCalculatorModal';
 import './ProjectDetails.css';
 
 /**
  * ProjectDetails - Read-only display of project information
  * Shows all project details in a well-organized, read-only format
  */
-const ProjectDetails = ({ project, onEdit }) => {
+const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+  const [showTriageModal, setShowTriageModal] = useState(false);
 
   // Show toast notification
   const showToast = (message, type = 'success') => {
@@ -188,6 +190,26 @@ const ProjectDetails = ({ project, onEdit }) => {
     }
   };
 
+  // Handle triage recalculation
+  const handleTriageSave = async (updatedProjectData) => {
+    try {
+      // Call the parent's update handler with new triage data
+      if (onProjectUpdate) {
+        await onProjectUpdate({
+          ...project,
+          ...updatedProjectData,
+          updatedAt: new Date().toISOString()
+        });
+      }
+      
+      setShowTriageModal(false);
+      showToast('✓ Triage updated successfully!', 'success');
+    } catch (error) {
+      console.error('Failed to update triage:', error);
+      showToast('Failed to update triage. Please try again.', 'error');
+    }
+  };
+
   return (
     <div className="project-details">
       {/* Toast Notification */}
@@ -349,7 +371,18 @@ const ProjectDetails = ({ project, onEdit }) => {
       {/* Triage Information */}
       {(project.totalTriage > 0 || project.hasPanelSchedules || project.hasSubmittals) && (
         <div className="details-section">
-          <h2>🧮 Triage Information</h2>
+          <div className="section-header">
+            <h2>🧮 Triage Information</h2>
+            <div className="header-actions">
+              <button 
+                onClick={() => setShowTriageModal(true)}
+                className="btn btn-outline btn-small"
+                title="Recalculate triage time"
+              >
+                ✏️ Edit Triage
+              </button>
+            </div>
+          </div>
           <div className="triage-summary">
             <div className="triage-total">
               <label>Total Triage Time</label>
@@ -568,6 +601,14 @@ const ProjectDetails = ({ project, onEdit }) => {
           </div>
         </div>
       </div>
+
+      {/* Triage Calculator Modal */}
+      <TriageCalculatorModal
+        isOpen={showTriageModal}
+        project={project}
+        onSave={handleTriageSave}
+        onCancel={() => setShowTriageModal(false)}
+      />
     </div>
   );
 };

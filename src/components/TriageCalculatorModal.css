@@ -1,0 +1,486 @@
+/* Triage Calculator Modal Styles */
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 20px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.triage-calculator-modal {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  max-width: 900px;
+  width: 100%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Modal Header */
+.triage-calculator-modal .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 24px 32px;
+  border-bottom: 1px solid #e9ecef;
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  color: white;
+  border-radius: 12px 12px 0 0;
+}
+
+.triage-calculator-modal .modal-title h2 {
+  margin: 0 0 4px 0;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.triage-calculator-modal .modal-subtitle {
+  margin: 0;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.triage-calculator-modal .modal-close {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  font-size: 28px;
+  line-height: 1;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.2s;
+}
+
+.triage-calculator-modal .modal-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
+}
+
+/* Modal Body */
+.triage-calculator-modal .modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 32px;
+}
+
+/* Project Context */
+.triage-calculator-modal .project-context {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.triage-calculator-modal .project-context h4 {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  color: #212529;
+}
+
+.triage-calculator-modal .context-info {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.triage-calculator-modal .context-info span {
+  font-size: 14px;
+  color: #6c757d;
+}
+
+.triage-calculator-modal .context-info strong {
+  color: #495057;
+}
+
+/* Before/After Comparison */
+.triage-comparison {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 20px;
+  background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+  border-radius: 8px;
+  margin-bottom: 24px;
+}
+
+.comparison-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.comparison-label {
+  font-size: 12px;
+  color: #6c757d;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.comparison-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #212529;
+}
+
+.comparison-value.increased {
+  color: #dc3545;
+}
+
+.comparison-value.decreased {
+  color: #28a745;
+}
+
+.comparison-arrow {
+  font-size: 24px;
+  color: #6c757d;
+}
+
+.comparison-diff {
+  display: flex;
+  align-items: center;
+}
+
+.diff-badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.diff-badge.increased {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.diff-badge.decreased {
+  background: #d4edda;
+  color: #155724;
+}
+
+.diff-badge.unchanged {
+  background: #e2e3e5;
+  color: #383d41;
+}
+
+/* Triage Sections */
+.triage-section {
+  margin-bottom: 24px;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border-left: 4px solid #007bff;
+}
+
+.triage-section h3 {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  color: #212529;
+  font-weight: 600;
+}
+
+.triage-section h4 {
+  margin: 16px 0 12px 0;
+  font-size: 16px;
+  color: #495057;
+  font-weight: 600;
+}
+
+.subsection {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #dee2e6;
+}
+
+.subsection:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+/* Config Grid */
+.config-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.config-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.config-item label {
+  font-weight: 600;
+  font-size: 14px;
+  color: #495057;
+}
+
+.config-item .radio-group {
+  display: flex;
+  gap: 16px;
+}
+
+.config-item .radio-group label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: normal;
+  cursor: pointer;
+}
+
+.config-item .radio-group input[type="radio"] {
+  margin: 0;
+  cursor: pointer;
+}
+
+/* Form Grid */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.form-grid.compact {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #495057;
+}
+
+.form-group input[type="number"],
+.form-group select {
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.form-group input[type="number"]:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.form-group small {
+  font-size: 12px;
+  color: #6c757d;
+}
+
+.radio-group {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.radio-group label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: normal;
+  cursor: pointer;
+}
+
+.radio-group input[type="radio"] {
+  margin: 0;
+  cursor: pointer;
+}
+
+/* Calculate Section */
+.calculate-section {
+  display: flex;
+  justify-content: center;
+  margin: 32px 0;
+}
+
+.btn-calculate {
+  padding: 14px 32px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* Results Display */
+.results-display {
+  background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+  border-radius: 8px;
+  padding: 24px;
+  margin-top: 24px;
+  border: 2px solid #28a745;
+}
+
+.results-display h3 {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  color: #155724;
+  font-weight: 600;
+}
+
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.result-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  background: white;
+  border-radius: 6px;
+}
+
+.result-label {
+  font-size: 12px;
+  color: #6c757d;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.result-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #155724;
+}
+
+/* Modal Footer */
+.triage-calculator-modal .modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 20px 32px;
+  border-top: 1px solid #e9ecef;
+  background: #f8f9fa;
+  border-radius: 0 0 12px 12px;
+}
+
+.triage-calculator-modal .btn {
+  padding: 10px 24px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.triage-calculator-modal .btn-primary {
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  color: white;
+}
+
+.triage-calculator-modal .btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+.triage-calculator-modal .btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.triage-calculator-modal .btn-secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.triage-calculator-modal .btn-secondary:hover {
+  background: #5a6268;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .modal-overlay {
+    padding: 0;
+  }
+
+  .triage-calculator-modal {
+    max-width: 100%;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  .triage-calculator-modal .modal-header,
+  .triage-calculator-modal .modal-body,
+  .triage-calculator-modal .modal-footer {
+    padding: 16px 20px;
+  }
+
+  .form-grid,
+  .config-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .triage-comparison {
+    flex-wrap: wrap;
+  }
+}
+
+/* Scrollbar Styling */
+.triage-calculator-modal .modal-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.triage-calculator-modal .modal-body::-webkit-scrollbar-track {
+  background: #f1f3f5;
+}
+
+.triage-calculator-modal .modal-body::-webkit-scrollbar-thumb {
+  background: #adb5bd;
+  border-radius: 4px;
+}
+
+.triage-calculator-modal .modal-body::-webkit-scrollbar-thumb:hover {
+  background: #868e96;
+}
+

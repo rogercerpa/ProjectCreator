@@ -511,6 +511,14 @@ const ProjectManagement = ({
           <ProjectDetails 
             project={projectData}
             onEdit={handleEdit}
+            onProjectUpdate={async (updatedData) => {
+              // Update local state
+              setProjectData(updatedData);
+              // Call parent's update handler to persist changes
+              if (onProjectUpdated) {
+                await onProjectUpdated(updatedData);
+              }
+            }}
           />
         ) : (
           <ProjectEditor
