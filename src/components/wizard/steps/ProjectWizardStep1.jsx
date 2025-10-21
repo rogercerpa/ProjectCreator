@@ -373,6 +373,16 @@ const ProjectWizardStep1 = ({
     }
   }, []); // Empty dependency array - only run on mount
 
+  // Set default regional team if none is selected
+  useEffect(() => {
+    if (!formData.regionalTeam && dropdownOptions.defaultRegionalTeam) {
+      onFormDataChange({
+        ...formData,
+        regionalTeam: dropdownOptions.defaultRegionalTeam
+      });
+    }
+  }, [dropdownOptions.defaultRegionalTeam]); // Only trigger when default changes
+
   // HTA-like automatic revision detection (try first before showing dialog)
   const handleAutomaticRevisionDetection = async () => {
     try {

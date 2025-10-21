@@ -68,6 +68,16 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
     };
   }, []); // Empty dependency array - only run once on mount
 
+  // Set default regional team if none is selected
+  useEffect(() => {
+    if (!formData.regionalTeam && dropdownOptions.defaultRegionalTeam) {
+      onFormDataChange({
+        ...formData,
+        regionalTeam: dropdownOptions.defaultRegionalTeam
+      });
+    }
+  }, [dropdownOptions.defaultRegionalTeam]); // Only trigger when default changes
+
   const handleInputChange = (e) => {
     const { name, value, type } = e.target;
     

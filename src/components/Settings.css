@@ -336,6 +336,25 @@
   color: #742a2a;
 }
 
+.btn-icon.star {
+  background: white;
+  border-color: #e2e8f0;
+  color: #cbd5e0;
+  font-size: 1rem;
+}
+
+.btn-icon.star:hover {
+  background: #fef5e7;
+  border-color: #f59e0b;
+  color: #f59e0b;
+}
+
+.btn-icon.star.active {
+  background: #fef5e7;
+  border-color: #f59e0b;
+  color: #f59e0b;
+}
+
 .move-actions {
   display: flex;
   gap: 0.25rem;

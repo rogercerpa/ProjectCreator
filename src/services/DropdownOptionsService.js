@@ -97,6 +97,12 @@ class DropdownOptionsService {
               dropdownOptions[key] = result.data[key];
             }
           });
+          
+          // Also include defaultRegionalTeam if present
+          if (result.data.defaultRegionalTeam !== undefined) {
+            dropdownOptions.defaultRegionalTeam = result.data.defaultRegionalTeam;
+          }
+          
           this.updateOptions(dropdownOptions);
         }
       }

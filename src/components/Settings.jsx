@@ -13,6 +13,7 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
   const [settings, setSettings] = useState({
     rfaTypes: ['BOM (No Layout)', 'BOM with Layout', 'Controls BOM - Budget', 'Controls BOM - Layout', 'BUDGET', 'LAYOUT', 'SUBMITTAL', 'RELEASE', 'GRAPHICS', 'PHOTOMETRICS', 'Consultation'],
     regionalTeams: ['Region 1', 'Region 2', 'Region 3', 'Region 4', 'Region 5', 'NAVS'],
+    defaultRegionalTeam: null,
     nationalAccounts: ['Default', 'ARBYS', 'MCDONALDS', 'WALMART', 'TARGET', 'HOMEDEPOT', 'LOWES', 'KROGER', 'CVS', 'WALGREENS'],
     saveLocations: ['Triage', 'Desktop', 'Server'],
     complexityLevels: ['Level 1', 'Level 2', 'Level 3', 'Level 4'],
@@ -934,6 +935,21 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
     });
   };
 
+  // Handler for setting/unsetting default regional team
+  const toggleDefaultRegionalTeam = (regionalTeam) => {
+    setSettings(prev => {
+      const newSettings = {
+        ...prev,
+        defaultRegionalTeam: prev.defaultRegionalTeam === regionalTeam ? null : regionalTeam
+      };
+      
+      // Update the dropdown options service immediately
+      dropdownOptionsService.updateOptions(newSettings);
+      
+      return newSettings;
+    });
+  };
+
   // Helper function to filter items based on search
   const getFilteredItems = (items) => {
     if (!searchTerm.trim()) return items;
@@ -1010,6 +1026,15 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
                   <>
                     <div className="item-text" title={item}>{item}</div>
                     <div className="item-actions">
+                      {field === 'regionalTeams' && (
+                        <button 
+                          className={`btn-icon star ${settings.defaultRegionalTeam === item ? 'active' : ''}`}
+                          onClick={() => toggleDefaultRegionalTeam(item)}
+                          title={settings.defaultRegionalTeam === item ? 'Unset as default' : 'Set as default'}
+                        >
+                          {settings.defaultRegionalTeam === item ? '⭐' : '☆'}
+                        </button>
+                      )}
                       <button 
                         className="btn-icon edit" 
                         onClick={() => startEditing(field, originalIndex)}
@@ -1271,6 +1296,16 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
             </div>
             
             <div className="item-actions">
+              {field === 'regionalTeams' && (
+                <button
+                  type="button"
+                  className={`btn btn-sm ${settings.defaultRegionalTeam === item ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => toggleDefaultRegionalTeam(item)}
+                  title={settings.defaultRegionalTeam === item ? 'Unset as default' : 'Set as default'}
+                >
+                  {settings.defaultRegionalTeam === item ? '⭐ Default' : '☆ Set Default'}
+                </button>
+              )}
               <button
                 type="button"
                 className="btn btn-secondary btn-sm"
@@ -3581,6 +3616,7 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
             const defaultSettings = {
               rfaTypes: ['BOM (No Layout)', 'BOM with Layout', 'Controls BOM - Budget', 'Controls BOM - Layout', 'BUDGET', 'LAYOUT', 'SUBMITTAL', 'RELEASE', 'GRAPHICS', 'PHOTOMETRICS', 'Consultation'],
               regionalTeams: ['Region 1', 'Region 2', 'Region 3', 'Region 4', 'Region 5', 'NAVS'],
+              defaultRegionalTeam: null,
               nationalAccounts: ['Default', 'ARBYS', 'MCDONALDS', 'WALMART', 'TARGET', 'HOMEDEPOT', 'LOWES', 'KROGER', 'CVS', 'WALGREENS'],
               saveLocations: ['Triage', 'Desktop', 'Server'],
               complexityLevels: ['Level 1', 'Level 2', 'Level 3', 'Level 4'],

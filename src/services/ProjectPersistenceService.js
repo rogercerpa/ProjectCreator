@@ -305,6 +305,7 @@ class ProjectPersistenceService {
       const defaultSettings = {
         rfaTypes: ['BOM (No Layout)', 'BOM with Layout', 'Controls BOM - Budget', 'Controls BOM - Layout'],
         regionalTeams: ['Region 1', 'Region 2', 'Region 3', 'Region 4', 'Region 5', 'NAVS'],
+        defaultRegionalTeam: null, // Default regional team selection
         nationalAccounts: ['N/A', "Arby's"],
         complexityLevels: ['Level 1', 'Level 2', 'Level 3', 'Level 4'],
         statusOptions: ['In Progress', 'Completed', 'Inactive', 'Not Started'],
