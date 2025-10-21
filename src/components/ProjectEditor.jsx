@@ -44,6 +44,26 @@ const ProjectEditor = ({
     }
   }, [project]);
 
+  // Helper function to convert date input value to ISO string (preserves timezone)
+  const dateInputToISO = (dateValue) => {
+    if (!dateValue) return '';
+    // Date input gives us YYYY-MM-DD, convert to ISO at noon UTC to avoid timezone issues
+    const date = new Date(dateValue + 'T12:00:00.000Z');
+    return date.toISOString();
+  };
+
+  // Helper function to convert ISO string to date input format
+  const isoToDateInput = (isoString) => {
+    if (!isoString) return '';
+    try {
+      const date = new Date(isoString);
+      // Format as YYYY-MM-DD for date input
+      return date.toISOString().split('T')[0];
+    } catch {
+      return '';
+    }
+  };
+
   // Handle input changes
   const handleInputChange = (e) => {
     const { name, value, type } = e.target;
@@ -51,6 +71,9 @@ const ProjectEditor = ({
     let processedValue = value;
     if (type === 'number') {
       processedValue = value === '' ? 0 : parseFloat(value) || 0;
+    } else if (type === 'date') {
+      // Convert date input to ISO string to avoid timezone issues
+      processedValue = dateInputToISO(value);
     }
     
     const newFormData = { ...formData, [name]: processedValue };
@@ -358,7 +381,7 @@ const ProjectEditor = ({
                 type="date"
                 id="ecd"
                 name="ecd"
-                value={formData.ecd || ''}
+                value={isoToDateInput(formData.ecd)}
                 onChange={handleInputChange}
               />
             </div>
@@ -369,7 +392,7 @@ const ProjectEditor = ({
                 type="date"
                 id="requestedDate"
                 name="requestedDate"
-                value={formData.requestedDate || ''}
+                value={isoToDateInput(formData.requestedDate)}
                 onChange={handleInputChange}
               />
             </div>
@@ -380,7 +403,7 @@ const ProjectEditor = ({
                 type="date"
                 id="submittedDate"
                 name="submittedDate"
-                value={formData.submittedDate || ''}
+                value={isoToDateInput(formData.submittedDate)}
                 onChange={handleInputChange}
               />
             </div>
@@ -391,7 +414,7 @@ const ProjectEditor = ({
                 type="date"
                 id="dueDate"
                 name="dueDate"
-                value={formData.dueDate || ''}
+                value={isoToDateInput(formData.dueDate)}
                 onChange={handleInputChange}
               />
             </div>

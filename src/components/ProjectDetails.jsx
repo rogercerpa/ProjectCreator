@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import TriageCalculatorModal from './TriageCalculatorModal';
 import './ProjectDetails.css';
 
@@ -11,6 +11,14 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [showTriageModal, setShowTriageModal] = useState(false);
 
+  // Debug: Log whenever ProjectDetails receives new props
+  useEffect(() => {
+    console.log('🔍 ProjectDetails: Received project prop');
+    console.log('🔍 ProjectDetails: Project ID:', project?.id);
+    console.log('🔍 ProjectDetails: Project ECD:', project?.ecd);
+    console.log('🔍 ProjectDetails: Project updatedAt:', project?.updatedAt);
+  }, [project]);
+
   // Show toast notification
   const showToast = (message, type = 'success') => {
     setToast({ show: true, message, type });
@@ -22,12 +30,14 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
   const formatDate = (dateString) => {
     if (!dateString) return 'Not set';
     const date = new Date(dateString);
+    // Use UTC to avoid timezone offset issues
     return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      timeZone: 'UTC'
     });
   };
 
@@ -94,15 +104,22 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
       return;
     }
 
+    console.log('📊 ProjectDetails: Exporting to DAS Board');
+    console.log('📊 ProjectDetails: Current project ECD:', project.ecd);
+    console.log('📊 ProjectDetails: Project object:', project);
+
     setIsExporting(true);
     try {
       // Map project data to format expected by backend
       const mappedProjectData = mapProjectDataForExport(project);
       const mappedTriageData = mapProjectDataForExport(project);
       
+      console.log('📊 ProjectDetails: Mapped data ECD:', mappedProjectData.estimatedCompletionDate);
+      
       const result = await window.electronAPI.exportDASBoard(mappedProjectData, mappedTriageData);
       
       if (result.success) {
+        console.log('📊 ProjectDetails: Export result:', result.data);
         // Copy to clipboard - format the data as needed for DAS Board
         const exportText = `${result.data.firstColumn}\t${result.data.projectName}\t${result.data.dueDate}\t${result.data.triageTime}`;
         
@@ -155,12 +172,13 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
   // Copy dates to clipboard
   const handleCopyDates = async () => {
     try {
-      // Format dates as MM/DD
+      // Format dates as MM/DD using UTC to avoid timezone issues
       const formatDateToMMDD = (dateString) => {
         if (!dateString) return 'N/A';
         const date = new Date(dateString);
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
+        // Use UTC methods to avoid timezone offset issues
+        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(date.getUTCDate()).padStart(2, '0');
         return `${month}/${day}`;
       };
 

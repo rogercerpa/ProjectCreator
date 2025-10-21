@@ -346,28 +346,33 @@ function App() {
     }
   };
 
-  const handleProjectUpdated = async (updatedProject) => {
+  const handleProjectUpdated = async (updatedProject, alreadySaved = false) => {
     try {
-      // Save updated project to persistent storage
-      const saveResult = await window.electronAPI.projectSave(updatedProject);
+      let projectToUse = updatedProject;
       
-      if (saveResult.success) {
-        // Use the saved project data (which may have updated timestamps, etc.)
-        const savedProject = saveResult.project;
+      // Only save if not already saved by child component
+      if (!alreadySaved) {
+        console.log('💾 App.jsx: Saving project (not already saved)');
+        const saveResult = await window.electronAPI.projectSave(updatedProject);
         
-        setProjects(prev => 
-          prev.map(p => p.id === savedProject.id ? savedProject : p)
-        );
-        setCurrentProject(savedProject);
-        console.log('✅ Project updated and saved:', savedProject);
+        if (saveResult.success) {
+          projectToUse = saveResult.project;
+          console.log('✅ App.jsx: Project saved successfully');
+        } else {
+          console.error('Failed to save updated project:', saveResult.error);
+        }
       } else {
-        console.error('Failed to save updated project:', saveResult.error);
-        // Still update UI but warn user
-        setProjects(prev => 
-          prev.map(p => p.id === updatedProject.id ? updatedProject : p)
-        );
-        setCurrentProject(updatedProject);
+        console.log('✅ App.jsx: Using already-saved project data');
+        console.log('✅ App.jsx: Project ECD:', projectToUse.ecd);
       }
+      
+      // Update state with the project data
+      setProjects(prev => 
+        prev.map(p => p.id === projectToUse.id ? projectToUse : p)
+      );
+      setCurrentProject(projectToUse);
+      console.log('✅ App.jsx: currentProject updated, ECD:', projectToUse.ecd);
+      
     } catch (error) {
       console.error('Error updating project:', error);
       // Fallback to UI update only

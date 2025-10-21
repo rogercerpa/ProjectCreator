@@ -42,6 +42,8 @@ const ProjectManagement = ({
   // Update project data when prop changes
   useEffect(() => {
     if (project) {
+      console.log('🔄 ProjectManagement: project prop changed, updating projectData');
+      console.log('🔄 ProjectManagement: New project ECD:', project.ecd);
       setProjectData(project);
       setHasUnsavedChanges(false);
       // Update upload status from project data
@@ -108,28 +110,46 @@ const ProjectManagement = ({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Call the parent's update handler
-      if (onProjectUpdated) {
-        await onProjectUpdated({
-          ...projectData,
-          updatedAt: new Date().toISOString()
+      const updatedProject = {
+        ...projectData,
+        updatedAt: new Date().toISOString()
+      };
+      
+      console.log('💾 ProjectManagement: Saving project with ECD:', updatedProject.ecd);
+      
+      // Save directly to backend first to get the authoritative saved version
+      const saveResult = await window.electronAPI.projectSave(updatedProject);
+      
+      if (saveResult.success) {
+        const savedProject = saveResult.project;
+        console.log('✅ ProjectManagement: Project saved successfully, ECD:', savedProject.ecd);
+        
+        // Update local state with saved data from backend (authoritative source)
+        setProjectData(savedProject);
+        
+        // Also call the parent's update handler to sync parent state
+        // Pass alreadySaved=true to prevent double-saving
+        if (onProjectUpdated) {
+          await onProjectUpdated(savedProject, true);
+        }
+        
+        setHasUnsavedChanges(false);
+        setCurrentMode('view');
+        setNotification({
+          type: 'success',
+          message: 'Project updated successfully!'
         });
+        
+        // Clear notification after 3 seconds
+        setTimeout(() => setNotification(null), 3000);
+      } else {
+        throw new Error(saveResult.error || 'Failed to save project');
       }
-      
-      setHasUnsavedChanges(false);
-      setCurrentMode('view');
-      setNotification({
-        type: 'success',
-        message: 'Project updated successfully!'
-      });
-      
-      // Clear notification after 3 seconds
-      setTimeout(() => setNotification(null), 3000);
     } catch (error) {
       console.error('Failed to save project:', error);
       setNotification({
         type: 'error',
-        message: 'Failed to save project. Please try again.'
+        message: `Failed to save project: ${error.message}`
       });
       setTimeout(() => setNotification(null), 5000);
     } finally {
@@ -509,19 +529,33 @@ const ProjectManagement = ({
       <div className="project-management-content">
         {currentMode === 'view' ? (
           <ProjectDetails 
+            key={`view-${projectData.id}-${projectData.updatedAt}`}
             project={projectData}
             onEdit={handleEdit}
             onProjectUpdate={async (updatedData) => {
-              // Update local state
-              setProjectData(updatedData);
-              // Call parent's update handler to persist changes
-              if (onProjectUpdated) {
-                await onProjectUpdated(updatedData);
+              console.log('🔄 ProjectManagement: onProjectUpdate called from ProjectDetails');
+              console.log('🔄 ProjectManagement: Updated ECD:', updatedData.ecd);
+              
+              // Save to backend first
+              const saveResult = await window.electronAPI.projectSave(updatedData);
+              
+              if (saveResult.success) {
+                const savedData = saveResult.project;
+                console.log('✅ ProjectManagement: Triage update saved, ECD:', savedData.ecd);
+                
+                // Update local state
+                setProjectData(savedData);
+                
+                // Call parent's update handler with already-saved flag
+                if (onProjectUpdated) {
+                  await onProjectUpdated(savedData, true);
+                }
               }
             }}
           />
         ) : (
           <ProjectEditor
+            key={`edit-${projectData.id}`}
             project={projectData}
             onProjectDataChange={handleProjectDataChange}
             onSave={handleSave}
