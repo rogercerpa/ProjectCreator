@@ -585,13 +585,18 @@ function AgencySelectionModal({ isOpen, onClose, allAgencies = [] }) {
               {selectedTemplate ? 'Change Template' : 'Select Template'}
             </button>
             
-            <button 
-              className="btn btn-primary" 
-              onClick={handleSendEmails}
-              disabled={processing || selectedAgencies.size === 0 || !selectedTemplate}
-            >
-              {processing ? 'Opening Emails...' : `Send to ${selectedAgencies.size} Agencies`}
-            </button>
+            <div className="primary-action-wrapper">
+              <div className="action-info">
+                ({selectedAgencies.size} {selectedAgencies.size === 1 ? 'agency' : 'agencies'} selected)
+              </div>
+              <button 
+                className="btn btn-primary" 
+                onClick={handleSendEmails}
+                disabled={processing || selectedAgencies.size === 0 || !selectedTemplate}
+              >
+                {processing ? 'Opening Emails...' : '📧 Open in Outlook'}
+              </button>
+            </div>
           </div>
         </div>
       </div>

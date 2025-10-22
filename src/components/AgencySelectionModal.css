@@ -471,10 +471,35 @@
 .modal-actions {
   display: flex;
   justify-content: flex-end;
+  align-items: flex-end;
   gap: 12px;
   padding: 20px 24px;
   border-top: 1px solid #e1e5e9;
   background-color: #f8f9fa;
+}
+
+/* Primary Action Wrapper */
+.primary-action-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+}
+
+.action-info {
+  font-size: 0.65rem;
+  color: #6c757d !important;
+  font-style: italic;
+  white-space: nowrap;
+  text-align: right;
+  padding: 0 2px 0 0 !important;
+  line-height: 1;
+  background: transparent !important;
+  border: none !important;
+  margin: 0 !important;
+  height: auto;
+  min-height: 0;
+  box-shadow: none !important;
 }
 
 /* Button Styles */
@@ -604,6 +629,10 @@
 
   .modal-actions {
     flex-direction: column-reverse;
+  }
+
+  .primary-action-wrapper {
+    width: 100%;
   }
 
   .btn {
