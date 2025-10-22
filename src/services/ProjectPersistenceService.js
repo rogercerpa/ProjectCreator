@@ -234,6 +234,9 @@ class ProjectPersistenceService {
           project.rfaNumber?.toLowerCase().includes(searchTerm) ||
           project.agentNumber?.toLowerCase().includes(searchTerm) ||
           project.rfaType?.toLowerCase().includes(searchTerm) ||
+          project.projectType?.toLowerCase().includes(searchTerm) ||
+          project.products?.toLowerCase().includes(searchTerm) ||
+          project.projectContainer?.toLowerCase().includes(searchTerm) ||
           project.regionalTeam?.toLowerCase().includes(searchTerm)
         );
       });

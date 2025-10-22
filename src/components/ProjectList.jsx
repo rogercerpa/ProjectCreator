@@ -27,11 +27,33 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onRefresh }) 
     return saved || 'none';
   });
 
-  const filteredProjects = projects.filter(project =>
-    project.projectName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    project.rfaNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    project.agentNumber.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Ensure projects is an array
+  const safeProjects = Array.isArray(projects) ? projects : [];
+
+  const filteredProjects = safeProjects.filter(project => {
+    try {
+      if (!searchTerm) return true;
+      if (!project) return false;
+      
+      const search = searchTerm.toLowerCase();
+      const searchableFields = [
+        project.projectName,
+        project.rfaNumber,
+        project.agentNumber,
+        project.rfaType,
+        project.projectType,
+        project.products,
+        project.projectContainer
+      ];
+      
+      return searchableFields.some(field => 
+        field && typeof field === 'string' && field.toLowerCase().includes(search)
+      );
+    } catch (error) {
+      console.error('Error filtering project:', error, project);
+      return false;
+    }
+  });
 
   const sortedProjects = [...filteredProjects].sort((a, b) => {
     let aValue = a[sortBy];
@@ -182,7 +204,7 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onRefresh }) 
     );
   };
 
-  if (projects.length === 0) {
+  if (safeProjects.length === 0) {
     return (
       <div className="project-list-empty">
         <div className="empty-icon">📁</div>
@@ -220,7 +242,7 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onRefresh }) 
       {/* Statistics */}
       <div className="project-stats">
         <div className="stat-card">
-          <span className="stat-number">{projects.length}</span>
+          <span className="stat-number">{safeProjects.length}</span>
           <span className="stat-label">Total Projects</span>
         </div>
         <div className="stat-card">
@@ -228,7 +250,7 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onRefresh }) 
           <span className="stat-label">Filtered Results</span>
         </div>
         <div className="stat-card">
-          <span className="stat-number">{projects.filter(p => p.triageResults?.totalTriage > 100).length}</span>
+          <span className="stat-number">{safeProjects.filter(p => p && p.triageResults && p.triageResults.totalTriage > 100).length}</span>
           <span className="stat-label">High Priority</span>
         </div>
       </div>
@@ -238,7 +260,7 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onRefresh }) 
         <div className="search-bar">
           <input
             type="text"
-            placeholder="Search projects, RFA numbers, agents..."
+            placeholder="Search by name, RFA, agent, container, RFA type, project type, or product..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
             className="search-input"
@@ -266,7 +288,7 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onRefresh }) 
             localStorage.setItem('projectListSortBy', field);
           }}
           onSortOrderToggle={handleSortOrderToggle}
-          projectCount={projects.length}
+          projectCount={safeProjects.length}
           filteredCount={filteredProjects.length}
         />
       </div>
