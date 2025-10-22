@@ -150,9 +150,6 @@ function App() {
         // Initialize crash reporting and analytics
         await initializeMonitoringServices();
         
-        // Simulate app initialization
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
         // Check if this is the user's first visit
         const hasVisitedBefore = localStorage.getItem('app-visited') === 'true';
         setIsFirstVisit(!hasVisitedBefore);

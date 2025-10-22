@@ -66,6 +66,8 @@ const WorkloadDashboard = ({ onNavigateToProject }) => {
   const initializeDashboard = async () => {
     try {
       setIsLoading(true);
+      const startTime = Date.now();
+      const minLoadingDuration = 600; // Minimum 600ms to prevent flicker
       
       // Initialize current user first
       await initializeCurrentUser();
@@ -84,6 +86,14 @@ const WorkloadDashboard = ({ onNavigateToProject }) => {
       
       // Setup WebSocket connection
       await setupWebSocket();
+      
+      // Ensure minimum loading duration for smooth UX
+      const elapsedTime = Date.now() - startTime;
+      const remainingTime = minLoadingDuration - elapsedTime;
+      
+      if (remainingTime > 0) {
+        await new Promise(resolve => setTimeout(resolve, remainingTime));
+      }
       
       setIsLoading(false);
     } catch (error) {
@@ -692,18 +702,6 @@ const WorkloadDashboard = ({ onNavigateToProject }) => {
     }
   };
 
-  // Render loading state
-  if (isLoading) {
-    return (
-      <div className="workload-dashboard">
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p>Loading workload dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-
   // Render error state
   if (error) {
     return (
@@ -724,108 +722,119 @@ const WorkloadDashboard = ({ onNavigateToProject }) => {
 
   return (
     <div className="workload-dashboard">
-      {/* Header */}
-      <div className="dashboard-header">
-        <div className="header-left">
-          <h1>📊 Workload Dashboard</h1>
-          <div className="connection-status">
-            <span className={`status-indicator ${isConnected ? 'online' : 'offline'}`}>
-              {isConnected ? '🟢' : '🔴'}
-            </span>
-            <span className="status-text">
-              {isConnected ? `Live | ${onlineCount} users online` : 'Offline'}
-            </span>
+      <div className="dashboard-content">
+        {/* Loading Overlay */}
+        {isLoading && (
+          <div className="dashboard-loading-overlay">
+            <div className="overlay-spinner-container">
+              <div className="loading-spinner"></div>
+              <p>Loading workload dashboard...</p>
+            </div>
+          </div>
+        )}
+        {/* Header */}
+        <div className="dashboard-header">
+          <div className="header-left">
+            <h1>📊 Workload Dashboard</h1>
+            <div className="connection-status">
+              <span className={`status-indicator ${isConnected ? 'online' : 'offline'}`}>
+                {isConnected ? '🟢' : '🔴'}
+              </span>
+              <span className="status-text">
+                {isConnected ? `Live | ${onlineCount} users online` : 'Offline'}
+              </span>
+            </div>
+          </div>
+          
+          <div className="header-right">
+            <button 
+              onClick={handleOpenAssignmentDialog} 
+              className="btn-icon"
+              title="Assign Project"
+              style={{ 
+                background: '#3498db', 
+                color: 'white',
+                width: 'auto',
+                padding: '0 16px',
+                gap: '8px'
+              }}
+            >
+              ➕ Assign Project
+            </button>
+            <button 
+              onClick={handleRefresh} 
+              className="btn-icon"
+              title="Refresh data"
+            >
+              🔄
+            </button>
           </div>
         </div>
-        
-        <div className="header-right">
-          <button 
-            onClick={handleOpenAssignmentDialog} 
-            className="btn-icon"
-            title="Assign Project"
-            style={{ 
-              background: '#3498db', 
-              color: 'white',
-              width: 'auto',
-              padding: '0 16px',
-              gap: '8px'
-            }}
-          >
-            ➕ Assign Project
-          </button>
-          <button 
-            onClick={handleRefresh} 
-            className="btn-icon"
-            title="Refresh data"
-          >
-            🔄
-          </button>
-        </div>
-      </div>
 
-      {/* Statistics Bar */}
-      <div className="stats-bar">
-        <div className="stat-card">
-          <span className="stat-value">{stats.totalUsers || users.length}</span>
-          <span className="stat-label">Total Users</span>
+        {/* Statistics Bar */}
+        <div className="stats-bar">
+          <div className="stat-card">
+            <span className="stat-value">{stats.totalUsers || users.length}</span>
+            <span className="stat-label">Total Users</span>
+          </div>
+          <div className="stat-card">
+            <span className="stat-value">{stats.activeAssignments || 0}</span>
+            <span className="stat-label">Active Assignments</span>
+          </div>
+          <div className="stat-card">
+            <span className="stat-value">{stats.overdueAssignments || 0}</span>
+            <span className="stat-label">Overdue</span>
+          </div>
+          <div className="stat-card">
+            <span className="stat-value">
+              {stats.averageCapacity ? `${Math.round(stats.averageCapacity)}%` : '0%'}
+            </span>
+            <span className="stat-label">Avg Capacity</span>
+          </div>
         </div>
-        <div className="stat-card">
-          <span className="stat-value">{stats.activeAssignments || 0}</span>
-          <span className="stat-label">Active Assignments</span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-value">{stats.overdueAssignments || 0}</span>
-          <span className="stat-label">Overdue</span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-value">
-            {stats.averageCapacity ? `${Math.round(stats.averageCapacity)}%` : '0%'}
-          </span>
-          <span className="stat-label">Avg Capacity</span>
-        </div>
-      </div>
 
-      {/* Filters */}
-      <WorkloadFilters
-        filters={filters}
-        onFilterChange={handleFilterChange}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-        selectedDate={selectedDate}
-        onDateChange={setSelectedDate}
-        users={users}
-      />
-
-      {/* Main Grid */}
-      <WorkloadGrid
-        users={filteredUsers}
-        assignments={assignments}
-        viewMode={viewMode}
-        selectedDate={selectedDate}
-        onlineUsers={onlineUsers}
-        onAssignmentClick={handleAssignmentCardClick}
-        onCreateAssignment={handleCreateAssignment}
-        onUpdateAssignment={handleUpdateAssignment}
-        onDeleteAssignment={handleDeleteAssignment}
-      />
-
-      {/* Assignment Dialog */}
-      <AssignmentDialog
-        isOpen={showAssignmentDialog}
-        onClose={handleCloseAssignmentDialog}
-        onAssign={handleAssignmentSubmit}
-        users={users}
-        projects={projects}
-        editAssignment={editingAssignment}
-      />
-
-      {/* Notification Toast */}
-      {notification && (
-        <NotificationToast
-          notification={notification}
-          onClose={clearNotification}
+        {/* Filters */}
+        <WorkloadFilters
+          filters={filters}
+          onFilterChange={handleFilterChange}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+          selectedDate={selectedDate}
+          onDateChange={setSelectedDate}
+          users={users}
         />
-      )}
+
+        {/* Main Grid */}
+        <WorkloadGrid
+          users={filteredUsers}
+          assignments={assignments}
+          viewMode={viewMode}
+          selectedDate={selectedDate}
+          onlineUsers={onlineUsers}
+          onAssignmentClick={handleAssignmentCardClick}
+          onCreateAssignment={handleCreateAssignment}
+          onUpdateAssignment={handleUpdateAssignment}
+          onDeleteAssignment={handleDeleteAssignment}
+        />
+
+        {/* Assignment Dialog */}
+        <AssignmentDialog
+          isOpen={showAssignmentDialog}
+          onClose={handleCloseAssignmentDialog}
+          onAssign={handleAssignmentSubmit}
+          users={users}
+          projects={projects}
+          editAssignment={editingAssignment}
+        />
+
+        {/* Notification Toast */}
+        {notification && (
+          <NotificationToast
+            notification={notification}
+            onClose={clearNotification}
+          />
+        )}
+      </div>
     </div>
   );
 };

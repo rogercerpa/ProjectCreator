@@ -3,6 +3,28 @@ const path = require('path');
 const fs = require('fs-extra');
 const os = require('os');
 
+// ===== CACHE AND PERFORMANCE CONFIGURATION =====
+// Set user data directory to avoid OneDrive sync conflicts
+// Use local AppData instead of OneDrive-synced locations
+const localAppDataPath = path.join(os.homedir(), 'AppData', 'Local', 'project-creator');
+app.setPath('userData', localAppDataPath);
+app.setPath('sessionData', path.join(localAppDataPath, 'Session Storage'));
+app.setPath('cache', path.join(localAppDataPath, 'Cache'));
+
+// Disable GPU cache errors by using command line switches
+app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
+app.commandLine.appendSwitch('disable-software-rasterizer');
+app.commandLine.appendSwitch('disable-gpu-process-crash-limit');
+
+// Improve performance
+app.commandLine.appendSwitch('enable-gpu-rasterization');
+app.commandLine.appendSwitch('enable-zero-copy');
+
+console.log('✅ Cache directories configured:');
+console.log('   User Data:', app.getPath('userData'));
+console.log('   Cache:', app.getPath('cache'));
+console.log('   Session Data:', app.getPath('sessionData'));
+
 // Import version check service
 const versionCheckService = require('./src/utils/versionCheck').default;
 

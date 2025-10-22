@@ -541,90 +541,91 @@ function AgencyDirectory() {
 
   return (
     <div className="agency-directory">
-      <div className="agency-directory-header">
-        <div className="header-title">
-          <h1>Agency Directory</h1>
-          <p>Search and find agency contact information</p>
-        </div>
-        
-        <div className="header-actions">
-          <p className="import-note">
-            💡 To add agencies, go to <strong>Settings → Agencies</strong>
-          </p>
-        </div>
-      </div>
-
-      {/* Statistics */}
-      {statistics && (
-        <div className="agency-stats">
-          <div className="stat-card">
-            <span className="stat-number">{statistics.totalAgencies}</span>
-            <span className="stat-label">Total Agencies</span>
+      <div className="agency-directory-content">
+        <div className="agency-directory-header">
+          <div className="header-title">
+            <h1>Agency Directory</h1>
+            <p>Search and find agency contact information</p>
           </div>
-          <div className="stat-card">
-            <span className="stat-number">{Object.keys(statistics.byRegion).length}</span>
-            <span className="stat-label">Regions</span>
-          </div>
-          <div className="stat-card">
-            <span className="stat-number">{Object.keys(statistics.byRole).length}</span>
-            <span className="stat-label">Roles</span>
+          
+          <div className="header-actions">
+            <p className="import-note">
+              💡 To add agencies, go to <strong>Settings → Agencies</strong>
+            </p>
           </div>
         </div>
-      )}
 
-      {/* Search and Filters */}
-      <div className="search-filters-section">
-        <div className="search-bar">
-          <input
-            type="text"
-            placeholder="Search agencies, contacts, emails, phone numbers..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="search-input"
-          />
-          <button 
-            className="clear-search-btn"
-            onClick={() => setSearchTerm('')}
-            title="Clear search"
-          >
-            ✕
-          </button>
+        {/* Statistics */}
+        {statistics && (
+          <div className="agency-stats">
+            <div className="stat-card">
+              <span className="stat-number">{statistics.totalAgencies}</span>
+              <span className="stat-label">Total Agencies</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-number">{Object.keys(statistics.byRegion).length}</span>
+              <span className="stat-label">Regions</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-number">{Object.keys(statistics.byRole).length}</span>
+              <span className="stat-label">Roles</span>
+            </div>
+          </div>
+        )}
+
+        {/* Search and Filters */}
+        <div className="search-filters-section">
+          <div className="search-bar">
+            <input
+              type="text"
+              placeholder="Search agencies, contacts, emails, phone numbers..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="search-input"
+            />
+            <button 
+              className="clear-search-btn"
+              onClick={() => setSearchTerm('')}
+              title="Clear search"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div className="filters-row">
+            <select
+              value={filters.region}
+              onChange={e => handleFilterChange('region', e.target.value)}
+              className="filter-select"
+            >
+              <option value="all">All Regions</option>
+              {filterOptions.regions.map(region => (
+                <option key={region} value={region}>{region}</option>
+              ))}
+            </select>
+
+            <select
+              value={filters.role}
+              onChange={e => handleFilterChange('role', e.target.value)}
+              className="filter-select"
+            >
+              <option value="all">All Roles</option>
+              {filterOptions.roles.map(role => (
+                <option key={role} value={role}>{role}</option>
+              ))}
+            </select>
+
+            <button 
+              className="btn btn-secondary clear-filters-btn"
+              onClick={clearFilters}
+            >
+              Clear Filters
+            </button>
+          </div>
         </div>
 
-        <div className="filters-row">
-          <select
-            value={filters.region}
-            onChange={e => handleFilterChange('region', e.target.value)}
-            className="filter-select"
-          >
-            <option value="all">All Regions</option>
-            {filterOptions.regions.map(region => (
-              <option key={region} value={region}>{region}</option>
-            ))}
-          </select>
-
-          <select
-            value={filters.role}
-            onChange={e => handleFilterChange('role', e.target.value)}
-            className="filter-select"
-          >
-            <option value="all">All Roles</option>
-            {filterOptions.roles.map(role => (
-              <option key={role} value={role}>{role}</option>
-            ))}
-          </select>
-
-          <button 
-            className="btn btn-secondary clear-filters-btn"
-            onClick={clearFilters}
-          >
-            Clear Filters
-          </button>
-        </div>
-      </div>
-
-      {/* Results */}
-      <div className="results-section">
+        {/* Results */}
+        <div className="results-section">
         <div className="results-header">
           <div className="results-actions">
             {/* Email Template Button */}
@@ -712,24 +713,25 @@ function AgencyDirectory() {
         )}
       </div>
 
-      {/* Modals */}
-      {renderAgencyModal()}
-      
-      {/* Email Template Modals */}
-      {showAgencySelection && (
-        <AgencySelectionModal
-          isOpen={showAgencySelection}
-          onClose={() => setShowAgencySelection(false)}
-          allAgencies={agencies}
-        />
-      )}
-      
-      {showTemplateLibrary && (
-        <EmailTemplateLibrary
-          isOpen={showTemplateLibrary}
-          onClose={() => setShowTemplateLibrary(false)}
-        />
-      )}
+        {/* Modals */}
+        {renderAgencyModal()}
+        
+        {/* Email Template Modals */}
+        {showAgencySelection && (
+          <AgencySelectionModal
+            isOpen={showAgencySelection}
+            onClose={() => setShowAgencySelection(false)}
+            allAgencies={agencies}
+          />
+        )}
+        
+        {showTemplateLibrary && (
+          <EmailTemplateLibrary
+            isOpen={showTemplateLibrary}
+            onClose={() => setShowTemplateLibrary(false)}
+          />
+        )}
+      </div>
     </div>
   );
 }

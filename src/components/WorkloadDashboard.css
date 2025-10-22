@@ -9,6 +9,26 @@
   overflow: hidden;
 }
 
+/* Fade-in animation for content */
+.dashboard-content {
+  position: relative;
+  animation: fadeIn 0.5s ease-out;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Header */
 .dashboard-header {
   display: flex;
@@ -127,14 +147,31 @@
   letter-spacing: 0.5px;
 }
 
-/* Loading State */
-.loading-container {
+/* Loading Overlay */
+.dashboard-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(245, 247, 250, 0.95);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.overlay-spinner-container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  height: 100%;
   gap: 20px;
+  padding: 40px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
 
 .loading-spinner {
@@ -151,9 +188,11 @@
   100% { transform: rotate(360deg); }
 }
 
-.loading-container p {
+.overlay-spinner-container p {
   color: #6c757d;
   font-size: 16px;
+  margin: 0;
+  font-weight: 500;
 }
 
 /* Error State */
