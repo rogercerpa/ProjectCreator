@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import './ProjectTableView.css';
 import ColumnVisibilityControl from './ColumnVisibilityControl';
+import { formatDateTimeLocal, getUserTimezone } from '../utils/dateUtils';
 
 function ProjectTableView({ 
   projects, 
@@ -24,13 +25,28 @@ function ProjectTableView({
   });
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    
+    // Use the dateUtils function to format with timezone awareness
+    // If it's already in datetime-local format (YYYY-MM-DDTHH:MM), use it directly
+    if (dateString.includes('T') && dateString.length <= 16) {
+      return formatDateTimeLocal(dateString, true);
+    }
+    
+    // Otherwise, treat as ISO string and extract the local part
+    try {
+      // Just display the date/time as-is from the string without conversion
+      const date = new Date(dateString);
+      const formatted = date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      return `${formatted} (${getUserTimezone().abbreviation})`;
+    } catch (error) {
+      return dateString;
+    }
   };
 
   const getStatusColor = (project) => {
@@ -79,13 +95,13 @@ function ProjectTableView({
   };
 
   const columns = [
-    { key: 'projectName', label: 'Project Name', sortable: true, width: '250px' },
-    { key: 'rfaNumber', label: 'RFA Number', sortable: true, width: '120px' },
-    { key: 'agentNumber', label: 'Agent Number', sortable: true, width: '120px' },
-    { key: 'projectContainer', label: 'Project Container', sortable: true, width: '150px' },
-    { key: 'ecd', label: 'ECD', sortable: true, width: '120px' },
-    { key: 'requestedDate', label: 'Requested Date', sortable: true, width: '140px' },
-    { key: 'actions', label: 'Actions', sortable: false, width: '80px' }
+    { key: 'projectName', label: 'Project Name', sortable: true, width: '25%', minWidth: '200px' },
+    { key: 'rfaNumber', label: 'RFA Number', sortable: true, width: '12%', minWidth: '120px' },
+    { key: 'agentNumber', label: 'Agent Number', sortable: true, width: '12%', minWidth: '120px' },
+    { key: 'projectContainer', label: 'Project Container', sortable: true, width: '18%', minWidth: '150px' },
+    { key: 'ecd', label: 'ECD', sortable: true, width: '13%', minWidth: '130px' },
+    { key: 'requestedDate', label: 'Requested Date', sortable: true, width: '15%', minWidth: '150px' },
+    { key: 'actions', label: 'Actions', sortable: false, width: '5%', minWidth: '80px' }
   ];
 
   if (projects.length === 0) {
@@ -119,7 +135,7 @@ function ProjectTableView({
                 <th
                   key={column.key}
                   className={`table-header ${column.sortable ? 'sortable' : ''} ${sortBy === column.key ? 'sorted' : ''}`}
-                  style={{ width: column.width, minWidth: column.width }}
+                  style={{ width: column.width, minWidth: column.minWidth }}
                   onClick={column.sortable ? () => handleHeaderClick(column.key) : undefined}
                 >
                   {column.label}

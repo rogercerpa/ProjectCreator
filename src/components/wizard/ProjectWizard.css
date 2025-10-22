@@ -1741,6 +1741,20 @@
   border-left: 3px solid #007bff;
 }
 
+/* Timezone Indicator */
+.timezone-indicator {
+  font-size: 0.75em;
+  font-weight: 500;
+  color: #6c757d;
+  background: #e9ecef;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-left: 6px;
+  font-style: normal;
+  letter-spacing: 0.5px;
+  vertical-align: middle;
+}
+
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
   25% { transform: translateX(-4px); }

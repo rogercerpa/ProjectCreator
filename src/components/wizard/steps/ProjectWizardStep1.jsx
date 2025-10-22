@@ -4,6 +4,7 @@ import RevisionConfigurationDialog from '../components/RevisionConfigurationDial
 import dropdownOptionsService from '../../../services/DropdownOptionsService';
 import triageCalculationService from '../../../services/TriageCalculationService';
 import MultiSelectDropdown from '../../MultiSelectDropdown';
+import { parseAgileDate, getUserTimezone, formatDateTimeLocal } from '../../../utils/dateUtils';
 
 /**
  * ProjectWizardStep1 - Basic Project Information
@@ -1149,42 +1150,33 @@ const ProjectWizardStep1 = ({
     // Extract ECD (Estimated Completion Date) - Look for "ECD: 09/04/2025 6:00 PM"
     const ecdMatch = clipboardText.match(/ECD:\s*(\d{2}\/\d{2}\/\d{4}\s+\d{1,2}:\d{2}\s+[AP]M)/);
     if (ecdMatch) {
-      // Convert to datetime-local format
-      try {
-        const ecdDate = new Date(ecdMatch[1]);
-        if (!isNaN(ecdDate.getTime())) {
-          parsedData.ecd = ecdDate.toISOString().slice(0, 16);
-        }
-      } catch (error) {
-        console.warn('Failed to parse ECD date:', ecdMatch[1], error);
+      // Parse date WITHOUT timezone conversion
+      const ecdLocal = parseAgileDate(ecdMatch[1]);
+      if (ecdLocal) {
+        parsedData.ecd = ecdLocal;
+        console.log('✅ ECD parsed (no timezone conversion):', ecdMatch[1], '→', ecdLocal);
       }
     }
     
     // Extract Requested Date - Look for "Requested Date: 09/04/2025 6:00 PM"
     const requestedMatch = clipboardText.match(/Requested Date:\s*(\d{2}\/\d{2}\/\d{4}\s+\d{1,2}:\d{2}\s+[AP]M)/);
     if (requestedMatch) {
-      // Convert to datetime-local format
-      try {
-        const requestedDate = new Date(requestedMatch[1]);
-        if (!isNaN(requestedDate.getTime())) {
-          parsedData.requestedDate = requestedDate.toISOString().slice(0, 16);
-        }
-      } catch (error) {
-        console.warn('Failed to parse Requested Date:', requestedMatch[1], error);
+      // Parse date WITHOUT timezone conversion
+      const requestedLocal = parseAgileDate(requestedMatch[1]);
+      if (requestedLocal) {
+        parsedData.requestedDate = requestedLocal;
+        console.log('✅ Requested Date parsed (no timezone conversion):', requestedMatch[1], '→', requestedLocal);
       }
     }
     
     // Extract Submitted Date - Look for "Submitted Date: 08/28/2025 5:11 PM"
     const submittedMatch = clipboardText.match(/Submitted Date:\s*(\d{2}\/\d{2}\/\d{4}\s+\d{1,2}:\d{2}\s+[AP]M)/);
     if (submittedMatch) {
-      // Convert to datetime-local format
-      try {
-        const submittedDate = new Date(submittedMatch[1]);
-        if (!isNaN(submittedDate.getTime())) {
-          parsedData.submittedDate = submittedDate.toISOString().slice(0, 16);
-        }
-      } catch (error) {
-        console.warn('Failed to parse Submitted Date:', submittedMatch[1], error);
+      // Parse date WITHOUT timezone conversion
+      const submittedLocal = parseAgileDate(submittedMatch[1]);
+      if (submittedLocal) {
+        parsedData.submittedDate = submittedLocal;
+        console.log('✅ Submitted Date parsed (no timezone conversion):', submittedMatch[1], '→', submittedLocal);
       }
     }
     
@@ -1949,7 +1941,7 @@ const ProjectWizardStep1 = ({
             </div>
 
             <div className={`form-group ${isFieldImported('requestedDate') ? 'imported-field' : ''}`}>
-              <label htmlFor="requestedDate">Requested Date</label>
+              <label htmlFor="requestedDate">Requested Date <span className="timezone-indicator">({getUserTimezone().abbreviation})</span></label>
               <input
                 type="datetime-local"
                 id="requestedDate"
@@ -1957,11 +1949,12 @@ const ProjectWizardStep1 = ({
                 value={formData.requestedDate || ''}
                 onChange={handleInputChange}
               />
+              <small className="field-hint">Time is saved in your local timezone ({getUserTimezone().abbreviation})</small>
               {isFieldImported('requestedDate') && <span className="import-indicator">📋 Imported</span>}
             </div>
 
             <div className={`form-group ${isFieldImported('ecd') ? 'imported-field' : ''}`}>
-              <label htmlFor="ecd">ECD</label>
+              <label htmlFor="ecd">ECD <span className="timezone-indicator">({getUserTimezone().abbreviation})</span></label>
               <input
                 type="datetime-local"
                 id="ecd"
@@ -1969,11 +1962,12 @@ const ProjectWizardStep1 = ({
                 value={formData.ecd || ''}
                 onChange={handleInputChange}
               />
+              <small className="field-hint">Estimated Completion Date in your local timezone ({getUserTimezone().abbreviation})</small>
               {isFieldImported('ecd') && <span className="import-indicator">📋 Imported</span>}
             </div>
 
             <div className={`form-group ${isFieldImported('submittedDate') ? 'imported-field' : ''}`}>
-              <label htmlFor="submittedDate">Submitted Date</label>
+              <label htmlFor="submittedDate">Submitted Date <span className="timezone-indicator">({getUserTimezone().abbreviation})</span></label>
               <input
                 type="datetime-local"
                 id="submittedDate"
@@ -1981,6 +1975,7 @@ const ProjectWizardStep1 = ({
                 value={formData.submittedDate || ''}
                 onChange={handleInputChange}
               />
+              <small className="field-hint">Date in your local timezone ({getUserTimezone().abbreviation})</small>
               {isFieldImported('submittedDate') && <span className="import-indicator">📋 Imported</span>}
             </div>
 
@@ -2087,7 +2082,7 @@ const ProjectWizardStep1 = ({
             </div>
 
             <div className="form-group">
-              <label htmlFor="dueDate">Due Date</label>
+              <label htmlFor="dueDate">Due Date <span className="timezone-indicator">({getUserTimezone().abbreviation})</span></label>
               <input
                 type="datetime-local"
                 id="dueDate"
@@ -2095,6 +2090,7 @@ const ProjectWizardStep1 = ({
                 value={formData.dueDate || ''}
                 onChange={handleInputChange}
               />
+              <small className="field-hint">Due date in your local timezone ({getUserTimezone().abbreviation})</small>
             </div>
           </div>
         </div>
