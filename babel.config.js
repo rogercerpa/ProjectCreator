@@ -10,7 +10,7 @@ module.exports = {
     }]
   ],
   plugins: [
-    // Add any additional plugins if needed
+    'babel-plugin-transform-import-meta'
   ]
 };
 

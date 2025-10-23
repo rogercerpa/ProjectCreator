@@ -140,7 +140,7 @@ function calculateSeniorityGap(position, complexity) {
   return positionLevel - complexityLevel;
 }
 
-module.exports = {
+export {
   PRODUCTS,
   POSITIONS,
   POSITION_SENIORITY,

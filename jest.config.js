@@ -41,6 +41,17 @@ module.exports = {
     '^.+\\.(js|jsx)$': 'babel-jest'
   },
   
+  // Globals for import.meta
+  globals: {
+    'import.meta': {
+      env: {
+        MODE: 'test',
+        DEV: false,
+        PROD: true
+      }
+    }
+  },
+  
   // Module file extensions
   moduleFileExtensions: ['js', 'jsx', 'json'],
   

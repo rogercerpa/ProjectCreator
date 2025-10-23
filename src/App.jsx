@@ -109,8 +109,8 @@ function App() {
     try {
       // Initialize crash reporting
       await crashReportingService.initialize({
-        environment: typeof process !== 'undefined' ? process.env?.NODE_ENV : 'development',
-        debug: typeof process !== 'undefined' ? process.env?.NODE_ENV === 'development' : true
+        environment: import.meta.env.MODE || 'development',
+        debug: import.meta.env.DEV
       });
 
       // Initialize analytics

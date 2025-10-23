@@ -7,14 +7,14 @@
  * - Current workload balance
  */
 
-const {
+import {
   PRODUCTS,
   POSITIONS,
   getPositionSeniority,
   canPositionHandleComplexity,
   calculateSeniorityGap,
   getComplexityValue
-} = require('../constants/Products');
+} from '../constants/Products';
 
 class SmartAssignmentService {
   constructor(workloadPersistenceService) {
@@ -421,5 +421,5 @@ class SmartAssignmentService {
   }
 }
 
-module.exports = SmartAssignmentService;
+export default SmartAssignmentService;
 
