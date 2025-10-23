@@ -100,7 +100,7 @@ describe('App Component', () => {
     
     expect(screen.getByText('Reloc')).toBeInTheDocument();
     expect(screen.getByText('Photometrics')).toBeInTheDocument();
-    expect(screen.getByText('Standard')).toBeInTheDocument();
+    expect(screen.getByText('Standard Controls')).toBeInTheDocument();
   });
 
   test('shows quick action buttons', async () => {
@@ -172,17 +172,16 @@ describe('App Component', () => {
     consoleSpy.mockRestore();
   });
 
-  test('displays application status', async () => {
+  test('displays welcome screen', async () => {
     render(<App />);
     
     await waitFor(() => {
-      expect(screen.getByText('📊 Application Status')).toBeInTheDocument();
+      expect(screen.getByText('Welcome to Project Creator')).toBeInTheDocument();
     }, { timeout: 3000 });
     
-    expect(screen.getByText('Components:')).toBeInTheDocument();
-    expect(screen.getByText('Database:')).toBeInTheDocument();
-    expect(screen.getByText('Templates:')).toBeInTheDocument();
-    expect(screen.getByText('File System:')).toBeInTheDocument();
+    expect(screen.getByText('Professional Project Management & Document Automation Tool')).toBeInTheDocument();
+    expect(screen.getByText('🚀 Key Features')).toBeInTheDocument();
+    expect(screen.getByText('🎯 Supported Project Types')).toBeInTheDocument();
   });
 
   test('shows pro tips and help information', async () => {
@@ -192,7 +191,7 @@ describe('App Component', () => {
       expect(screen.getByText(/Pro Tip:/)).toBeInTheDocument();
     }, { timeout: 3000 });
     
-    expect(screen.getByText('🔧 Need Help?')).toBeInTheDocument();
+    expect(screen.getByText(/Need Help\?/)).toBeInTheDocument();
   });
 });
 

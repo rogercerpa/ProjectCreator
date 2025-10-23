@@ -1,6 +1,6 @@
 import React from 'react';
 import ProjectWizardStep2 from '../steps/ProjectWizardStep2';
-import triageCalculationService from '../../services/TriageCalculationService';
+import triageCalculationService from '../../../services/TriageCalculationService';
 
 /**
  * ProjectWizardStep2 Test Component

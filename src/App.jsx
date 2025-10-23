@@ -10,6 +10,7 @@ import WorkloadDashboard from './components/WorkloadDashboard';
 import DraftRecoveryModal from './components/wizard/components/DraftRecoveryModal';
 import MigrationAssistant from './components/wizard/components/MigrationAssistant';
 import Settings from './components/Settings';
+import logoUrl from '/assets/images/logo.png';
 // Use simple services that work in both main and renderer processes
 import featureFlagService from './services/FeatureFlagService';
 import crashReportingService from './services/SimpleCrashReportingService';
@@ -109,8 +110,8 @@ function App() {
     try {
       // Initialize crash reporting
       await crashReportingService.initialize({
-        environment: import.meta.env.MODE || 'development',
-        debug: import.meta.env.DEV
+        environment: typeof process !== 'undefined' ? process.env?.NODE_ENV : 'development',
+        debug: typeof process !== 'undefined' ? process.env?.NODE_ENV === 'development' : true
       });
 
       // Initialize analytics
@@ -949,7 +950,7 @@ function App() {
   if (isLoading) {
     return (
       <div className="loading-container">
-        <img src="logo.png" alt="Project Creator Logo" className="logo" />
+        <img src={logoUrl} alt="Project Creator Logo" className="logo" />
         <h1>Project Creator</h1>
         <p>Loading modern application...</p>
         <div className="spinner"></div>

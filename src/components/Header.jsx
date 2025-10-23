@@ -1,5 +1,6 @@
 import React from 'react';
 import { getVersionDisplay } from '../utils/version';
+import logoUrl from '/assets/images/logo.png';
 import './Header.css';
 
 function Header() {
@@ -7,7 +8,7 @@ function Header() {
     <header className="header">
       <div className="header-content">
         <div className="header-left">
-          <img src="logo.png" alt="Project Creator Logo" className="header-logo" />
+          <img src={logoUrl} alt="Project Creator Logo" className="header-logo" />
           <div className="header-title">
             <h1>Project Creator</h1>
           </div>
