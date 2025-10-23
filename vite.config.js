@@ -9,11 +9,24 @@ export default defineConfig({
     react(),
     electron({
       entry: 'main.js',
+      vite: {
+        build: {
+          rollupOptions: {
+            external: ['electron', 'fs-extra', 'path', 'os', 'chokidar', 'archiver', 'xlsx', 'officegen', 'docx', 'mammoth', 'ws'],
+            output: {
+              format: 'cjs'
+            }
+          }
+        }
+      }
     }),
     electronRenderer({
       nodeIntegration: false,
     }),
   ],
+  define: {
+    global: 'globalThis',
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src'),
@@ -25,8 +38,11 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
     rollupOptions: {
-      external: ['electron'],
+      external: ['electron', 'fs-extra', 'path', 'os', 'chokidar', 'archiver', 'xlsx', 'officegen', 'docx', 'mammoth', 'ws'],
     },
+  },
+  optimizeDeps: {
+    exclude: ['fs-extra', 'path', 'os', 'chokidar', 'archiver', 'xlsx', 'officegen', 'docx', 'mammoth', 'ws']
   },
   server: {
     port: 5173,

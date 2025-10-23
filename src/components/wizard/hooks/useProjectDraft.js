@@ -67,7 +67,7 @@ const useProjectDraft = (projectId = null, autoSaveInterval = 30000) => {
       
       setLastSaved(new Date());
       
-      if (process.env.NODE_ENV === 'development') {
+      if (import.meta.env.MODE === 'development') {
         console.log(`Draft ${isAutoSave ? 'auto-' : ''}saved:`, currentDraftId);
       }
 
@@ -98,7 +98,7 @@ const useProjectDraft = (projectId = null, autoSaveInterval = 30000) => {
       setDraftId(id);
       setLastSaved(new Date(parsedDraft.lastModified));
 
-      if (process.env.NODE_ENV === 'development') {
+      if (import.meta.env.MODE === 'development') {
         console.log('Draft loaded:', id);
       }
 
@@ -129,7 +129,7 @@ const useProjectDraft = (projectId = null, autoSaveInterval = 30000) => {
         setLastSaved(null);
       }
 
-      if (process.env.NODE_ENV === 'development') {
+      if (import.meta.env.MODE === 'development') {
         console.log('Draft deleted:', id);
       }
     } catch (error) {

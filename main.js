@@ -29,28 +29,28 @@ console.log('   Session Data:', app.getPath('sessionData'));
 const versionCheckService = require('./src/utils/versionCheck').default;
 
 // Import services
-const ProjectService = require('./src/services/ProjectService');
-const WordService = require('./src/services/WordService');
-const FileService = require('./src/services/FileService');
-const ProjectPersistenceService = require('./src/services/ProjectPersistenceService');
-const ProjectCreationService = require('./src/services/ProjectCreationService');
-const DuplicateProjectDetectionService = require('./src/services/DuplicateProjectDetectionService');
-const FormSettingsService = require('./src/services/FormSettingsService');
-const SecurityLoggingService = require('./src/services/SecurityLoggingService');
-const AgencyService = require('./src/services/AgencyService');
-const ExcelDiagnosticService = require('./src/services/ExcelDiagnosticService');
-const SettingsService = require('./src/services/SettingsService');
-const AgencySyncService = require('./src/services/AgencySyncService');
-const EmailTemplateService = require('./src/services/EmailTemplateService');
+const ProjectService = require('./main-process/services/ProjectService');
+const WordService = require('./main-process/services/WordService');
+const FileService = require('./main-process/services/FileService');
+const ProjectPersistenceService = require('./main-process/services/ProjectPersistenceService');
+const ProjectCreationService = require('./main-process/services/ProjectCreationService');
+const DuplicateProjectDetectionService = require('./main-process/services/DuplicateProjectDetectionService');
+const FormSettingsService = require('./main-process/services/FormSettingsService');
+const SecurityLoggingService = require('./main-process/services/SecurityLoggingService');
+const AgencyService = require('./main-process/services/AgencyService');
+const ExcelDiagnosticService = require('./main-process/services/ExcelDiagnosticService');
+const SettingsService = require('./main-process/services/SettingsService');
+const AgencySyncService = require('./main-process/services/AgencySyncService');
+const EmailTemplateService = require('./main-process/services/EmailTemplateService');
 
 // Import SharePoint services
-const ZipService = require('./src/services/ZipService');
-const OneDriveSyncService = require('./src/services/OneDriveSyncService');
+const ZipService = require('./main-process/services/ZipService');
+const OneDriveSyncService = require('./main-process/services/OneDriveSyncService');
 
 // Import workload services
-const WorkloadPersistenceService = require('./src/services/WorkloadPersistenceService');
-const FileWatcherService = require('./src/services/FileWatcherService');
-const WebSocketService = require('./src/services/WebSocketService');
+const WorkloadPersistenceService = require('./main-process/services/WorkloadPersistenceService');
+const FileWatcherService = require('./main-process/services/FileWatcherService');
+const WebSocketService = require('./main-process/services/WebSocketService');
 
 // Import package.json for version info
 const packageJson = require('./package.json');
@@ -694,7 +694,7 @@ ipcMain.handle('revision-analyze-contents', async (event, revisionPath) => {
 // Analyze AE Markups folder for file selection
 ipcMain.handle('revision-analyze-ae-markups', async (event, revisionPath) => {
   try {
-    const revisionFileCopyService = new (require('./src/services/RevisionFileCopyService'))();
+    const revisionFileCopyService = new (require('./main-process/services/RevisionFileCopyService'))();
     return await revisionFileCopyService.analyzeAEMarkupsFolder(revisionPath);
   } catch (error) {
     console.error('Error analyzing AE Markups folder:', error);

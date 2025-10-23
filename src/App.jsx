@@ -16,9 +16,6 @@ import featureFlagService from './services/FeatureFlagService';
 import crashReportingService from './services/SimpleCrashReportingService';
 import analyticsService from './services/SimpleAnalyticsService';
 import performanceMonitoringService from './services/SimplePerformanceMonitoringService';
-// import autoUpdateService from './services/AutoUpdateService';
-// import UpdateNotification from './components/UpdateNotification';
-// import PerformanceDashboard from './components/PerformanceDashboard';
 import { getFullVersionInfo, getVersionDisplay } from './utils/version';
 import './App.css';
 
@@ -253,7 +250,6 @@ function App() {
       crashReportingService.close();
       analyticsService.cleanup();
       performanceMonitoringService.cleanup();
-      // autoUpdateService.cleanup();
     };
   }, []);
 
@@ -995,10 +991,6 @@ function App() {
       )}
       
       {/* Update Notification - temporarily disabled */}
-      {/* <UpdateNotification /> */}
-      
-      {/* Performance Dashboard - temporarily disabled */}
-      {/* <PerformanceDashboard /> */}
     </div>
   );
 }

@@ -105,7 +105,7 @@ const useWizardState = (initialData = {}, totalSteps = 2) => {
 
   // Debug logging in development
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.MODE === 'development') {
       console.log('Wizard State Updated:', {
         currentStep,
         completedSteps,

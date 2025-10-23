@@ -93,7 +93,7 @@ export function isFeatureEnabled(flagName) {
   }
   
   // Check environment
-  const currentEnv = process.env.NODE_ENV || 'development';
+  const currentEnv = import.meta.env.MODE || 'development';
   if (!flag.environment.includes(currentEnv)) {
     return false;
   }

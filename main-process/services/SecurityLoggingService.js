@@ -35,7 +35,7 @@ class SecurityLoggingService {
       await fs.appendFile(this.securityLogFile, logLine);
 
       // Also log to console for development
-      if (import.meta.env.MODE === 'development') {
+      if (process.env.NODE_ENV === 'development') {
         console.log(`[SECURITY] ${severity}: ${eventType}`, details);
       }
     } catch (error) {
