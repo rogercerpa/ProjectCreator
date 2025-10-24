@@ -1,5 +1,4 @@
 import React from 'react';
-import './ErrorDialog.css';
 
 /**
  * ErrorDialog
@@ -30,6 +29,19 @@ const ErrorDialog = ({
     }
   };
 
+  const getBorderColor = () => {
+    switch (type) {
+      case 'error':
+        return 'border-error-500 dark:border-error-600';
+      case 'warning':
+        return 'border-warning-500 dark:border-warning-600';
+      case 'info':
+        return 'border-info-500 dark:border-info-600';
+      default:
+        return 'border-error-500 dark:border-error-600';
+    }
+  };
+
   const handleBackdropClick = (e) => {
     if (e.target === e.currentTarget) {
       onClose();
@@ -37,13 +49,24 @@ const ErrorDialog = ({
   };
 
   return (
-    <div className="error-dialog-overlay" onClick={handleBackdropClick}>
-      <div className={`error-dialog ${type}`}>
-        <div className="error-dialog-header">
-          <div className="error-icon">{getIcon()}</div>
-          <h3 className="error-title">{title}</h3>
+    <div 
+      className="modal-overlay backdrop-blur-sm" 
+      onClick={handleBackdropClick}
+    >
+      <div className={`
+        modal-content border-2 ${getBorderColor()}
+        min-w-[400px] max-w-[600px] w-[90%] max-h-[80vh] overflow-hidden
+      `}>
+        {/* Header */}
+        <div className="flex items-center px-6 py-5 border-b-2 border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 relative">
+          <div className="text-3xl mr-3 animate-pulse-soft">
+            {getIcon()}
+          </div>
+          <h3 className="flex-1 m-0 text-gray-700 dark:text-gray-200 text-2xl font-semibold">
+            {title}
+          </h3>
           <button 
-            className="error-close-btn" 
+            className="bg-transparent border-none text-2xl font-bold text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 cursor-pointer w-8 h-8 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" 
             onClick={onClose}
             aria-label="Close dialog"
           >
@@ -51,37 +74,39 @@ const ErrorDialog = ({
           </button>
         </div>
         
-        <div className="error-dialog-content">
-          <div className="error-message">
+        {/* Content */}
+        <div className="px-6 py-5 max-h-[60vh] overflow-y-auto custom-scrollbar">
+          <div className="text-gray-700 dark:text-gray-300 text-base leading-relaxed mb-4">
             {message}
           </div>
           
           {details && (
-            <details className="error-details">
-              <summary>Technical Details</summary>
-              <div className="error-details-content">
-                {typeof details === 'string' ? (
-                  <pre>{details}</pre>
-                ) : (
-                  <pre>{JSON.stringify(details, null, 2)}</pre>
-                )}
+            <details className="bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg p-3 mt-3">
+              <summary className="cursor-pointer text-sm font-semibold text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors select-none">
+                Technical Details
+              </summary>
+              <div className="mt-3 bg-gray-900 dark:bg-black rounded p-3 overflow-x-auto">
+                <pre className="text-xs text-green-400 font-mono m-0 whitespace-pre-wrap break-words">
+                  {typeof details === 'string' ? details : JSON.stringify(details, null, 2)}
+                </pre>
               </div>
             </details>
           )}
         </div>
         
-        <div className="error-dialog-footer">
-          <div className="error-dialog-actions">
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+          <div className="flex justify-end gap-3">
             {showRetry && onRetry && (
               <button 
-                className="btn btn-secondary" 
+                className="btn-secondary" 
                 onClick={onRetry}
               >
                 🔄 Try Again
               </button>
             )}
             <button 
-              className="btn btn-primary" 
+              className="btn-primary" 
               onClick={onClose}
             >
               OK

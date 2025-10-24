@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import './AgencyDirectory.css';
 import AgencyTableView from './AgencyTableView';
 import AgencySelectionModal from './AgencySelectionModal';
 import EmailTemplateLibrary from './EmailTemplateLibrary';
@@ -281,46 +280,62 @@ function AgencyDirectory() {
 
   // Render agency card
   const renderAgencyCard = (agency) => (
-    <div key={agency.id} className="agency-card" onClick={() => setSelectedAgency(agency)}>
-      <div className="agency-card-header">
-        <h3 className="agency-name">{agency.agencyName}</h3>
-        <div className="agency-badges">
+    <div 
+      key={agency.id} 
+      className="p-5 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-lg shadow-md hover:shadow-xl hover:border-primary-400 dark:hover:border-primary-600 transition-all cursor-pointer group"
+      onClick={() => setSelectedAgency(agency)}
+    >
+      {/* Header */}
+      <div className="mb-4 pb-3 border-b border-gray-200 dark:border-gray-700">
+        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+          {agency.agencyName}
+        </h3>
+        <div className="flex flex-wrap gap-2">
           {agency.region && (
-            <span className={`badge region-badge region-${agency.region?.toLowerCase().replace(/\s+/g, '-')}`}>
-              {agency.region}
+            <span className="px-2 py-1 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded text-xs font-medium">
+              📍 {agency.region}
             </span>
           )}
           {agency.fastService === 'Yes' && (
-            <span className="badge fast-service-badge">⚡ Fast Service</span>
+            <span className="px-2 py-1 bg-success-100 dark:bg-success-900/30 text-success-700 dark:text-success-300 rounded text-xs font-medium">
+              ⚡ Fast Service
+            </span>
           )}
           {agency.sae === 'Yes' && (
-            <span className="badge sae-badge">SAE</span>
+            <span className="px-2 py-1 bg-info-100 dark:bg-info-900/30 text-info-700 dark:text-info-300 rounded text-xs font-medium">
+              ✓ SAE
+            </span>
           )}
         </div>
       </div>
       
-      <div className="agency-details">
-        <div className="detail-row">
-          <span className="detail-label">Contact:</span>
-          <span className="detail-value">{agency.contactName}</span>
+      {/* Details */}
+      <div className="space-y-2 text-sm">
+        <div className="flex justify-between items-start">
+          <span className="text-gray-600 dark:text-gray-400 font-medium min-w-[100px]">Contact:</span>
+          <span className="text-gray-900 dark:text-white font-semibold text-right">{agency.contactName}</span>
         </div>
-        <div className="detail-row">
-          <span className="detail-label">Role:</span>
-          <span className="detail-value">{agency.role}</span>
+        <div className="flex justify-between items-start">
+          <span className="text-gray-600 dark:text-gray-400 font-medium min-w-[100px]">Role:</span>
+          <span className="text-gray-900 dark:text-white text-right">{agency.role}</span>
         </div>
         {agency.mainContact && (
-          <div className="detail-row">
-            <span className="detail-label">Main Contact:</span>
-            <span className="detail-value">{agency.mainContact}</span>
+          <div className="flex justify-between items-start">
+            <span className="text-gray-600 dark:text-gray-400 font-medium min-w-[100px]">Main Contact:</span>
+            <span className="text-gray-900 dark:text-white text-right">{agency.mainContact}</span>
           </div>
         )}
-        <div className="detail-row">
-          <span className="detail-label">Phone:</span>
-          <span className="detail-value">{formatPhoneNumber(agency.phoneNumber)}</span>
+        <div className="flex justify-between items-start">
+          <span className="text-gray-600 dark:text-gray-400 font-medium min-w-[100px]">Phone:</span>
+          <a href={`tel:${agency.phoneNumber}`} className="text-primary-600 dark:text-primary-400 hover:underline font-medium text-right">
+            {formatPhoneNumber(agency.phoneNumber)}
+          </a>
         </div>
-        <div className="detail-row">
-          <span className="detail-label">Email:</span>
-          <span className="detail-value agency-email">{agency.contactEmail}</span>
+        <div className="flex justify-between items-start">
+          <span className="text-gray-600 dark:text-gray-400 font-medium min-w-[100px]">Email:</span>
+          <a href={`mailto:${agency.contactEmail}`} className="text-primary-600 dark:text-primary-400 hover:underline text-xs text-right break-all">
+            {agency.contactEmail}
+          </a>
         </div>
       </div>
     </div>
@@ -328,39 +343,49 @@ function AgencyDirectory() {
 
   // Render individual agent within a group
   const renderAgentCard = (agent) => (
-    <div key={agent.id} className="agent-card" onClick={() => setSelectedAgency(agent)}>
-      <div className="agent-info">
-        <div className="agent-name">{agent.contactName}</div>
-        <div className="agent-role">{agent.role}</div>
-        {agent.mainContact && (
-          <div className="agent-main-contact">Main: {agent.mainContact}</div>
-        )}
-      </div>
-      
-      <div className="agent-contact">
-        <div className="agent-phone">
-          {agent.phoneNumber && (
-            <a href={`tel:${agent.phoneNumber}`} onClick={(e) => e.stopPropagation()}>
-              {formatPhoneNumber(agent.phoneNumber)}
-            </a>
+    <div 
+      key={agent.id} 
+      className="p-4 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-white dark:hover:bg-gray-700 hover:shadow-md transition-all cursor-pointer"
+      onClick={() => setSelectedAgency(agent)}
+    >
+      <div className="flex items-start justify-between gap-3">
+        {/* Agent Info */}
+        <div className="flex-1 min-w-0">
+          <div className="font-semibold text-gray-900 dark:text-white mb-1">{agent.contactName}</div>
+          <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">{agent.role}</div>
+          {agent.mainContact && (
+            <div className="text-xs text-gray-500 dark:text-gray-500 mb-2">Main: {agent.mainContact}</div>
           )}
-        </div>
-        <div className="agent-email">
-          {agent.contactEmail && (
-            <div className="agent-email-container">
-              <span className="email-text">{agent.contactEmail}</span>
-              <button
-                className="btn btn-sm email-agent-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleIndividualEmail(agent);
-                }}
-                title={`Email ${agent.contactName}`}
+          
+          {/* Contact Info */}
+          <div className="space-y-1">
+            {agent.phoneNumber && (
+              <a 
+                href={`tel:${agent.phoneNumber}`} 
+                className="block text-xs text-primary-600 dark:text-primary-400 hover:underline" 
+                onClick={(e) => e.stopPropagation()}
               >
-                ✉️
-              </button>
-            </div>
-          )}
+                📞 {formatPhoneNumber(agent.phoneNumber)}
+              </a>
+            )}
+            {agent.contactEmail && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-700 dark:text-gray-300 truncate flex-1" title={agent.contactEmail}>
+                  {agent.contactEmail}
+                </span>
+                <button
+                  className="px-2 py-1 bg-primary-600 hover:bg-primary-700 dark:bg-primary-700 dark:hover:bg-primary-600 text-white rounded text-xs transition-all flex-shrink-0"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleIndividualEmail(agent);
+                  }}
+                  title={`Email ${agent.contactName}`}
+                >
+                  ✉️
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -375,48 +400,55 @@ function AgencyDirectory() {
     const isExpanded = expandedAgencies.has(agencyGroup.agencyName);
     
     return (
-      <div key={agencyGroup.agencyName} className="agency-group">
-        <div className="agency-group-header">
-          <div className="agency-group-info">
-            <button
-              className="expand-toggle"
-              onClick={() => toggleAgencyExpansion(agencyGroup.agencyName)}
-              title={isExpanded ? 'Collapse agency' : 'Expand agency'}
-            >
-              {isExpanded ? '📂' : '📁'}
-            </button>
-            
-            <div className="agency-group-details">
-              <h3 className="agency-group-name">{agencyGroup.agencyName}</h3>
-              <div className="agency-group-meta">
-                <span className="agent-count">
-                  {agencyGroup.totalAgents} {agencyGroup.totalAgents === 1 ? 'Agent' : 'Agents'}
-                </span>
-                {agencyGroup.regions.length > 0 && (
-                  <span className="agency-regions">
-                    {agencyGroup.regions.join(', ')}
+      <div key={agencyGroup.agencyName} className="mb-4 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-lg shadow-md overflow-hidden">
+        {/* Group Header */}
+        <div className="p-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 border-b border-gray-200 dark:border-gray-600">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3 flex-1">
+              {/* Expand/Collapse Button */}
+              <button
+                className="w-10 h-10 flex items-center justify-center bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600 rounded-lg text-xl transition-all"
+                onClick={() => toggleAgencyExpansion(agencyGroup.agencyName)}
+                title={isExpanded ? 'Collapse agency' : 'Expand agency'}
+              >
+                {isExpanded ? '📂' : '📁'}
+              </button>
+              
+              {/* Agency Info */}
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">
+                  {agencyGroup.agencyName}
+                </h3>
+                <div className="flex items-center gap-3 text-sm">
+                  <span className="px-2 py-1 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded font-medium">
+                    {agencyGroup.totalAgents} {agencyGroup.totalAgents === 1 ? 'Agent' : 'Agents'}
                   </span>
-                )}
+                  {agencyGroup.regions.length > 0 && (
+                    <span className="text-gray-600 dark:text-gray-400">
+                      📍 {agencyGroup.regions.join(', ')}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-          
-          <div className="agency-group-actions">
+            
+            {/* Actions */}
             {agencyGroup.hasEmailContacts && (
               <button
-                className="btn btn-sm email-agency-group-btn"
+                className="px-4 py-2 bg-primary-600 hover:bg-primary-700 dark:bg-primary-700 dark:hover:bg-primary-600 text-white font-semibold rounded-lg shadow transition-all flex items-center gap-2"
                 onClick={() => handleAgencyGroupEmail(agencyGroup)}
                 title={`Email all ${agencyGroup.totalAgents} contacts in ${agencyGroup.agencyName}`}
               >
-                <span className="btn-icon">✉️</span>
-                <span className="btn-text">Email All ({agencyGroup.totalAgents})</span>
+                <span>✉️</span>
+                <span>Email All ({agencyGroup.totalAgents})</span>
               </button>
             )}
           </div>
         </div>
         
+        {/* Agent Cards */}
         {isExpanded && (
-          <div className="agency-agents">
+          <div className="p-4 space-y-2 bg-gray-50 dark:bg-gray-800/50">
             {(agencyGroup.agents || []).map(renderAgentCard)}
           </div>
         )}
@@ -532,71 +564,80 @@ function AgencyDirectory() {
 
   if (loading) {
     return (
-      <div className="agency-directory-loading">
-        <div className="spinner"></div>
-        <p>Loading agency directory...</p>
+      <div className="h-full flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-gray-600 dark:text-gray-400 font-medium">Loading agency directory...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="agency-directory">
-      <div className="agency-directory-content">
-        <div className="agency-directory-header">
-          <div className="header-title">
-            <h1>Agency Directory</h1>
-            <p>Search and find agency contact information</p>
-          </div>
-          
-          <div className="header-actions">
-            <p className="import-note">
-              💡 To add agencies, go to <strong>Settings → Agencies</strong>
-            </p>
+    <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900 p-6 overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="mb-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Agency Directory</h1>
+              <p className="text-gray-600 dark:text-gray-400">Search and find agency contact information</p>
+            </div>
+            
+            <div className="px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-sm">
+              <p className="text-blue-700 dark:text-blue-300">
+                💡 To add agencies, go to <strong>Settings → Agencies</strong>
+              </p>
+            </div>
           </div>
         </div>
 
         {/* Statistics */}
         {statistics && (
-          <div className="agency-stats">
-            <div className="stat-card">
-              <span className="stat-number">{statistics.totalAgencies}</span>
-              <span className="stat-label">Total Agencies</span>
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition-all">
+              <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{statistics.totalAgencies}</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">Total Agencies</div>
             </div>
-            <div className="stat-card">
-              <span className="stat-number">{Object.keys(statistics.byRegion).length}</span>
-              <span className="stat-label">Regions</span>
+            <div className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition-all">
+              <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{Object.keys(statistics.byRegion).length}</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">Regions</div>
             </div>
-            <div className="stat-card">
-              <span className="stat-number">{Object.keys(statistics.byRole).length}</span>
-              <span className="stat-label">Roles</span>
+            <div className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition-all">
+              <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{Object.keys(statistics.byRole).length}</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">Roles</div>
             </div>
           </div>
         )}
 
         {/* Search and Filters */}
-        <div className="search-filters-section">
-          <div className="search-bar">
+        <div className="mb-6 space-y-4">
+          {/* Search Bar */}
+          <div className="relative">
             <input
               type="text"
               placeholder="Search agencies, contacts, emails, phone numbers..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="search-input"
+              className="w-full pl-4 pr-10 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 placeholder-gray-400 dark:placeholder-gray-500"
             />
-            <button 
-              className="clear-search-btn"
-              onClick={() => setSearchTerm('')}
-              title="Clear search"
-            >
-              ✕
-            </button>
+            {searchTerm && (
+              <button 
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                onClick={() => setSearchTerm('')}
+                title="Clear search"
+              >
+                ✕
+              </button>
+            )}
           </div>
 
-          <div className="filters-row">
+          {/* Filters Row */}
+          <div className="flex gap-3">
             <select
               value={filters.region}
               onChange={e => handleFilterChange('region', e.target.value)}
-              className="filter-select"
+              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="all">All Regions</option>
               {filterOptions.regions.map(region => (
@@ -607,7 +648,7 @@ function AgencyDirectory() {
             <select
               value={filters.role}
               onChange={e => handleFilterChange('role', e.target.value)}
-              className="filter-select"
+              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="all">All Roles</option>
               {filterOptions.roles.map(role => (
@@ -616,7 +657,7 @@ function AgencyDirectory() {
             </select>
 
             <button 
-              className="btn btn-secondary clear-filters-btn"
+              className="px-5 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-semibold rounded-lg transition-all"
               onClick={clearFilters}
             >
               Clear Filters
@@ -625,87 +666,100 @@ function AgencyDirectory() {
         </div>
 
         {/* Results */}
-        <div className="results-section">
-        <div className="results-header">
-          <div className="results-actions">
+        <div className="mb-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+          <div className="flex flex-wrap items-center gap-3">
             {/* Email Template Button */}
             <button
               onClick={handleEmailTemplate}
-              className="btn btn-primary email-template-btn"
+              className="px-4 py-2 bg-primary-600 hover:bg-primary-700 dark:bg-primary-700 dark:hover:bg-primary-600 text-white font-semibold rounded-lg shadow transition-all flex items-center gap-2"
               title="Create personalized emails using templates"
             >
-              <span className="btn-icon">📧</span>
-              <span className="btn-text">Email Template</span>
+              <span>📧</span>
+              <span>Email Template</span>
             </button>
             
             {/* Manage Templates Button */}
             <button
               onClick={handleManageTemplates}
-              className="btn btn-primary manage-templates-btn"
+              className="px-4 py-2 bg-primary-600 hover:bg-primary-700 dark:bg-primary-700 dark:hover:bg-primary-600 text-white font-semibold rounded-lg shadow transition-all flex items-center gap-2"
               title="Manage email templates"
             >
-              <span className="btn-icon">📋</span>
-              <span className="btn-text">Manage Template</span>
+              <span>📋</span>
+              <span>Manage Template</span>
             </button>
+          </div>
             
-            {/* View Mode Toggle */}
-            <div className="view-mode-toggle">
-              <span className="control-label">View:</span>
-              <div className="toggle-group">
-                <button
-                  onClick={() => handleViewModeChange('card')}
-                  className={`toggle-btn ${viewMode === 'card' ? 'active' : ''}`}
-                  title="Card View"
-                >
-                  <span className="toggle-icon">🎴</span>
-                  <span className="toggle-text">Card</span>
-                </button>
-                <button
-                  onClick={() => handleViewModeChange('table')}
-                  className={`toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
-                  title="Table View"
-                >
-                  <span className="toggle-icon">📋</span>
-                  <span className="toggle-text">Table</span>
-                </button>
-                <button
-                  onClick={() => handleViewModeChange('grouped')}
-                  className={`toggle-btn ${viewMode === 'grouped' ? 'active' : ''}`}
-                  title="Grouped by Agency"
-                >
-                  <span className="toggle-icon">🏢</span>
-                  <span className="toggle-text">Grouped</span>
-                </button>
-              </div>
+          {/* View Mode Toggle */}
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">View:</span>
+            <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 gap-1">
+              <button
+                onClick={() => handleViewModeChange('card')}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-1.5 ${
+                  viewMode === 'card'
+                    ? 'bg-white dark:bg-gray-600 text-primary-600 dark:text-primary-400 shadow'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                }`}
+                title="Card View"
+              >
+                <span>🎴</span>
+                <span>Card</span>
+              </button>
+              <button
+                onClick={() => handleViewModeChange('table')}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-1.5 ${
+                  viewMode === 'table'
+                    ? 'bg-white dark:bg-gray-600 text-primary-600 dark:text-primary-400 shadow'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                }`}
+                title="Table View"
+              >
+                <span>📋</span>
+                <span>Table</span>
+              </button>
+              <button
+                onClick={() => handleViewModeChange('grouped')}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-1.5 ${
+                  viewMode === 'grouped'
+                    ? 'bg-white dark:bg-gray-600 text-primary-600 dark:text-primary-400 shadow'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                }`}
+                title="Grouped by Agency"
+              >
+                <span>🏢</span>
+                <span>Grouped</span>
+              </button>
             </div>
           </div>
         </div>
+        </div>
 
         {filteredAgencies.length === 0 ? (
-          <div className="no-results">
-            <div className="no-results-icon">🔍</div>
-            <h3>No agencies found</h3>
-            <p>Try adjusting your search criteria or import agency data.</p>
+          <div className="flex flex-col items-center justify-center p-10 text-center bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div className="text-6xl mb-4">🔍</div>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">No agencies found</h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-2">Try adjusting your search criteria or import agency data.</p>
             {agencies.length === 0 && (
-              <p>Go to <strong>Settings → Agencies</strong> to import or add agency data.</p>
+              <p className="text-gray-600 dark:text-gray-400">Go to <strong>Settings → Agencies</strong> to import or add agency data.</p>
             )}
           </div>
         ) : (
-          <div className={`agency-content ${viewMode}-view`}>
+          <div className="overflow-y-auto custom-scrollbar" style={{ maxHeight: 'calc(100vh - 400px)' }}>
             {viewMode === 'table' ? (
               <AgencyTableView
                 agencies={filteredAgencies}
                 onAgencySelect={setSelectedAgency}
               />
             ) : viewMode === 'grouped' ? (
-              <div className="agencies-grouped">
+              <div className="space-y-4 p-1">
                 {Object.values(groupedAgencies || {})
                   .filter(group => group && group.agencyName)
                   .sort((a, b) => a.agencyName.localeCompare(b.agencyName))
                   .map(renderAgencyGroup)}
               </div>
             ) : (
-              <div className="agencies-grid">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-1">
                 {filteredAgencies.map(renderAgencyCard)}
               </div>
             )}
@@ -713,25 +767,24 @@ function AgencyDirectory() {
         )}
       </div>
 
-        {/* Modals */}
-        {renderAgencyModal()}
-        
-        {/* Email Template Modals */}
-        {showAgencySelection && (
-          <AgencySelectionModal
-            isOpen={showAgencySelection}
-            onClose={() => setShowAgencySelection(false)}
-            allAgencies={agencies}
-          />
-        )}
-        
-        {showTemplateLibrary && (
-          <EmailTemplateLibrary
-            isOpen={showTemplateLibrary}
-            onClose={() => setShowTemplateLibrary(false)}
-          />
-        )}
-      </div>
+      {/* Modals */}
+      {renderAgencyModal()}
+      
+      {/* Email Template Modals */}
+      {showAgencySelection && (
+        <AgencySelectionModal
+          isOpen={showAgencySelection}
+          onClose={() => setShowAgencySelection(false)}
+          allAgencies={agencies}
+        />
+      )}
+      
+      {showTemplateLibrary && (
+        <EmailTemplateLibrary
+          isOpen={showTemplateLibrary}
+          onClose={() => setShowTemplateLibrary(false)}
+        />
+      )}
     </div>
   );
 }

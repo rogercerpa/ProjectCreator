@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import './AgencyEditModal.css';
 
 const AgencyEditModal = ({ isOpen, onClose, agency, onSave }) => {
   const [formData, setFormData] = useState({

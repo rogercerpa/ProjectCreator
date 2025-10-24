@@ -1,5 +1,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
+import './styles/tailwind.css';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 console.log('=== REACT INDEX.JS STARTING ===');
 console.log('React version:', React.version);
@@ -143,9 +145,11 @@ if (container) {
     
     root.render(
       <ErrorBoundary>
-        <React.Suspense fallback={<LoadingFallback />}>
-          <App />
-        </React.Suspense>
+        <ThemeProvider>
+          <React.Suspense fallback={<LoadingFallback />}>
+            <App />
+          </React.Suspense>
+        </ThemeProvider>
       </ErrorBoundary>
     );
     console.log('=== APP RENDERED SUCCESSFULLY ===');

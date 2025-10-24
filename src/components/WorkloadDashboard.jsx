@@ -9,7 +9,6 @@ import WorkloadFilters from './WorkloadFilters';
 import NotificationToast from './NotificationToast';
 import UserPresenceIndicator from './UserPresenceIndicator';
 import AssignmentDialog from './AssignmentDialog';
-import './WorkloadDashboard.css';
 
 const WorkloadDashboard = ({ onNavigateToProject }) => {
   // State management
@@ -705,12 +704,16 @@ const WorkloadDashboard = ({ onNavigateToProject }) => {
   // Render error state
   if (error) {
     return (
-      <div className="workload-dashboard">
-        <div className="error-container">
-          <h2>Error Loading Dashboard</h2>
-          <p>{error}</p>
-          <button onClick={initializeDashboard} className="btn-primary">
-            Retry
+      <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900 p-5">
+        <div className="flex flex-col items-center justify-center h-full p-10 text-center">
+          <div className="mb-4 text-6xl">⚠️</div>
+          <h2 className="text-2xl font-bold text-error-600 dark:text-error-400 mb-3">Error Loading Dashboard</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md">{error}</p>
+          <button 
+            onClick={initializeDashboard} 
+            className="px-6 py-3 bg-primary-600 hover:bg-primary-700 dark:bg-primary-700 dark:hover:bg-primary-600 text-white font-semibold rounded-lg shadow-lg transition-all"
+          >
+            🔄 Retry
           </button>
         </div>
       </div>
@@ -721,49 +724,49 @@ const WorkloadDashboard = ({ onNavigateToProject }) => {
   const onlineCount = onlineUsers.size;
 
   return (
-    <div className="workload-dashboard">
-      <div className="dashboard-content">
+    <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900 p-4 overflow-hidden">
+      <div className="relative flex-1 flex flex-col animate-fadeIn">
         {/* Loading Overlay */}
         {isLoading && (
-          <div className="dashboard-loading-overlay">
-            <div className="overlay-spinner-container">
-              <div className="loading-spinner"></div>
-              <p>Loading workload dashboard...</p>
+          <div className="absolute inset-0 bg-gray-50/95 dark:bg-gray-900/95 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
+            <div className="flex flex-col items-center gap-5 p-10 bg-white dark:bg-gray-800 rounded-xl shadow-2xl">
+              <div className="w-12 h-12 border-4 border-gray-200 dark:border-gray-700 border-t-primary-600 rounded-full animate-spin"></div>
+              <p className="text-gray-600 dark:text-gray-400 text-base font-medium">Loading workload dashboard...</p>
             </div>
           </div>
         )}
+        
         {/* Header */}
-        <div className="dashboard-header">
-          <div className="header-left">
-            <h1>📊 Workload Dashboard</h1>
-            <div className="connection-status">
-              <span className={`status-indicator ${isConnected ? 'online' : 'offline'}`}>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              📊 Workload Dashboard
+            </h1>
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${
+              isConnected 
+                ? 'bg-success-50 dark:bg-success-900/20 text-success-700 dark:text-success-300' 
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+            }`}>
+              <span className={`text-base ${isConnected ? 'animate-pulse' : ''}`}>
                 {isConnected ? '🟢' : '🔴'}
               </span>
-              <span className="status-text">
+              <span>
                 {isConnected ? `Live | ${onlineCount} users online` : 'Offline'}
               </span>
             </div>
           </div>
           
-          <div className="header-right">
+          <div className="flex gap-2">
             <button 
               onClick={handleOpenAssignmentDialog} 
-              className="btn-icon"
+              className="px-4 py-2 bg-primary-600 hover:bg-primary-700 dark:bg-primary-700 dark:hover:bg-primary-600 text-white font-semibold rounded-lg shadow transition-all flex items-center gap-2"
               title="Assign Project"
-              style={{ 
-                background: '#3498db', 
-                color: 'white',
-                width: 'auto',
-                padding: '0 16px',
-                gap: '8px'
-              }}
             >
               ➕ Assign Project
             </button>
             <button 
               onClick={handleRefresh} 
-              className="btn-icon"
+              className="w-10 h-10 flex items-center justify-center bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg text-lg transition-all"
               title="Refresh data"
             >
               🔄
@@ -772,24 +775,38 @@ const WorkloadDashboard = ({ onNavigateToProject }) => {
         </div>
 
         {/* Statistics Bar */}
-        <div className="stats-bar">
-          <div className="stat-card">
-            <span className="stat-value">{stats.totalUsers || users.length}</span>
-            <span className="stat-label">Total Users</span>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+          <div className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition-all cursor-default">
+            <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
+              {stats.totalUsers || users.length}
+            </div>
+            <div className="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wide font-medium">
+              Total Users
+            </div>
           </div>
-          <div className="stat-card">
-            <span className="stat-value">{stats.activeAssignments || 0}</span>
-            <span className="stat-label">Active Assignments</span>
+          <div className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition-all cursor-default">
+            <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
+              {stats.activeAssignments || 0}
+            </div>
+            <div className="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wide font-medium">
+              Active Assignments
+            </div>
           </div>
-          <div className="stat-card">
-            <span className="stat-value">{stats.overdueAssignments || 0}</span>
-            <span className="stat-label">Overdue</span>
+          <div className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition-all cursor-default">
+            <div className="text-3xl font-bold text-error-600 dark:text-error-400 mb-1">
+              {stats.overdueAssignments || 0}
+            </div>
+            <div className="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wide font-medium">
+              Overdue
+            </div>
           </div>
-          <div className="stat-card">
-            <span className="stat-value">
+          <div className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition-all cursor-default">
+            <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
               {stats.averageCapacity ? `${Math.round(stats.averageCapacity)}%` : '0%'}
-            </span>
-            <span className="stat-label">Avg Capacity</span>
+            </div>
+            <div className="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wide font-medium">
+              Avg Capacity
+            </div>
           </div>
         </div>
 

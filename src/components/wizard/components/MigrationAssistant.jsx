@@ -142,23 +142,23 @@ const MigrationAssistant = ({
     const step = tutorialSteps[currentStep];
     
     return (
-      <div className="tutorial-step">
-        <div className="step-header">
-          <div className="step-icon">{step.icon}</div>
-          <h3 className="step-title">{step.title}</h3>
+      <div className="flex flex-col items-center text-center">
+        <div className="flex flex-col items-center mb-6">
+          <div className="text-6xl mb-4">{step.icon}</div>
+          <h3 className="m-0 text-2xl font-bold text-gray-800 dark:text-gray-100">{step.title}</h3>
         </div>
         
-        <div className="step-content">
-          <p className="step-description">{step.content}</p>
+        <div className="max-w-2xl">
+          <p className="text-base text-gray-600 dark:text-gray-400 mb-4 leading-relaxed">{step.content}</p>
           
           {step.features.length > 0 && (
-            <div className="feature-highlights">
-              <h4>Key Features:</h4>
-              <ul className="feature-list">
+            <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-left">
+              <h4 className="m-0 mb-3 text-base font-semibold text-gray-800 dark:text-gray-100">Key Features:</h4>
+              <ul className="list-none m-0 p-0 space-y-2">
                 {step.features.map((feature, index) => (
-                  <li key={index} className="feature-item">
-                    <span className="feature-check">✓</span>
-                    {feature}
+                  <li key={index} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+                    <span className="text-success-600 dark:text-success-400 font-bold flex-shrink-0">✓</span>
+                    <span>{feature}</span>
                   </li>
                 ))}
               </ul>
@@ -166,8 +166,8 @@ const MigrationAssistant = ({
           )}
           
           {step.tip && (
-            <div className="step-tip">
-              <p>{step.tip}</p>
+            <div className="mt-4 p-3 bg-info-50 dark:bg-info-900/20 border border-info-200 dark:border-info-700 rounded text-sm text-gray-700 dark:text-gray-300 text-left">
+              <p className="m-0">{step.tip}</p>
             </div>
           )}
         </div>
@@ -179,58 +179,66 @@ const MigrationAssistant = ({
   if (!isOpen) return null;
 
   return (
-    <div className="migration-assistant-overlay">
-      <div className="migration-assistant">
-        <div className="assistant-header">
-          <h2>Welcome to Project Creator - Quick Tour</h2>
-          <button className="close-btn" onClick={handleSkip}>×</button>
+    <div className="modal-overlay backdrop-blur-sm">
+      <div className="modal-content max-w-4xl w-[90%] max-h-[85vh] overflow-hidden">
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-primary-50 to-primary-100 dark:from-primary-900/30 dark:to-primary-800/30 relative">
+          <h2 className="m-0 text-2xl font-bold text-gray-800 dark:text-gray-100">Welcome to Project Creator - Quick Tour</h2>
+          <button 
+            className="absolute top-4 right-4 bg-transparent border-none text-2xl font-bold text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 cursor-pointer w-8 h-8 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" 
+            onClick={handleSkip}
+          >
+            ×
+          </button>
         </div>
         
         {/* Progress Indicator */}
-        <div className="progress-container">
-          <div className="progress-bar">
+        <div className="px-6 py-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+          <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mb-2">
             <div 
-              className="progress-fill"
+              className="h-full bg-gradient-to-r from-primary-500 to-primary-600 transition-all duration-300"
               style={{ width: `${getProgressPercentage()}%` }}
             />
           </div>
-          <div className="progress-text">
+          <div className="text-center text-sm text-gray-600 dark:text-gray-400 font-medium">
             Step {currentStep + 1} of {tutorialSteps.length}
           </div>
         </div>
         
         {/* Content */}
-        <div className="assistant-content">
+        <div className="px-6 py-8 max-h-[calc(85vh-250px)] overflow-y-auto custom-scrollbar">
           {renderTutorialStep()}
         </div>
         
         {/* Navigation */}
-        <div className="assistant-navigation">
-          <div className="nav-left">
+        <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex justify-between items-center">
+          <div className="flex items-center gap-2">
             {currentStep > 0 && (
-              <button className="nav-btn secondary" onClick={handlePrevious}>
+              <button className="btn-secondary" onClick={handlePrevious}>
                 ← Previous
               </button>
             )}
           </div>
           
-          <div className="nav-center">
-            <div className="step-dots">
-              {tutorialSteps.map((_, index) => (
-                <div 
-                  key={index}
-                  className={`step-dot ${index <= currentStep ? 'active' : ''}`}
-                  onClick={() => setCurrentStep(index)}
-                />
-              ))}
-            </div>
+          <div className="flex gap-1">
+            {tutorialSteps.map((_, index) => (
+              <div 
+                key={index}
+                className={`w-2 h-2 rounded-full cursor-pointer transition-all ${
+                  index <= currentStep 
+                    ? 'bg-primary-600 dark:bg-primary-400 w-8' 
+                    : 'bg-gray-300 dark:bg-gray-600'
+                }`}
+                onClick={() => setCurrentStep(index)}
+              />
+            ))}
           </div>
           
-          <div className="nav-right">
-            <button className="nav-btn tertiary" onClick={handleSkip}>
+          <div className="flex items-center gap-2">
+            <button className="btn-secondary" onClick={handleSkip}>
               Skip Tutorial
             </button>
-            <button className="nav-btn primary" onClick={handleNext}>
+            <button className="btn-primary" onClick={handleNext}>
               {currentStep === tutorialSteps.length - 1 ? 'Get Started! 🚀' : 'Next →'}
             </button>
           </div>

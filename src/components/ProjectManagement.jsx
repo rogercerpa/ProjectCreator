@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ProjectDetails from './ProjectDetails';
 import ProjectEditor from './ProjectEditor';
-import './ProjectManagement.css';
 
 // Import services (will be available through electronAPI in production)
 // const ZipService = require('../services/ZipService');
@@ -355,12 +354,18 @@ const ProjectManagement = ({
     console.error('❌ ProjectManagement: No project provided!');
     console.error('❌ ProjectManagement: onBack function:', typeof onBack);
     return (
-      <div className="project-management">
-        <div className="error-state">
-          <h2>⚠️ Project Not Found</h2>
-          <p>The requested project could not be loaded.</p>
-          <p><small>Debug: project = {JSON.stringify(project)}</small></p>
-          <button onClick={onBack} className="btn btn-primary">
+      <div className="h-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-8">
+        <div className="text-center max-w-md">
+          <h2 className="text-3xl font-bold text-error-600 dark:text-error-400 mb-4">
+            ⚠️ Project Not Found
+          </h2>
+          <p className="text-gray-700 dark:text-gray-300 mb-2">
+            The requested project could not be loaded.
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-6">
+            Debug: project = {JSON.stringify(project)}
+          </p>
+          <button onClick={onBack} className="btn-primary">
             ← Back to Projects
           </button>
         </div>
@@ -371,59 +376,75 @@ const ProjectManagement = ({
   console.log('✅ ProjectManagement: Project validation passed, rendering main content');
 
   return (
-    <div className="project-management">
+    <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
       {/* Responsive Header */}
-      <div className="project-management-header">
-        <div className="header-container">
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
+        <div className="px-6 py-4">
           {/* Project Title and Meta */}
-          <div className="header-title">
-            <div className="project-title">
-              <h1 title={projectData.projectName || 'Untitled Project'}>
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <h1 
+                className="text-2xl font-bold text-gray-900 dark:text-gray-100 truncate mb-2"
+                title={projectData.projectName || 'Untitled Project'}
+              >
                 {projectData.projectName || 'Untitled Project'}
               </h1>
-              <div className="project-meta">
-                <span className="project-rfa">RFA: {projectData.rfaNumber || 'N/A'}</span>
-                <span className="project-status">{projectData.status || 'Active'}</span>
+              <div className="flex flex-wrap gap-3 text-sm">
+                <span className="px-3 py-1 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full font-medium">
+                  RFA: {projectData.rfaNumber || 'N/A'}
+                </span>
+                <span className="px-3 py-1 bg-info-100 dark:bg-info-900/30 text-info-700 dark:text-info-300 rounded-full font-medium">
+                  {projectData.status || 'Active'}
+                </span>
                 {projectData.totalTriage && (
-                  <span className="project-triage">Triage: {projectData.totalTriage}h</span>
+                  <span className="px-3 py-1 bg-success-100 dark:bg-success-900/30 text-success-700 dark:text-success-300 rounded-full font-medium">
+                    Triage: {projectData.totalTriage}h
+                  </span>
                 )}
               </div>
             </div>
-          </div>
-          
-          {/* Actions Area */}
-          <div className="header-actions">
-            {notification && (
-              <div className={`notification ${notification.type}`}>
-                {notification.message}
-              </div>
-            )}
             
-            <div className="action-buttons">
+            {/* Actions Area */}
+            <div className="flex flex-col gap-3">
+              {notification && (
+                <div className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                  notification.type === 'success' ? 'bg-success-50 dark:bg-success-900/20 text-success-700 dark:text-success-300' :
+                  notification.type === 'error' ? 'bg-error-50 dark:bg-error-900/20 text-error-700 dark:text-error-300' :
+                  'bg-info-50 dark:bg-info-900/20 text-info-700 dark:text-info-300'
+                }`}>
+                  {notification.message}
+                </div>
+              )}
+              
+              <div className="flex flex-wrap gap-2">
               {currentMode === 'edit' && (
-                <div className="edit-actions">
+                <>
                   <button 
                     onClick={handleCancelEdit} 
-                    className="btn btn-secondary"
+                    className="btn-secondary"
                     disabled={isSaving}
                   >
                     Cancel
                   </button>
                   <button 
                     onClick={handleSave} 
-                    className="btn btn-primary"
+                    className="btn-primary"
                     disabled={isSaving || !hasUnsavedChanges}
                   >
                     {isSaving ? 'Saving...' : 'Save Changes'}
                   </button>
-                </div>
+                </>
               )}
               
               {/* OneDrive Sync Upload Button */}
               {currentMode === 'view' && (
                 <button
                   onClick={handleUploadToSharePoint}
-                  className={`btn btn-sharepoint ${uploadStatus.isUploaded ? 'btn-uploaded' : ''}`}
+                  className={`px-4 py-2 text-sm font-medium rounded shadow transition-all ${
+                    uploadStatus.isUploaded 
+                      ? 'bg-success-600 hover:bg-success-700 text-white cursor-default' 
+                      : 'bg-blue-600 hover:bg-blue-700 text-white'
+                  }`}
                   disabled={uploadStatus.isUploading || uploadStatus.isUploaded || !appSettings?.oneDriveSyncSettings?.enabled || !appSettings?.oneDriveSyncSettings?.syncFolderPath}
                   title={
                     uploadStatus.isUploaded
@@ -437,31 +458,22 @@ const ProjectManagement = ({
                 >
                   {uploadStatus.isUploading ? (
                     <>
-                      <span className="upload-spinner">⏳</span>
+                      <span className="mr-2 animate-pulse">⏳</span>
                       {uploadStatus.phase === 'zipping' ? 'Zipping...' : 'Uploading...'}
                     </>
                   ) : uploadStatus.isUploaded ? (
                     <>
-                      <span className="upload-success">✅</span>
+                      <span className="mr-2">✅</span>
                       Uploaded
                     </>
                   ) : (
                     <>
-                      <span className="upload-icon">📤</span>
+                      <span className="mr-2">📤</span>
                       Upload to SharePoint
                     </>
                   )}
                 </button>
               )}
-            </div>
-            
-            {/* Overflow Menu for Additional Buttons (if needed) */}
-            <div className="action-overflow">
-              <button className="overflow-toggle" title="More actions">
-                ⋮
-              </button>
-              <div className="overflow-menu" style={{ display: 'none' }}>
-                {/* Additional buttons will go here when needed */}
               </div>
             </div>
           </div>
@@ -470,52 +482,84 @@ const ProjectManagement = ({
 
       {/* Unsaved changes indicator */}
       {hasUnsavedChanges && (
-        <div className="unsaved-changes-banner">
-          <span>⚠️ You have unsaved changes</span>
+        <div className="bg-warning-50 dark:bg-warning-900/20 border-b border-warning-200 dark:border-warning-700 px-6 py-3">
+          <span className="text-warning-800 dark:text-warning-200 font-medium text-sm">
+            ⚠️ You have unsaved changes
+          </span>
         </div>
       )}
 
       {/* OneDrive Sync Upload Progress Modal */}
       {uploadStatus.isUploading && (
-        <div className="upload-progress-modal">
-          <div className="upload-progress-content">
-            <h3>Uploading to SharePoint via OneDrive Sync</h3>
-            <div className="progress-info">
-              <div className="progress-bar">
+        <div className="modal-overlay backdrop-blur-sm">
+          <div className="modal-content max-w-2xl">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+              Uploading to SharePoint via OneDrive Sync
+            </h3>
+            <div className="mb-4">
+              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mb-2">
                 <div 
-                  className="progress-fill" 
+                  className="h-full bg-gradient-to-r from-primary-500 to-primary-600 transition-all duration-300" 
                   style={{ width: `${uploadStatus.progress}%` }}
                 />
               </div>
-              <div className="progress-text">
-                <span className="progress-percentage">{uploadStatus.progress}%</span>
-                <span className="progress-message">{uploadStatus.message}</span>
+              <div className="flex justify-between items-center text-sm">
+                <span className="font-semibold text-primary-600 dark:text-primary-400">{uploadStatus.progress}%</span>
+                <span className="text-gray-600 dark:text-gray-400">{uploadStatus.message}</span>
               </div>
             </div>
-            <div className="progress-phase">
+            <div className="space-y-2">
               {uploadStatus.phase === 'zipping' && (
-                <span>📦 Compressing project files...</span>
+                <p className="text-gray-700 dark:text-gray-300 text-sm">
+                  📦 Compressing project files...
+                </p>
               )}
               {uploadStatus.phase === 'syncing' && (
                 <>
-                  <span>🔄 {uploadStatus.message}</span>
+                  <p className="text-gray-700 dark:text-gray-300 text-sm">
+                    🔄 {uploadStatus.message}
+                  </p>
                   {uploadStatus.syncStatus && (
-                    <div className="sync-status">
-                      {uploadStatus.syncStatus === 'pending' && <span className="status-badge status-pending">⏳ Waiting for sync...</span>}
-                      {uploadStatus.syncStatus === 'syncing' && <span className="status-badge status-syncing">📤 Syncing to SharePoint...</span>}
-                      {uploadStatus.syncStatus === 'synced' && <span className="status-badge status-synced">✅ Synced to cloud!</span>}
-                      {uploadStatus.syncStatus === 'timeout' && <span className="status-badge status-timeout">⚠️ Sync monitoring timeout</span>}
-                      {uploadStatus.syncStatus === 'error' && <span className="status-badge status-error">❌ Sync error</span>}
+                    <div className="flex flex-wrap gap-2">
+                      {uploadStatus.syncStatus === 'pending' && (
+                        <span className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full text-xs font-medium">
+                          ⏳ Waiting for sync...
+                        </span>
+                      )}
+                      {uploadStatus.syncStatus === 'syncing' && (
+                        <span className="px-3 py-1 bg-info-100 dark:bg-info-900/30 text-info-700 dark:text-info-300 rounded-full text-xs font-medium">
+                          📤 Syncing to SharePoint...
+                        </span>
+                      )}
+                      {uploadStatus.syncStatus === 'synced' && (
+                        <span className="px-3 py-1 bg-success-100 dark:bg-success-900/30 text-success-700 dark:text-success-300 rounded-full text-xs font-medium">
+                          ✅ Synced to cloud!
+                        </span>
+                      )}
+                      {uploadStatus.syncStatus === 'timeout' && (
+                        <span className="px-3 py-1 bg-warning-100 dark:bg-warning-900/30 text-warning-700 dark:text-warning-300 rounded-full text-xs font-medium">
+                          ⚠️ Sync monitoring timeout
+                        </span>
+                      )}
+                      {uploadStatus.syncStatus === 'error' && (
+                        <span className="px-3 py-1 bg-error-100 dark:bg-error-900/30 text-error-700 dark:text-error-300 rounded-full text-xs font-medium">
+                          ❌ Sync error
+                        </span>
+                      )}
                     </div>
                   )}
                 </>
               )}
               {uploadStatus.phase === 'complete' && (
                 <>
-                  <span>✅ {uploadStatus.message}</span>
+                  <p className="text-success-700 dark:text-success-300 text-sm font-medium">
+                    ✅ {uploadStatus.message}
+                  </p>
                   {uploadStatus.syncStatus && uploadStatus.syncStatus !== 'synced' && (
-                    <div className="sync-warning">
-                      <span>⚠️ File uploaded to OneDrive folder but cloud sync may still be in progress</span>
+                    <div className="p-3 bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-700 rounded">
+                      <span className="text-warning-800 dark:text-warning-200 text-xs">
+                        ⚠️ File uploaded to OneDrive folder but cloud sync may still be in progress
+                      </span>
                     </div>
                   )}
                 </>
@@ -526,7 +570,7 @@ const ProjectManagement = ({
       )}
 
       {/* Main content */}
-      <div className="project-management-content">
+      <div className="flex-1 overflow-y-auto custom-scrollbar">
         {currentMode === 'view' ? (
           <ProjectDetails 
             key={`view-${projectData.id}-${projectData.updatedAt}`}

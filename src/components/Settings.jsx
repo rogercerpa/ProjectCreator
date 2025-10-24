@@ -1,9 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import AgencyEditModal from './AgencyEditModal';
-import './Settings.css';
 import dropdownOptionsService from '../services/DropdownOptionsService';
 import triageCalculationService from '../services/TriageCalculationService';
 import { getFullVersionInfo, getVersionDisplay, BUILD_INFO } from '../utils/version';
+import AppInfoTab from './settings/AppInfoTab';
+import AdvancedSettingsTab from './settings/AdvancedSettingsTab';
+import FormSettingsTab from './settings/FormSettingsTab';
+import AgenciesTab from './settings/AgenciesTab';
+import UserProfileTab from './settings/UserProfileTab';
+import WorkloadTab from './settings/WorkloadTab';
+import TriageCalcTab from './settings/TriageCalcTab';
 
 // Access secure electron API through contextBridge
 const { electronAPI } = window;
@@ -1386,363 +1392,311 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'app-info':
-        return (
-          <div className="tab-content">
-            <div className="app-info-section">
-              <h2>Application Information</h2>
-              <div className="app-info-grid">
-                <div className="app-info-item">
-                  <span className="app-info-label">Version:</span>
-                  <span className="app-info-value">{getVersionDisplay()}</span>
-                </div>
-                <div className="app-info-item">
-                  <span className="app-info-label">Full Version:</span>
-                  <span className="app-info-value">{getFullVersionInfo()}</span>
-                </div>
-                <div className="app-info-item">
-                  <span className="app-info-label">Build Date:</span>
-                  <span className="app-info-value">{new Date(BUILD_INFO.buildDate).toLocaleDateString()}</span>
-                </div>
-                <div className="app-info-item">
-                  <span className="app-info-label">Environment:</span>
-                  <span className="app-info-value">{BUILD_INFO.environment}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Onboarding Tutorial Section */}
-            <div className="onboarding-section">
-              <h2>🎓 Onboarding Tutorial</h2>
-              <p className="section-description">
-                Learn how to use Project Creator with our interactive tutorial. Perfect for new users or as a refresher.
-              </p>
-              
-              <div className="onboarding-content">
-                <div className="onboarding-info">
-                  <div className="info-item">
-                    <span className="info-icon">📚</span>
-                    <div className="info-text">
-                      <strong>6 Quick Steps</strong>
-                      <p>Learn the main features in just a few minutes</p>
-                    </div>
-                  </div>
-                  <div className="info-item">
-                    <span className="info-icon">🚀</span>
-                    <div className="info-text">
-                      <strong>Interactive Walkthroughs</strong>
-                      <p>See how to use the wizard, projects, agencies, and more</p>
-                    </div>
-                  </div>
-                  <div className="info-item">
-                    <span className="info-icon">💡</span>
-                    <div className="info-text">
-                      <strong>Practical Tips</strong>
-                      <p>Get actionable advice for each feature</p>
-                    </div>
-                  </div>
-                </div>
-
-                <button 
-                  className="btn btn-primary btn-large"
-                  onClick={() => {
-                    if (onLaunchOnboarding) {
-                      onLaunchOnboarding();
-                    }
-                  }}
-                  style={{ marginTop: '20px' }}
-                >
-                  🎉 Launch Tutorial
-                </button>
-
-                <p className="help-text" style={{ marginTop: '15px' }}>
-                  💡 You can exit the tutorial at any time by clicking the X button or "Skip Tutorial"
-                </p>
-              </div>
-            </div>
-          </div>
-        );
+        return <AppInfoTab onLaunchOnboarding={onLaunchOnboarding} />;
 
       case 'advanced-settings':
         return (
-          <div className="tab-content">
+          <AdvancedSettingsTab
+            settings={settings}
+            setSettings={setSettings}
+          />
+        );
+
+      // Original code for reference (now replaced by AdvancedSettingsTab component)
+      case 'advanced-settings-old':
+        return (
+          <div className="space-y-6">
             {/* File Paths Configuration Section */}
-            <div className="file-paths-section">
-              <h2>File Path Configuration</h2>
-              <p className="section-description">Configure where the application looks for template files and saves created projects.</p>
+            <div className="p-6 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">File Path Configuration</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">Configure where the application looks for template files and saves created projects.</p>
               
-              <div className="path-settings">
+              <div className="space-y-6">
                 {/* Template Paths */}
-                <div className="setting-group">
-                  <h3>📁 Template Source Locations</h3>
-                  <p className="group-description">Where the application finds template files for project creation</p>
+                <div className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1 flex items-center gap-2">
+                    <span>📁</span>
+                    <span>Template Source Locations</span>
+                  </h3>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">Where the application finds template files for project creation</p>
                   
-                  <div className="setting-row">
-                    <label>Primary Template Path:</label>
-                    <div className="path-input-group">
-                      <input
-                        type="text"
-                        value={settings.pathSettings.templates.primaryPath}
-                        onChange={(e) => setSettings(prev => ({
-                          ...prev,
-                          pathSettings: {
-                            ...prev.pathSettings,
-                            templates: {
-                              ...prev.pathSettings.templates,
-                              primaryPath: e.target.value
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Primary Template Path:</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={settings.pathSettings.templates.primaryPath}
+                          onChange={(e) => setSettings(prev => ({
+                            ...prev,
+                            pathSettings: {
+                              ...prev.pathSettings,
+                              templates: {
+                                ...prev.pathSettings.templates,
+                                primaryPath: e.target.value
+                              }
                             }
-                          }
-                        }))}
-                        placeholder="Network path to templates"
-                        className="path-input"
-                      />
-                      <button 
-                        type="button" 
-                        className="btn btn-secondary btn-sm"
-                        onClick={async () => {
-                          if (electronAPI && electronAPI.selectFolder) {
-                            const result = await electronAPI.selectFolder();
-                            if (result && !result.canceled && result.filePaths[0]) {
-                              setSettings(prev => ({
-                                ...prev,
-                                pathSettings: {
-                                  ...prev.pathSettings,
-                                  templates: {
-                                    ...prev.pathSettings.templates,
-                                    primaryPath: result.filePaths[0]
+                          }))}
+                          placeholder="Network path to templates"
+                          className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                        />
+                        <button 
+                          type="button" 
+                          className="px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-all"
+                          onClick={async () => {
+                            if (electronAPI && electronAPI.selectFolder) {
+                              const result = await electronAPI.selectFolder();
+                              if (result && !result.canceled && result.filePaths[0]) {
+                                setSettings(prev => ({
+                                  ...prev,
+                                  pathSettings: {
+                                    ...prev.pathSettings,
+                                    templates: {
+                                      ...prev.pathSettings.templates,
+                                      primaryPath: result.filePaths[0]
+                                    }
                                   }
-                                }
-                              }));
+                                }));
+                              }
                             }
-                          }
-                        }}
-                        title="Browse for folder"
-                      >
-                        📂
-                      </button>
+                          }}
+                          title="Browse for folder"
+                        >
+                          📂
+                        </button>
+                      </div>
                     </div>
-                  </div>
                   
-                  <div className="setting-row">
-                    <label>Fallback Template Path:</label>
-                    <div className="path-input-group">
-                      <input
-                        type="text"
-                        value={settings.pathSettings.templates.fallbackPath}
-                        onChange={(e) => setSettings(prev => ({
-                          ...prev,
-                          pathSettings: {
-                            ...prev.pathSettings,
-                            templates: {
-                              ...prev.pathSettings.templates,
-                              fallbackPath: e.target.value
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fallback Template Path:</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={settings.pathSettings.templates.fallbackPath}
+                          onChange={(e) => setSettings(prev => ({
+                            ...prev,
+                            pathSettings: {
+                              ...prev.pathSettings,
+                              templates: {
+                                ...prev.pathSettings.templates,
+                                fallbackPath: e.target.value
+                              }
                             }
-                          }
-                        }))}
-                        placeholder="Local fallback path (use {userHome} for user directory)"
-                        className="path-input"
-                      />
-                      <button 
-                        type="button" 
-                        className="btn btn-secondary btn-sm"
-                        onClick={async () => {
-                          if (electronAPI && electronAPI.selectFolder) {
-                            const result = await electronAPI.selectFolder();
-                            if (result && !result.canceled && result.filePaths[0]) {
-                              setSettings(prev => ({
-                                ...prev,
-                                pathSettings: {
-                                  ...prev.pathSettings,
-                                  templates: {
-                                    ...prev.pathSettings.templates,
-                                    fallbackPath: result.filePaths[0]
+                          }))}
+                          placeholder="Local fallback path (use {userHome} for user directory)"
+                          className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                        />
+                        <button 
+                          type="button" 
+                          className="px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-all"
+                          onClick={async () => {
+                            if (electronAPI && electronAPI.selectFolder) {
+                              const result = await electronAPI.selectFolder();
+                              if (result && !result.canceled && result.filePaths[0]) {
+                                setSettings(prev => ({
+                                  ...prev,
+                                  pathSettings: {
+                                    ...prev.pathSettings,
+                                    templates: {
+                                      ...prev.pathSettings.templates,
+                                      fallbackPath: result.filePaths[0]
+                                    }
                                   }
-                                }
-                              }));
+                                }));
+                              }
                             }
-                          }
-                        }}
-                        title="Browse for folder"
-                      >
-                        📂
-                      </button>
+                          }}
+                          title="Browse for folder"
+                        >
+                          📂
+                        </button>
+                      </div>
                     </div>
-                  </div>
                   
-                  <div className="setting-row">
-                    <label>Agent Requirements Path:</label>
-                    <div className="path-input-group">
-                      <input
-                        type="text"
-                        value={settings.pathSettings.templates.agentRequirementsPath}
-                        onChange={(e) => setSettings(prev => ({
-                          ...prev,
-                          pathSettings: {
-                            ...prev.pathSettings,
-                            templates: {
-                              ...prev.pathSettings.templates,
-                              agentRequirementsPath: e.target.value
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Agent Requirements Path:</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={settings.pathSettings.templates.agentRequirementsPath}
+                          onChange={(e) => setSettings(prev => ({
+                            ...prev,
+                            pathSettings: {
+                              ...prev.pathSettings,
+                              templates: {
+                                ...prev.pathSettings.templates,
+                                agentRequirementsPath: e.target.value
+                              }
                             }
-                          }
-                        }))}
-                        placeholder="Path to agent requirements files"
-                        className="path-input"
-                      />
-                      <button 
-                        type="button" 
-                        className="btn btn-secondary btn-sm"
-                        onClick={async () => {
-                          if (electronAPI && electronAPI.selectFolder) {
-                            const result = await electronAPI.selectFolder();
-                            if (result && !result.canceled && result.filePaths[0]) {
-                              setSettings(prev => ({
-                                ...prev,
-                                pathSettings: {
-                                  ...prev.pathSettings,
-                                  templates: {
-                                    ...prev.pathSettings.templates,
-                                    agentRequirementsPath: result.filePaths[0]
+                          }))}
+                          placeholder="Path to agent requirements files"
+                          className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                        />
+                        <button 
+                          type="button" 
+                          className="px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-all"
+                          onClick={async () => {
+                            if (electronAPI && electronAPI.selectFolder) {
+                              const result = await electronAPI.selectFolder();
+                              if (result && !result.canceled && result.filePaths[0]) {
+                                setSettings(prev => ({
+                                  ...prev,
+                                  pathSettings: {
+                                    ...prev.pathSettings,
+                                    templates: {
+                                      ...prev.pathSettings.templates,
+                                      agentRequirementsPath: result.filePaths[0]
+                                    }
                                   }
-                                }
-                              }));
+                                }));
+                              }
                             }
-                          }
-                        }}
-                        title="Browse for folder"
-                      >
-                        📂
-                      </button>
+                          }}
+                          title="Browse for folder"
+                        >
+                          📂
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Project Output Paths */}
-                <div className="setting-group">
-                  <h3>💾 Project Output Locations</h3>
-                  <p className="group-description">Where created project folders are saved</p>
+                <div className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1 flex items-center gap-2">
+                    <span>💾</span>
+                    <span>Project Output Locations</span>
+                  </h3>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">Where created project folders are saved</p>
                   
-                  <div className="setting-row">
-                    <label>Default Output Location:</label>
-                    <select
-                      value={settings.pathSettings.projectOutput.defaultLocation}
-                      onChange={(e) => setSettings(prev => ({
-                        ...prev,
-                        pathSettings: {
-                          ...prev.pathSettings,
-                          projectOutput: {
-                            ...prev.pathSettings.projectOutput,
-                            defaultLocation: e.target.value
-                          }
-                        }
-                      }))}
-                      className="path-select"
-                    >
-                      <option value="desktop">Desktop</option>
-                      <option value="triage">Triage Folder</option>
-                      <option value="custom">Custom Path</option>
-                    </select>
-                  </div>
-                  
-                  <div className="setting-row">
-                    <label>Custom Output Path:</label>
-                    <div className="path-input-group">
-                      <input
-                        type="text"
-                        value={settings.pathSettings.projectOutput.customPath}
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Default Output Location:</label>
+                      <select
+                        value={settings.pathSettings.projectOutput.defaultLocation}
                         onChange={(e) => setSettings(prev => ({
                           ...prev,
                           pathSettings: {
                             ...prev.pathSettings,
                             projectOutput: {
                               ...prev.pathSettings.projectOutput,
-                              customPath: e.target.value
+                              defaultLocation: e.target.value
                             }
                           }
                         }))}
-                        placeholder="Custom project output path (use {userHome} for user directory)"
-                        className="path-input"
-                        disabled={settings.pathSettings.projectOutput.defaultLocation !== 'custom'}
-                      />
-                      <button 
-                        type="button" 
-                        className="btn btn-secondary btn-sm"
-                        onClick={async () => {
-                          if (electronAPI && electronAPI.selectFolder) {
-                            const result = await electronAPI.selectFolder();
-                            if (result && !result.canceled && result.filePaths[0]) {
-                              setSettings(prev => ({
-                                ...prev,
-                                pathSettings: {
-                                  ...prev.pathSettings,
-                                  projectOutput: {
-                                    ...prev.pathSettings.projectOutput,
-                                    customPath: result.filePaths[0]
-                                  }
-                                }
-                              }));
-                            }
-                          }
-                        }}
-                        title="Browse for folder"
-                        disabled={settings.pathSettings.projectOutput.defaultLocation !== 'custom'}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
                       >
-                        📂
-                      </button>
+                        <option value="desktop">Desktop</option>
+                        <option value="triage">Triage Folder</option>
+                        <option value="custom">Custom Path</option>
+                      </select>
                     </div>
-                  </div>
                   
-                  <div className="setting-row">
-                    <label>Triage Folder Path:</label>
-                    <div className="path-input-group">
-                      <input
-                        type="text"
-                        value={settings.pathSettings.projectOutput.triagePath}
-                        onChange={(e) => setSettings(prev => ({
-                          ...prev,
-                          pathSettings: {
-                            ...prev.pathSettings,
-                            projectOutput: {
-                              ...prev.pathSettings.projectOutput,
-                              triagePath: e.target.value
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Custom Output Path:</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={settings.pathSettings.projectOutput.customPath}
+                          onChange={(e) => setSettings(prev => ({
+                            ...prev,
+                            pathSettings: {
+                              ...prev.pathSettings,
+                              projectOutput: {
+                                ...prev.pathSettings.projectOutput,
+                                customPath: e.target.value
+                              }
                             }
-                          }
-                        }))}
-                        placeholder="Path to triage folder (use {userHome} for user directory)"
-                        className="path-input"
-                      />
-                      <button 
-                        type="button" 
-                        className="btn btn-secondary btn-sm"
-                        onClick={async () => {
-                          if (electronAPI && electronAPI.selectFolder) {
-                            const result = await electronAPI.selectFolder();
-                            if (result && !result.canceled && result.filePaths[0]) {
-                              setSettings(prev => ({
-                                ...prev,
-                                pathSettings: {
-                                  ...prev.pathSettings,
-                                  projectOutput: {
-                                    ...prev.pathSettings.projectOutput,
-                                    triagePath: result.filePaths[0]
+                          }))}
+                          placeholder="Custom project output path (use {userHome} for user directory)"
+                          className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={settings.pathSettings.projectOutput.defaultLocation !== 'custom'}
+                        />
+                        <button 
+                          type="button" 
+                          className="px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                          onClick={async () => {
+                            if (electronAPI && electronAPI.selectFolder) {
+                              const result = await electronAPI.selectFolder();
+                              if (result && !result.canceled && result.filePaths[0]) {
+                                setSettings(prev => ({
+                                  ...prev,
+                                  pathSettings: {
+                                    ...prev.pathSettings,
+                                    projectOutput: {
+                                      ...prev.pathSettings.projectOutput,
+                                      customPath: result.filePaths[0]
+                                    }
                                   }
-                                }
-                              }));
+                                }));
+                              }
                             }
-                          }
-                        }}
-                        title="Browse for folder"
-                      >
-                        📂
-                      </button>
+                          }}
+                          title="Browse for folder"
+                          disabled={settings.pathSettings.projectOutput.defaultLocation !== 'custom'}
+                        >
+                          📂
+                        </button>
+                      </div>
+                    </div>
+                  
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Triage Folder Path:</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={settings.pathSettings.projectOutput.triagePath}
+                          onChange={(e) => setSettings(prev => ({
+                            ...prev,
+                            pathSettings: {
+                              ...prev.pathSettings,
+                              projectOutput: {
+                                ...prev.pathSettings.projectOutput,
+                                triagePath: e.target.value
+                              }
+                            }
+                          }))}
+                          placeholder="Path to triage folder (use {userHome} for user directory)"
+                          className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                        />
+                        <button 
+                          type="button" 
+                          className="px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-all"
+                          onClick={async () => {
+                            if (electronAPI && electronAPI.selectFolder) {
+                              const result = await electronAPI.selectFolder();
+                              if (result && !result.canceled && result.filePaths[0]) {
+                                setSettings(prev => ({
+                                  ...prev,
+                                  pathSettings: {
+                                    ...prev.pathSettings,
+                                    projectOutput: {
+                                      ...prev.pathSettings.projectOutput,
+                                      triagePath: result.filePaths[0]
+                                    }
+                                  }
+                                }));
+                              }
+                            }
+                          }}
+                          title="Browse for folder"
+                        >
+                          📂
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Path Variables Info */}
-                <div className="setting-group">
-                  <h3>ℹ️ Path Variables</h3>
-                  <div className="path-variables-info">
-                    <p><strong>{'{userHome}'}</strong> - Automatically replaced with the current user's home directory</p>
-                    <p><strong>Example:</strong> {'{userHome}\\Desktop'} becomes 'C:\\Users\\YourName\\Desktop'</p>
+                <div className="p-4 bg-info-50 dark:bg-info-900/20 rounded-lg border border-info-200 dark:border-info-800">
+                  <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                    <span>ℹ️</span>
+                    <span>Path Variables</span>
+                  </h3>
+                  <div className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+                    <p><strong className="text-info-700 dark:text-info-400">{'{userHome}'}</strong> - Automatically replaced with the current user's home directory</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400"><strong>Example:</strong> {'{userHome}\\Desktop'} becomes 'C:\\Users\\YourName\\Desktop'</p>
                   </div>
                 </div>
               </div>
@@ -1914,45 +1868,43 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
             </div>}
 
             {/* OneDrive Sync Integration Section */}
-            <div className="onedrive-sync-section">
-              <div className="onedrive-section-header">
-                <div className="header-content">
-                  <div className="header-icon">📂</div>
-                  <div className="header-text">
-                    <h2>OneDrive Sync Integration</h2>
-                    <p className="header-description">Upload projects to SharePoint via OneDrive sync folder. No authentication required!</p>
+            <div className="p-6 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+              <div className="mb-6">
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="text-3xl">📂</span>
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">OneDrive Sync Integration</h2>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Upload projects to SharePoint via OneDrive sync folder. No authentication required!</p>
                   </div>
                 </div>
               </div>
               
-              <div className="onedrive-sync-settings">
+              <div className="space-y-6">
                 {/* Enable OneDrive Sync */}
-                <div className="setting-card">
-                  <div className="setting-header">
-                    <div className="setting-icon">🔗</div>
-                    <div className="setting-title">
-                      <h3>Enable OneDrive Sync Upload</h3>
-                      <p className="setting-description">Use your local OneDrive sync folder to upload projects to SharePoint</p>
+                <div className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <div className="flex items-start gap-3 mb-4">
+                    <span className="text-2xl">🔗</span>
+                    <div className="flex-1">
+                      <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1">Enable OneDrive Sync Upload</h3>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">Use your local OneDrive sync folder to upload projects to SharePoint</p>
                     </div>
                   </div>
                   
-                  <div className="setting-control">
-                    <label className="modern-checkbox">
-                      <input
-                        type="checkbox"
-                        checked={settings.oneDriveSyncSettings.enabled}
-                        onChange={(e) => setSettings(prev => ({
-                          ...prev,
-                          oneDriveSyncSettings: {
-                            ...prev.oneDriveSyncSettings,
-                            enabled: e.target.checked
-                          }
-                        }))}
-                      />
-                      <span className="checkmark"></span>
-                      <span className="label-text">Enable OneDrive Sync Integration</span>
-                    </label>
-                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={settings.oneDriveSyncSettings.enabled}
+                      onChange={(e) => setSettings(prev => ({
+                        ...prev,
+                        oneDriveSyncSettings: {
+                          ...prev.oneDriveSyncSettings,
+                          enabled: e.target.checked
+                        }
+                      }))}
+                      className="w-4 h-4 text-primary-600 border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-primary-500"
+                    />
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Enable OneDrive Sync Integration</span>
+                  </label>
                 </div>
 
                 {/* OneDrive Sync Folder Configuration */}
@@ -2217,106 +2169,175 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
         );
 
       case 'project-form':
+        return (
+          <FormSettingsTab
+            settings={settings}
+            formCategories={formCategories}
+            selectedCategory={selectedCategory}
+            setSelectedCategory={setSelectedCategory}
+            viewMode={viewMode}
+            setViewMode={setViewMode}
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            cancelEditing={cancelEditing}
+            getCurrentCategory={getCurrentCategory}
+            getFilteredItems={getFilteredItems}
+            renderCompactFieldEditor={renderCompactFieldEditor}
+            renderFieldEditor={renderFieldEditor}
+          />
+        );
+
+      // Original code for reference (now replaced by FormSettingsTab component)
+      case 'project-form-old':
         const currentCategory = getCurrentCategory();
         const currentItems = settings[selectedCategory] || [];
         
         return (
-          <div className="tab-content">
-            <div className="form-settings-layout">
-              {/* Sidebar with categories */}
-              <div className="form-categories-sidebar">
-                <div className="sidebar-header">
-                  <h3>Categories</h3>
-                  <div className="view-mode-toggle">
-                    <button 
-                      className={`view-btn ${viewMode === 'compact' ? 'active' : ''}`}
-                      onClick={() => setViewMode('compact')}
-                      title="Compact View"
-                    >
-                      ⊞
-                    </button>
-                    <button 
-                      className={`view-btn ${viewMode === 'detailed' ? 'active' : ''}`}
-                      onClick={() => setViewMode('detailed')}
-                      title="Detailed View"
-                    >
-                      ☰
-                    </button>
+          <div className="flex gap-6 h-full">
+            {/* Sidebar with categories */}
+            <div className="w-64 flex-shrink-0 bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-base font-bold text-gray-900 dark:text-white">Categories</h3>
+                <div className="flex bg-gray-200 dark:bg-gray-700 rounded p-0.5">
+                  <button 
+                    className={`px-2 py-1 rounded text-xs transition-all ${viewMode === 'compact' ? 'bg-white dark:bg-gray-600 text-primary-600 dark:text-primary-400 shadow' : 'text-gray-600 dark:text-gray-400'}`}
+                    onClick={() => setViewMode('compact')}
+                    title="Compact View"
+                  >
+                    ⊞
+                  </button>
+                  <button 
+                    className={`px-2 py-1 rounded text-xs transition-all ${viewMode === 'detailed' ? 'bg-white dark:bg-gray-600 text-primary-600 dark:text-primary-400 shadow' : 'text-gray-600 dark:text-gray-400'}`}
+                    onClick={() => setViewMode('detailed')}
+                    title="Detailed View"
+                  >
+                    ☰
+                  </button>
+                </div>
+              </div>
+              
+              <div className="space-y-1">
+                {formCategories.map(category => (
+                  <button
+                    key={category.key}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-left ${
+                      selectedCategory === category.key 
+                        ? 'bg-primary-600 text-white shadow-lg' 
+                        : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                    onClick={() => {
+                      setSelectedCategory(category.key);
+                      setSearchTerm(''); // Clear search when switching categories
+                      cancelEditing(); // Cancel any active editing
+                    }}
+                  >
+                    <span className="text-xl">{category.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm truncate">{category.label}</div>
+                      <div className={`text-xs ${selectedCategory === category.key ? 'text-white/80' : 'text-gray-500 dark:text-gray-400'}`}>
+                        {settings[category.key]?.length || 0} items
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Main content area */}
+            <div className="flex-1 flex flex-col min-w-0">
+              {/* Header with search and actions */}
+              <div className="mb-4 p-4 bg-gradient-to-r from-primary-50 to-blue-50 dark:from-primary-900/20 dark:to-blue-900/20 rounded-lg border border-primary-200 dark:border-primary-800">
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                      <span className="text-2xl">{currentCategory?.icon}</span>
+                      <span>{currentCategory?.label}</span>
+                    </h2>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{currentCategory?.description}</p>
+                  </div>
+                  
+                  <div className="px-3 py-1 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full text-xs font-bold">
+                    {getFilteredItems(currentItems).length} of {currentItems.length} items
                   </div>
                 </div>
                 
-                <div className="categories-list">
-                  {formCategories.map(category => (
-                    <button
-                      key={category.key}
-                      className={`category-item ${selectedCategory === category.key ? 'active' : ''}`}
-                      onClick={() => {
-                        setSelectedCategory(category.key);
-                        setSearchTerm(''); // Clear search when switching categories
-                        cancelEditing(); // Cancel any active editing
-                      }}
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Search items..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full px-4 py-2 pr-10 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                  />
+                  {searchTerm && (
+                    <button 
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                      onClick={() => setSearchTerm('')}
+                      title="Clear search"
                     >
-                      <span className="category-icon">{category.icon}</span>
-                      <div className="category-info">
-                        <span className="category-label">{category.label}</span>
-                        <span className="category-count">({settings[category.key]?.length || 0})</span>
-                      </div>
+                      ✗
                     </button>
-                  ))}
+                  )}
                 </div>
               </div>
 
-              {/* Main content area */}
-              <div className="form-settings-main">
-                {/* Header with search and actions */}
-                <div className="main-header">
-                  <div className="header-info">
-                    <h2>
-                      <span className="header-icon">{currentCategory?.icon}</span>
-                      {currentCategory?.label}
-                    </h2>
-                    <p className="header-description">{currentCategory?.description}</p>
-                  </div>
-                  
-                  <div className="header-actions">
-                    <div className="search-box">
-                      <input
-                        type="text"
-                        placeholder="Search items..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="search-input"
-                      />
-                      {searchTerm && (
-                        <button 
-                          className="clear-search"
-                          onClick={() => setSearchTerm('')}
-                          title="Clear search"
-                        >
-                          ✗
-                        </button>
-                      )}
-                    </div>
-                    
-                    <div className="item-count">
-                      {getFilteredItems(currentItems).length} of {currentItems.length} items
-                    </div>
-                  </div>
-                </div>
-
-                {/* Items display */}
-                <div className="items-container">
-                  {viewMode === 'compact' ? 
-                    renderCompactFieldEditor(selectedCategory, currentItems) :
-                    renderFieldEditor(selectedCategory, currentCategory?.label, currentItems)
-                  }
-                </div>
+              {/* Items display */}
+              <div className="flex-1 overflow-y-auto custom-scrollbar">
+                {viewMode === 'compact' ? 
+                  renderCompactFieldEditor(selectedCategory, currentItems) :
+                  renderFieldEditor(selectedCategory, currentCategory?.label, currentItems)
+                }
               </div>
             </div>
           </div>
         );
 
       case 'agencies':
+        return (
+          <AgenciesTab
+            syncSettings={syncSettings}
+            setSyncSettings={setSyncSettings}
+            handleSyncSettingsUpdate={handleSyncSettingsUpdate}
+            filePathValid={filePathValid}
+            setFilePathValid={setFilePathValid}
+            handleBrowseFilePath={handleBrowseFilePath}
+            handleFilePathTest={handleFilePathTest}
+            handleManualSync={handleManualSync}
+            handleExcelImport={handleExcelImport}
+            handleExcelDiagnose={handleExcelDiagnose}
+            importStatus={importStatus}
+            syncStatus={syncStatus}
+            handleExportToExcel={handleExportToExcel}
+            exportStatus={exportStatus}
+            showAgencyForm={showAgencyForm}
+            setShowAgencyForm={setShowAgencyForm}
+            editingAgency={editingAgency}
+            setEditingAgency={setEditingAgency}
+            agencyFormData={agencyFormData}
+            setAgencyFormData={setAgencyFormData}
+            handleAgencyFormSubmit={handleAgencyFormSubmit}
+            agencies={agencies}
+            agencySearchTerm={agencySearchTerm}
+            setAgencySearchTerm={setAgencySearchTerm}
+            agencyFilters={agencyFilters}
+            handleAgencyFilterChange={handleAgencyFilterChange}
+            agencyFilterOptions={agencyFilterOptions}
+            filteredAgencies={filteredAgencies}
+            getPaginatedAgencies={getPaginatedAgencies}
+            handleEditAgency={handleEditAgency}
+            handleDeleteAgency={handleDeleteAgency}
+            renderPagination={renderPagination}
+            getPaginationInfo={getPaginationInfo}
+            isEditModalOpen={isEditModalOpen}
+            handleModalClose={handleModalClose}
+            editingAgencyModal={editingAgencyModal}
+            handleModalSave={handleModalSave}
+            AgencyEditModal={AgencyEditModal}
+          />
+        );
+
+      // Original code for reference (now replaced by AgenciesTab component)
+      case 'agencies-old':
         return (
           <div className="tab-content">
             <div className="agencies-management">
@@ -2922,6 +2943,15 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
 
       case 'user-profile':
         return (
+          <UserProfileTab
+            settings={settings}
+            setSettings={setSettings}
+          />
+        );
+
+      // Original code for reference (now replaced by UserProfileTab component)
+      case 'user-profile-old':
+        return (
           <div className="tab-content">
             <div className="settings-field">
               <h3>👤 User Profile & Knowledge</h3>
@@ -3136,6 +3166,15 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
         );
 
       case 'workload':
+        return (
+          <WorkloadTab
+            settings={settings}
+            setSettings={setSettings}
+          />
+        );
+
+      // Original code for reference (now replaced by WorkloadTab component)
+      case 'workload-old':
         return (
           <div className="tab-content">
             <div className="settings-field">
@@ -3368,6 +3407,15 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
 
       case 'triage-calc':
         return (
+          <TriageCalcTab
+            settings={settings}
+            setSettings={setSettings}
+          />
+        );
+
+      // Original code for reference (now replaced by TriageCalcTab component)
+      case 'triage-calc-old':
+        return (
           <div className="tab-content">
             <div className="settings-field">
               <h3>Calculation Settings</h3>
@@ -3577,35 +3625,45 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
   };
 
   return (
-    <div className="settings-page">
-      <div className="settings-header">
-        <h1>Application Settings</h1>
-        <p>Manage application configuration and form options</p>
+    <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900 p-6 overflow-hidden">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Application Settings</h1>
+        <p className="text-gray-600 dark:text-gray-400">Manage application configuration and form options</p>
       </div>
 
       {/* Tab Navigation */}
-      <div className="settings-tabs">
+      <div className="flex gap-4 mb-6 border-b border-gray-200 dark:border-gray-700">
         {tabs.map(tab => (
           <button
             key={tab.id}
-            className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
+            className={`flex items-center gap-1.5 px-1 pb-3 font-medium text-xs whitespace-nowrap transition-all relative ${
+              activeTab === tab.id 
+                ? 'text-primary-600 dark:text-primary-400' 
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+            }`}
             onClick={() => setActiveTab(tab.id)}
             title={tab.fullLabel}
           >
-            <span className="tab-icon">{tab.icon}</span>
-            <span className="tab-label">{tab.label}</span>
+            <span className="text-base">{tab.icon}</span>
+            <span>{tab.label}</span>
+            {activeTab === tab.id && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600 dark:bg-primary-400"></span>
+            )}
           </button>
         ))}
       </div>
 
       {/* Tab Content */}
-      {renderTabContent()}
+      <div className="flex-1 overflow-y-auto bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6 custom-scrollbar">
+        {renderTabContent()}
+      </div>
 
       {/* Settings Actions */}
-      <div className="settings-actions">
+      <div className="flex justify-end gap-3 p-4 bg-white dark:bg-gray-800 rounded-lg shadow border-t-2 border-gray-200 dark:border-gray-700">
         <button
           type="button"
-          className="btn btn-secondary"
+          className="px-5 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-semibold rounded-lg transition-all"
           onClick={() => {
             const defaultSettings = {
               rfaTypes: ['BOM (No Layout)', 'BOM with Layout', 'Controls BOM - Budget', 'Controls BOM - Layout', 'BUDGET', 'LAYOUT', 'SUBMITTAL', 'RELEASE', 'GRAPHICS', 'PHOTOMETRICS', 'Consultation'],
@@ -3670,10 +3728,11 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
         </button>
         <button
           type="button"
-          className="btn btn-primary"
+          className="px-5 py-2 bg-primary-600 hover:bg-primary-700 dark:bg-primary-700 dark:hover:bg-primary-600 text-white font-semibold rounded-lg shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           onClick={saveSettings}
           disabled={isLoading}
         >
+          {isLoading && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
           {isLoading ? 'Saving...' : 'Save Settings'}
         </button>
       </div>

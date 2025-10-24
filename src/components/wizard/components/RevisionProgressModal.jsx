@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import './RevisionProgressModal.css';
 
 /**
  * AEMarkupsFileSelection - Embedded component for AE Markups file selection
@@ -98,24 +97,26 @@ const AEMarkupsFileSelection = ({ files, onConfirm, onCancel }) => {
   const totalFiles = files.length;
 
   return (
-    <div className="ae-markups-selection">
-      <div className="ae-markups-header">
-        <h4>📁 AE Markups File Selection</h4>
-        <p>
+    <div className="mb-6 p-5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+      <div className="mb-4">
+        <h4 className="m-0 mb-2 text-lg font-semibold text-gray-800 dark:text-gray-100">
+          📁 AE Markups File Selection
+        </h4>
+        <p className="my-2 text-sm text-gray-600 dark:text-gray-400">
           The AE Markups folder contains <strong>{totalFiles} files</strong>. 
           Choose which files to copy to speed up the revision process.
         </p>
         {designNotesFile && (
-          <div className="design-notes-highlight">
+          <div className="mt-3 p-3 bg-info-50 dark:bg-info-900/20 border border-info-200 dark:border-info-700 rounded text-sm text-gray-700 dark:text-gray-300">
             📝 <strong>Design Notes document found:</strong> {designNotesFile.name}
           </div>
         )}
       </div>
 
       {/* Quick Actions */}
-      <div className="quick-actions">
+      <div className="flex flex-wrap gap-2 mb-4">
         <button 
-          className="quick-action-btn copy-all"
+          className="px-4 py-2 text-sm font-medium bg-primary-600 hover:bg-primary-700 text-white rounded shadow hover:shadow-md transition-all"
           onClick={handleCopyAll}
           title="Copy all files (slowest)"
         >
@@ -124,7 +125,7 @@ const AEMarkupsFileSelection = ({ files, onConfirm, onCancel }) => {
         
         {designNotesFile && (
           <button 
-            className="quick-action-btn copy-design-notes"
+            className="px-4 py-2 text-sm font-medium bg-info-600 hover:bg-info-700 text-white rounded shadow hover:shadow-md transition-all"
             onClick={handleCopyDesignNotesOnly}
             title="Copy only Design Notes document (recommended)"
           >
@@ -133,7 +134,7 @@ const AEMarkupsFileSelection = ({ files, onConfirm, onCancel }) => {
         )}
         
         <button 
-          className="quick-action-btn copy-none"
+          className="px-4 py-2 text-sm font-medium bg-gray-500 hover:bg-gray-600 text-white rounded shadow hover:shadow-md transition-all"
           onClick={handleCopyNone}
           title="Skip AE Markups folder (fastest)"
         >
@@ -142,22 +143,23 @@ const AEMarkupsFileSelection = ({ files, onConfirm, onCancel }) => {
       </div>
 
       {/* File List */}
-      <div className="file-selection-section">
-        <div className="file-list-header">
-          <label className="select-all-label">
+      <div className="border border-gray-300 dark:border-gray-600 rounded">
+        <div className="flex justify-between items-center p-3 bg-gray-100 dark:bg-gray-700 border-b border-gray-300 dark:border-gray-600">
+          <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
               checked={selectAll}
               onChange={handleSelectAll}
+              className="w-4 h-4 cursor-pointer"
             />
-            <span>Select All / None</span>
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Select All / None</span>
           </label>
-          <span className="selection-count">
+          <span className="text-xs text-gray-500 dark:text-gray-400">
             {selectedCount} of {totalFiles} selected
           </span>
         </div>
 
-        <div className="file-list">
+        <div className="max-h-64 overflow-y-auto custom-scrollbar">
           {files.map((file, index) => {
             const isDesignNotes = designNotesFile && file.name === designNotesFile.name;
             const isSelected = selectedFiles.has(file.name);
@@ -165,26 +167,33 @@ const AEMarkupsFileSelection = ({ files, onConfirm, onCancel }) => {
             return (
               <div 
                 key={index} 
-                className={`file-item ${isDesignNotes ? 'design-notes' : ''} ${isSelected ? 'selected' : ''}`}
+                className={`p-3 border-b border-gray-200 dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
+                  isDesignNotes ? 'bg-info-50 dark:bg-info-900/20' : ''
+                } ${
+                  isSelected ? 'bg-primary-50 dark:bg-primary-900/20' : 'bg-white dark:bg-gray-800'
+                }`}
               >
-                <label className="file-checkbox-label">
+                <label className="flex items-start gap-3 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={isSelected}
                     onChange={() => handleFileToggle(file.name)}
+                    className="w-4 h-4 mt-0.5 cursor-pointer"
                   />
-                  <div className="file-info">
-                    <span className="file-name">
+                  <div className="flex-1 min-w-0">
+                    <span className="block text-sm text-gray-700 dark:text-gray-300 break-words">
                       {isDesignNotes && '📝 '}
                       {file.name}
                     </span>
                     {file.size && (
-                      <span className="file-size">
+                      <span className="block text-xs text-gray-500 dark:text-gray-400 mt-1">
                         {formatFileSize(file.size)}
                       </span>
                     )}
                     {isDesignNotes && (
-                      <span className="file-badge">Design Notes</span>
+                      <span className="inline-block mt-1 px-2 py-0.5 text-xs font-medium bg-info-600 text-white rounded">
+                        Design Notes
+                      </span>
                     )}
                   </div>
                 </label>
@@ -195,20 +204,20 @@ const AEMarkupsFileSelection = ({ files, onConfirm, onCancel }) => {
       </div>
 
       {/* Actions */}
-      <div className="ae-markups-actions">
+      <div className="flex justify-end gap-3 mt-4">
         <button 
-          className="btn btn-primary"
+          className="btn-secondary"
+          onClick={onCancel}
+        >
+          ❌ Cancel
+        </button>
+        
+        <button 
+          className="btn-primary"
           onClick={handleCopySelected}
           disabled={selectedCount === 0}
         >
           ✅ Copy Selected ({selectedCount})
-        </button>
-        
-        <button 
-          className="btn btn-secondary"
-          onClick={onCancel}
-        >
-          ❌ Cancel
         </button>
       </div>
     </div>
@@ -245,27 +254,32 @@ const RevisionProgressModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="revision-progress-modal-overlay">
-      <div className="revision-progress-modal">
-        <div className="modal-header">
-          <h3>{title}</h3>
+    <div className="modal-overlay backdrop-blur-sm">
+      <div className="modal-content max-w-3xl w-[90%] max-h-[85vh] overflow-hidden">
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-primary-50 to-primary-100 dark:from-primary-900/30 dark:to-primary-800/30 relative">
+          <h3 className="m-0 text-xl font-semibold text-gray-800 dark:text-gray-100">{title}</h3>
           {canCancel && (
-            <button onClick={onCancel} className="cancel-btn" title="Cancel Operation">
+            <button 
+              onClick={onCancel} 
+              className="absolute top-4 right-4 bg-transparent border-none text-2xl font-bold text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 cursor-pointer w-8 h-8 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" 
+              title="Cancel Operation"
+            >
               ✕
             </button>
           )}
         </div>
         
-        <div className="modal-content">
+        <div className="px-6 py-5 max-h-[calc(85vh-200px)] overflow-y-auto custom-scrollbar">
           {/* Progress Bar */}
-          <div className="progress-section">
-            <div className="progress-info">
-              <span className="current-step">{currentStep}</span>
-              <span className="progress-percentage">{Math.round(progress)}%</span>
+          <div className="mb-5">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{currentStep}</span>
+              <span className="text-sm font-semibold text-primary-600 dark:text-primary-400">{Math.round(progress)}%</span>
             </div>
-            <div className="progress-bar">
+            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
               <div 
-                className="progress-fill" 
+                className="h-full bg-gradient-to-r from-primary-500 to-primary-600 transition-all duration-300 ease-out" 
                 style={{ width: `${progress}%` }}
               ></div>
             </div>
@@ -281,28 +295,38 @@ const RevisionProgressModal = ({
           )}
           
           {/* Operation Log */}
-          <div className="operation-log">
-            <h4>📋 Operation Details</h4>
-            <div className="log-container">
+          <div className="mb-5">
+            <h4 className="m-0 mb-3 text-base font-semibold text-gray-800 dark:text-gray-100">
+              📋 Operation Details
+            </h4>
+            <div className="border border-gray-300 dark:border-gray-600 rounded max-h-48 overflow-y-auto custom-scrollbar bg-white dark:bg-gray-900">
               {operationLog.length === 0 ? (
-                <div className="log-empty">
-                  <p>Preparing revision operations...</p>
+                <div className="p-8 text-center">
+                  <p className="text-gray-500 dark:text-gray-400">Preparing revision operations...</p>
                 </div>
               ) : (
-                <ul className="log-list">
+                <ul className="list-none m-0 p-0">
                   {operationLog.map((entry, index) => (
-                    <li key={index} className={`log-entry ${entry.type || 'info'}`}>
-                      <span className="log-timestamp">
+                    <li 
+                      key={index} 
+                      className={`px-3 py-2 border-b border-gray-200 dark:border-gray-700 last:border-b-0 flex items-start gap-2 text-sm ${
+                        entry.type === 'success' ? 'bg-success-50 dark:bg-success-900/10' :
+                        entry.type === 'warning' ? 'bg-warning-50 dark:bg-warning-900/10' :
+                        entry.type === 'error' ? 'bg-error-50 dark:bg-error-900/10' :
+                        'bg-white dark:bg-gray-900'
+                      }`}
+                    >
+                      <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0 min-w-[60px]">
                         {entry.timestamp ? new Date(entry.timestamp).toLocaleTimeString() : ''}
                       </span>
-                      <span className="log-icon">
+                      <span className="flex-shrink-0">
                         {entry.type === 'success' && '✅'}
                         {entry.type === 'warning' && '⚠️'}
                         {entry.type === 'error' && '❌'}
                         {entry.type === 'info' && 'ℹ️'}
                         {!entry.type && '•'}
                       </span>
-                      <span className="log-message">{entry.message}</span>
+                      <span className="flex-1 text-gray-700 dark:text-gray-300">{entry.message}</span>
                     </li>
                   ))}
                 </ul>
@@ -311,23 +335,23 @@ const RevisionProgressModal = ({
           </div>
           
           {/* Status Information */}
-          <div className="status-section">
-            <div className="status-indicators">
-              <div className="status-item">
-                <span className="status-label">Files Processed:</span>
-                <span className="status-value">
+          <div className="p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded">
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center">
+                <span className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Files Processed:</span>
+                <span className="block text-lg font-semibold text-success-600 dark:text-success-400">
                   {operationLog.filter(log => log.type === 'success' && log.message.includes('Copied')).length}
                 </span>
               </div>
-              <div className="status-item">
-                <span className="status-label">Warnings:</span>
-                <span className="status-value warning">
+              <div className="text-center">
+                <span className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Warnings:</span>
+                <span className="block text-lg font-semibold text-warning-600 dark:text-warning-400">
                   {operationLog.filter(log => log.type === 'warning').length}
                 </span>
               </div>
-              <div className="status-item">
-                <span className="status-label">Errors:</span>
-                <span className="status-value error">
+              <div className="text-center">
+                <span className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Errors:</span>
+                <span className="block text-lg font-semibold text-error-600 dark:text-error-400">
                   {operationLog.filter(log => log.type === 'error').length}
                 </span>
               </div>
@@ -335,17 +359,18 @@ const RevisionProgressModal = ({
           </div>
         </div>
         
-        <div className="modal-footer">
-          <div className="footer-info">
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex justify-between items-center">
+          <div className="text-sm text-gray-600 dark:text-gray-400">
             {progress < 100 ? (
-              <p>Please wait while the revision is being created...</p>
+              <p className="m-0">Please wait while the revision is being created...</p>
             ) : (
-              <p>Revision creation completed!</p>
+              <p className="m-0">Revision creation completed!</p>
             )}
           </div>
           
           {canCancel && progress < 100 && (
-            <button onClick={onCancel} className="btn btn-secondary">
+            <button onClick={onCancel} className="btn-secondary">
               Cancel Operation
             </button>
           )}

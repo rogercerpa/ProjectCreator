@@ -272,43 +272,54 @@ const ProjectWizardStep2 = ({
       totalSteps={2}
     >
       <Confetti active={showConfetti} />
-      <div className="wizard-step-content">
-        {/* Project Context Summary */}
-        <div className="project-context">
-          <h4>Project: {formData.projectName || 'Untitled Project'}</h4>
-          <div className="context-grid">
-            <span><strong>RFA:</strong> {formData.rfaNumber || 'N/A'}</span>
-            <span><strong>Type:</strong> {formData.rfaType || 'Not Selected'}</span>
-            <span><strong>Agent:</strong> {formData.agentNumber || 'N/A'}</span>
-            <span><strong>Team:</strong> {formData.regionalTeam || 'N/A'}</span>
+      <div className="px-4 py-3 space-y-4">
+        {/* Project Context Summary - Styled Card */}
+        <div className="bg-gradient-to-r from-primary-50 to-blue-50 dark:from-primary-900/20 dark:to-blue-900/20 border-l-4 border-primary-500 rounded-lg p-3 shadow">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <h4 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              📁 {formData.projectName || 'Untitled Project'}
+            </h4>
+            <div className="flex flex-wrap items-center gap-3 text-xs">
+              <span className="px-2 py-1 bg-white dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600">
+                <strong className="text-gray-600 dark:text-gray-400">RFA:</strong> <span className="text-gray-900 dark:text-white font-semibold">{formData.rfaNumber || 'N/A'}</span>
+              </span>
+              <span className="px-2 py-1 bg-white dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600">
+                <strong className="text-gray-600 dark:text-gray-400">Type:</strong> <span className="text-gray-900 dark:text-white font-semibold">{formData.rfaType || 'Not Selected'}</span>
+              </span>
+              <span className="px-2 py-1 bg-white dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600">
+                <strong className="text-gray-600 dark:text-gray-400">Agent:</strong> <span className="text-gray-900 dark:text-white font-semibold">{formData.agentNumber || 'N/A'}</span>
+              </span>
+              <span className="px-2 py-1 bg-white dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600">
+                <strong className="text-gray-600 dark:text-gray-400">Team:</strong> <span className="text-gray-900 dark:text-white font-semibold">{formData.regionalTeam || 'N/A'}</span>
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Settings Button */}
-        <div className="triage-subsection">
-          <div className="settings-button-container">
-            <button
-              type="button"
-              onClick={() => {
-                if (onNavigateToSettings) {
-                  onNavigateToSettings('triage-calc');
-                } else {
-                  console.warn('Navigation function not provided');
-                }
-              }}
-              className="btn btn-outline settings-btn"
-            >
-              ⚙️ Triage Calculation Settings
-            </button>
-            <p className="settings-description">
-              Configure multipliers, defaults, and calculation parameters
-            </p>
+        {/* Settings Button - Compact */}
+        <div className="flex items-center justify-between gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+          <div className="flex-1">
+            <p className="text-sm font-medium text-gray-900 dark:text-white">⚙️ Triage Calculation Settings</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Configure multipliers, defaults, and calculation parameters</p>
           </div>
+          <button
+            type="button"
+            onClick={() => {
+              if (onNavigateToSettings) {
+                onNavigateToSettings('triage-calc');
+              } else {
+                console.warn('Navigation function not provided');
+              }
+            }}
+            className="px-3 py-1.5 text-sm font-medium bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded transition-all"
+          >
+            Open Settings
+          </button>
         </div>
 
         {/* Optimized Triage Configuration - Compact Layout */}
-        <div className="triage-subsection">
-          <h4>Triage Configuration</h4>
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+          <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-3">Triage Configuration</h4>
           
           <div className="config-grid">
             {/* Panel Schedules Question */}
@@ -397,8 +408,8 @@ const ProjectWizardStep2 = ({
         </div>
 
         {/* DIRECT COPY: Dynamic Triage Fields from ProjectForm.jsx lines 916-1201 */}
-        <div className="triage-subsection">
-          <h4>Triage Calculation Fields</h4>
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+          <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-3">Triage Calculation Fields</h4>
           
           {/* Panel Schedule Fields - Show only when hasPanelSchedules = true */}
           {formData.hasPanelSchedules && (
@@ -688,8 +699,8 @@ const ProjectWizardStep2 = ({
 
         {/* DIRECT COPY: Photometrics Section from ProjectForm.jsx lines 1203-1221 */}
         {formData.showPhotometrics && (
-          <div className="triage-subsection">
-            <h4>Photometrics:</h4>
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+            <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-3">Photometrics:</h4>
             <div className="form-group">
               <label htmlFor="photoSoftware">Photo Software:</label>
               <select
@@ -708,8 +719,8 @@ const ProjectWizardStep2 = ({
         )}
 
         {/* DIRECT COPY: Triage Results from ProjectForm.jsx lines 1224-1270 */}
-        <div className="triage-subsection">
-          <h4>Triage Results:</h4>
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+          <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-3">Triage Results:</h4>
           <div className="form-grid">
             <div className="form-group">
               <label htmlFor="selfQC">Self QC:</label>
@@ -757,8 +768,8 @@ const ProjectWizardStep2 = ({
         </div>
 
         {/* DIRECT COPY: Assignment section from ProjectForm.jsx lines 1272-1298 */}
-        <div className="triage-subsection">
-          <h4>Assignment:</h4>
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+          <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-3">Assignment:</h4>
           <div className="form-group">
             <label>
               <input
@@ -785,11 +796,11 @@ const ProjectWizardStep2 = ({
         </div>
 
         {/* DIRECT COPY: Calculate Button from ProjectForm.jsx lines 1300-1310 */}
-        <div className="triage-actions">
+        <div className="flex justify-center py-2">
           <button
             type="button"
             onClick={calculateTriage}
-            className="btn btn-primary"
+            className="px-6 py-2 bg-primary-600 hover:bg-primary-700 dark:bg-primary-700 dark:hover:bg-primary-600 text-white font-semibold rounded-lg shadow-lg transition-all flex items-center gap-2"
           >
             🧮 Calculate Triage
           </button>
@@ -797,31 +808,39 @@ const ProjectWizardStep2 = ({
 
         {/* Simplified Triage Results Display */}
         {triageResults && (
-          <div className="triage-results-simplified">
-            <h4>Estimated Project Time</h4>
-            <div className="triage-summary">
-              <div className="total-time">
-                <span className="time-label">Total Estimated Time:</span>
-                <span className="time-value">{triageResults.totalTriage.toFixed(1)} hours</span>
-              </div>
-              <div className="time-breakdown">
-                <div className="breakdown-row">
-                  <span>Base Calculation:</span>
-                  <span>{triageResults.baseTotal.toFixed(1)} hr</span>
-                </div>
-                <div className="breakdown-row">
-                  <span>Quality Control:</span>
-                  <span>{triageResults.selfQC.toFixed(1)} hr</span>
-                </div>
-                <div className="breakdown-row">
-                  <span>Buffer Time:</span>
-                  <span>{triageResults.fluff.toFixed(1)} hr</span>
+          <div className="bg-gradient-to-r from-success-50 to-green-50 dark:from-success-900/20 dark:to-green-900/20 border-l-4 border-success-500 rounded-lg p-4 shadow">
+            <h4 className="text-base font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+              ⏱️ Estimated Project Time
+            </h4>
+            <div className="space-y-3">
+              {/* Total Time - Prominent Display */}
+              <div className="p-3 bg-white dark:bg-gray-800 rounded-lg border-2 border-success-500 dark:border-success-700">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Total Estimated Time:</span>
+                  <span className="text-2xl font-bold text-success-600 dark:text-success-400">{triageResults.totalTriage.toFixed(1)} hours</span>
                 </div>
               </div>
-            </div>
-            <div className="triage-completion-status">
-              <div className="completion-indicator">
-                ✅ Triage calculation complete! Ready to create project.
+              
+              {/* Breakdown - Compact */}
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                <div className="p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+                  <div className="text-gray-600 dark:text-gray-400">Base Calc:</div>
+                  <div className="font-bold text-gray-900 dark:text-white">{triageResults.baseTotal.toFixed(1)} hr</div>
+                </div>
+                <div className="p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+                  <div className="text-gray-600 dark:text-gray-400">QC:</div>
+                  <div className="font-bold text-gray-900 dark:text-white">{triageResults.selfQC.toFixed(1)} hr</div>
+                </div>
+                <div className="p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+                  <div className="text-gray-600 dark:text-gray-400">Buffer:</div>
+                  <div className="font-bold text-gray-900 dark:text-white">{triageResults.fluff.toFixed(1)} hr</div>
+                </div>
+              </div>
+              
+              {/* Success Indicator */}
+              <div className="flex items-center gap-2 p-2 bg-success-100 dark:bg-success-900/30 rounded text-success-800 dark:text-success-200 text-sm">
+                <span className="text-lg">✅</span>
+                <span className="font-medium">Triage calculation complete! Ready to create project.</span>
               </div>
             </div>
           </div>
@@ -829,11 +848,15 @@ const ProjectWizardStep2 = ({
 
         {/* Smart Assignment Recommendations */}
         {triageResults && (
-          <div className="smart-assignment-section">
-            <h4>🎯 Recommended Assignees</h4>
-            <p className="assignment-subtitle">
-              Based on availability, expertise, and project requirements
-            </p>
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+            <div className="mb-3">
+              <h4 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                🎯 Recommended Assignees
+              </h4>
+              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                Based on availability, expertise, and project requirements
+              </p>
+            </div>
 
             {loadingRecommendations ? (
               <>

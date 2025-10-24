@@ -126,42 +126,52 @@ const DraftRecoveryModal = ({
   const filteredDrafts = getFilteredAndSortedDrafts();
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="draft-recovery-modal" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>📋 Draft Recovery</h2>
-          <button className="close-btn" onClick={onClose}>×</button>
+    <div className="modal-overlay backdrop-blur-sm" onClick={onClose}>
+      <div className="modal-content max-w-6xl w-[95%] max-h-[90vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-primary-50 to-primary-100 dark:from-primary-900/30 dark:to-primary-800/30 relative">
+          <h2 className="m-0 text-2xl font-bold text-gray-800 dark:text-gray-100">📋 Draft Recovery</h2>
+          <button 
+            className="absolute top-4 right-4 bg-transparent border-none text-2xl font-bold text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 cursor-pointer w-8 h-8 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" 
+            onClick={onClose}
+          >
+            ×
+          </button>
         </div>
 
         {/* Statistics Section */}
         {stats && (
-          <div className="draft-stats">
-            <div className="stats-grid">
-              <div className="stat-item">
-                <span className="stat-number">{stats.totalDrafts}</span>
-                <span className="stat-label">Total Drafts</span>
+          <div className="px-6 py-4 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+            <div className="grid grid-cols-4 gap-4">
+              <div className="text-center p-4 bg-white dark:bg-gray-900 rounded-lg shadow">
+                <span className="block text-3xl font-bold text-primary-600 dark:text-primary-400">{stats.totalDrafts}</span>
+                <span className="block text-sm text-gray-600 dark:text-gray-400 mt-1">Total Drafts</span>
               </div>
-              <div className="stat-item">
-                <span className="stat-number">{stats.totalProjects}</span>
-                <span className="stat-label">Projects</span>
+              <div className="text-center p-4 bg-white dark:bg-gray-900 rounded-lg shadow">
+                <span className="block text-3xl font-bold text-info-600 dark:text-info-400">{stats.totalProjects}</span>
+                <span className="block text-sm text-gray-600 dark:text-gray-400 mt-1">Projects</span>
               </div>
-              <div className="stat-item">
-                <span className="stat-number">{stats.averageCompletion}%</span>
-                <span className="stat-label">Avg Completion</span>
+              <div className="text-center p-4 bg-white dark:bg-gray-900 rounded-lg shadow">
+                <span className="block text-3xl font-bold text-success-600 dark:text-success-400">{stats.averageCompletion}%</span>
+                <span className="block text-sm text-gray-600 dark:text-gray-400 mt-1">Avg Completion</span>
               </div>
-              <div className="stat-item">
-                <span className="stat-number">{stats.draftsByStatus.draft}</span>
-                <span className="stat-label">In Progress</span>
+              <div className="text-center p-4 bg-white dark:bg-gray-900 rounded-lg shadow">
+                <span className="block text-3xl font-bold text-warning-600 dark:text-warning-400">{stats.draftsByStatus.draft}</span>
+                <span className="block text-sm text-gray-600 dark:text-gray-400 mt-1">In Progress</span>
               </div>
             </div>
           </div>
         )}
 
         {/* Filters and Sorting */}
-        <div className="draft-controls">
-          <div className="filter-section">
-            <label>Filter:</label>
-            <select value={filter} onChange={e => setFilter(e.target.value)}>
+        <div className="px-6 py-3 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 flex justify-between items-center gap-4">
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Filter:</label>
+            <select 
+              value={filter} 
+              onChange={e => setFilter(e.target.value)}
+              className="px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded text-sm text-gray-700 dark:text-gray-300 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
               <option value="all">All Drafts</option>
               <option value="recent">Recent (24h)</option>
               <option value="step1">Step 1 Only</option>
@@ -169,9 +179,13 @@ const DraftRecoveryModal = ({
             </select>
           </div>
           
-          <div className="sort-section">
-            <label>Sort by:</label>
-            <select value={sortBy} onChange={e => setSortBy(e.target.value)}>
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Sort by:</label>
+            <select 
+              value={sortBy} 
+              onChange={e => setSortBy(e.target.value)}
+              className="px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded text-sm text-gray-700 dark:text-gray-300 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
               <option value="newest">Newest First</option>
               <option value="oldest">Oldest First</option>
               <option value="completion">Completion %</option>
@@ -180,17 +194,17 @@ const DraftRecoveryModal = ({
         </div>
 
         {/* Draft List */}
-        <div className="drafts-container">
+        <div className="px-6 py-5 max-h-[calc(90vh-400px)] overflow-y-auto custom-scrollbar">
           {isLoading ? (
-            <div className="loading-drafts">
-              <div className="spinner"></div>
-              <p>Loading drafts...</p>
+            <div className="flex flex-col items-center justify-center py-20">
+              <div className="spinner mb-4"></div>
+              <p className="text-gray-600 dark:text-gray-400">Loading drafts...</p>
             </div>
           ) : filteredDrafts.length === 0 ? (
-            <div className="no-drafts">
-              <div className="no-drafts-icon">📝</div>
-              <h3>No Drafts Found</h3>
-              <p>
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="text-6xl mb-4">📝</div>
+              <h3 className="m-0 mb-2 text-xl font-semibold text-gray-800 dark:text-gray-200">No Drafts Found</h3>
+              <p className="m-0 text-gray-600 dark:text-gray-400 max-w-md">
                 {filter === 'all' 
                   ? "You don't have any saved drafts yet. Start a new project to create your first draft!"
                   : `No drafts match the current filter "${filter}". Try changing the filter or create a new project.`
@@ -198,45 +212,52 @@ const DraftRecoveryModal = ({
               </p>
             </div>
           ) : (
-            <div className="drafts-grid">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredDrafts.map(draft => (
                 <div 
                   key={draft.id} 
-                  className={`draft-card ${selectedDraft?.id === draft.id ? 'selected' : ''}`}
+                  className={`p-4 border rounded-lg cursor-pointer transition-all hover:shadow-lg ${
+                    selectedDraft?.id === draft.id 
+                      ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 shadow-lg' 
+                      : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:border-primary-300 dark:hover:border-primary-700'
+                  }`}
                   onClick={() => setSelectedDraft(draft)}
                 >
-                  <div className="draft-header">
-                    <h4 className="draft-title">
+                  {/* Draft Header */}
+                  <div className="flex justify-between items-start mb-3">
+                    <h4 className="m-0 text-base font-semibold text-gray-800 dark:text-gray-100 flex-1 pr-2 line-clamp-2">
                       {draft.formData.projectName || 'Untitled Project'}
                     </h4>
-                    <div className="draft-step">
+                    <div className="flex-shrink-0 px-2 py-1 bg-primary-600 text-white text-xs font-bold rounded">
                       Step {draft.currentStep}
                     </div>
                   </div>
 
-                  <div className="draft-info">
-                    <div className="info-row">
-                      <span className="info-label">RFA:</span>
-                      <span className="info-value">{draft.formData.rfaNumber || 'Not set'}</span>
+                  {/* Draft Info */}
+                  <div className="mb-3 space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-600 dark:text-gray-400">RFA:</span>
+                      <span className="text-gray-800 dark:text-gray-200 font-medium">{draft.formData.rfaNumber || 'Not set'}</span>
                     </div>
-                    <div className="info-row">
-                      <span className="info-label">Type:</span>
-                      <span className="info-value">{draft.formData.rfaType || 'Not selected'}</span>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-600 dark:text-gray-400">Type:</span>
+                      <span className="text-gray-800 dark:text-gray-200 font-medium">{draft.formData.rfaType || 'Not selected'}</span>
                     </div>
-                    <div className="info-row">
-                      <span className="info-label">Team:</span>
-                      <span className="info-value">{draft.formData.regionalTeam || 'Not assigned'}</span>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-600 dark:text-gray-400">Team:</span>
+                      <span className="text-gray-800 dark:text-gray-200 font-medium">{draft.formData.regionalTeam || 'Not assigned'}</span>
                     </div>
                   </div>
 
-                  <div className="draft-progress">
-                    <div className="progress-header">
-                      <span>Progress: {draft.completionPercentage}%</span>
-                      <span className="current-step">{getStepName(draft.currentStep)}</span>
+                  {/* Draft Progress */}
+                  <div className="mb-3">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-xs text-gray-600 dark:text-gray-400">Progress: {draft.completionPercentage}%</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">{getStepName(draft.currentStep)}</span>
                     </div>
-                    <div className="progress-bar">
+                    <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                       <div 
-                        className="progress-fill"
+                        className="h-full transition-all"
                         style={{ 
                           width: `${draft.completionPercentage}%`,
                           backgroundColor: getCompletionColor(draft.completionPercentage)
@@ -245,16 +266,20 @@ const DraftRecoveryModal = ({
                     </div>
                   </div>
 
-                  <div className="draft-meta">
-                    <span className="draft-date">{formatDate(draft.metadata.savedAt)}</span>
-                    <span className="draft-status">
+                  {/* Draft Meta */}
+                  <div className="flex justify-between items-center mb-3 text-xs">
+                    <span className="text-gray-500 dark:text-gray-400">{formatDate(draft.metadata.savedAt)}</span>
+                    <span className={`font-medium ${
+                      draft.status === 'completed' ? 'text-success-600 dark:text-success-400' : 'text-info-600 dark:text-info-400'
+                    }`}>
                       {draft.status === 'completed' ? '✅ Completed' : '🔄 In Progress'}
                     </span>
                   </div>
 
-                  <div className="draft-actions">
+                  {/* Draft Actions */}
+                  <div className="flex gap-2">
                     <button 
-                      className="btn btn-primary btn-small"
+                      className="flex-1 px-3 py-1.5 text-sm font-medium bg-primary-600 hover:bg-primary-700 text-white rounded transition-colors"
                       onClick={e => {
                         e.stopPropagation();
                         handleResumeDraft(draft);
@@ -263,7 +288,7 @@ const DraftRecoveryModal = ({
                       Resume
                     </button>
                     <button 
-                      className="btn btn-danger btn-small"
+                      className="flex-1 px-3 py-1.5 text-sm font-medium bg-error-600 hover:bg-error-700 text-white rounded transition-colors"
                       onClick={e => {
                         e.stopPropagation();
                         handleDeleteDraft(draft.id);
@@ -280,26 +305,26 @@ const DraftRecoveryModal = ({
 
         {/* Selected Draft Preview */}
         {selectedDraft && (
-          <div className="selected-draft-preview">
-            <h4>Draft Details</h4>
-            <div className="preview-content">
-              <div className="preview-section">
-                <h5>Project Information</h5>
-                <div className="preview-grid">
-                  <div><strong>Name:</strong> {selectedDraft.formData.projectName || 'Not set'}</div>
-                  <div><strong>RFA:</strong> {selectedDraft.formData.rfaNumber || 'Not set'}</div>
-                  <div><strong>Agent:</strong> {selectedDraft.formData.agentNumber || 'Not set'}</div>
-                  <div><strong>Container:</strong> {selectedDraft.formData.projectContainer || 'Not set'}</div>
+          <div className="px-6 py-4 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+            <h4 className="m-0 mb-3 text-base font-semibold text-gray-800 dark:text-gray-100">Draft Details</h4>
+            <div className="space-y-3">
+              <div>
+                <h5 className="m-0 mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">Project Information</h5>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="text-gray-600 dark:text-gray-400"><strong>Name:</strong> {selectedDraft.formData.projectName || 'Not set'}</div>
+                  <div className="text-gray-600 dark:text-gray-400"><strong>RFA:</strong> {selectedDraft.formData.rfaNumber || 'Not set'}</div>
+                  <div className="text-gray-600 dark:text-gray-400"><strong>Agent:</strong> {selectedDraft.formData.agentNumber || 'Not set'}</div>
+                  <div className="text-gray-600 dark:text-gray-400"><strong>Container:</strong> {selectedDraft.formData.projectContainer || 'Not set'}</div>
                 </div>
               </div>
               
               {selectedDraft.currentStep >= 2 && (
-                <div className="preview-section">
-                  <h5>Triage Information</h5>
-                  <div className="preview-grid">
-                    <div><strong>Panel Schedules:</strong> {selectedDraft.formData.hasPanelSchedules ? 'Yes' : 'No'}</div>
-                    <div><strong>Submittals:</strong> {selectedDraft.formData.hasSubmittals ? 'Yes' : 'No'}</div>
-                    <div><strong>Total Triage:</strong> {selectedDraft.formData.totalTriage || 0} hours</div>
+                <div>
+                  <h5 className="m-0 mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">Triage Information</h5>
+                  <div className="grid grid-cols-3 gap-2 text-sm">
+                    <div className="text-gray-600 dark:text-gray-400"><strong>Panel Schedules:</strong> {selectedDraft.formData.hasPanelSchedules ? 'Yes' : 'No'}</div>
+                    <div className="text-gray-600 dark:text-gray-400"><strong>Submittals:</strong> {selectedDraft.formData.hasSubmittals ? 'Yes' : 'No'}</div>
+                    <div className="text-gray-600 dark:text-gray-400"><strong>Total Triage:</strong> {selectedDraft.formData.totalTriage || 0} hours</div>
                   </div>
                 </div>
               )}
@@ -308,13 +333,13 @@ const DraftRecoveryModal = ({
         )}
 
         {/* Modal Actions */}
-        <div className="modal-actions">
-          <button className="btn btn-secondary" onClick={onClose}>
+        <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex justify-end gap-3">
+          <button className="btn-secondary" onClick={onClose}>
             Close
           </button>
           {selectedDraft && (
             <button 
-              className="btn btn-primary"
+              className="btn-primary"
               onClick={() => handleResumeDraft(selectedDraft)}
             >
               Resume Selected Draft

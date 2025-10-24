@@ -4,7 +4,6 @@
 
 import React, { useState, useMemo } from 'react';
 import UserWorkloadRow from './UserWorkloadRow';
-import './WorkloadGrid.css';
 
 const WorkloadGrid = ({
   users,
@@ -139,12 +138,15 @@ const WorkloadGrid = ({
   // If no users, show empty state
   if (users.length === 0) {
     return (
-      <div className="workload-grid-empty">
-        <div className="empty-state">
-          <p className="empty-icon">👥</p>
-          <h3>No Users Found</h3>
-          <p>Add users to start managing workload</p>
-          <button className="btn-primary" onClick={() => {/* TODO: Open add user modal */}}>
+      <div className="flex-1 flex items-center justify-center bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div className="text-center p-16 max-w-md">
+          <div className="text-6xl mb-5">👥</div>
+          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">No Users Found</h3>
+          <p className="text-base text-gray-600 dark:text-gray-400 mb-8">Add users to start managing workload</p>
+          <button 
+            className="px-6 py-3 bg-primary-600 hover:bg-primary-700 dark:bg-primary-700 dark:hover:bg-primary-600 text-white font-semibold rounded-lg shadow-lg transition-all"
+            onClick={() => {/* TODO: Open add user modal */}}
+          >
             Add User
           </button>
         </div>
@@ -153,30 +155,36 @@ const WorkloadGrid = ({
   }
 
   return (
-    <div className="workload-grid-container">
-      <div className="workload-grid">
+    <div className="flex-1 bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden flex flex-col">
+      <div className="flex flex-col h-full">
         {/* Header Row */}
-        <div className="grid-header">
-          <div className="grid-header-cell user-column">
+        <div className="grid gap-0 bg-gray-100 dark:bg-gray-700 border-b-2 border-gray-300 dark:border-gray-600 sticky top-0 z-10" style={{
+          gridTemplateColumns: `200px repeat(${dateRange.length}, minmax(120px, 1fr)) 120px`
+        }}>
+          <div className="px-4 py-4 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide border-r border-gray-300 dark:border-gray-600 flex items-center">
             <span>User</span>
           </div>
           
           {dateRange.map((date, index) => (
             <div 
               key={index}
-              className={`grid-header-cell date-column ${isToday(date) ? 'today' : ''}`}
+              className={`px-2 py-4 text-xs font-bold uppercase tracking-wide border-r border-gray-300 dark:border-gray-600 flex items-center justify-center text-center ${
+                isToday(date) 
+                  ? 'bg-blue-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400' 
+                  : 'text-gray-700 dark:text-gray-300'
+              }`}
             >
               {formatDateHeader(date)}
             </div>
           ))}
           
-          <div className="grid-header-cell capacity-column">
+          <div className="px-2 py-4 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide flex items-center justify-center text-center">
             <span>Capacity</span>
           </div>
         </div>
 
         {/* User Rows */}
-        <div className="grid-body">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
           {users.map(user => {
             const isOnline = onlineUsers.has(user.id);
             const capacity = calculateUserCapacity(user.id);

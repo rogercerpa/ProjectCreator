@@ -26,24 +26,24 @@ const WizardProgress = ({
   const titles = stepTitles.length > 0 ? stepTitles : defaultStepTitles;
 
   const renderHorizontalProgress = () => (
-    <div className="wizard-progress horizontal">
+    <div className="p-4">
       {/* Progress Bar */}
-      <div className="progress-bar-container">
-        <div className="progress-bar">
+      <div className="mb-4">
+        <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
           <div 
-            className="progress-fill"
+            className="h-full bg-gradient-to-r from-primary-500 to-secondary-500 transition-all duration-300"
             style={{ width: `${progressPercentage}%` }}
           />
         </div>
         {showPercentage && (
-          <div className="progress-percentage">
+          <div className="text-right text-sm text-gray-600 dark:text-gray-400 mt-1 font-medium">
             {Math.round(progressPercentage)}% Complete
           </div>
         )}
       </div>
 
       {/* Step Indicators */}
-      <div className="step-indicators">
+      <div className="flex justify-between items-start">
         {Array.from({ length: totalSteps }, (_, i) => {
           const stepNumber = i + 1;
           const isActive = stepNumber === currentStep;
@@ -52,17 +52,27 @@ const WizardProgress = ({
           return (
             <div
               key={stepNumber}
-              className={`step-indicator ${
-                isActive ? 'active' : ''
-              } ${
-                isCompleted ? 'completed' : ''
-              }`}
+              className="flex flex-col items-center flex-1"
             >
-              <div className="step-circle">
+              <div className={`
+                w-12 h-12 rounded-full flex items-center justify-center font-semibold transition-all
+                ${isActive 
+                  ? 'bg-primary-500 text-white scale-110 shadow-primary' 
+                  : isCompleted 
+                  ? 'bg-success-500 text-white' 
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                }
+              `}>
                 {isCompleted ? '✓' : stepNumber}
               </div>
               {showStepNames && (
-                <div className="step-name">
+                <div className={`
+                  mt-2 text-sm text-center font-medium
+                  ${isActive 
+                    ? 'text-primary-600 dark:text-primary-400' 
+                    : 'text-gray-600 dark:text-gray-400'
+                  }
+                `}>
                   {titles[i] || `Step ${stepNumber}`}
                 </div>
               )}
@@ -74,8 +84,8 @@ const WizardProgress = ({
   );
 
   const renderVerticalProgress = () => (
-    <div className="wizard-progress vertical">
-      <div className="vertical-steps">
+    <div className="p-4 space-y-4">
+      <div className="space-y-2">
         {Array.from({ length: totalSteps }, (_, i) => {
           const stepNumber = i + 1;
           const isActive = stepNumber === currentStep;
@@ -85,31 +95,40 @@ const WizardProgress = ({
           return (
             <div
               key={stepNumber}
-              className={`vertical-step ${
-                isActive ? 'active' : ''
-              } ${
-                isCompleted ? 'completed' : ''
-              } ${
-                isUpcoming ? 'upcoming' : ''
-              }`}
+              className="flex items-center gap-4"
             >
-              <div className="step-connector">
+              <div className="relative flex flex-col items-center">
                 {stepNumber < totalSteps && (
-                  <div className={`connector-line ${
-                    isCompleted ? 'completed' : ''
-                  }`} />
+                  <div className={`
+                    absolute top-12 left-1/2 -translate-x-1/2 w-0.5 h-8
+                    ${isCompleted ? 'bg-success-500' : 'bg-gray-300 dark:bg-gray-700'}
+                  `} />
                 )}
+                
+                <div className={`
+                  w-10 h-10 rounded-full flex items-center justify-center font-semibold z-10
+                  ${isActive 
+                    ? 'bg-primary-500 text-white shadow-primary' 
+                    : isCompleted 
+                    ? 'bg-success-500 text-white' 
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                  }
+                `}>
+                  {isCompleted ? '✓' : stepNumber}
+                </div>
               </div>
               
-              <div className="step-circle">
-                {isCompleted ? '✓' : stepNumber}
-              </div>
-              
-              <div className="step-content">
-                <div className="step-title">
+              <div className="flex-1">
+                <div className={`
+                  font-semibold
+                  ${isActive 
+                    ? 'text-primary-600 dark:text-primary-400' 
+                    : 'text-gray-700 dark:text-gray-300'
+                  }
+                `}>
                   {titles[i] || `Step ${stepNumber}`}
                 </div>
-                <div className="step-status">
+                <div className="text-sm text-gray-500 dark:text-gray-400">
                   {isCompleted ? 'Completed' : isActive ? 'In Progress' : 'Pending'}
                 </div>
               </div>
@@ -119,11 +138,11 @@ const WizardProgress = ({
       </div>
       
       {showPercentage && (
-        <div className="vertical-progress-summary">
-          <div className="progress-text">
+        <div className="flex justify-between items-center pt-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="text-sm text-gray-600 dark:text-gray-400">
             {completedSteps.length} of {totalSteps} steps completed
           </div>
-          <div className="progress-percentage">
+          <div className="text-lg font-semibold text-primary-600 dark:text-primary-400">
             {Math.round(progressPercentage)}%
           </div>
         </div>
@@ -146,8 +165,8 @@ export const CompactProgress = ({
   const progressPercentage = (completedSteps.length / totalSteps) * 100;
   
   return (
-    <div className="compact-progress">
-      <div className="compact-steps">
+    <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1">
         {Array.from({ length: totalSteps }, (_, i) => {
           const stepNumber = i + 1;
           const isActive = stepNumber === currentStep;
@@ -156,16 +175,20 @@ export const CompactProgress = ({
           return (
             <div
               key={stepNumber}
-              className={`compact-step ${
-                isActive ? 'active' : ''
-              } ${
-                isCompleted ? 'completed' : ''
-              }`}
+              className={`
+                w-2 h-8 rounded-full transition-all
+                ${isActive 
+                  ? 'bg-primary-500 w-3' 
+                  : isCompleted 
+                  ? 'bg-success-500' 
+                  : 'bg-gray-300 dark:bg-gray-600'
+                }
+              `}
             />
           );
         })}
       </div>
-      <div className="compact-text">
+      <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
         {currentStep}/{totalSteps} ({Math.round(progressPercentage)}%)
       </div>
     </div>
@@ -183,16 +206,28 @@ export const StepStatusBadge = ({
   title = '' 
 }) => {
   return (
-    <div className={`step-status-badge ${
-      isActive ? 'active' : ''
-    } ${
-      isCompleted ? 'completed' : ''
-    }`}>
-      <div className="badge-circle">
+    <div className="inline-flex items-center gap-2">
+      <div className={`
+        w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm
+        ${isActive 
+          ? 'bg-primary-500 text-white' 
+          : isCompleted 
+          ? 'bg-success-500 text-white' 
+          : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+        }
+      `}>
         {isCompleted ? '✓' : stepNumber}
       </div>
       {title && (
-        <span className="badge-title">{title}</span>
+        <span className={`
+          text-sm font-medium
+          ${isActive 
+            ? 'text-primary-600 dark:text-primary-400' 
+            : 'text-gray-700 dark:text-gray-300'
+          }
+        `}>
+          {title}
+        </span>
       )}
     </div>
   );

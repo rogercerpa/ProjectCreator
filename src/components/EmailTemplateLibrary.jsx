@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import './EmailTemplateLibrary.css';
 import EmailTemplateCreator from './EmailTemplateCreator';
 
 function EmailTemplateLibrary({ isOpen, onClose, onSelectTemplate }) {
@@ -175,14 +174,21 @@ function EmailTemplateLibrary({ isOpen, onClose, onSelectTemplate }) {
   const renderTemplateCard = (template) => (
     <div 
       key={template.id} 
-      className={`template-card ${selectedTemplate?.id === template.id ? 'selected' : ''}`}
+      className={`p-4 bg-white dark:bg-gray-800 border-2 rounded-lg cursor-pointer transition-all group ${
+        selectedTemplate?.id === template.id 
+          ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 shadow-lg' 
+          : 'border-gray-200 dark:border-gray-700 hover:border-primary-400 dark:hover:border-primary-600 hover:shadow-md'
+      }`}
       onClick={() => handleSelectTemplate(template)}
     >
-      <div className="template-card-header">
-        <h3 className="template-name">{template.name}</h3>
-        <div className="template-actions">
+      {/* Header */}
+      <div className="flex justify-between items-start mb-3">
+        <h3 className="text-base font-semibold text-gray-900 dark:text-white flex-1 pr-2">
+          {template.name}
+        </h3>
+        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
-            className="action-btn edit-btn"
+            className="p-1.5 hover:bg-info-100 dark:hover:bg-info-900/30 rounded transition-colors"
             onClick={(e) => {
               e.stopPropagation();
               handleEditTemplate(template);
@@ -192,7 +198,7 @@ function EmailTemplateLibrary({ isOpen, onClose, onSelectTemplate }) {
             ✏️
           </button>
           <button
-            className="action-btn delete-btn"
+            className="p-1.5 hover:bg-error-100 dark:hover:bg-error-900/30 rounded transition-colors"
             onClick={(e) => {
               e.stopPropagation();
               handleDeleteTemplate(template);
@@ -204,27 +210,31 @@ function EmailTemplateLibrary({ isOpen, onClose, onSelectTemplate }) {
         </div>
       </div>
 
-      <div className="template-meta">
-        <span className="template-category">{template.category || 'General'}</span>
-        <span className="template-usage">Used {template.usageCount || 0} times</span>
+      {/* Meta */}
+      <div className="flex justify-between items-center mb-3 text-xs">
+        <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full font-medium">
+          {template.category || 'General'}
+        </span>
+        <span className="text-gray-600 dark:text-gray-400">
+          Used {template.usageCount || 0} times
+        </span>
       </div>
 
-      <div className="template-subject">
+      {/* Subject */}
+      <div className="mb-2 text-sm text-gray-700 dark:text-gray-300">
         <strong>Subject:</strong> {truncateText(template.subject, 80)}
       </div>
 
-      <div className="template-content-preview">
+      {/* Content Preview */}
+      <div className="mb-3 text-xs text-gray-600 dark:text-gray-400 leading-relaxed min-h-[40px]">
         {truncateText(template.content, 120)}
       </div>
 
-      <div className="template-footer">
-        <span className="template-date">
-          Created: {formatDate(template.createdAt)}
-        </span>
+      {/* Footer */}
+      <div className="flex justify-between text-xs text-gray-500 dark:text-gray-500 border-t border-gray-200 dark:border-gray-700 pt-2">
+        <span>Created: {formatDate(template.createdAt)}</span>
         {template.lastUsed && (
-          <span className="template-last-used">
-            Last used: {formatDate(template.lastUsed)}
-          </span>
+          <span>Last used: {formatDate(template.lastUsed)}</span>
         )}
       </div>
     </div>
@@ -233,30 +243,40 @@ function EmailTemplateLibrary({ isOpen, onClose, onSelectTemplate }) {
   const renderTemplateListItem = (template) => (
     <div 
       key={template.id} 
-      className={`template-list-item ${selectedTemplate?.id === template.id ? 'selected' : ''}`}
+      className={`p-4 bg-white dark:bg-gray-800 border-2 rounded-lg cursor-pointer transition-all group flex items-center gap-4 ${
+        selectedTemplate?.id === template.id 
+          ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 shadow-lg' 
+          : 'border-gray-200 dark:border-gray-700 hover:border-primary-400 dark:hover:border-primary-600 hover:shadow-md'
+      }`}
       onClick={() => handleSelectTemplate(template)}
     >
-      <div className="template-list-main">
-        <div className="template-list-header">
-          <h4 className="template-name">{template.name}</h4>
-          <span className="template-category">{template.category || 'General'}</span>
+      {/* Main Content */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-3 mb-2">
+          <h4 className="text-base font-semibold text-gray-900 dark:text-white">
+            {template.name}
+          </h4>
+          <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full text-xs font-medium">
+            {template.category || 'General'}
+          </span>
         </div>
-        <div className="template-subject">
+        <div className="mb-1 text-sm text-gray-700 dark:text-gray-300">
           <strong>Subject:</strong> {template.subject}
         </div>
-        <div className="template-content-preview">
+        <div className="text-xs text-gray-600 dark:text-gray-400">
           {truncateText(template.content, 200)}
         </div>
       </div>
 
-      <div className="template-list-meta">
-        <div className="template-stats">
+      {/* Meta & Actions */}
+      <div className="flex flex-col items-end gap-2 min-w-[150px]">
+        <div className="flex flex-col items-end text-xs text-gray-500 dark:text-gray-500 gap-1">
           <span>Used {template.usageCount || 0} times</span>
           <span>Created: {formatDate(template.createdAt)}</span>
         </div>
-        <div className="template-list-actions">
+        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
-            className="action-btn edit-btn"
+            className="p-1.5 hover:bg-info-100 dark:hover:bg-info-900/30 rounded transition-colors"
             onClick={(e) => {
               e.stopPropagation();
               handleEditTemplate(template);
@@ -266,7 +286,7 @@ function EmailTemplateLibrary({ isOpen, onClose, onSelectTemplate }) {
             ✏️
           </button>
           <button
-            className="action-btn delete-btn"
+            className="p-1.5 hover:bg-error-100 dark:hover:bg-error-900/30 rounded transition-colors"
             onClick={(e) => {
               e.stopPropagation();
               handleDeleteTemplate(template);
@@ -284,12 +304,15 @@ function EmailTemplateLibrary({ isOpen, onClose, onSelectTemplate }) {
 
   return (
     <>
-      <div className="email-template-library-overlay">
-        <div className="email-template-library">
-          <div className="library-header">
-            <h2>Email Template Library</h2>
+      {/* Modal Overlay */}
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[1002] p-5">
+        {/* Modal Content */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-[90%] max-w-[1400px] max-h-[90vh] flex flex-col overflow-hidden">
+          {/* Header */}
+          <div className="flex justify-between items-center px-6 py-5 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Email Template Library</h2>
             <button 
-              className="close-btn" 
+              className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-all text-xl"
               onClick={onClose}
               title="Close"
             >
@@ -297,41 +320,51 @@ function EmailTemplateLibrary({ isOpen, onClose, onSelectTemplate }) {
             </button>
           </div>
 
-          <div className="library-toolbar">
-            <div className="library-search">
+          {/* Toolbar */}
+          <div className="flex flex-wrap items-center gap-4 px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+            {/* Search */}
+            <div className="flex-1 min-w-[200px]">
               <input
                 type="text"
                 placeholder="Search templates..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="search-input"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
               />
             </div>
 
-            <div className="library-filters">
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="category-filter"
-              >
-                {categories.map(category => (
-                  <option key={category} value={category}>
-                    {category === 'all' ? 'All Categories' : category}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {/* Category Filter */}
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+            >
+              {categories.map(category => (
+                <option key={category} value={category}>
+                  {category === 'all' ? 'All Categories' : category}
+                </option>
+              ))}
+            </select>
 
-            <div className="library-view-controls">
+            {/* View Controls */}
+            <div className="flex gap-1">
               <button
-                className={`view-btn ${viewMode === 'grid' ? 'active' : ''}`}
+                className={`px-3 py-2 border rounded-lg text-sm font-medium transition-all ${
+                  viewMode === 'grid'
+                    ? 'bg-primary-600 text-white border-primary-600'
+                    : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
+                }`}
                 onClick={() => setViewMode('grid')}
                 title="Grid View"
               >
                 ⊞
               </button>
               <button
-                className={`view-btn ${viewMode === 'list' ? 'active' : ''}`}
+                className={`px-3 py-2 border rounded-lg text-sm font-medium transition-all ${
+                  viewMode === 'list'
+                    ? 'bg-primary-600 text-white border-primary-600'
+                    : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
+                }`}
                 onClick={() => setViewMode('list')}
                 title="List View"
               >
@@ -339,47 +372,50 @@ function EmailTemplateLibrary({ isOpen, onClose, onSelectTemplate }) {
               </button>
             </div>
 
+            {/* Create Button */}
             <button 
-              className="btn btn-primary create-btn"
+              className="px-4 py-2 bg-primary-600 hover:bg-primary-700 dark:bg-primary-700 dark:hover:bg-primary-600 text-white font-semibold rounded-lg shadow transition-all flex items-center gap-2"
               onClick={handleCreateTemplate}
             >
-              ✨ Create Template
+              <span>✨</span>
+              <span>Create Template</span>
             </button>
           </div>
 
           {/* Statistics */}
           {statistics && (
-            <div className="library-stats">
-              <div className="stat">
-                <span className="stat-value">{statistics.totalTemplates}</span>
-                <span className="stat-label">Templates</span>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 px-6 py-4 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+              <div className="text-center p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                <div className="text-2xl font-bold text-primary-600 dark:text-primary-400">{statistics.totalTemplates}</div>
+                <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">Templates</div>
               </div>
-              <div className="stat">
-                <span className="stat-value">{statistics.categoriesCount}</span>
-                <span className="stat-label">Categories</span>
+              <div className="text-center p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                <div className="text-2xl font-bold text-primary-600 dark:text-primary-400">{statistics.categoriesCount}</div>
+                <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">Categories</div>
               </div>
-              <div className="stat">
-                <span className="stat-value">{statistics.totalUsage}</span>
-                <span className="stat-label">Total Uses</span>
+              <div className="text-center p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                <div className="text-2xl font-bold text-primary-600 dark:text-primary-400">{statistics.totalUsage}</div>
+                <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">Total Uses</div>
               </div>
-              <div className="stat">
-                <span className="stat-value">{statistics.recentlyCreated}</span>
-                <span className="stat-label">This Week</span>
+              <div className="text-center p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                <div className="text-2xl font-bold text-primary-600 dark:text-primary-400">{statistics.recentlyCreated}</div>
+                <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">This Week</div>
               </div>
             </div>
           )}
 
-          <div className="library-content">
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-6">
             {loading ? (
-              <div className="loading-state">
-                <div className="loading-spinner"></div>
-                <p>Loading templates...</p>
+              <div className="flex flex-col items-center justify-center py-16">
+                <div className="w-12 h-12 border-4 border-primary-200 dark:border-primary-800 border-t-primary-600 dark:border-t-primary-400 rounded-full animate-spin mb-4"></div>
+                <p className="text-gray-600 dark:text-gray-400">Loading templates...</p>
               </div>
             ) : filteredTemplates.length === 0 ? (
-              <div className="empty-state">
-                <div className="empty-icon">📧</div>
-                <h3>No templates found</h3>
-                <p>
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <div className="text-6xl mb-4 opacity-50">📧</div>
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">No templates found</h3>
+                <p className="text-gray-600 dark:text-gray-400 mb-5 max-w-md">
                   {searchTerm || selectedCategory !== 'all' 
                     ? 'Try adjusting your search or filter criteria.'
                     : 'Create your first email template to get started!'
@@ -387,7 +423,7 @@ function EmailTemplateLibrary({ isOpen, onClose, onSelectTemplate }) {
                 </p>
                 {!searchTerm && selectedCategory === 'all' && (
                   <button 
-                    className="btn btn-primary"
+                    className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-lg shadow transition-all"
                     onClick={handleCreateTemplate}
                   >
                     Create Your First Template
@@ -395,7 +431,10 @@ function EmailTemplateLibrary({ isOpen, onClose, onSelectTemplate }) {
                 )}
               </div>
             ) : (
-              <div className={`templates-container ${viewMode}`}>
+              <div className={viewMode === 'grid' 
+                ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' 
+                : 'flex flex-col gap-4'
+              }>
                 {viewMode === 'grid' 
                   ? filteredTemplates.map(renderTemplateCard)
                   : filteredTemplates.map(renderTemplateListItem)
@@ -404,28 +443,29 @@ function EmailTemplateLibrary({ isOpen, onClose, onSelectTemplate }) {
             )}
           </div>
 
+          {/* Footer Actions */}
           {onSelectTemplate && (
-            <div className="library-actions">
-              <div className="selection-info">
+            <div className="flex justify-between items-center gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+              <div className="flex-1">
                 {selectedTemplate ? (
-                  <span className="selected-template-info">
+                  <span className="text-sm text-success-600 dark:text-success-400">
                     Selected: <strong>{selectedTemplate.name}</strong>
                   </span>
                 ) : (
-                  <span className="no-selection-info">
+                  <span className="text-sm text-gray-500 dark:text-gray-400 italic">
                     Click on a template to select it
                   </span>
                 )}
               </div>
-              <div className="action-buttons">
+              <div className="flex gap-3">
                 <button 
-                  className="btn btn-secondary" 
+                  className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white font-semibold rounded-lg shadow transition-all"
                   onClick={onClose}
                 >
                   Cancel
                 </button>
                 <button 
-                  className="btn btn-primary" 
+                  className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-lg shadow transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={handleUseTemplateButton}
                   disabled={!selectedTemplate}
                 >

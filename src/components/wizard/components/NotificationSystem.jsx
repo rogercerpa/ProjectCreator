@@ -43,66 +43,86 @@ const NotificationSystem = ({
 
   const getNotificationClass = (type) => {
     const classes = {
-      success: 'notification-success',
-      error: 'notification-error',
-      warning: 'notification-warning',
-      info: 'notification-info',
-      loading: 'notification-loading'
+      success: 'bg-success-50 dark:bg-success-900/20 border-success-200 dark:border-success-700 text-success-800 dark:text-success-200',
+      error: 'bg-error-50 dark:bg-error-900/20 border-error-200 dark:border-error-700 text-error-800 dark:text-error-200',
+      warning: 'bg-warning-50 dark:bg-warning-900/20 border-warning-200 dark:border-warning-700 text-warning-800 dark:text-warning-200',
+      info: 'bg-info-50 dark:bg-info-900/20 border-info-200 dark:border-info-700 text-info-800 dark:text-info-200',
+      loading: 'bg-primary-50 dark:bg-primary-900/20 border-primary-200 dark:border-primary-700 text-primary-800 dark:text-primary-200'
     };
     return classes[type] || classes.info;
+  };
+  
+  const getPositionClass = (position) => {
+    const positions = {
+      'top-right': 'top-4 right-4',
+      'top-left': 'top-4 left-4',
+      'top-center': 'top-4 left-1/2 -translate-x-1/2',
+      'bottom-right': 'bottom-4 right-4',
+      'bottom-left': 'bottom-4 left-4',
+      'bottom-center': 'bottom-4 left-1/2 -translate-x-1/2'
+    };
+    return positions[position] || positions['top-right'];
   };
 
   if (visibleNotifications.length === 0) return null;
 
   return (
-    <div className={`notification-container position-${position}`}>
+    <div className={`fixed ${getPositionClass(position)} z-50 flex flex-col gap-2 w-96 max-w-full`}>
       {visibleNotifications.map((notification) => (
         <div
           key={notification.id}
-          className={`notification ${getNotificationClass(notification.type)} ${
-            notification.dismissing ? 'dismissing' : 'entering'
+          className={`p-4 border-2 rounded-lg shadow-lg transition-all duration-300 ${
+            getNotificationClass(notification.type)
+          } ${
+            notification.dismissing 
+              ? 'opacity-0 translate-x-8' 
+              : 'opacity-100 translate-x-0 animate-slideIn'
           }`}
         >
-          <div className="notification-content">
-            <span className="notification-icon">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl flex-shrink-0">
               {getNotificationIcon(notification.type)}
             </span>
-            <div className="notification-body">
+            <div className="flex-1 min-w-0">
               {notification.title && (
-                <div className="notification-title">{notification.title}</div>
+                <div className="font-semibold text-sm mb-1">{notification.title}</div>
               )}
-              <div className="notification-message">{notification.message}</div>
+              <div className="text-sm">{notification.message}</div>
               {notification.details && (
-                <div className="notification-details">{notification.details}</div>
+                <div className="text-xs opacity-80 mt-1">{notification.details}</div>
               )}
             </div>
+            
+            {notification.type !== 'loading' && (
+              <button
+                className="flex-shrink-0 ml-2 text-xl font-bold opacity-60 hover:opacity-100 transition-opacity"
+                onClick={() => handleDismiss(notification.id)}
+                aria-label="Dismiss notification"
+              >
+                ×
+              </button>
+            )}
           </div>
           
-          {notification.type !== 'loading' && (
-            <button
-              className="notification-dismiss"
-              onClick={() => handleDismiss(notification.id)}
-              aria-label="Dismiss notification"
-            >
-              ×
-            </button>
-          )}
-          
           {notification.progress !== undefined && (
-            <div className="notification-progress">
+            <div className="mt-3 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
               <div 
-                className="progress-bar"
+                className="h-full bg-current transition-all duration-300"
                 style={{ width: `${notification.progress}%` }}
               />
             </div>
           )}
           
           {notification.actions && (
-            <div className="notification-actions">
+            <div className="flex gap-2 mt-3">
               {notification.actions.map((action, index) => (
                 <button
                   key={index}
-                  className={`notification-action ${action.type || 'secondary'}`}
+                  className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
+                    action.type === 'primary' 
+                      ? 'bg-current text-white hover:opacity-90' 
+                      : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
                   onClick={() => {
                     action.onClick();
                     if (action.dismissAfter) {

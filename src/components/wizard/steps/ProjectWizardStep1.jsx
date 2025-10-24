@@ -1426,59 +1426,101 @@ const ProjectWizardStep1 = ({
       </div>
     )}
     
-    <div className="wizard-layout">
-      {/* Unified Modern Header with Import Actions */}
-      <div className="unified-header">
-        {/* Header Info - Top Section */}
-        <div className="header-info">
-          <div className="step-badge">
-            <span className="step-badge-number">1</span>
-            <span className="step-badge-divider">of</span>
-            <span className="step-badge-total">2</span>
-          </div>
-          
-          <h2 className="step-title">Project Setup</h2>
-          <p className="step-subtitle">Import from Agile or fill in the basic project details - folders will be created automatically</p>
+    <div className="max-w-6xl mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+      {/* Gradient Hero Header */}
+      <div className="relative isolate overflow-hidden bg-gradient-to-br from-primary-600 via-primary-700 to-secondary-700 dark:from-primary-800 dark:via-primary-900 dark:to-secondary-900 px-6 py-8 sm:px-8 sm:py-12">
+        {/* Subtle gradient overlays */}
+        <div
+          aria-hidden="true"
+          className="absolute -top-24 right-0 -z-10 transform-gpu blur-3xl"
+        >
+          <div
+            style={{
+              clipPath:
+                'polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)',
+            }}
+            className="aspect-[1155/678] w-[72.1875rem] bg-gradient-to-tr from-white to-primary-200 opacity-20"
+          />
+        </div>
+        <div
+          aria-hidden="true"
+          className="absolute -bottom-24 left-0 -z-10 transform-gpu blur-3xl"
+        >
+          <div
+            style={{
+              clipPath:
+                'polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)',
+            }}
+            className="aspect-[1155/678] w-[72.1875rem] bg-gradient-to-tr from-secondary-300 to-primary-300 opacity-20"
+          />
         </div>
 
-        {/* Header Actions - Bottom Section */}
-        <div className="header-actions">
-          <div className="action-group right-action">
+        <div className="relative z-10">
+          {/* Top Row: Step Badge, Progress, and Actions */}
+          <div className="flex items-start justify-between mb-4 flex-wrap gap-3">
+            <div className="flex items-center gap-4">
+              {/* Step Badge */}
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/20 backdrop-blur-sm rounded-full border border-white/30">
+                <span className="text-white font-bold text-sm">Step 1</span>
+                <span className="text-white/70 text-xs">of</span>
+                <span className="text-white/90 font-semibold text-sm">2</span>
+              </div>
+              
+              {/* Mini Progress Bar */}
+              <div className="hidden sm:flex items-center gap-2">
+                <div className="w-24 h-1.5 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
+                  <div 
+                    className="h-full bg-white rounded-full transition-all duration-500"
+                    style={{ width: '50%' }}
+                  />
+                </div>
+                <span className="text-xs text-white/80 font-medium">50%</span>
+              </div>
+            </div>
+
+            {/* Start Fresh Button */}
             <button
               type="button"
               onClick={handleStartFresh}
               disabled={isPasting}
-              className="btn btn-outline start-fresh-btn"
+              className="px-3 py-1.5 text-sm font-medium bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 text-white rounded transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               🗑️ Start Fresh
             </button>
           </div>
-        </div>
-        
 
-        {/* Header Action Buttons - Bottom Left Corner */}
-        <div className="import-button-container">
+          {/* Title and Subtitle */}
+          <div className="max-w-3xl mb-4">
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white mb-2">
+              Project Setup
+            </h2>
+            <p className="text-sm sm:text-base text-white/90 leading-relaxed">
+              Import from Agile or fill in the basic project details - folders will be created automatically
+            </p>
+          </div>
+
+          {/* Action Buttons Row */}
+          <div className="flex flex-wrap items-center gap-3">
           
-          {/* Revision Configuration Button - Show when revision is selected but not configured */}
+          {/* Revision Configuration Button */}
           {formData.isRevision && !revisionConfigured && (
-            <div className="revision-config-button-container">
-              <button
-                type="button"
-                onClick={handleOpenRevisionDialog}
-                className="btn btn-warning revision-config-header-btn"
-                title="Configure revision settings to proceed"
-              >
-                🔄 Configure Revision
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={handleOpenRevisionDialog}
+              className="px-4 py-2 text-sm font-semibold bg-warning-500 hover:bg-warning-600 text-white rounded shadow-lg transition-all"
+              title="Configure revision settings to proceed"
+            >
+              🔄 Configure Revision
+            </button>
           )}
           
-          <div className="tooltip-container">
+          {/* Import from Agile Button */}
+          <div className="relative group">
             <button
               type="button"
               onClick={handlePasteRFAInfo}
               disabled={isPasting}
-              className="btn btn-secondary import-btn"
+              className="px-4 py-2 text-sm font-semibold bg-white/90 hover:bg-white text-primary-700 rounded shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               onMouseEnter={() => setShowTooltip(true)}
               onMouseLeave={() => setShowTooltip(false)}
               onFocus={() => setShowTooltip(true)}
@@ -1486,7 +1528,7 @@ const ProjectWizardStep1 = ({
             >
               {isPasting ? (
                 <>
-                  <span className="spinner"></span>
+                  <span className="spinner w-4 h-4 border-2 border-primary-600 border-t-transparent"></span>
                   Processing Agile Data...
                 </>
               ) : (
@@ -1496,14 +1538,15 @@ const ProjectWizardStep1 = ({
               )}
             </button>
             
+            {/* Tooltip */}
             {showTooltip && (
-              <div className="tooltip">
-                <span className="tooltip-text">
-                  💡 Copy RFA details from Agile and click import to auto-fill fields
-                </span>
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded whitespace-nowrap shadow-lg z-50">
+                💡 Copy RFA details from Agile and click import to auto-fill fields
+                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900"></div>
               </div>
             )}
           </div>
+        </div>
         </div>
       </div>
 
@@ -2110,60 +2153,139 @@ const ProjectWizardStep1 = ({
         )}
 
         {/* Enhanced Progress Summary */}
-        <div className="step-summary">
-          <div className="summary-header">
-            <h4>Project Setup Progress</h4>
-            <div className="progress-indicator">
-              <div className="progress-bar">
+        <div className="mt-6 p-6 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-lg">
+          {/* Header with Progress */}
+          <div className="flex items-center justify-between mb-6">
+            <h4 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              📊 Project Setup Progress
+            </h4>
+            <div className="flex items-center gap-3">
+              <div className="relative w-32 h-2 bg-gray-300 dark:bg-gray-700 rounded-full overflow-hidden shadow-inner">
                 <div 
-                  className="progress-fill"
+                  className={`absolute top-0 left-0 h-full rounded-full transition-all duration-500 ${
+                    getValidationProgress().complete 
+                      ? 'bg-gradient-to-r from-success-500 to-success-600' 
+                      : 'bg-gradient-to-r from-primary-500 to-primary-600'
+                  }`}
                   style={{ width: `${getValidationProgress().percentage}%` }}
                 ></div>
               </div>
-              <span className="progress-text">
-                {getValidationProgress().percentage}% Complete
+              <span className="text-sm font-bold text-gray-700 dark:text-gray-300 min-w-[3rem] text-right">
+                {getValidationProgress().percentage}%
               </span>
             </div>
           </div>
           
-          <div className="summary-grid">
-            <div className={`summary-item ${getValidationProgress().complete ? 'complete' : ''}`}>
-              <span className="summary-label">Required Fields:</span>
-              <span className="summary-value">
-                {getValidationProgress().valid}/{getValidationProgress().total} Valid
-              </span>
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            {/* Required Fields */}
+            <div className={`p-4 rounded-lg border-2 transition-all ${
+              getValidationProgress().complete 
+                ? 'bg-success-50 dark:bg-success-900/20 border-success-500 dark:border-success-700' 
+                : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600'
+            }`}>
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Required Fields</p>
+                  <p className={`text-2xl font-bold ${
+                    getValidationProgress().complete 
+                      ? 'text-success-600 dark:text-success-400' 
+                      : 'text-gray-900 dark:text-white'
+                  }`}>
+                    {getValidationProgress().valid}/{getValidationProgress().total}
+                  </p>
+                </div>
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                  getValidationProgress().complete 
+                    ? 'bg-success-500 dark:bg-success-600' 
+                    : 'bg-warning-500 dark:bg-warning-600'
+                }`}>
+                  <span className="text-lg">{getValidationProgress().complete ? '✓' : '⚠'}</span>
+                </div>
+              </div>
+              <p className="text-xs text-gray-600 dark:text-gray-400 mt-2">
+                {getValidationProgress().complete ? 'All complete!' : 'Need completion'}
+              </p>
             </div>
-            <div className="summary-item">
-              <span className="summary-label">Total Fields:</span>
-              <span className="summary-value">
-                {Object.values(formData).filter(value => 
-                  value !== null && value !== undefined && value !== ''
-                ).length}/{Object.keys(formData).length} Filled
-              </span>
+
+            {/* Total Fields */}
+            <div className="p-4 rounded-lg border-2 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Total Fields</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {Object.values(formData).filter(value => 
+                      value !== null && value !== undefined && value !== ''
+                    ).length}/{Object.keys(formData).length}
+                  </p>
+                </div>
+                <div className="w-10 h-10 rounded-full bg-info-500 dark:bg-info-600 flex items-center justify-center">
+                  <span className="text-lg">📝</span>
+                </div>
+              </div>
+              <p className="text-xs text-gray-600 dark:text-gray-400 mt-2">Fields populated</p>
             </div>
+
+            {/* Imported Fields */}
             {importedFields.length > 0 && (
-              <div className="summary-item imported">
-                <span className="summary-label">Imported:</span>
-                <span className="summary-value">{importedFields.length} from Agile</span>
+              <div className="p-4 rounded-lg border-2 bg-white dark:bg-gray-800 border-primary-300 dark:border-primary-600">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Imported</p>
+                    <p className="text-2xl font-bold text-primary-600 dark:text-primary-400">
+                      {importedFields.length}
+                    </p>
+                  </div>
+                  <div className="w-10 h-10 rounded-full bg-primary-500 dark:bg-primary-600 flex items-center justify-center">
+                    <span className="text-lg">📋</span>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-2">From Agile</p>
               </div>
             )}
           </div>
 
           {/* Validation Feedback */}
-          <div className="validation-feedback">
+          <div className="mt-4">
             {getValidationProgress().complete ? (
-              <div className="feedback-success">
-                ✅ All required fields are complete! Ready to create project folders and proceed to triage calculation.
+              <div className="p-4 rounded-lg bg-success-50 dark:bg-success-900/20 border-2 border-success-500 dark:border-success-700">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-success-500 dark:bg-success-600 flex items-center justify-center">
+                    <span className="text-lg">✓</span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-success-900 dark:text-success-100 mb-1">
+                      Ready to Proceed!
+                    </p>
+                    <p className="text-xs text-success-700 dark:text-success-300">
+                      All required fields are complete. You can now create project folders and proceed to triage calculation.
+                    </p>
+                  </div>
+                </div>
               </div>
             ) : (
-              <div className="feedback-incomplete">
-                ⚠️ Please complete the required fields to continue to the next step.
-                <div className="missing-fields">
-                  Missing: {['projectName', 'rfaNumber', 'agentNumber', 'projectContainer', 'rfaType', 'regionalTeam']
-                    .filter(field => !formData[field] || !validateField(field, formData[field]))
-                    .map(field => field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()))
-                    .join(', ')
-                  }
+              <div className="p-4 rounded-lg bg-warning-50 dark:bg-warning-900/20 border-2 border-warning-500 dark:border-warning-700">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-warning-500 dark:bg-warning-600 flex items-center justify-center">
+                    <span className="text-lg">⚠</span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-warning-900 dark:text-warning-100 mb-1">
+                      Action Required
+                    </p>
+                    <p className="text-xs text-warning-700 dark:text-warning-300 mb-2">
+                      Please complete the required fields to continue to the next step.
+                    </p>
+                    <div className="mt-2 p-2 bg-warning-100 dark:bg-warning-900/30 rounded border border-warning-300 dark:border-warning-700">
+                      <p className="text-xs font-medium text-warning-900 dark:text-warning-100">
+                        Missing: {['projectName', 'rfaNumber', 'agentNumber', 'projectContainer', 'rfaType', 'regionalTeam']
+                          .filter(field => !formData[field] || !validateField(field, formData[field]))
+                          .map(field => field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()))
+                          .join(', ')
+                        }
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

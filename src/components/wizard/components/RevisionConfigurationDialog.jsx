@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import ErrorDialog, { useErrorDialog } from './ErrorDialog';
-import './RevisionConfigurationDialog.css';
 
 /**
  * RevisionConfigurationDialog
@@ -222,26 +221,38 @@ const RevisionConfigurationDialog = ({
     switch (detectionState) {
       case 'detecting':
         return (
-          <div className="detection-status detecting">
-            <div className="status-icon">🔍</div>
-            <div className="status-content">
-              <h4>Searching for Previous Revision</h4>
-              <p>Checking current year, previous year, and two years ago folders...</p>
-              <div className="loading-spinner"></div>
+          <div className="flex items-start p-4 rounded-lg mb-5 gap-3 bg-info-50 dark:bg-info-900/20 border border-info-200 dark:border-info-700">
+            <div className="text-2xl flex-shrink-0">🔍</div>
+            <div className="flex-1">
+              <h4 className="m-0 mb-2 text-lg text-gray-800 dark:text-gray-200 font-semibold">
+                Searching for Previous Revision
+              </h4>
+              <p className="my-1 text-gray-600 dark:text-gray-400 text-sm">
+                Checking current year, previous year, and two years ago folders...
+              </p>
+              <div className="spinner mt-2"></div>
             </div>
           </div>
         );
         
       case 'found':
         return (
-          <div className="detection-status found">
-            <div className="status-icon">✅</div>
-            <div className="status-content">
-              <h4>Previous Revision Found</h4>
-              <p><strong>Path:</strong> {previousRevision?.path}</p>
-              <p><strong>Method:</strong> {previousRevision?.method === 'automatic' ? 'Found automatically' : 'Selected manually'}</p>
+          <div className="flex items-start p-4 rounded-lg mb-5 gap-3 bg-success-50 dark:bg-success-900/20 border border-success-200 dark:border-success-700">
+            <div className="text-2xl flex-shrink-0">✅</div>
+            <div className="flex-1">
+              <h4 className="m-0 mb-2 text-lg text-gray-800 dark:text-gray-200 font-semibold">
+                Previous Revision Found
+              </h4>
+              <p className="my-1 text-gray-600 dark:text-gray-400 text-sm">
+                <strong>Path:</strong> {previousRevision?.path}
+              </p>
+              <p className="my-1 text-gray-600 dark:text-gray-400 text-sm">
+                <strong>Method:</strong> {previousRevision?.method === 'automatic' ? 'Found automatically' : 'Selected manually'}
+              </p>
               {previousRevision?.validation?.hasStandardStructure && (
-                <p className="validation-info">📁 Standard RFA folder structure detected</p>
+                <p className="text-success-600 dark:text-success-400 font-medium text-sm my-1">
+                  📁 Standard RFA folder structure detected
+                </p>
               )}
             </div>
           </div>
@@ -249,15 +260,21 @@ const RevisionConfigurationDialog = ({
         
       case 'not-found':
         return (
-          <div className="detection-status not-found">
-            <div className="status-icon">⚠️</div>
-            <div className="status-content">
-              <h4>Previous Revision Not Found</h4>
-              <p>No previous revision was found automatically in the expected locations.</p>
+          <div className="flex items-start p-4 rounded-lg mb-5 gap-3 bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-700">
+            <div className="text-2xl flex-shrink-0">⚠️</div>
+            <div className="flex-1">
+              <h4 className="m-0 mb-2 text-lg text-gray-800 dark:text-gray-200 font-semibold">
+                Previous Revision Not Found
+              </h4>
+              <p className="my-1 text-gray-600 dark:text-gray-400 text-sm">
+                No previous revision was found automatically in the expected locations.
+              </p>
               {detectionResult?.searchedPaths && (
-                <details className="searched-paths">
-                  <summary>Searched Locations</summary>
-                  <ul>
+                <details className="mt-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded p-2">
+                  <summary className="cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100">
+                    Searched Locations
+                  </summary>
+                  <ul className="mt-2 ml-4 list-disc text-xs text-gray-600 dark:text-gray-400 space-y-1">
                     {detectionResult.searchedPaths.map((path, index) => (
                       <li key={index}>{path}</li>
                     ))}
@@ -269,7 +286,7 @@ const RevisionConfigurationDialog = ({
                   console.log('RevisionConfigurationDialog: Manual selection button clicked');
                   handleManualSelection();
                 }} 
-                className="btn btn-primary"
+                className="btn-primary mt-3"
               >
                 📂 Select Previous RFA Folder
               </button>
@@ -279,23 +296,29 @@ const RevisionConfigurationDialog = ({
         
       case 'error':
         return (
-          <div className="detection-status error">
-            <div className="status-icon">❌</div>
-            <div className="status-content">
-              <h4>Detection Error</h4>
-              <p>An error occurred during automatic detection. Please try again or select manually.</p>
-              <button onClick={detectPreviousRevision} className="btn btn-secondary">
-                🔄 Retry Detection
-              </button>
-              <button 
-                onClick={() => {
-                  console.log('RevisionConfigurationDialog: Manual selection button clicked (error state)');
-                  handleManualSelection();
-                }} 
-                className="btn btn-primary"
-              >
-                📂 Select Manually
-              </button>
+          <div className="flex items-start p-4 rounded-lg mb-5 gap-3 bg-error-50 dark:bg-error-900/20 border border-error-200 dark:border-error-700">
+            <div className="text-2xl flex-shrink-0">❌</div>
+            <div className="flex-1">
+              <h4 className="m-0 mb-2 text-lg text-gray-800 dark:text-gray-200 font-semibold">
+                Detection Error
+              </h4>
+              <p className="my-1 mb-3 text-gray-600 dark:text-gray-400 text-sm">
+                An error occurred during automatic detection. Please try again or select manually.
+              </p>
+              <div className="flex gap-2">
+                <button onClick={detectPreviousRevision} className="btn-secondary">
+                  🔄 Retry Detection
+                </button>
+                <button 
+                  onClick={() => {
+                    console.log('RevisionConfigurationDialog: Manual selection button clicked (error state)');
+                    handleManualSelection();
+                  }} 
+                  className="btn-primary"
+                >
+                  📂 Select Manually
+                </button>
+              </div>
             </div>
           </div>
         );
@@ -314,95 +337,105 @@ const RevisionConfigurationDialog = ({
     const available = revisionAnalysis.available;
     
     return (
-      <div className="copy-options">
-        <h4>📋 Select Items to Copy from Previous Revision</h4>
+      <div className="mb-5 p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+        <h4 className="m-0 mb-4 text-lg font-semibold text-gray-800 dark:text-gray-100">
+          📋 Select Items to Copy from Previous Revision
+        </h4>
         
         {isAnalyzing ? (
-          <div className="analyzing">
-            <div className="loading-spinner"></div>
-            <p>Analyzing revision contents...</p>
+          <div className="flex flex-col items-center gap-3 p-8">
+            <div className="spinner"></div>
+            <p className="text-gray-600 dark:text-gray-400">Analyzing revision contents...</p>
           </div>
         ) : (
-          <div className="copy-options-grid">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             
             {/* Folder Options */}
-            <div className="copy-section">
-              <h5>📁 Folders</h5>
+            <div className="p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded">
+              <h5 className="m-0 mb-3 text-base font-semibold text-gray-800 dark:text-gray-100">
+                📁 Folders
+              </h5>
               
-              <label className="copy-option">
+              <label className="flex items-center gap-2 mb-3 cursor-pointer group">
                 <input
                   type="checkbox"
                   checked={copyOptions.copyAEMarkups}
                   onChange={(e) => handleCopyOptionChange('copyAEMarkups', e.target.checked)}
                   disabled={!available.folders?.['AE Markups']?.exists}
+                  className="w-4 h-4 cursor-pointer disabled:cursor-not-allowed"
                 />
-                <span className="option-label">
+                <span className="flex-1 text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100">
                   AE Markups 
                   {available.folders?.['AE Markups']?.exists ? (
-                    <span className="item-count">({available.folders['AE Markups'].itemCount} items)</span>
+                    <span className="ml-1 text-xs text-gray-500 dark:text-gray-400">({available.folders['AE Markups'].itemCount} items)</span>
                   ) : (
-                    <span className="not-available">(not available)</span>
+                    <span className="ml-1 text-xs text-gray-400 dark:text-gray-500">(not available)</span>
                   )}
                 </span>
               </label>
               
-              <label className="copy-option">
+              <label className="flex items-center gap-2 mb-3 cursor-pointer group">
                 <input
                   type="checkbox"
                   checked={copyOptions.copyXREF}
                   onChange={(e) => handleCopyOptionChange('copyXREF', e.target.checked)}
                   disabled={!available.folders?.['XREF']?.exists}
+                  className="w-4 h-4 cursor-pointer disabled:cursor-not-allowed"
                 />
-                <span className="option-label">
+                <span className="flex-1 text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100">
                   XREF 
                   {available.folders?.['XREF']?.exists ? (
-                    <span className="item-count">({available.folders['XREF'].itemCount} items)</span>
+                    <span className="ml-1 text-xs text-gray-500 dark:text-gray-400">({available.folders['XREF'].itemCount} items)</span>
                   ) : (
-                    <span className="not-available">(not available)</span>
+                    <span className="ml-1 text-xs text-gray-400 dark:text-gray-500">(not available)</span>
                   )}
                 </span>
               </label>
               
-              <label className="copy-option">
+              <label className="flex items-center gap-2 mb-3 cursor-pointer group">
                 <input
                   type="checkbox"
                   checked={copyOptions.copyLCD}
                   onChange={(e) => handleCopyOptionChange('copyLCD', e.target.checked)}
                   disabled={!available.folders?.['LCD']?.exists}
+                  className="w-4 h-4 cursor-pointer disabled:cursor-not-allowed"
                 />
-                <span className="option-label">
+                <span className="flex-1 text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100">
                   LCD 
                   {available.folders?.['LCD']?.exists ? (
-                    <span className="item-count">({available.folders['LCD'].itemCount} items)</span>
+                    <span className="ml-1 text-xs text-gray-500 dark:text-gray-400">({available.folders['LCD'].itemCount} items)</span>
                   ) : (
-                    <span className="not-available">(not available)</span>
+                    <span className="ml-1 text-xs text-gray-400 dark:text-gray-500">(not available)</span>
                   )}
                 </span>
               </label>
             </div>
             
             {/* File Options */}
-            <div className="copy-section">
-              <h5>📄 Files</h5>
+            <div className="p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded">
+              <h5 className="m-0 mb-3 text-base font-semibold text-gray-800 dark:text-gray-100">
+                📄 Files
+              </h5>
               
-              <label className="copy-option">
+              <label className="flex items-center gap-2 mb-3 cursor-pointer group">
                 <input
                   type="checkbox"
                   checked={copyOptions.copyVSP}
                   onChange={(e) => handleCopyOptionChange('copyVSP', e.target.checked)}
                   disabled={!available.files?.['.vsp']?.count}
+                  className="w-4 h-4 cursor-pointer disabled:cursor-not-allowed"
                 />
-                <span className="option-label">
+                <span className="flex-1 text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100">
                   VSP Files 
                   {available.files?.['.vsp']?.count ? (
-                    <span className="item-count">({available.files['.vsp'].count} files)</span>
+                    <span className="ml-1 text-xs text-gray-500 dark:text-gray-400">({available.files['.vsp'].count} files)</span>
                   ) : (
-                    <span className="not-available">(not available)</span>
+                    <span className="ml-1 text-xs text-gray-400 dark:text-gray-500">(not available)</span>
                   )}
                 </span>
               </label>
               
-              <label className="copy-option">
+              <label className="flex items-center gap-2 mb-3 cursor-pointer group">
                 <input
                   type="checkbox"
                   checked={copyOptions.copyDWG}
@@ -436,13 +469,18 @@ const RevisionConfigurationDialog = ({
   if (!isOpen) return null;
 
   return (
-    <div className="revision-config-dialog-overlay" onClick={handleBackdropClick}>
-      <div className={`revision-config-dialog ${className}`}>
-        <div className="dialog-header">
-          <h3>🔄 Configure Revision Settings</h3>
-          <p>Set up your revision project by selecting the previous revision and copy options.</p>
+    <div className="modal-overlay backdrop-blur-sm" onClick={handleBackdropClick}>
+      <div className={`modal-content max-w-4xl w-[90%] max-h-[90vh] ${className}`}>
+        {/* Header */}
+        <div className="px-6 py-5 border-b-2 border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 relative">
+          <h3 className="m-0 mb-2 text-2xl font-semibold text-gray-800 dark:text-gray-100">
+            🔄 Configure Revision Settings
+          </h3>
+          <p className="m-0 text-sm text-gray-600 dark:text-gray-400">
+            Set up your revision project by selecting the previous revision and copy options.
+          </p>
           <button 
-            className="close-btn" 
+            className="absolute top-5 right-5 bg-transparent border-none text-2xl font-bold text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 cursor-pointer w-8 h-8 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" 
             onClick={handleCancel}
             aria-label="Close dialog"
           >
@@ -450,18 +488,25 @@ const RevisionConfigurationDialog = ({
           </button>
         </div>
         
-        <div className="dialog-content">
-          <div className="project-info">
-            <h4>📝 Project Information</h4>
-            <div className="info-grid">
-              <div className="info-item">
-                <strong>Project Name:</strong> {projectData?.projectName}
+        {/* Content */}
+        <div className="px-6 py-5 max-h-[60vh] overflow-y-auto custom-scrollbar">
+          {/* Project Info */}
+          <div className="mb-5 p-4 bg-info-50 dark:bg-info-900/20 border border-info-200 dark:border-info-700 rounded-lg">
+            <h4 className="m-0 mb-3 text-lg font-semibold text-gray-800 dark:text-gray-100">
+              📝 Project Information
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="text-sm">
+                <strong className="text-gray-700 dark:text-gray-300">Project Name:</strong>
+                <span className="ml-2 text-gray-600 dark:text-gray-400">{projectData?.projectName}</span>
               </div>
-              <div className="info-item">
-                <strong>Project Container:</strong> {projectData?.projectContainer}
+              <div className="text-sm">
+                <strong className="text-gray-700 dark:text-gray-300">Project Container:</strong>
+                <span className="ml-2 text-gray-600 dark:text-gray-400">{projectData?.projectContainer}</span>
               </div>
-              <div className="info-item">
-                <strong>RFA Number:</strong> {projectData?.rfaNumber}
+              <div className="text-sm">
+                <strong className="text-gray-700 dark:text-gray-300">RFA Number:</strong>
+                <span className="ml-2 text-gray-600 dark:text-gray-400">{projectData?.rfaNumber}</span>
               </div>
             </div>
           </div>
@@ -470,20 +515,21 @@ const RevisionConfigurationDialog = ({
           {renderCopyOptions()}
         </div>
         
-        <div className="dialog-footer">
-          <div className="footer-actions">
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+          <div className="flex justify-end gap-3">
             <button 
-              className="btn btn-secondary" 
+              className="btn-secondary" 
               onClick={handleCancel}
             >
               Cancel
             </button>
             <button 
-              className="btn btn-primary" 
+              className="btn-primary" 
               onClick={handleConfirm}
               disabled={!canProceed}
             >
-              {canProceed ? 'Configure Revision' : 'Select Previous Revision First'}
+              {canProceed ? '✓ Configure Revision' : 'Select Previous Revision First'}
             </button>
           </div>
         </div>

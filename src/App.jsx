@@ -17,7 +17,6 @@ import crashReportingService from './services/SimpleCrashReportingService';
 import analyticsService from './services/SimpleAnalyticsService';
 import performanceMonitoringService from './services/SimplePerformanceMonitoringService';
 import { getFullVersionInfo, getVersionDisplay } from './utils/version';
-import './App.css';
 
 // Import draft service for enhanced recovery
 const ProjectDraftService = window.electron ? 
@@ -743,83 +742,121 @@ function App() {
         case 'welcome':
         default:
           return (
-            <div className="welcome-container">
-                             <div className="welcome-header">
-                 <h1>Welcome to Project Creator</h1>
-                 <p className="welcome-subtitle">Professional Project Management & Document Automation Tool</p>
-                 <p className="welcome-version">{getFullVersionInfo()}</p>
-               </div>
+            <div className="text-center px-6 py-4 max-w-7xl mx-auto">
+              <div className="mb-8">
+                <h1 className="text-5xl text-gray-800 dark:text-gray-100 mb-4 font-light gradient-text">
+                  Welcome to Project Creator
+                </h1>
+                <p className="text-2xl text-gray-600 dark:text-gray-400 mb-2 font-medium">
+                  Professional Project Management & Document Automation Tool
+                </p>
+                <p className="text-base text-gray-500 dark:text-gray-500 italic">
+                  {getFullVersionInfo()}
+                </p>
+              </div>
 
-              <div className="feature-highlights">
-                <h2>🚀 Key Features</h2>
-                <div className="features-grid">
-                  <div className="feature-card">
-                    <div className="feature-icon">📁</div>
-                    <h3>Project Management</h3>
-                    <p>Create, edit, and organize projects with comprehensive metadata including RFA numbers, regional teams, and project complexity ratings.</p>
+              <div className="my-8">
+                <h2 className="text-3xl text-gray-800 dark:text-gray-100 my-6 font-normal">
+                  🚀 Key Features
+                </h2>
+                <div className="grid grid-cols-3 gap-5 my-6">
+                  <div className="card p-5 text-left h-full flex flex-col hover:-translate-y-0.5 hover:border-info-500 dark:hover:border-info-400">
+                    <div className="text-3xl mb-3 block">📁</div>
+                    <h3 className="text-gray-800 dark:text-gray-100 mb-2 text-lg font-semibold">Project Management</h3>
+                    <p className="text-gray-600 dark:text-gray-400 text-sm m-0 leading-snug flex-1">
+                      Create, edit, and organize projects with comprehensive metadata including RFA numbers, regional teams, and project complexity ratings.
+                    </p>
                   </div>
                   
-                  <div className="feature-card">
-                    <div className="feature-icon">📊</div>
-                    <h3>Triage Calculations</h3>
-                    <p>Advanced time estimation for LMPs, ARPs, room counts, and project complexity with automatic calculations and overrides.</p>
+                  <div className="card p-5 text-left h-full flex flex-col hover:-translate-y-0.5 hover:border-info-500 dark:hover:border-info-400">
+                    <div className="text-3xl mb-3 block">📊</div>
+                    <h3 className="text-gray-800 dark:text-gray-100 mb-2 text-lg font-semibold">Triage Calculations</h3>
+                    <p className="text-gray-600 dark:text-gray-400 text-sm m-0 leading-snug flex-1">
+                      Advanced time estimation for LMPs, ARPs, room counts, and project complexity with automatic calculations and overrides.
+                    </p>
                   </div>
                   
-                  <div className="feature-card">
-                    <div className="feature-icon">📝</div>
-                    <h3>Document Automation</h3>
-                    <p>Generate Word documents, process design notes, and create project documentation with automated templates.</p>
+                  <div className="card p-5 text-left h-full flex flex-col hover:-translate-y-0.5 hover:border-info-500 dark:hover:border-info-400">
+                    <div className="text-3xl mb-3 block">📝</div>
+                    <h3 className="text-gray-800 dark:text-gray-100 mb-2 text-lg font-semibold">Document Automation</h3>
+                    <p className="text-gray-600 dark:text-gray-400 text-sm m-0 leading-snug flex-1">
+                      Generate Word documents, process design notes, and create project documentation with automated templates.
+                    </p>
                   </div>
                   
-                  <div className="feature-card">
-                    <div className="feature-icon">🗂️</div>
-                    <h3>File Organization</h3>
-                    <p>Automated folder structure creation, template management, and project file organization for server and desktop locations.</p>
+                  <div className="card p-5 text-left h-full flex flex-col hover:-translate-y-0.5 hover:border-info-500 dark:hover:border-info-400">
+                    <div className="text-3xl mb-3 block">🗂️</div>
+                    <h3 className="text-gray-800 dark:text-gray-100 mb-2 text-lg font-semibold">File Organization</h3>
+                    <p className="text-gray-600 dark:text-gray-400 text-sm m-0 leading-snug flex-1">
+                      Automated folder structure creation, template management, and project file organization for server and desktop locations.
+                    </p>
                   </div>
                   
-                  <div className="feature-card">
-                    <div className="feature-icon">📈</div>
-                    <h3>Export & Integration</h3>
-                    <p>Export project data to DAS Board format, Agile triage reports, and multiple file formats for seamless workflow integration.</p>
+                  <div className="card p-5 text-left h-full flex flex-col hover:-translate-y-0.5 hover:border-info-500 dark:hover:border-info-400">
+                    <div className="text-3xl mb-3 block">📈</div>
+                    <h3 className="text-gray-800 dark:text-gray-100 mb-2 text-lg font-semibold">Export & Integration</h3>
+                    <p className="text-gray-600 dark:text-gray-400 text-sm m-0 leading-snug flex-1">
+                      Export project data to DAS Board format, Agile triage reports, and multiple file formats for seamless workflow integration.
+                    </p>
                   </div>
                   
-                  <div className="feature-card">
-                    <div className="feature-icon">⚙️</div>
-                    <h3>Advanced Settings</h3>
-                    <p>Customizable project defaults, template management, and user preferences for personalized project creation workflows.</p>
+                  <div className="card p-5 text-left h-full flex flex-col hover:-translate-y-0.5 hover:border-info-500 dark:hover:border-info-400">
+                    <div className="text-3xl mb-3 block">⚙️</div>
+                    <h3 className="text-gray-800 dark:text-gray-100 mb-2 text-lg font-semibold">Advanced Settings</h3>
+                    <p className="text-gray-600 dark:text-gray-400 text-sm m-0 leading-snug flex-1">
+                      Customizable project defaults, template management, and user preferences for personalized project creation workflows.
+                    </p>
                   </div>
                 </div>
               </div>
 
-              <div className="project-types">
-                <h2>🎯 Supported Project Types</h2>
-                <div className="project-types-grid">
-                  <div className="project-type">
-                    <span className="type-badge">Reloc</span>
-                    <span className="type-badge">Photometrics</span>
-                    <span className="type-badge">Standard Controls</span>
-                    <span className="type-badge">DC2DC</span>
+              <div className="my-8">
+                <h2 className="text-3xl text-gray-800 dark:text-gray-100 my-6 font-normal">
+                  🎯 Supported Project Types
+                </h2>
+                <div className="flex justify-center my-6">
+                  <div className="flex flex-wrap gap-3 justify-center">
+                    <span className="badge bg-gradient-to-r from-info-500 to-info-600 text-white px-4 py-2 rounded-full text-sm font-medium shadow-md hover:-translate-y-0.5 transition-transform">
+                      Reloc
+                    </span>
+                    <span className="badge bg-gradient-to-r from-info-500 to-info-600 text-white px-4 py-2 rounded-full text-sm font-medium shadow-md hover:-translate-y-0.5 transition-transform">
+                      Photometrics
+                    </span>
+                    <span className="badge bg-gradient-to-r from-info-500 to-info-600 text-white px-4 py-2 rounded-full text-sm font-medium shadow-md hover:-translate-y-0.5 transition-transform">
+                      Standard Controls
+                    </span>
+                    <span className="badge bg-gradient-to-r from-info-500 to-info-600 text-white px-4 py-2 rounded-full text-sm font-medium shadow-md hover:-translate-y-0.5 transition-transform">
+                      DC2DC
+                    </span>
                   </div>
                 </div>
               </div>
 
-              <div className="quick-actions">
-                <h2>🚀 Get Started</h2>
+              <div className="my-8">
+                <h2 className="text-3xl text-gray-800 dark:text-gray-100 my-6 font-normal">
+                  🚀 Get Started
+                </h2>
                 
                 {/* Draft Recovery Section */}
                 {hasDrafts && (
-                  <div className="draft-recovery-section">
-                    <div className="recovery-banner">
-                      <div className="recovery-content">
-                        <span className="recovery-icon">📋</span>
-                        <div className="recovery-text">
-                          <h3>Continue Your Work</h3>
-                          <p>You have unfinished projects that can be resumed</p>
+                  <div className="my-8 p-0">
+                    <div className="bg-gradient-to-r from-warning-50 to-warning-100 dark:from-warning-900/20 dark:to-warning-800/20 border-2 border-warning-500 rounded-xl p-5 flex items-center justify-between shadow-lg animate-slideIn">
+                      <div className="flex items-center gap-4 flex-1">
+                        <span className="text-3xl bg-white dark:bg-gray-700 rounded-full p-3 shadow-md">
+                          📋
+                        </span>
+                        <div>
+                          <h3 className="m-0 mb-1 text-warning-700 dark:text-warning-300 text-lg font-semibold">
+                            Continue Your Work
+                          </h3>
+                          <p className="m-0 text-warning-800 dark:text-warning-400 text-sm">
+                            You have unfinished projects that can be resumed
+                          </p>
                         </div>
                       </div>
                       <button 
                         onClick={() => setShowDraftRecovery(true)}
-                        className="btn btn-primary recovery-btn"
+                        className="btn-primary px-5 py-3 rounded-lg font-semibold shadow-md hover:-translate-y-0.5"
                       >
                         📖 Resume Projects
                       </button>
@@ -827,77 +864,106 @@ function App() {
                   </div>
                 )}
                 
-                <div className="action-buttons">
+                <div className="grid grid-cols-2 gap-5 my-6 max-w-3xl mx-auto">
                   <button 
                     onClick={() => handleSmartViewChange(getRecommendedInterface())}
-                    className={`btn btn-large ${getRecommendedInterface() === 'wizard' ? 'btn-primary featured-btn' : 'btn-secondary'}`}
+                    className={`
+                      px-6 py-4 text-base min-w-[160px] flex flex-col items-stretch text-left h-auto
+                      ${getRecommendedInterface() === 'wizard' 
+                        ? 'btn-primary relative shadow-primary hover:shadow-lg animate-pulse-soft' 
+                        : 'btn-secondary'
+                      }
+                    `}
                   >
                     {getRecommendedInterface() === 'wizard' ? '🧙‍♂️ Start Project Wizard' : '📝 Start Project Form'}
-                    <span className="btn-subtitle">
+                    <span className="text-sm font-normal opacity-80 mt-2 block leading-tight">
                       {getRecommendedInterface() === 'wizard' 
                         ? 'Recommended: Guided step-by-step setup' 
                         : 'Quick project creation'
                       }
                     </span>
+                    {getRecommendedInterface() === 'wizard' && (
+                      <span className="absolute -top-2 -right-2 bg-warning-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded shadow-md">
+                        ✨ NEW
+                      </span>
+                    )}
                   </button>
                   
                   {featureFlagService.isWizardEnabled() && getRecommendedInterface() !== 'wizard' && (
                     <button 
                       onClick={() => handleSmartViewChange('wizard')}
-                      className="btn btn-secondary btn-large"
+                      className="btn-secondary px-6 py-4 text-base min-w-[160px] flex flex-col items-stretch text-left h-auto"
                     >
                       🧙‍♂️ Try Project Wizard
-                      <span className="btn-subtitle">Enhanced guided experience</span>
+                      <span className="text-sm font-normal opacity-80 mt-2 block leading-tight">
+                        Enhanced guided experience
+                      </span>
                     </button>
                   )}
                   
                   {getRecommendedInterface() !== 'form' && !featureFlagService.isWizardForced() && (
                     <button 
                       onClick={() => setCurrentView('agencies')}
-                      className="btn btn-secondary btn-large"
+                      className="btn-secondary px-6 py-4 text-base min-w-[160px] flex flex-col items-stretch text-left h-auto"
                     >
                       📇 Agency Directory
-                      <span className="btn-subtitle">Manage agency contacts</span>
+                      <span className="text-sm font-normal opacity-80 mt-2 block leading-tight">
+                        Manage agency contacts
+                      </span>
                     </button>
                   )}
                   
                   <button 
                     onClick={() => setCurrentView('list')}
-                    className="btn btn-secondary btn-large"
+                    className="btn-secondary px-6 py-4 text-base min-w-[160px] flex flex-col items-stretch text-left h-auto"
                   >
                     📋 View Projects ({projects.length})
-                    <span className="btn-subtitle">Manage existing projects</span>
+                    <span className="text-sm font-normal opacity-80 mt-2 block leading-tight">
+                      Manage existing projects
+                    </span>
                   </button>
                   
                   <button 
                     onClick={() => setCurrentView('settings')}
-                    className="btn btn-secondary btn-large"
+                    className="btn-secondary px-6 py-4 text-base min-w-[160px] flex flex-col items-stretch text-left h-auto"
                   >
                     ⚙️ Application Settings
-                    <span className="btn-subtitle">Configure preferences</span>
+                    <span className="text-sm font-normal opacity-80 mt-2 block leading-tight">
+                      Configure preferences
+                    </span>
                   </button>
                 </div>
               </div>
 
               {projects.length > 0 && (
-                <div className="recent-projects">
-                  <h2>📋 Recent Projects</h2>
-                  <div className="recent-projects-grid">
+                <div className="my-8">
+                  <h2 className="text-3xl text-gray-800 dark:text-gray-100 mb-4 font-normal">
+                    📋 Recent Projects
+                  </h2>
+                  <div className="grid grid-cols-3 gap-5 my-4">
                     {[...projects]
                       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
                       .slice(0, 3)
                       .map(project => (
-                      <div key={project.id} className="recent-project-card">
-                        <h4>{project.projectName}</h4>
-                        <p><strong>RFA:</strong> {project.rfaNumber}</p>
-                        <p><strong>Team:</strong> {project.regionalTeam}</p>
-                        <p><strong>Status:</strong> {project.status || 'In Progress'}</p>
+                      <div key={project.id} className="card p-5 text-left h-full flex flex-col hover:-translate-y-0.5">
+                        <h4 className="text-gray-800 dark:text-gray-100 mb-3 text-lg font-semibold">
+                          {project.projectName}
+                        </h4>
+                        <p className="text-gray-600 dark:text-gray-400 text-sm mb-2 leading-tight flex-1">
+                          <strong>RFA:</strong> {project.rfaNumber}
+                        </p>
+                        <p className="text-gray-600 dark:text-gray-400 text-sm mb-2 leading-tight flex-1">
+                          <strong>Team:</strong> {project.regionalTeam}
+                        </p>
+                        <p className="text-gray-600 dark:text-gray-400 text-sm mb-2 leading-tight flex-1">
+                          <strong>Status:</strong> {project.status || 'In Progress'}
+                        </p>
                         <button 
                           onClick={() => {
                             setCurrentProject(project);
                             setCurrentView('project-management');
                           }}
-                          className="btn btn-secondary btn-small"
+                          className="btn-secondary px-4 py-2 text-sm min-w-[100px] mt-4"
                         >
                           Open Project
                         </button>
@@ -905,10 +971,10 @@ function App() {
                     ))}
                   </div>
                   {projects.length > 3 && (
-                    <div className="view-all-projects">
+                    <div className="text-center mt-6">
                       <button 
                         onClick={() => setCurrentView('list')}
-                        className="btn btn-secondary"
+                        className="btn-secondary"
                       >
                         View All Projects ({projects.length})
                       </button>
@@ -917,9 +983,13 @@ function App() {
                 </div>
               )}
 
-              <div className="welcome-footer">
-                <p>💡 <strong>Pro Tip:</strong> Use the sidebar navigation to quickly switch between different views and manage your projects efficiently.</p>
-                <p>🔧 <strong>Need Help?</strong> Check the settings panel for application information and configuration options.</p>
+              <div className="mt-12 p-8 bg-gradient-to-r from-success-50 to-info-50 dark:from-success-900/20 dark:to-info-900/20 rounded-xl border border-success-200 dark:border-success-700 relative overflow-hidden">
+                <p className="mb-3 text-success-800 dark:text-success-200 text-base relative z-10">
+                  💡 <strong>Pro Tip:</strong> Use the sidebar navigation to quickly switch between different views and manage your projects efficiently.
+                </p>
+                <p className="mb-0 text-success-800 dark:text-success-200 text-base relative z-10">
+                  🔧 <strong>Need Help?</strong> Check the settings panel for application information and configuration options.
+                </p>
               </div>
             </div>
           );
@@ -945,25 +1015,25 @@ function App() {
   // Show loading screen while initializing
   if (isLoading) {
     return (
-      <div className="loading-container">
-        <img src={logoUrl} alt="Project Creator Logo" className="logo" />
-        <h1>Project Creator</h1>
-        <p>Loading modern application...</p>
+      <div className="flex flex-col items-center justify-center h-screen bg-gradient-to-br from-primary-500 to-secondary-500 text-white text-center font-sans">
+        <img src={logoUrl} alt="Project Creator Logo" className="w-20 h-20 mb-8 drop-shadow-lg" />
+        <h1 className="text-4xl mb-4 drop-shadow-md font-light">Project Creator</h1>
+        <p className="text-xl opacity-90 mb-8 leading-relaxed">Loading modern application...</p>
         <div className="spinner"></div>
       </div>
     );
   }
 
     return (
-    <div className="app">
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       <Header />
-      <div className="app-container">
+      <div className="flex flex-1 overflow-hidden">
         <Sidebar
           currentView={currentView}
           onViewChange={handleSmartViewChange}
           projectCount={projects.length}
         />
-        <main className="main-content">
+        <main className="flex-1 p-8 overflow-y-auto bg-white dark:bg-gray-800 rounded-tl-lg shadow-lg custom-scrollbar">
           {renderMainContent()}
         </main>
       </div>

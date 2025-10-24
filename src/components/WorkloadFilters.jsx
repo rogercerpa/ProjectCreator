@@ -3,7 +3,6 @@
  */
 
 import React from 'react';
-import './WorkloadFilters.css';
 
 const WorkloadFilters = ({
   filters,
@@ -79,25 +78,37 @@ const WorkloadFilters = ({
   };
 
   return (
-    <div className="workload-filters">
+    <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 p-4 bg-white dark:bg-gray-800 rounded-lg shadow mb-4">
       {/* Left side - View mode and date navigation */}
-      <div className="filters-left">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
         {/* View mode selector */}
-        <div className="view-mode-selector">
+        <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
           <button
-            className={`view-mode-btn ${viewMode === 'day' ? 'active' : ''}`}
+            className={`px-5 py-2 text-sm font-semibold rounded-md transition-all ${
+              viewMode === 'day' 
+                ? 'bg-white dark:bg-gray-800 text-primary-600 dark:text-primary-400 shadow' 
+                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+            }`}
             onClick={() => handleViewModeChange('day')}
           >
             Day
           </button>
           <button
-            className={`view-mode-btn ${viewMode === 'week' ? 'active' : ''}`}
+            className={`px-5 py-2 text-sm font-semibold rounded-md transition-all ${
+              viewMode === 'week' 
+                ? 'bg-white dark:bg-gray-800 text-primary-600 dark:text-primary-400 shadow' 
+                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+            }`}
             onClick={() => handleViewModeChange('week')}
           >
             Week
           </button>
           <button
-            className={`view-mode-btn ${viewMode === 'month' ? 'active' : ''}`}
+            className={`px-5 py-2 text-sm font-semibold rounded-md transition-all ${
+              viewMode === 'month' 
+                ? 'bg-white dark:bg-gray-800 text-primary-600 dark:text-primary-400 shadow' 
+                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+            }`}
             onClick={() => handleViewModeChange('month')}
           >
             Month
@@ -105,23 +116,25 @@ const WorkloadFilters = ({
         </div>
 
         {/* Date navigation */}
-        <div className="date-navigation">
+        <div className="flex items-center gap-2">
           <button 
-            className="date-nav-btn"
+            className="w-9 h-9 flex items-center justify-center border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-all text-sm"
             onClick={() => handleDateNavigation(-1)}
             title="Previous"
           >
             ◀
           </button>
           <button 
-            className="date-today-btn"
+            className="px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-gray-700 hover:border-primary-500 dark:hover:border-primary-500 rounded-md text-sm font-semibold text-primary-600 dark:text-primary-400 transition-all"
             onClick={handleToday}
           >
             Today
           </button>
-          <span className="date-display">{formatDateDisplay()}</span>
+          <span className="min-w-[200px] text-center text-sm font-semibold text-gray-900 dark:text-white">
+            {formatDateDisplay()}
+          </span>
           <button 
-            className="date-nav-btn"
+            className="w-9 h-9 flex items-center justify-center border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-all text-sm"
             onClick={() => handleDateNavigation(1)}
             title="Next"
           >
@@ -131,10 +144,10 @@ const WorkloadFilters = ({
       </div>
 
       {/* Right side - Filters and search */}
-      <div className="filters-right">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
         {/* User filter */}
         <select
-          className="filter-select"
+          className="px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-md text-sm cursor-pointer transition-all hover:border-gray-400 dark:hover:border-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 min-w-[150px]"
           value={filters.userFilter || 'all'}
           onChange={handleUserFilterChange}
         >
@@ -148,7 +161,7 @@ const WorkloadFilters = ({
 
         {/* Team filter */}
         <select
-          className="filter-select"
+          className="px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-md text-sm cursor-pointer transition-all hover:border-gray-400 dark:hover:border-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 min-w-[150px]"
           value={filters.teamFilter}
           onChange={handleTeamFilterChange}
         >
@@ -160,15 +173,17 @@ const WorkloadFilters = ({
         </select>
 
         {/* Search */}
-        <div className="search-box">
+        <div className="relative min-w-[250px]">
           <input
             type="text"
-            className="search-input"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-md text-sm transition-all hover:border-gray-400 dark:hover:border-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 dark:placeholder-gray-500"
             placeholder="Search users..."
             value={filters.searchTerm}
             onChange={handleSearchChange}
           />
-          <span className="search-icon">🔍</span>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base opacity-60 pointer-events-none">
+            🔍
+          </span>
         </div>
       </div>
     </div>

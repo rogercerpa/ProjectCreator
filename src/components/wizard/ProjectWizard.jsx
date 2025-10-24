@@ -11,7 +11,6 @@ import ErrorDialog, { useErrorDialog } from './components/ErrorDialog';
 import DuplicateProjectDialog from './components/DuplicateProjectDialog';
 import DuplicateProjectDetectionClient from '../../services/DuplicateProjectDetectionClient';
 import performanceMonitoringService from '../../services/SimplePerformanceMonitoringService';
-import './ProjectWizard.css';
 
 // Import draft service for server-side partial saves
 const ProjectDraftService = window.electron ? 
@@ -1146,33 +1145,50 @@ const ProjectWizard = ({
   };
 
   return (
-    <div className="project-wizard">
+    <div className="max-w-7xl mx-auto px-4 py-6 bg-white dark:bg-gray-800 rounded-lg shadow-soft min-h-[600px] relative">
       {/* Notification Display */}
       {notification && (
-        <div className={`wizard-notification ${notification.type}`}>
-          <span>{notification.message}</span>
-          <button onClick={() => setNotification(null)}>×</button>
+        <div className={`
+          fixed top-5 right-5 px-5 py-3 rounded-lg shadow-lg z-[1000]
+          flex items-center gap-3 max-w-md animate-slideIn
+          ${notification.type === 'success' 
+            ? 'bg-success-100 border border-success-200 text-success-800 dark:bg-success-900/30 dark:border-success-700 dark:text-success-200' 
+            : 'bg-error-100 border border-error-200 text-error-800 dark:bg-error-900/30 dark:border-error-700 dark:text-error-200'
+          }
+        `}>
+          <span className="flex-1">{notification.message}</span>
+          <button 
+            onClick={() => setNotification(null)}
+            className="text-lg font-bold opacity-70 hover:opacity-100 transition-opacity"
+          >
+            ×
+          </button>
         </div>
       )}
 
       {/* Error Display */}
       {error && (
-        <div className="wizard-error">
-          <span>{error}</span>
-          <button onClick={() => setError(null)}>×</button>
+        <div className="bg-error-100 border border-error-200 text-error-800 dark:bg-error-900/30 dark:border-error-700 dark:text-error-200 px-5 py-3 rounded-lg mb-5 flex items-center justify-between">
+          <span className="flex-1">{error}</span>
+          <button 
+            onClick={() => setError(null)}
+            className="text-lg font-bold hover:opacity-70 transition-opacity"
+          >
+            ×
+          </button>
         </div>
       )}
 
       {/* Enhanced Draft Status */}
       {(projectDraft.isDraftSaving || isSavingDraft) && (
-        <div className="draft-status saving">
-          <span className="spinner"></span>
+        <div className="fixed bottom-5 left-5 bg-primary-500 text-white px-4 py-2 rounded-full text-sm z-[1000] flex items-center gap-2 animate-pulse">
+          <span className="spinner w-4 h-4 border-2"></span>
           <span>Saving draft...</span>
         </div>
       )}
 
       {(projectDraft.lastSaved || lastDraftSave) && !(projectDraft.isDraftSaving || isSavingDraft) && (
-        <div className="draft-info">
+        <div className="fixed bottom-5 left-5 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-3 py-1.5 rounded-full text-xs z-[1000]">
           <span>
             ✅ Last saved: {(lastDraftSave || projectDraft.lastSaved).toLocaleTimeString()}
             {currentDraftId && ` (Draft: ${currentDraftId.substring(6, 12)}...)`}
@@ -1181,14 +1197,15 @@ const ProjectWizard = ({
       )}
 
       {/* Wizard Content */}
-      <div className="wizard-main">
+      <div className="mb-6">
         {renderStepContent()}
       </div>
 
       {/* Navigation */}
-      <div className="wizard-navigation">
-        <div className="wizard-navigation-content">
-          <div className="nav-left">
+      <div className="border-t-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-6 py-4 -mx-4 -mb-4 rounded-b-lg">
+        <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
+          {/* Left Navigation */}
+          <div className="flex gap-3">
             {wizard.canGoToPrevious() && (
               <button
                 onClick={() => {
@@ -1196,7 +1213,7 @@ const ProjectWizard = ({
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
                 disabled={isLoading}
-                className="btn btn-secondary"
+                className="btn-secondary"
               >
                 ← Previous
               </button>
@@ -1205,31 +1222,33 @@ const ProjectWizard = ({
             <button
               onClick={onCancel}
               disabled={isLoading}
-              className="btn btn-outline"
+              className="px-4 py-2 text-sm font-medium border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancel
             </button>
           </div>
 
-          <div className="nav-center">
-            <div className="step-progress">
-              {Array.from({ length: 2 }, (_, i) => {
-                const stepNumber = i + 1;
-                const stepTitles = ['Project Setup', 'Triage & Complete'];
-                const stepStatuses = ['Basic Info & Folders', 'Calculations & Finish'];
-                const isActive = stepNumber === wizard.currentStep;
-                const isCompleted = wizard.isStepCompleted(stepNumber);
-                const isAccessible = wizard.isStepAccessible(stepNumber);
-                
-                return (
+          {/* Center Progress Indicators */}
+          <div className="flex items-center gap-4">
+            {Array.from({ length: 2 }, (_, i) => {
+              const stepNumber = i + 1;
+              const stepTitles = ['Project Setup', 'Triage & Complete'];
+              const isActive = stepNumber === wizard.currentStep;
+              const isCompleted = wizard.isStepCompleted(stepNumber);
+              const isAccessible = wizard.isStepAccessible(stepNumber);
+              
+              return (
+                <React.Fragment key={stepNumber}>
+                  {i > 0 && (
+                    <div className={`hidden sm:block h-0.5 w-12 ${
+                      wizard.isStepCompleted(stepNumber - 1) 
+                        ? 'bg-success-500' 
+                        : 'bg-gray-300 dark:bg-gray-600'
+                    }`} />
+                  )}
                   <div
-                    key={stepNumber}
-                    className={`progress-step ${
-                      isActive ? 'active' : ''
-                    } ${
-                      isCompleted ? 'completed' : ''
-                    } ${
-                      isAccessible ? 'accessible' : ''
+                    className={`flex flex-col items-center gap-2 ${
+                      isAccessible ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
                     }`}
                     onClick={() => {
                       if (isAccessible) {
@@ -1238,37 +1257,67 @@ const ProjectWizard = ({
                       }
                     }}
                   >
-                    <div className="step-circle">
+                    <div className={`
+                      w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold
+                      transition-all duration-300
+                      ${isCompleted 
+                        ? 'bg-success-500 text-white shadow-lg shadow-success-500/50' 
+                        : isActive 
+                          ? 'bg-primary-600 text-white shadow-lg shadow-primary-600/50 ring-4 ring-primary-200 dark:ring-primary-900/50' 
+                          : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                      }
+                    `}>
                       {isCompleted ? '✓' : stepNumber}
                     </div>
-                    <div className="step-label">
-                      {stepTitles[i]}
-                    </div>
-                    <div className="step-status">
-                      {isCompleted ? 'Complete' : isActive ? 'Current' : 'Pending'}
+                    <div className="text-center">
+                      <div className={`text-xs font-semibold ${
+                        isActive ? 'text-primary-600 dark:text-primary-400' : 
+                        isCompleted ? 'text-success-600 dark:text-success-400' : 
+                        'text-gray-600 dark:text-gray-400'
+                      }`}>
+                        {stepTitles[i]}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-500">
+                        {isCompleted ? 'Complete' : isActive ? 'Current' : 'Pending'}
+                      </div>
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                </React.Fragment>
+              );
+            })}
           </div>
 
-          <div className="nav-right">
+          {/* Right Navigation */}
+          <div>
             {wizard.currentStep < 2 ? (
               <button
                 onClick={handleNext}
                 disabled={isLoading || !wizard.canProceedToNext()}
-                className="btn btn-primary"
+                className="btn-primary"
               >
-                {isLoading ? 'Saving...' : 'Next →'}
+                {isLoading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="spinner w-4 h-4 border-2"></span>
+                    Saving...
+                  </span>
+                ) : (
+                  'Next →'
+                )}
               </button>
             ) : (
               <button
                 onClick={handleNext}
                 disabled={isLoading || !wizard.canProceedToNext()}
-                className="btn btn-primary"
+                className="btn-primary"
               >
-                {isLoading ? 'Completing...' : 'Complete & Manage Project'}
+                {isLoading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="spinner w-4 h-4 border-2"></span>
+                    Completing...
+                  </span>
+                ) : (
+                  'Complete & Manage Project'
+                )}
               </button>
             )}
           </div>
