@@ -106,7 +106,8 @@
       "index.html",
       "dist/**/*",
       "node_modules/**/*",
-      "assets/**/*"
+      "assets/**/*",
+      "main-process/**/*"
     ],
     "win": {
       "target": [

@@ -26,7 +26,7 @@ console.log('   Cache:', app.getPath('cache'));
 console.log('   Session Data:', app.getPath('sessionData'));
 
 // Import version check service
-const versionCheckService = require('./src/utils/versionCheck').default;
+const versionCheckService = require('./main-process/services/VersionCheckService');
 
 // Import services
 const ProjectService = require('./main-process/services/ProjectService');

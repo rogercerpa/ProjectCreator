@@ -394,98 +394,96 @@
 }
 
 /* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .performance-dashboard {
-    background: #2d2d2d;
-    border-color: #404040;
-    color: #ffffff;
-  }
-  
-  .performance-dashboard-header {
-    background: #404040;
-    border-bottom-color: #555555;
-  }
-  
-  .performance-dashboard-header h3 {
-    color: #ffffff;
-  }
-  
-  .summary-card {
-    background: #404040;
-    border-color: #555555;
-  }
-  
-  .summary-card h4 {
-    color: #cccccc;
-  }
-  
-  .summary-value {
-    color: #ffffff;
-  }
-  
-  .metric-card {
-    background: #404040;
-    border-color: #555555;
-  }
-  
-  .metric-card:hover {
-    border-color: #007bff;
-  }
-  
-  .metric-header h5 {
-    color: #ffffff;
-  }
-  
-  .stat-item {
-    background: #555555;
-  }
-  
-  .stat-label {
-    color: #cccccc;
-  }
-  
-  .stat-value {
-    color: #ffffff;
-  }
-  
-  .recommendation {
-    background: #404040;
-    border-color: #555555;
-  }
-  
-  .recommendation-message {
-    color: #ffffff;
-  }
-  
-  .recommendation-suggestion {
-    color: #cccccc;
-  }
-  
-  .system-info {
-    background: #404040;
-    border-color: #555555;
-  }
-  
-  .system-info h4 {
-    color: #ffffff;
-  }
-  
-  .system-item {
-    background: #555555;
-    border-color: #666666;
-  }
-  
-  .system-label {
-    color: #cccccc;
-  }
-  
-  .system-value {
-    color: #ffffff;
-  }
-  
-  .performance-dashboard-placeholder {
-    color: #cccccc;
-  }
+.dark .performance-dashboard {
+  background: #2d2d2d;
+  border-color: #404040;
+  color: #ffffff;
+}
+
+.dark .performance-dashboard-header {
+  background: #404040;
+  border-bottom-color: #555555;
+}
+
+.dark .performance-dashboard-header h3 {
+  color: #ffffff;
+}
+
+.dark .summary-card {
+  background: #404040;
+  border-color: #555555;
+}
+
+.dark .summary-card h4 {
+  color: #cccccc;
+}
+
+.dark .summary-value {
+  color: #ffffff;
+}
+
+.dark .metric-card {
+  background: #404040;
+  border-color: #555555;
+}
+
+.dark .metric-card:hover {
+  border-color: #007bff;
+}
+
+.dark .metric-header h5 {
+  color: #ffffff;
+}
+
+.dark .stat-item {
+  background: #555555;
+}
+
+.dark .stat-label {
+  color: #cccccc;
+}
+
+.dark .stat-value {
+  color: #ffffff;
+}
+
+.dark .recommendation {
+  background: #404040;
+  border-color: #555555;
+}
+
+.dark .recommendation-message {
+  color: #ffffff;
+}
+
+.dark .recommendation-suggestion {
+  color: #cccccc;
+}
+
+.dark .system-info {
+  background: #404040;
+  border-color: #555555;
+}
+
+.dark .system-info h4 {
+  color: #ffffff;
+}
+
+.dark .system-item {
+  background: #555555;
+  border-color: #666666;
+}
+
+.dark .system-label {
+  color: #cccccc;
+}
+
+.dark .system-value {
+  color: #ffffff;
+}
+
+.dark .performance-dashboard-placeholder {
+  color: #cccccc;
 }
 
 

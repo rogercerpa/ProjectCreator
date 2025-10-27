@@ -261,73 +261,71 @@
 }
 
 /* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .update-notification {
-    background: #2d2d2d;
-    border-color: #404040;
-    color: #ffffff;
-  }
-  
-  .update-notification-header {
-    border-bottom-color: #404040;
-  }
-  
-  .update-notification-title h3 {
-    color: #ffffff;
-  }
-  
-  .update-notification-title p {
-    color: #cccccc;
-  }
-  
-  .update-notification-close {
-    color: #cccccc;
-  }
-  
-  .update-notification-close:hover {
-    background: #404040;
-    color: #ffffff;
-  }
-  
-  .update-release-name {
-    color: #ffffff;
-  }
-  
-  .update-release-notes h4 {
-    color: #ffffff;
-  }
-  
-  .release-notes-content {
-    background: #404040;
-    border-color: #555555;
-    color: #cccccc;
-  }
-  
-  .progress-bar {
-    background: #404040;
-  }
-  
-  .update-installing {
-    background: #404040;
-  }
-  
-  .update-installing p {
-    color: #cccccc;
-  }
-  
-  .update-button.secondary {
-    background: #404040;
-    color: #cccccc;
-    border-color: #555555;
-  }
-  
-  .update-button.secondary:hover {
-    background: #555555;
-  }
-  
-  .update-notification-footer {
-    border-top-color: #404040;
-  }
+.dark .update-notification {
+  background: #2d2d2d;
+  border-color: #404040;
+  color: #ffffff;
+}
+
+.dark .update-notification-header {
+  border-bottom-color: #404040;
+}
+
+.dark .update-notification-title h3 {
+  color: #ffffff;
+}
+
+.dark .update-notification-title p {
+  color: #cccccc;
+}
+
+.dark .update-notification-close {
+  color: #cccccc;
+}
+
+.dark .update-notification-close:hover {
+  background: #404040;
+  color: #ffffff;
+}
+
+.dark .update-release-name {
+  color: #ffffff;
+}
+
+.dark .update-release-notes h4 {
+  color: #ffffff;
+}
+
+.dark .release-notes-content {
+  background: #404040;
+  border-color: #555555;
+  color: #cccccc;
+}
+
+.dark .progress-bar {
+  background: #404040;
+}
+
+.dark .update-installing {
+  background: #404040;
+}
+
+.dark .update-installing p {
+  color: #cccccc;
+}
+
+.dark .update-button.secondary {
+  background: #404040;
+  color: #cccccc;
+  border-color: #555555;
+}
+
+.dark .update-button.secondary:hover {
+  background: #555555;
+}
+
+.dark .update-notification-footer {
+  border-top-color: #404040;
 }
 
 

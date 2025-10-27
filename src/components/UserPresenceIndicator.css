@@ -66,13 +66,11 @@
 }
 
 /* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .presence-indicator {
-    background: #3d3d3d;
-  }
+.dark .presence-indicator {
+  background: #3d3d3d;
+}
 
-  .presence-indicator.offline .presence-dot {
-    background: #6d6d6d;
-  }
+.dark .presence-indicator.offline .presence-dot {
+  background: #6d6d6d;
 }
 
