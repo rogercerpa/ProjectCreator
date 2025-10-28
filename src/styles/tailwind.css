@@ -40,41 +40,278 @@
   * {
     @apply transition-colors duration-200;
   }
+
+  /* Global Form Element Styling */
+  label {
+    @apply text-sm font-medium text-gray-700 dark:text-gray-300;
+  }
+
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"],
+  input[type="tel"],
+  input[type="url"],
+  select,
+  textarea {
+    @apply px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-md text-sm;
+    @apply text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-800;
+    @apply transition-all duration-200;
+    @apply focus:outline-none focus:border-primary-600 dark:focus:border-primary-500;
+    @apply focus:ring-2 focus:ring-primary-600/10 dark:focus:ring-primary-500/20;
+  }
+
+  textarea {
+    @apply resize-y min-h-[80px];
+  }
+
+  input[type="number"] {
+    @apply text-right;
+  }
+
+  input[type="radio"] {
+    @apply m-0 cursor-pointer w-4 h-4 accent-primary-600 dark:accent-primary-500;
+  }
+
+  /* Radio button labels */
+  input[type="radio"] + label,
+  label:has(> input[type="radio"]) {
+    @apply flex items-center gap-1.5 text-sm font-normal text-gray-700 dark:text-gray-300 cursor-pointer;
+  }
+
+  /* Field hints */
+  small {
+    @apply text-xs text-gray-500 dark:text-gray-400;
+  }
 }
 
 /* Components Layer - Reusable Component Patterns */
 @layer components {
   /* Button Base Styles */
   .btn {
-    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 cursor-pointer;
+    @apply px-4 py-2.5 rounded-lg font-semibold transition-all duration-200 cursor-pointer;
     @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+    @apply inline-flex items-center justify-center gap-2;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
   }
 
+  /* Primary Button - Bold gradient with shadow */
   .btn-primary {
-    @apply bg-gradient-to-r from-primary-500 to-primary-600;
-    @apply text-white shadow-primary;
-    @apply hover:from-primary-600 hover:to-primary-700;
+    @apply px-4 py-2.5 rounded-lg font-semibold transition-all duration-200 cursor-pointer;
+    @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+    @apply inline-flex items-center justify-center gap-2;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
+    @apply bg-gradient-to-r from-primary-500 via-primary-600 to-blue-600;
+    @apply text-white shadow-lg shadow-primary-500/30;
+    @apply hover:shadow-xl hover:shadow-primary-500/40 hover:-translate-y-0.5;
+    @apply active:translate-y-0;
     @apply focus:ring-primary-500;
   }
 
+  /* Secondary Button - Subtle with border */
   .btn-secondary {
-    @apply bg-gray-200 text-gray-800;
-    @apply hover:bg-gray-300;
-    @apply dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600;
+    @apply px-4 py-2.5 rounded-lg font-semibold transition-all duration-200 cursor-pointer;
+    @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+    @apply inline-flex items-center justify-center gap-2;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
+    @apply bg-white dark:bg-gray-800;
+    @apply border-2 border-gray-300 dark:border-gray-600;
+    @apply text-gray-700 dark:text-gray-200;
+    @apply shadow-md hover:shadow-lg;
+    @apply hover:border-gray-400 dark:hover:border-gray-500;
+    @apply hover:bg-gray-50 dark:hover:bg-gray-700;
+    @apply hover:-translate-y-0.5;
+    @apply active:translate-y-0;
+    @apply focus:ring-gray-400;
   }
 
-  .btn-large {
-    @apply px-6 py-3 text-lg;
+  /* Success Button - Green gradient */
+  .btn-success {
+    @apply px-4 py-2.5 rounded-lg font-semibold transition-all duration-200 cursor-pointer;
+    @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+    @apply inline-flex items-center justify-center gap-2;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
+    @apply bg-gradient-to-r from-success-500 to-green-600;
+    @apply text-white shadow-lg shadow-success-500/30;
+    @apply hover:shadow-xl hover:shadow-success-500/40 hover:-translate-y-0.5;
+    @apply active:translate-y-0;
+    @apply focus:ring-success-500;
   }
 
-  .btn-small {
-    @apply px-3 py-1.5 text-sm;
+  /* Warning Button - Orange gradient */
+  .btn-warning {
+    @apply px-4 py-2.5 rounded-lg font-semibold transition-all duration-200 cursor-pointer;
+    @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+    @apply inline-flex items-center justify-center gap-2;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
+    @apply bg-gradient-to-r from-warning-500 to-orange-600;
+    @apply text-white shadow-lg shadow-warning-500/30;
+    @apply hover:shadow-xl hover:shadow-warning-500/40 hover:-translate-y-0.5;
+    @apply active:translate-y-0;
+    @apply focus:ring-warning-500;
+  }
+
+  /* Danger Button - Red gradient */
+  .btn-danger {
+    @apply px-4 py-2.5 rounded-lg font-semibold transition-all duration-200 cursor-pointer;
+    @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+    @apply inline-flex items-center justify-center gap-2;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
+    @apply bg-gradient-to-r from-error-500 to-red-600;
+    @apply text-white shadow-lg shadow-error-500/30;
+    @apply hover:shadow-xl hover:shadow-error-500/40 hover:-translate-y-0.5;
+    @apply active:translate-y-0;
+    @apply focus:ring-error-500;
+  }
+
+  /* Info Button - Blue gradient */
+  .btn-info {
+    @apply px-4 py-2.5 rounded-lg font-semibold transition-all duration-200 cursor-pointer;
+    @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+    @apply inline-flex items-center justify-center gap-2;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
+    @apply bg-gradient-to-r from-info-500 to-blue-600;
+    @apply text-white shadow-lg shadow-info-500/30;
+    @apply hover:shadow-xl hover:shadow-info-500/40 hover:-translate-y-0.5;
+    @apply active:translate-y-0;
+    @apply focus:ring-info-500;
+  }
+
+  /* Ghost Button - Transparent with border */
+  .btn-ghost {
+    @apply px-4 py-2.5 rounded-lg font-semibold transition-all duration-200 cursor-pointer;
+    @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+    @apply inline-flex items-center justify-center gap-2;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
+    @apply bg-transparent border-2 border-gray-300 dark:border-gray-600;
+    @apply text-gray-700 dark:text-gray-200;
+    @apply hover:bg-gray-100 dark:hover:bg-gray-800;
+    @apply hover:border-gray-400 dark:hover:border-gray-500;
+    @apply focus:ring-gray-400;
+  }
+
+  /* Outline Button - Similar to ghost but with primary color */
+  .btn-outline-primary {
+    @apply px-4 py-2.5 rounded-lg font-semibold transition-all duration-200 cursor-pointer;
+    @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+    @apply inline-flex items-center justify-center gap-2;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
+    @apply bg-transparent border-2 border-primary-500;
+    @apply text-primary-600 dark:text-primary-400;
+    @apply hover:bg-primary-50 dark:hover:bg-primary-900/20;
+    @apply hover:border-primary-600;
+    @apply focus:ring-primary-500;
+  }
+
+  /* Size Variants */
+  .btn-xs {
+    @apply px-2.5 py-1.5 text-xs rounded-md;
+  }
+
+  .btn-sm {
+    @apply px-3 py-2 text-sm rounded-md;
+  }
+
+  .btn-lg {
+    @apply px-6 py-3 text-base rounded-xl;
+  }
+
+  .btn-xl {
+    @apply px-8 py-4 text-lg rounded-xl;
+  }
+
+  /* Icon Button - Square */
+  .btn-icon {
+    @apply w-10 h-10 p-0 rounded-lg;
+  }
+
+  .btn-icon-sm {
+    @apply w-8 h-8 p-0 rounded-md;
+  }
+
+  .btn-icon-lg {
+    @apply w-12 h-12 p-0 rounded-xl;
   }
 
   /* Card Styles */
   .card {
     @apply bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700;
     @apply shadow-soft hover:shadow-medium transition-shadow;
+  }
+
+  /* Form Element Styles */
+  .form-label {
+    @apply text-sm font-medium text-gray-700 dark:text-gray-300 m-0;
+  }
+
+  .form-input,
+  .form-select,
+  .form-textarea {
+    @apply px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-md text-sm;
+    @apply text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-800;
+    @apply transition-all duration-200;
+    @apply focus:outline-none focus:border-primary-600 dark:focus:border-primary-500;
+    @apply focus:ring-2 focus:ring-primary-600/10 dark:focus:ring-primary-500/20;
+  }
+
+  .form-input.error,
+  .form-select.error,
+  .form-textarea.error {
+    @apply border-error-600 dark:border-error-500;
+    @apply ring-2 ring-error-600/10 dark:ring-error-500/20;
+  }
+
+  .form-textarea {
+    @apply resize-y min-h-[80px];
+  }
+
+  .form-input[type="number"] {
+    @apply text-right;
+  }
+
+  .error-message {
+    @apply text-error-600 dark:text-error-400 text-xs font-medium mt-1;
+  }
+
+  .required-indicator {
+    @apply text-error-600 dark:text-error-400 font-semibold;
+  }
+
+  .field-hint {
+    @apply text-xs text-gray-500 dark:text-gray-400 mt-1;
+  }
+
+  .form-section-header {
+    @apply m-0 mb-5 text-xl font-semibold text-gray-900 dark:text-gray-100;
+    @apply flex items-center gap-2 border-b-2 border-gray-100 dark:border-gray-700 pb-3;
+  }
+
+  .form-group {
+    @apply flex flex-col gap-1.5;
+  }
+
+  /* Field validation and import indicators */
+  .validation-success {
+    @apply text-success-600 dark:text-success-400 text-xs font-medium flex items-center gap-1;
+  }
+
+  .import-indicator {
+    @apply absolute -top-2 -right-2 bg-primary-600 dark:bg-primary-500 text-white text-[10px] font-semibold px-2 py-1 rounded-xl z-10 shadow-lg shadow-primary-600/30 dark:shadow-primary-500/30;
+  }
+
+  .imported-field {
+    @apply relative;
+  }
+
+  .imported-field > input,
+  .imported-field > select,
+  .imported-field > textarea {
+    @apply bg-gradient-to-br from-info-50 to-blue-50 dark:from-info-900/20 dark:to-blue-900/20;
+    @apply border-primary-600 dark:border-primary-500;
+    @apply ring-2 ring-primary-600/10 dark:ring-primary-500/20;
   }
 
   /* Input Styles */

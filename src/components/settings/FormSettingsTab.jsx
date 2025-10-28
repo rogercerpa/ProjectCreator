@@ -5,14 +5,11 @@ const FormSettingsTab = ({
   formCategories,
   selectedCategory,
   setSelectedCategory,
-  viewMode,
-  setViewMode,
   searchTerm,
   setSearchTerm,
   cancelEditing,
   getCurrentCategory,
   getFilteredItems,
-  renderCompactFieldEditor,
   renderFieldEditor
 }) => {
   const currentCategory = getCurrentCategory();
@@ -24,22 +21,6 @@ const FormSettingsTab = ({
       <div className="w-64 flex-shrink-0 bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-bold text-gray-900 dark:text-white">Categories</h3>
-          <div className="flex bg-gray-200 dark:bg-gray-700 rounded p-0.5">
-            <button 
-              className={`px-2 py-1 rounded text-xs transition-all ${viewMode === 'compact' ? 'bg-white dark:bg-gray-600 text-primary-600 dark:text-primary-400 shadow' : 'text-gray-600 dark:text-gray-400'}`}
-              onClick={() => setViewMode('compact')}
-              title="Compact View"
-            >
-              ⊞
-            </button>
-            <button 
-              className={`px-2 py-1 rounded text-xs transition-all ${viewMode === 'detailed' ? 'bg-white dark:bg-gray-600 text-primary-600 dark:text-primary-400 shadow' : 'text-gray-600 dark:text-gray-400'}`}
-              onClick={() => setViewMode('detailed')}
-              title="Detailed View"
-            >
-              ☰
-            </button>
-          </div>
         </div>
         
         <div className="space-y-1">
@@ -109,10 +90,7 @@ const FormSettingsTab = ({
 
         {/* Items display */}
         <div className="flex-1 overflow-y-auto custom-scrollbar">
-          {viewMode === 'compact' ? 
-            renderCompactFieldEditor(selectedCategory, currentItems) :
-            renderFieldEditor(selectedCategory, currentCategory?.label, currentItems)
-          }
+          {renderFieldEditor(selectedCategory, currentCategory?.label, currentItems)}
         </div>
       </div>
     </div>

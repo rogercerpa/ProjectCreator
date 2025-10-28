@@ -491,79 +491,143 @@ const ProjectManagement = ({
 
       {/* OneDrive Sync Upload Progress Modal */}
       {uploadStatus.isUploading && (
-        <div className="modal-overlay backdrop-blur-sm">
-          <div className="modal-content max-w-2xl">
-            <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-              Uploading to SharePoint via OneDrive Sync
-            </h3>
-            <div className="mb-4">
-              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mb-2">
-                <div 
-                  className="h-full bg-gradient-to-r from-primary-500 to-primary-600 transition-all duration-300" 
-                  style={{ width: `${uploadStatus.progress}%` }}
-                />
-              </div>
-              <div className="flex justify-between items-center text-sm">
-                <span className="font-semibold text-primary-600 dark:text-primary-400">{uploadStatus.progress}%</span>
-                <span className="text-gray-600 dark:text-gray-400">{uploadStatus.message}</span>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-slideUp">
+            {/* Header with gradient */}
+            <div className="relative isolate overflow-hidden bg-gradient-to-br from-primary-600 via-primary-700 to-blue-700 dark:from-primary-800 dark:via-primary-900 dark:to-blue-900 px-6 py-8">
+              <div className="absolute inset-0 -z-10 bg-gradient-to-br from-white/10 to-transparent opacity-20" />
+              <div className="flex items-center gap-4">
+                <div className="flex-shrink-0 w-14 h-14 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center border border-white/30">
+                  <span className="text-3xl">☁️</span>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-xl font-bold text-white mb-1">
+                    Uploading to SharePoint
+                  </h3>
+                  <p className="text-sm text-white/80">
+                    via OneDrive Sync
+                  </p>
+                </div>
               </div>
             </div>
-            <div className="space-y-2">
-              {uploadStatus.phase === 'zipping' && (
-                <p className="text-gray-700 dark:text-gray-300 text-sm">
-                  📦 Compressing project files...
-                </p>
-              )}
-              {uploadStatus.phase === 'syncing' && (
-                <>
-                  <p className="text-gray-700 dark:text-gray-300 text-sm">
-                    🔄 {uploadStatus.message}
-                  </p>
-                  {uploadStatus.syncStatus && (
-                    <div className="flex flex-wrap gap-2">
-                      {uploadStatus.syncStatus === 'pending' && (
-                        <span className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full text-xs font-medium">
-                          ⏳ Waiting for sync...
-                        </span>
-                      )}
-                      {uploadStatus.syncStatus === 'syncing' && (
-                        <span className="px-3 py-1 bg-info-100 dark:bg-info-900/30 text-info-700 dark:text-info-300 rounded-full text-xs font-medium">
-                          📤 Syncing to SharePoint...
-                        </span>
-                      )}
-                      {uploadStatus.syncStatus === 'synced' && (
-                        <span className="px-3 py-1 bg-success-100 dark:bg-success-900/30 text-success-700 dark:text-success-300 rounded-full text-xs font-medium">
-                          ✅ Synced to cloud!
-                        </span>
-                      )}
-                      {uploadStatus.syncStatus === 'timeout' && (
-                        <span className="px-3 py-1 bg-warning-100 dark:bg-warning-900/30 text-warning-700 dark:text-warning-300 rounded-full text-xs font-medium">
-                          ⚠️ Sync monitoring timeout
-                        </span>
-                      )}
-                      {uploadStatus.syncStatus === 'error' && (
-                        <span className="px-3 py-1 bg-error-100 dark:bg-error-900/30 text-error-700 dark:text-error-300 rounded-full text-xs font-medium">
-                          ❌ Sync error
-                        </span>
+
+            {/* Content */}
+            <div className="p-6 space-y-6">
+              {/* Progress Bar Section */}
+              <div>
+                <div className="flex justify-between items-baseline mb-3">
+                  <span className="text-2xl font-bold text-primary-600 dark:text-primary-400">
+                    {uploadStatus.progress}%
+                  </span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                    {uploadStatus.message}
+                  </span>
+                </div>
+                <div className="relative h-4 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden shadow-inner">
+                  <div 
+                    className="absolute inset-0 bg-gradient-to-r from-primary-500 via-primary-600 to-blue-600 transition-all duration-500 ease-out rounded-full" 
+                    style={{ width: `${uploadStatus.progress}%` }}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Status Cards */}
+              <div className="space-y-3">
+                {uploadStatus.phase === 'zipping' && (
+                  <div className="flex items-start gap-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+                    <div className="flex-shrink-0 w-10 h-10 bg-blue-500 dark:bg-blue-600 rounded-lg flex items-center justify-center">
+                      <span className="text-xl">📦</span>
+                    </div>
+                    <div className="flex-1 pt-1">
+                      <p className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
+                        Compressing Files
+                      </p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                        Creating archive for upload...
+                      </p>
+                    </div>
+                  </div>
+                )}
+                
+                {uploadStatus.phase === 'syncing' && (
+                  <div className="flex items-start gap-3 p-4 bg-gradient-to-r from-primary-50 to-blue-50 dark:from-primary-900/20 dark:to-blue-900/20 rounded-xl border border-primary-200 dark:border-primary-800">
+                    <div className="flex-shrink-0 w-10 h-10 bg-primary-500 dark:bg-primary-600 rounded-lg flex items-center justify-center animate-pulse">
+                      <span className="text-xl">🔄</span>
+                    </div>
+                    <div className="flex-1 pt-1">
+                      <p className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
+                        {uploadStatus.message}
+                      </p>
+                      {uploadStatus.syncStatus && (
+                        <div className="mt-2">
+                          {uploadStatus.syncStatus === 'pending' && (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-medium">
+                              <span className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" />
+                              Waiting for sync...
+                            </span>
+                          )}
+                          {uploadStatus.syncStatus === 'syncing' && (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-info-100 dark:bg-info-900/30 text-info-700 dark:text-info-300 rounded-lg text-xs font-medium">
+                              <span className="w-2 h-2 bg-info-500 rounded-full animate-pulse" />
+                              Syncing to SharePoint...
+                            </span>
+                          )}
+                          {uploadStatus.syncStatus === 'synced' && (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-success-100 dark:bg-success-900/30 text-success-700 dark:text-success-300 rounded-lg text-xs font-medium">
+                              <span className="w-2 h-2 bg-success-500 rounded-full" />
+                              Synced to cloud!
+                            </span>
+                          )}
+                          {uploadStatus.syncStatus === 'timeout' && (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-warning-100 dark:bg-warning-900/30 text-warning-700 dark:text-warning-300 rounded-lg text-xs font-medium">
+                              <span className="w-2 h-2 bg-warning-500 rounded-full" />
+                              Sync monitoring timeout
+                            </span>
+                          )}
+                          {uploadStatus.syncStatus === 'error' && (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-error-100 dark:bg-error-900/30 text-error-700 dark:text-error-300 rounded-lg text-xs font-medium">
+                              <span className="w-2 h-2 bg-error-500 rounded-full" />
+                              Sync error
+                            </span>
+                          )}
+                        </div>
                       )}
                     </div>
-                  )}
-                </>
-              )}
-              {uploadStatus.phase === 'complete' && (
-                <>
-                  <p className="text-success-700 dark:text-success-300 text-sm font-medium">
-                    ✅ {uploadStatus.message}
-                  </p>
-                  {uploadStatus.syncStatus && uploadStatus.syncStatus !== 'synced' && (
-                    <div className="p-3 bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-700 rounded">
-                      <span className="text-warning-800 dark:text-warning-200 text-xs">
-                        ⚠️ File uploaded to OneDrive folder but cloud sync may still be in progress
-                      </span>
+                  </div>
+                )}
+                
+                {uploadStatus.phase === 'complete' && (
+                  <>
+                    <div className="flex items-start gap-3 p-4 bg-gradient-to-r from-success-50 to-green-50 dark:from-success-900/20 dark:to-green-900/20 rounded-xl border-2 border-success-500 dark:border-success-700">
+                      <div className="flex-shrink-0 w-10 h-10 bg-success-500 dark:bg-success-600 rounded-lg flex items-center justify-center">
+                        <span className="text-xl">✅</span>
+                      </div>
+                      <div className="flex-1 pt-1">
+                        <p className="font-semibold text-success-800 dark:text-success-200 text-sm">
+                          {uploadStatus.message}
+                        </p>
+                        <p className="text-xs text-success-600 dark:text-success-400 mt-0.5">
+                          Your project is now available on SharePoint
+                        </p>
+                      </div>
                     </div>
-                  )}
-                </>
-              )}
+                    {uploadStatus.syncStatus && uploadStatus.syncStatus !== 'synced' && (
+                      <div className="flex items-start gap-3 p-4 bg-warning-50 dark:bg-warning-900/20 rounded-xl border border-warning-200 dark:border-warning-700">
+                        <div className="flex-shrink-0 w-8 h-8 bg-warning-500 dark:bg-warning-600 rounded-lg flex items-center justify-center">
+                          <span className="text-lg">⚠️</span>
+                        </div>
+                        <div className="flex-1 pt-0.5">
+                          <p className="text-xs text-warning-800 dark:text-warning-200 leading-relaxed">
+                            File uploaded to OneDrive folder but cloud sync may still be in progress
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>

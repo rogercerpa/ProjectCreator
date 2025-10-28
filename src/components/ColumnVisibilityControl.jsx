@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from 'react';
-import './ColumnVisibilityControl.css';
 
 function ColumnVisibilityControl({ 
   columns, 
@@ -83,32 +82,38 @@ function ColumnVisibilityControl({
   const totalCount = columns.length;
 
   return (
-    <div className="column-visibility-control">
+    <div className="relative inline-block">
       <button
         ref={buttonRef}
-        className="column-toggle-btn"
+        className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300 transition-all hover:bg-gray-200 dark:hover:bg-gray-700 hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-900 dark:hover:text-gray-100 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 md:px-2 md:py-1.5 md:text-[0.8125rem]"
         onClick={handleToggle}
         title="Show/Hide Columns"
       >
-        <span className="column-icon">📊</span>
-        <span className="column-text">Columns</span>
-        <span className="column-count">({visibleCount}/{totalCount})</span>
-        <span className={`dropdown-arrow ${isOpen ? 'open' : ''}`}>▼</span>
+        <span className="text-base">📊</span>
+        <span className="font-medium md:hidden">Columns</span>
+        <span className="bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 px-1.5 py-0.5 rounded-full text-xs font-semibold">
+          ({visibleCount}/{totalCount})
+        </span>
+        <span className={`text-xs text-gray-400 dark:text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}>
+          ▼
+        </span>
       </button>
 
       {isOpen && (
         <div 
           ref={dropdownRef}
-          className="column-dropdown"
+          className="fixed bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-2xl z-[9999] min-w-[200px] mt-1 overflow-hidden max-h-[400px] animate-slideUp md:min-w-[180px] sm:min-w-[160px]"
           style={{
             top: `${dropdownPosition.top}px`,
             left: `${dropdownPosition.left}px`
           }}
         >
-          <div className="column-dropdown-header">
-            <h4>Show Columns</h4>
+          <div className="flex justify-between items-center px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+            <h4 className="m-0 text-sm font-semibold text-gray-800 dark:text-gray-200">
+              Show Columns
+            </h4>
             <button 
-              className="reset-btn"
+              className="bg-transparent border-none text-primary-600 dark:text-primary-400 text-xs font-medium cursor-pointer px-2 py-1 rounded transition-all hover:bg-info-50 dark:hover:bg-info-900/20 hover:text-primary-700 dark:hover:text-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
               onClick={handleReset}
               title="Show All Columns"
             >
@@ -116,18 +121,23 @@ function ColumnVisibilityControl({
             </button>
           </div>
           
-          <div className="column-list">
+          <div className="max-h-[300px] overflow-y-auto py-2 custom-scrollbar">
             {columns.map((column) => (
-              <label key={column.key} className="column-item">
+              <label 
+                key={column.key} 
+                className="flex items-center gap-3 px-4 py-2 cursor-pointer transition-colors text-sm hover:bg-gray-50 dark:hover:bg-gray-700/50 md:px-3 md:py-1.5 md:text-[0.8125rem] sm:px-2.5"
+              >
                 <input
                   type="checkbox"
                   checked={visibleColumns.includes(column.key)}
                   onChange={() => handleColumnToggle(column.key)}
-                  className="column-checkbox"
+                  className="w-4 h-4 accent-primary-600 dark:accent-primary-500 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
                 />
-                <span className="column-label">{column.label}</span>
+                <span className="flex-1 font-medium text-gray-700 dark:text-gray-300">
+                  {column.label}
+                </span>
                 {column.sortable && (
-                  <span className="sort-indicator">↕️</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500 opacity-70">↕️</span>
                 )}
               </label>
             ))}

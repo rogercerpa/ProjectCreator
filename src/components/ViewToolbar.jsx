@@ -1,5 +1,4 @@
 import React from 'react';
-import './ViewToolbar.css';
 
 function ViewToolbar({ 
   viewMode, 
@@ -44,12 +43,12 @@ function ViewToolbar({
   ];
 
   return (
-    <div className="view-toolbar">
+    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 mb-6 shadow-sm lg:p-4 md:p-3 md:mb-4">
       {/* Top Row - Main Controls */}
-      <div className="toolbar-row toolbar-main">
+      <div className="flex items-center gap-6 flex-wrap justify-between mb-4 md:gap-4">
         {/* Project Count */}
-        <div className="project-count">
-          <span className="count-text">
+        <div className="flex-shrink-0">
+          <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
             {filteredCount === projectCount 
               ? `${projectCount} projects`
               : `${filteredCount} of ${projectCount} projects`
@@ -59,18 +58,22 @@ function ViewToolbar({
 
 
         {/* View Mode Toggle */}
-        <div className="view-mode-toggle">
-          <span className="control-label">View:</span>
-          <div className="toggle-group">
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">View:</span>
+          <div className="flex border-2 border-gray-200 dark:border-gray-600 rounded-md overflow-hidden bg-gray-50 dark:bg-gray-900">
             {viewModes.map((mode) => (
               <button
                 key={mode.value}
                 onClick={() => onViewModeChange(mode.value)}
-                className={`toggle-btn ${viewMode === mode.value ? 'active' : ''}`}
+                className={`flex items-center gap-2 px-4 py-2.5 border-none bg-transparent cursor-pointer transition-all text-sm font-medium border-r border-gray-200 dark:border-gray-600 last:border-r-0 ${
+                  viewMode === mode.value 
+                    ? 'bg-primary-600 dark:bg-primary-700 text-white hover:bg-primary-700 dark:hover:bg-primary-600' 
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-800 hover:text-gray-800 dark:hover:text-gray-200'
+                }`}
                 title={mode.label}
               >
-                <span className="toggle-icon">{mode.icon}</span>
-                <span className="toggle-text">{mode.label.split(' ')[0]}</span>
+                <span className="text-base">{mode.icon}</span>
+                <span className="font-medium">{mode.label.split(' ')[0]}</span>
               </button>
             ))}
           </div>
@@ -78,32 +81,36 @@ function ViewToolbar({
       </div>
 
       {/* Bottom Row - Secondary Controls */}
-      <div className="toolbar-row toolbar-secondary">
+      <div className="flex items-center gap-6 flex-wrap justify-start pt-4 border-t border-gray-100 dark:border-gray-700 md:gap-4 md:pt-3">
         {/* Density Controls */}
-        <div className="density-controls">
-          <span className="control-label">Density:</span>
-          <div className="density-group">
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Density:</span>
+          <div className="flex border-2 border-gray-200 dark:border-gray-600 rounded-md overflow-hidden bg-gray-50 dark:bg-gray-900">
             {densityOptions.map((option) => (
               <button
                 key={option.value}
                 onClick={() => onDensityChange(option.value)}
-                className={`density-btn ${density === option.value ? 'active' : ''}`}
+                className={`flex items-center justify-center w-10 h-10 border-none bg-transparent cursor-pointer transition-all text-base border-r border-gray-200 dark:border-gray-600 last:border-r-0 ${
+                  density === option.value 
+                    ? 'bg-primary-600 dark:bg-primary-700 hover:bg-primary-700 dark:hover:bg-primary-600' 
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-800'
+                }`}
                 title={option.label}
               >
-                <span className="density-icon">{option.icon}</span>
+                <span>{option.icon}</span>
               </button>
             ))}
           </div>
         </div>
 
         {/* Group By */}
-        <div className="group-controls">
-          <label htmlFor="groupBy" className="control-label">Group by:</label>
+        <div className="flex items-center gap-3">
+          <label htmlFor="groupBy" className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Group by:</label>
           <select
             id="groupBy"
             value={groupBy}
             onChange={(e) => onGroupByChange(e.target.value)}
-            className="group-select"
+            className="px-3 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-md text-sm transition-all bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:border-primary-600 dark:focus:border-primary-500 focus:ring-2 focus:ring-primary-600/10 dark:focus:ring-primary-500/20"
           >
             {groupOptions.map((option) => (
               <option key={option.value} value={option.value}>
@@ -114,28 +121,30 @@ function ViewToolbar({
         </div>
 
         {/* Sort Controls */}
-        <div className="sort-controls">
-          <label htmlFor="sortBy" className="control-label">Sort by:</label>
-          <select
-            id="sortBy"
-            value={sortBy}
-            onChange={(e) => onSortChange(e.target.value)}
-            className="sort-select"
-          >
-            {sortOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          
-          <button
-            onClick={onSortOrderToggle}
-            className="sort-order-btn"
-            title={`Sort ${sortOrder === 'asc' ? 'Descending' : 'Ascending'}`}
-          >
-            {sortOrder === 'asc' ? '↑' : '↓'}
-          </button>
+        <div className="flex items-center gap-3">
+          <label htmlFor="sortBy" className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Sort by:</label>
+          <div className="flex items-center gap-2">
+            <select
+              id="sortBy"
+              value={sortBy}
+              onChange={(e) => onSortChange(e.target.value)}
+              className="px-3 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-md text-sm transition-all bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:border-primary-600 dark:focus:border-primary-500 focus:ring-2 focus:ring-primary-600/10 dark:focus:ring-primary-500/20"
+            >
+              {sortOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            
+            <button
+              onClick={onSortOrderToggle}
+              className="px-3 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-800 transition-all font-bold text-lg"
+              title={`Sort ${sortOrder === 'asc' ? 'Descending' : 'Ascending'}`}
+            >
+              {sortOrder === 'asc' ? '↑' : '↓'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

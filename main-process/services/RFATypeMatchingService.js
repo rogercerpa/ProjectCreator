@@ -48,10 +48,11 @@ class RFATypeMatchingService {
   extractRFATypeFromFolder(folderName) {
     try {
       // Pattern: RFA#[number]-[version]_[TYPE]_[DATE]
-      const match = folderName.match(/RFA#\d+-\d+_([A-Z]+)_\d{8}/i);
+      // Note: TYPE can contain spaces and parentheses (e.g., "BOM (with Layout)")
+      const match = folderName.match(/RFA#\d+-\d+_([^_]+)_\d{8}/i);
       
       if (match) {
-        const rfaType = match[1].toUpperCase();
+        const rfaType = match[1].trim().toUpperCase();
         console.log(`📋 Extracted RFA type "${rfaType}" from folder: ${folderName}`);
         return rfaType;
       }
@@ -60,6 +61,30 @@ class RFATypeMatchingService {
       return null;
     } catch (error) {
       console.error(`❌ Error extracting RFA type from ${folderName}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Extract RFA version number from folder name
+   * @param {string} folderName - RFA folder name (e.g., "RFA#246631-5_BOM_02012025")
+   * @returns {number|null} Version number or null if not found
+   */
+  extractRFAVersionFromFolder(folderName) {
+    try {
+      // Pattern: RFA#[number]-[version]_[TYPE]_[DATE]
+      const match = folderName.match(/RFA#\d+-(\d+)/i);
+      
+      if (match) {
+        const version = parseInt(match[1], 10);
+        console.log(`🔢 Extracted RFA version ${version} from folder: ${folderName}`);
+        return version;
+      }
+      
+      console.warn(`⚠️ Could not extract RFA version from folder: ${folderName}`);
+      return null;
+    } catch (error) {
+      console.error(`❌ Error extracting RFA version from ${folderName}:`, error);
       return null;
     }
   }
@@ -109,23 +134,35 @@ class RFATypeMatchingService {
     const scoredFolders = rfaFolders.map(folder => {
       const folderRFAType = this.extractRFATypeFromFolder(folder.name);
       const scoreResult = this.calculateRFATypeScore(formRFAType, folderRFAType);
+      const version = this.extractRFAVersionFromFolder(folder.name);
 
       return {
         ...folder,
         rfaType: folderRFAType,
         matchScore: scoreResult.score,
         matchType: scoreResult.type,
-        matchReasoning: scoreResult.reasoning
+        matchReasoning: scoreResult.reasoning,
+        version: version
       };
     });
 
-    // Sort by score (highest first), then by date (newest first)
+    // CRITICAL FIX: Sort by VERSION NUMBER FIRST (highest first), then by RFA type match score, then by date
+    // This ensures we always copy from the LATEST revision, regardless of RFA type matching
     const sortedFolders = scoredFolders.sort((a, b) => {
+      // 1. Primary sort: Version number (highest first)
+      const versionA = a.version !== null ? a.version : -1;
+      const versionB = b.version !== null ? b.version : -1;
+      
+      if (versionA !== versionB) {
+        return versionB - versionA; // Higher version first
+      }
+      
+      // 2. Secondary sort: RFA type match score (if versions are equal)
       if (a.matchScore !== b.matchScore) {
         return b.matchScore - a.matchScore; // Higher score first
       }
       
-      // If scores are equal, sort by date in folder name
+      // 3. Tertiary sort: Date (if both version and score are equal)
       const dateA = this.extractDateFromRFAName(a.name);
       const dateB = this.extractDateFromRFAName(b.name);
       
@@ -136,8 +173,8 @@ class RFATypeMatchingService {
       return 0;
     });
 
-    console.log(`✅ RFA matching results:`, sortedFolders.map(f => 
-      `${f.name} (score: ${f.matchScore}, type: ${f.matchType})`
+    console.log(`✅ RFA matching results (sorted by version → match score → date):`, sortedFolders.map(f => 
+      `${f.name} (version: ${f.version}, score: ${f.matchScore}, type: ${f.matchType})`
     ));
 
     return sortedFolders;
@@ -190,52 +227,39 @@ class RFATypeMatchingService {
     const bestFolder = scoredFolders[0];
     const secondBestFolder = scoredFolders[1];
 
-    // Scenario 1: Clear winner (high score, significant gap)
-    if (bestFolder.matchScore >= 80 && 
-        (!secondBestFolder || bestFolder.matchScore - secondBestFolder.matchScore >= 20)) {
-      
+    // With version-first sorting, the first folder is ALWAYS the latest revision
+    // So we auto-select it with high confidence in most cases
+    
+    // Scenario 1: Latest revision with high RFA type match (best case)
+    if (bestFolder.matchScore >= 80) {
       return {
         selectedFolder: bestFolder,
-        strategy: 'auto_high_confidence',
+        strategy: 'auto_version_and_type_match',
         confidence: 'high',
-        reasoning: `Auto-selected: ${bestFolder.matchReasoning}`,
+        reasoning: `Latest revision (v${bestFolder.version}) with matching RFA type: ${bestFolder.matchReasoning}`,
         requiresManualSelection: false,
         allFolders: scoredFolders
       };
     }
 
-    // Scenario 2: Multiple good matches (let user decide)
-    if (bestFolder.matchScore >= 60 && secondBestFolder && 
-        Math.abs(bestFolder.matchScore - secondBestFolder.matchScore) < 20) {
-      
+    // Scenario 2: Latest revision with medium RFA type match
+    if (bestFolder.matchScore >= 60) {
       return {
         selectedFolder: bestFolder,
-        strategy: 'manual_required',
-        confidence: 'low',
-        reasoning: `Multiple good matches found. Please manually select.`,
-        requiresManualSelection: true,
-        allFolders: scoredFolders
-      };
-    }
-
-    // Scenario 3: Weak matches only (use latest by date)
-    if (bestFolder.matchScore < 60) {
-      return {
-        selectedFolder: bestFolder,
-        strategy: 'fallback_latest',
-        confidence: 'low',
-        reasoning: `No strong RFA type match. Selected latest available folder.`,
+        strategy: 'auto_version_priority',
+        confidence: 'high',
+        reasoning: `Latest revision (v${bestFolder.version}) selected. ${bestFolder.matchReasoning}`,
         requiresManualSelection: false,
         allFolders: scoredFolders
       };
     }
 
-    // Default: Auto-select best match
+    // Scenario 3: Latest revision but weak RFA type match (still auto-select - version is most important)
     return {
       selectedFolder: bestFolder,
-      strategy: 'auto_medium_confidence',
+      strategy: 'auto_version_priority',
       confidence: 'medium',
-      reasoning: `Auto-selected: ${bestFolder.matchReasoning}`,
+      reasoning: `Latest revision (v${bestFolder.version}) selected. Note: RFA type differs from form (${formRFAType} vs ${bestFolder.rfaType})`,
       requiresManualSelection: false,
       allFolders: scoredFolders
     };

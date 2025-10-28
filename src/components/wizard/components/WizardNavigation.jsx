@@ -40,7 +40,7 @@ const WizardNavigation = ({
         <button
           onClick={onCancel}
           disabled={isLoading}
-          className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          className="btn-ghost"
           type="button"
         >
           Cancel
@@ -104,32 +104,38 @@ const WizardNavigation = ({
           <button
             onClick={onNext}
             disabled={!canProceedToNext || isLoading}
-            className="btn-primary min-w-[120px]"
+            className="btn-primary min-w-[140px]"
             type="button"
           >
             {isLoading ? (
-              <span className="flex items-center gap-2">
+              <>
                 <span className="spinner w-4 h-4 border-2"></span>
-                Saving...
-              </span>
+                <span>Saving...</span>
+              </>
             ) : (
-              'Next →'
+              <>
+                <span>Next</span>
+                <span>→</span>
+              </>
             )}
           </button>
         ) : (
           <button
             onClick={onComplete}
             disabled={isLoading}
-            className="btn-primary min-w-[160px] bg-gradient-to-r from-success-500 to-success-600 hover:from-success-600 hover:to-success-700"
+            className="btn-success min-w-[160px]"
             type="button"
           >
             {isLoading ? (
-              <span className="flex items-center gap-2">
+              <>
                 <span className="spinner w-4 h-4 border-2"></span>
                 Completing...
-              </span>
+              </>
             ) : (
-              '✓ Complete Project'
+              <>
+                <span>✓</span>
+                Complete Project
+              </>
             )}
           </button>
         )}

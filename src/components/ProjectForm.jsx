@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import './ProjectForm.css';
 import dropdownOptionsService from '../services/DropdownOptionsService';
 import triageCalculationService from '../services/TriageCalculationService';
 
@@ -529,10 +528,10 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
   };
 
   return (
-    <div className="project-form-container">
-      <div className="form-header">
+    <div className="h-full flex flex-col">
+      <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
         <h2>{project ? 'Edit Project' : 'Create New Project'}</h2>
-        <div className="form-actions">
+        <div className="flex gap-3">
           <button
             type="button"
             onClick={handlePasteRFAInfo}
@@ -551,12 +550,12 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="project-form">
+      <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-8 py-8 max-w-[1400px] mx-auto w-full custom-scrollbar">
         {/* Basic Project Information */}
-        <div className="form-section">
+        <div className="bg-white dark:bg-gray-800 rounded-lg mb-6 p-6 shadow-md">
           <h3>Basic Project Information</h3>
-          <div className="form-grid">
-            <div className="form-group">
+          <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1">
+            <div className="flex flex-col gap-1.5">
               <label htmlFor="projectName">Project Name *</label>
               <input
                 type="text"
@@ -570,7 +569,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
               {errors.projectName && <span className="error-message">{errors.projectName}</span>}
             </div>
 
-            <div className="form-group">
+            <div className="flex flex-col gap-1.5">
               <label htmlFor="projectContainer">Project Container *</label>
               <input
                 type="text"
@@ -584,7 +583,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
               {errors.projectContainer && <span className="error-message">{errors.projectContainer}</span>}
             </div>
 
-            <div className="form-group">
+            <div className="flex flex-col gap-1.5">
               <label htmlFor="rfaNumber">RFA Number *</label>
               <input
                 type="text"
@@ -598,7 +597,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
               {errors.rfaNumber && <span className="error-message">{errors.rfaNumber}</span>}
             </div>
 
-            <div className="form-group">
+            <div className="flex flex-col gap-1.5">
               <label>Revision Type *</label>
               <div className="radio-group">
                 <label>
@@ -624,7 +623,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
               </div>
             </div>
 
-            <div className="form-group">
+            <div className="flex flex-col gap-1.5">
               <label htmlFor="rfaType">RFA Type *</label>
               <select
                 id="rfaType"
@@ -641,7 +640,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
               {errors.rfaType && <span className="error-message">{errors.rfaType}</span>}
             </div>
 
-            <div className="form-group">
+            <div className="flex flex-col gap-1.5">
               <label htmlFor="agentNumber">Agent Number *</label>
               <input
                 type="text"
@@ -655,7 +654,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
               {errors.agentNumber && <span className="error-message">{errors.agentNumber}</span>}
             </div>
 
-            <div className="form-group">
+            <div className="flex flex-col gap-1.5">
               <label htmlFor="regionalTeam">Regional Team *</label>
               <select
                 id="regionalTeam"
@@ -672,7 +671,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
               {errors.regionalTeam && <span className="error-message">{errors.regionalTeam}</span>}
             </div>
 
-            <div className="form-group">
+            <div className="flex flex-col gap-1.5">
               <label htmlFor="nationalAccount">National Account</label>
               <select
                 id="nationalAccount"
@@ -686,7 +685,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
               </select>
             </div>
 
-            <div className="form-group">
+            <div className="flex flex-col gap-1.5">
               <label htmlFor="saveLocation">Save Location</label>
               <select
                 id="saveLocation"
@@ -700,7 +699,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
               </select>
             </div>
 
-            <div className="form-group">
+            <div className="flex flex-col gap-1.5">
               <label htmlFor="requestedDate">Requested Date</label>
               <input
                 type="datetime-local"
@@ -711,7 +710,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
               />
             </div>
 
-            <div className="form-group">
+            <div className="flex flex-col gap-1.5">
               <label htmlFor="ecd">ECD</label>
               <input
                 type="datetime-local"
@@ -722,7 +721,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
               />
             </div>
 
-            <div className="form-group">
+            <div className="flex flex-col gap-1.5">
               <label htmlFor="submittedDate">Submitted Date</label>
               <input
                 type="datetime-local"
@@ -733,7 +732,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
               />
             </div>
 
-            <div className="form-group">
+            <div className="flex flex-col gap-1.5">
               <label htmlFor="complexity">Complexity</label>
               <select
                 id="complexity"
@@ -748,7 +747,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
               </select>
             </div>
 
-            <div className="form-group">
+            <div className="flex flex-col gap-1.5">
               <label htmlFor="rfaValue">RFA Value</label>
               <input
                 type="text"
@@ -760,7 +759,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
               />
             </div>
 
-            <div className="form-group">
+            <div className="flex flex-col gap-1.5">
               <label htmlFor="status">Status</label>
               <select
                 id="status"
@@ -775,7 +774,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
               </select>
             </div>
 
-            <div className="form-group">
+            <div className="flex flex-col gap-1.5">
               <label>Products</label>
               <div className="checkbox-group">
                 {dropdownOptions.productOptions.map(product => (
@@ -803,7 +802,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
               <small className="field-hint">Select one or more products</small>
             </div>
 
-            <div className="form-group">
+            <div className="flex flex-col gap-1.5">
               <label htmlFor="assignedTo">Assigned To</label>
               <select
                 id="assignedTo"
@@ -818,7 +817,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
               </select>
             </div>
 
-            <div className="form-group">
+            <div className="flex flex-col gap-1.5">
               <label htmlFor="repContacts">Rep Contacts</label>
               <input
                 type="text"
@@ -830,7 +829,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
               />
             </div>
 
-            <div className="form-group">
+            <div className="flex flex-col gap-1.5">
               <label htmlFor="dueDate">Due Date</label>
               <input
                 type="datetime-local"
@@ -844,7 +843,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
         </div>
 
         {/* Triage Calculation */}
-        <div className="form-section">
+        <div className="bg-white dark:bg-gray-800 rounded-lg mb-6 p-6 shadow-md">
           <h3>Triage Calculation</h3>
           
           {/* Current Settings Display */}
@@ -891,7 +890,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
             <h4>Triage Configuration</h4>
             
             {/* Panel Schedules Question */}
-            <div className="form-group">
+            <div className="flex flex-col gap-1.5">
               <h5>Panel Schedules (YES or NO):</h5>
               <label>
                 <input
@@ -916,7 +915,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
             </div>
 
             {/* Submittal Section Question */}
-            <div className="form-group">
+            <div className="flex flex-col gap-1.5">
               <h5>Submittal Section (YES or NO):</h5>
               <label>
                 <input
@@ -942,7 +941,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
 
             {/* Conditional Layout/BOM Question */}
             {formData.hasSubmittals && (
-              <div className="form-group">
+              <div className="flex flex-col gap-1.5">
                 <h5>Needs Layout/BOM created (YES or NO):</h5>
                 <label>
                   <input
@@ -979,8 +978,8 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
                 
                 <div className="lmp-section">
                   <h6>LMPs:</h6>
-                  <div className="form-grid">
-                    <div className="form-group">
+                  <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1">
+                    <div className="flex flex-col gap-1.5">
                       <label htmlFor="largeLMPs">Large</label>
                       <input
                         type="number"
@@ -993,7 +992,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
                         placeholder="0"
                       />
                     </div>
-                    <div className="form-group">
+                    <div className="flex flex-col gap-1.5">
                       <label htmlFor="mediumLMPs">Medium</label>
                       <input
                         type="number"
@@ -1006,7 +1005,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
                         placeholder="0"
                       />
                     </div>
-                    <div className="form-group">
+                    <div className="flex flex-col gap-1.5">
                       <label htmlFor="smallLMPs">Small</label>
                       <input
                         type="number"
@@ -1024,8 +1023,8 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
                 
                 <div className="nlight-section">
                   <h6>nLight ARPs:</h6>
-                  <div className="form-grid">
-                    <div className="form-group">
+                  <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1">
+                    <div className="flex flex-col gap-1.5">
                       <label htmlFor="arp8">ARP 8</label>
                       <input
                         type="number"
@@ -1038,7 +1037,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
                         placeholder="0"
                       />
                     </div>
-                    <div className="form-group">
+                    <div className="flex flex-col gap-1.5">
                       <label htmlFor="arp16">ARP 16</label>
                       <input
                         type="number"
@@ -1051,7 +1050,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
                         placeholder="0"
                       />
                     </div>
-                    <div className="form-group">
+                    <div className="flex flex-col gap-1.5">
                       <label htmlFor="arp32">ARP 32</label>
                       <input
                         type="number"
@@ -1064,7 +1063,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
                         placeholder="0"
                       />
                     </div>
-                    <div className="form-group">
+                    <div className="flex flex-col gap-1.5">
                       <label htmlFor="arp48">ARP 48</label>
                       <input
                         type="number"
@@ -1082,7 +1081,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
                 
                 <div className="esheets-section">
                   <h6>Panel Schedules (Shown on E-Sheets):</h6>
-                  <div className="form-group">
+                  <div className="flex flex-col gap-1.5">
                     <label>
                       <input
                         type="radio"
@@ -1116,8 +1115,8 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
             {(!formData.hasSubmittals || (formData.hasSubmittals && formData.needsLayoutBOM)) && (
               <div className="layout-fields">
                 <h5>Layout Fields:</h5>
-                <div className="form-grid">
-                  <div className="form-group">
+                <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1">
+                  <div className="flex flex-col gap-1.5">
                     <label htmlFor="numOfRooms"># of Rooms:</label>
                     <input
                       type="number"
@@ -1131,7 +1130,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
                     />
                     <span className="field-hint">(qty of rooms)</span>
                   </div>
-                  <div className="form-group">
+                  <div className="flex flex-col gap-1.5">
                     <label htmlFor="overrideRooms">Override:</label>
                     <input
                       type="number"
@@ -1145,7 +1144,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
                     />
                     <span className="field-hint">(hr)</span>
                   </div>
-                  <div className="form-group">
+                  <div className="flex flex-col gap-1.5">
                     <label htmlFor="roomMultiplier">Room Multiplier:</label>
                     <input
                       type="number"
@@ -1159,7 +1158,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
                     />
                     <span className="field-hint">(min/room)</span>
                   </div>
-                  <div className="form-group">
+                  <div className="flex flex-col gap-1.5">
                     <label htmlFor="reviewSetup">Review/Setup Time:</label>
                     <input
                       type="number"
@@ -1173,7 +1172,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
                     />
                     <span className="field-hint">(hr)</span>
                   </div>
-                  <div className="form-group">
+                  <div className="flex flex-col gap-1.5">
                     <label htmlFor="numOfPages"># of Lighting Pages:</label>
                     <input
                       type="number"
@@ -1186,7 +1185,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
                       placeholder="1"
                     />
                   </div>
-                  <div className="form-group">
+                  <div className="flex flex-col gap-1.5">
                     <label htmlFor="specReview">Spec Review:</label>
                     <input
                       type="number"
@@ -1208,8 +1207,8 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
             {formData.hasSubmittals && (
               <div className="submittal-fields">
                 <h5>Submittal Fields:</h5>
-                <div className="form-grid">
-                  <div className="form-group">
+                <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1">
+                  <div className="flex flex-col gap-1.5">
                     <label htmlFor="numOfSubRooms"># of Rooms:</label>
                     <input
                       type="number"
@@ -1223,7 +1222,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
                     />
                     <span className="field-hint">(qty. of rooms)</span>
                   </div>
-                  <div className="form-group">
+                  <div className="flex flex-col gap-1.5">
                     <label htmlFor="riserMultiplier">Riser Multiplier:</label>
                     <input
                       type="number"
@@ -1237,7 +1236,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
                     />
                     <span className="field-hint">(min/room)</span>
                   </div>
-                  <div className="form-group">
+                  <div className="flex flex-col gap-1.5">
                     <label htmlFor="soo">Sequence of Operation:</label>
                     <input
                       type="number"
@@ -1260,7 +1259,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
           {formData.showPhotometrics && (
             <div className="triage-subsection">
               <h4>Photometrics:</h4>
-              <div className="form-group">
+              <div className="flex flex-col gap-1.5">
                 <label htmlFor="photoSoftware">Photo Software:</label>
                 <select
                   id="photoSoftware"
@@ -1279,8 +1278,8 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
           {/* Triage Results */}
           <div className="triage-subsection">
             <h4>Triage Results:</h4>
-            <div className="form-grid">
-              <div className="form-group">
+            <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1">
+              <div className="flex flex-col gap-1.5">
                 <label htmlFor="selfQC">Self QC:</label>
                 <input
                   type="number"
@@ -1294,7 +1293,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
                 />
                 <span className="field-hint">(hr) - Auto-calculated, can be overridden</span>
               </div>
-              <div className="form-group">
+              <div className="flex flex-col gap-1.5">
                 <label htmlFor="fluff">Fluff:</label>
                 <input
                   type="number"
@@ -1308,7 +1307,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
                 />
                 <span className="field-hint">(hr) - Auto-calculated, can be overridden</span>
               </div>
-              <div className="form-group">
+              <div className="flex flex-col gap-1.5">
                 <label htmlFor="totalTriage">Total Triage Time:</label>
                 <input
                   type="number"
@@ -1328,7 +1327,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
           {/* First Available Section */}
           <div className="triage-subsection">
             <h4>Assignment:</h4>
-            <div className="form-group">
+            <div className="flex flex-col gap-1.5">
               <label>
                 <input
                   type="radio"

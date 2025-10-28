@@ -89,7 +89,6 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
   // New state for improved Form Settings UX
   const [selectedCategory, setSelectedCategory] = useState('rfaTypes');
   const [searchTerm, setSearchTerm] = useState('');
-  const [viewMode, setViewMode] = useState('compact'); // 'compact' or 'detailed'
   
   // Category configuration for improved Form Settings
   const formCategories = [
@@ -1186,66 +1185,67 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
 
   // Original detailed field editor (kept for comparison/fallback)
   const renderFieldEditor = (field, label, items) => (
-    <div className="settings-field">
-      <div className="field-header">
-        <h3>{label}</h3>
-                 <button
-           type="button"
-           className="btn btn-primary btn-sm"
-           onClick={() => startEditing(field)}
-         >
-           + Add New
-         </button>
+    <div className="space-y-4">
+      {/* Header with Add New button */}
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-bold text-gray-900 dark:text-white">{label}</h3>
+        <button
+          type="button"
+          className="btn-primary btn-sm"
+          onClick={() => startEditing(field)}
+        >
+          + Add New
+        </button>
       </div>
       
-      <div className="field-items">
+      <div className="space-y-3">
         {/* Show add new item input when editing this field with index -1 */}
         {editingField === field && editingIndex === -1 && (
-          <div className="field-item new-item">
-            <div className="item-content">
-              <div className="edit-mode">
-                                 <input
-                   key={`add-new-${field}`}
-                   data-key={`add-new-${field}`}
-                   type="text"
-                   value={newValue}
-                                       onChange={(e) => setNewValue(e.target.value)}
-                   onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
-                                       onFocus={(e) => e.target.select()}
-                    onBlur={() => {}}
-                   placeholder="Enter new value..."
-                   autoFocus
-                   style={{ minWidth: '200px' }}
-                   data-testid="add-new-input"
-                   tabIndex={0}
-                 />
-                <div className="edit-actions">
-                  <button
-                    type="button"
-                    className="btn btn-success btn-sm"
-                    onClick={saveEdit}
-                  >
-                    ✓
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    onClick={cancelEditing}
-                  >
-                    ✗
-                  </button>
-                </div>
-              </div>
+          <div className="p-4 bg-gradient-to-r from-primary-50 to-blue-50 dark:from-primary-900/20 dark:to-blue-900/20 rounded-lg border-2 border-primary-500 dark:border-primary-700 shadow-lg">
+            <div className="flex items-center gap-3">
+              <input
+                key={`add-new-${field}`}
+                data-key={`add-new-${field}`}
+                type="text"
+                value={newValue}
+                onChange={(e) => setNewValue(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
+                onFocus={(e) => e.target.select()}
+                onBlur={() => {}}
+                placeholder="Enter new value..."
+                autoFocus
+                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                data-testid="add-new-input"
+                tabIndex={0}
+              />
+              <button
+                type="button"
+                className="btn-success btn-sm"
+                onClick={saveEdit}
+              >
+                ✓
+              </button>
+              <button
+                type="button"
+                className="btn-ghost btn-sm"
+                onClick={cancelEditing}
+              >
+                ✗
+              </button>
             </div>
           </div>
         )}
         
         {items.map((item, index) => (
-          <div key={index} className="field-item">
-            <div className="item-controls">
+          <div 
+            key={index} 
+            className="flex items-center gap-3 p-4 bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 hover:border-primary-400 dark:hover:border-primary-600 hover:shadow-lg transition-all group"
+          >
+            {/* Move Up/Down Controls */}
+            <div className="flex flex-col gap-1">
               <button
                 type="button"
-                className="btn btn-icon btn-sm"
+                className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                 onClick={() => moveItem(field, index, -1)}
                 disabled={index === 0}
                 title="Move Up"
@@ -1254,7 +1254,7 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
               </button>
               <button
                 type="button"
-                className="btn btn-icon btn-sm"
+                className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                 onClick={() => moveItem(field, index, 1)}
                 disabled={index === items.length - 1}
                 title="Move Down"
@@ -1263,58 +1263,58 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
               </button>
             </div>
             
-            <div className="item-content">
+            {/* Item Content */}
+            <div className="flex-1 min-w-0">
               {editingField === field && editingIndex === index ? (
-                <div className="edit-mode">
-                                     <input
-                     key={`edit-${field}-${index}`}
-                     data-key={`edit-${field}-${index}`}
-                     type="text"
-                     value={newValue}
-                     onChange={(e) => setNewValue(e.target.value)}
-                     onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
-                                           onFocus={(e) => e.target.select()}
-                      onBlur={() => {}}
-                     autoFocus
-                     style={{ minWidth: '200px' }}
-                     tabIndex={0}
-                   />
-                  <div className="edit-actions">
-                    <button
-                      type="button"
-                      className="btn btn-success btn-sm"
-                      onClick={saveEdit}
-                    >
-                      ✓
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      onClick={cancelEditing}
-                    >
-                      ✗
-                    </button>
-                  </div>
+                <div className="flex items-center gap-3">
+                  <input
+                    key={`edit-${field}-${index}`}
+                    data-key={`edit-${field}-${index}`}
+                    type="text"
+                    value={newValue}
+                    onChange={(e) => setNewValue(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
+                    onFocus={(e) => e.target.select()}
+                    onBlur={() => {}}
+                    autoFocus
+                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    tabIndex={0}
+                  />
+                  <button
+                    type="button"
+                    className="btn-success btn-sm"
+                    onClick={saveEdit}
+                  >
+                    ✓
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-ghost btn-sm"
+                    onClick={cancelEditing}
+                  >
+                    ✗
+                  </button>
                 </div>
               ) : (
-                <span className="item-text">{item}</span>
+                <span className="text-sm font-medium text-gray-900 dark:text-white">{item}</span>
               )}
             </div>
             
-            <div className="item-actions">
+            {/* Item Actions */}
+            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
               {field === 'regionalTeams' && (
                 <button
                   type="button"
-                  className={`btn btn-sm ${settings.defaultRegionalTeam === item ? 'btn-primary' : 'btn-secondary'}`}
+                  className={`btn-xs ${settings.defaultRegionalTeam === item ? 'btn-warning' : 'btn-outline-primary'}`}
                   onClick={() => toggleDefaultRegionalTeam(item)}
                   title={settings.defaultRegionalTeam === item ? 'Unset as default' : 'Set as default'}
                 >
-                  {settings.defaultRegionalTeam === item ? '⭐ Default' : '☆ Set Default'}
+                  {settings.defaultRegionalTeam === item ? '⭐' : '☆'}
                 </button>
               )}
               <button
                 type="button"
-                className="btn btn-secondary btn-sm"
+                className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded transition-all"
                 onClick={() => startEditing(field, index)}
                 title="Edit"
               >
@@ -1322,7 +1322,7 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
               </button>
               <button
                 type="button"
-                className="btn btn-danger btn-sm"
+                className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-error-600 dark:hover:text-error-400 hover:bg-error-50 dark:hover:bg-error-900/20 rounded transition-all"
                 onClick={() => deleteItem(field, index)}
                 title="Delete"
               >
@@ -2175,14 +2175,11 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
             formCategories={formCategories}
             selectedCategory={selectedCategory}
             setSelectedCategory={setSelectedCategory}
-            viewMode={viewMode}
-            setViewMode={setViewMode}
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}
             cancelEditing={cancelEditing}
             getCurrentCategory={getCurrentCategory}
             getFilteredItems={getFilteredItems}
-            renderCompactFieldEditor={renderCompactFieldEditor}
             renderFieldEditor={renderFieldEditor}
           />
         );

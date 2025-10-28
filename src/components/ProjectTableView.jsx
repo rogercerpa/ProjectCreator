@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import './ProjectTableView.css';
 import ColumnVisibilityControl from './ColumnVisibilityControl';
 import { formatDateTimeLocal, getUserTimezone } from '../utils/dateUtils';
 
@@ -106,7 +105,7 @@ function ProjectTableView({
 
   if (projects.length === 0) {
     return (
-      <div className="table-empty-state">
+      <div className="flex flex-col items-center justify-center p-16 text-center">
         <div className="empty-icon">📋</div>
         <h3>No Projects Found</h3>
         <p>No projects match your current filters.</p>
@@ -118,8 +117,8 @@ function ProjectTableView({
   const visibleColumnsData = columns.filter(col => visibleColumns.includes(col.key));
 
   return (
-    <div className={`project-table-container ${density}`}>
-      <div className="table-controls">
+    <div className={`bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden ${density === 'compact' ? 'text-sm' : density === 'comfortable' ? 'text-base' : 'text-sm'}`}>
+      <div className="flex justify-end items-center px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
         <ColumnVisibilityControl
           columns={columns}
           visibleColumns={visibleColumns}
@@ -127,14 +126,14 @@ function ProjectTableView({
           onResetColumns={handleResetColumns}
         />
       </div>
-      <div className="table-wrapper">
-        <table className="project-table">
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse">
           <thead>
             <tr>
               {visibleColumnsData.map((column) => (
                 <th
                   key={column.key}
-                  className={`table-header ${column.sortable ? 'sortable' : ''} ${sortBy === column.key ? 'sorted' : ''}`}
+                  className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 ${column.sortable ? 'cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600' : ''} ${sortBy === column.key ? 'text-primary-600 dark:text-primary-400' : ''}`}
                   style={{ width: column.width, minWidth: column.minWidth }}
                   onClick={column.sortable ? () => handleHeaderClick(column.key) : undefined}
                 >
@@ -150,14 +149,14 @@ function ProjectTableView({
             {projects.map((project) => (
               <tr
                 key={project.id}
-                className={`project-row ${getStatusColor(project)}-priority`}
+                className={`border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer ${getStatusColor(project)}`}
                 onClick={(e) => handleRowClick(project, e)}
               >
                 {visibleColumnsData.map((column) => {
                   switch (column.key) {
                     case 'projectName':
                       return (
-                        <td key={column.key} className="project-name-cell">
+                        <td key={column.key} className="px-4 py-3 text-sm font-semibold text-gray-900 dark:text-gray-100">
                           <div className="name-container">
                             <span className="project-name" title={project.projectName}>
                               {project.projectName || 'Untitled Project'}
@@ -167,38 +166,38 @@ function ProjectTableView({
                       );
                     case 'rfaNumber':
                       return (
-                        <td key={column.key} className="rfa-cell">
+                        <td key={column.key} className="px-4 py-3 text-sm text-primary-600 dark:text-primary-400 font-medium">
                           <span className="rfa-number">{project.rfaNumber || 'N/A'}</span>
                         </td>
                       );
                     case 'agentNumber':
                       return (
-                        <td key={column.key} className="agent-cell">
+                        <td key={column.key} className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
                           <span className="agent-number">{project.agentNumber || 'N/A'}</span>
                         </td>
                       );
                     case 'projectContainer':
                       return (
-                        <td key={column.key} className="container-cell">
+                        <td key={column.key} className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
                           <span className="project-container">{project.projectContainer || 'N/A'}</span>
                         </td>
                       );
                     case 'ecd':
                       return (
-                        <td key={column.key} className="date-cell">
+                        <td key={column.key} className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
                           <span className="date-value">{project.ecd ? formatDate(project.ecd) : 'N/A'}</span>
                         </td>
                       );
                     case 'requestedDate':
                       return (
-                        <td key={column.key} className="date-cell">
+                        <td key={column.key} className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
                           <span className="date-value">{project.requestedDate ? formatDate(project.requestedDate) : 'N/A'}</span>
                         </td>
                       );
                     case 'actions':
                       return (
-                        <td key={column.key} className="actions-cell">
-                          <div className="row-actions">
+                        <td key={column.key} className="px-4 py-3 text-sm">
+                          <div className="flex gap-2">
                             {onProjectDelete && (
                               <button
                                 onClick={(e) => {

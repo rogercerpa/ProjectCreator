@@ -6,7 +6,6 @@ import React from 'react';
 import ProjectAssignmentCard from './ProjectAssignmentCard';
 import CapacityBar from './CapacityBar';
 import UserPresenceIndicator from './UserPresenceIndicator';
-import './UserWorkloadRow.css';
 
 const UserWorkloadRow = ({
   user,
@@ -78,13 +77,18 @@ const UserWorkloadRow = ({
   };
 
   return (
-    <div className="user-workload-row">
+    <div className="grid gap-0 border-b border-gray-200 dark:border-gray-700 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50" 
+         style={{ gridTemplateColumns: '200px repeat(auto-fit, minmax(120px, 1fr)) 120px' }}>
       {/* User Info Column */}
-      <div className="row-cell user-cell">
+      <div className="flex items-center pl-5 pr-2.5 py-4 border-r border-gray-200 dark:border-gray-700 min-h-[80px] gap-3 md:pl-4 md:gap-2.5 sm:pl-3 sm:gap-2">
         <UserPresenceIndicator isOnline={isOnline} />
-        <div className="user-info">
-          <div className="user-name">{user.name}</div>
-          <div className="user-role">{user.role || 'Designer'}</div>
+        <div className="flex flex-col gap-1 min-w-0">
+          <div className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate max-w-[100px] sm:text-xs">
+            {user.name}
+          </div>
+          <div className="text-xs text-gray-600 dark:text-gray-400 sm:hidden">
+            {user.role || 'Designer'}
+          </div>
         </div>
       </div>
 
@@ -98,18 +102,26 @@ const UserWorkloadRow = ({
         return (
           <div
             key={index}
-            className={`row-cell date-cell ${isToday(date) ? 'today' : ''}`}
+            className={`flex flex-col items-stretch p-2 border-r border-gray-200 dark:border-gray-700 min-h-[80px] relative ${
+              isToday(date) ? 'bg-blue-50 dark:bg-primary-900/20' : ''
+            } md:p-2 sm:p-1.5`}
           >
-            <div className="date-cell-content">
+            <div className="flex flex-col gap-1.5 w-full">
               {/* Hours indicator */}
               {hours > 0 && (
-                <div className={`hours-badge ${isOverCapacity ? 'over-capacity' : ''}`}>
+                <div 
+                  className={`self-start px-2 py-1 text-xs font-bold rounded ${
+                    isOverCapacity 
+                      ? 'bg-error-100 dark:bg-error-900/30 text-error-600 dark:text-error-400' 
+                      : 'bg-info-100 dark:bg-info-900/30 text-info-600 dark:text-info-400'
+                  } md:px-1.5 md:py-0.5 md:text-[10px] sm:px-1 sm:py-0.5 sm:text-[9px]`}
+                >
                   {Math.round(hours)}h
                 </div>
               )}
               
               {/* Assignment indicators */}
-              <div className="assignments-container">
+              <div className="flex flex-col gap-1 w-full">
                 {dateAssignments.slice(0, 3).map((assignment) => (
                   <ProjectAssignmentCard
                     key={assignment.id}
@@ -122,7 +134,7 @@ const UserWorkloadRow = ({
                 
                 {/* Show +N more if there are more assignments */}
                 {dateAssignments.length > 3 && (
-                  <div className="more-assignments">
+                  <div className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs font-semibold rounded text-center cursor-pointer transition-all hover:bg-gray-200 dark:hover:bg-gray-600 hover:text-gray-700 dark:hover:text-gray-300 md:text-[10px] md:px-1.5 sm:text-[10px] sm:px-1.5">
                     +{dateAssignments.length - 3} more
                   </div>
                 )}
@@ -133,7 +145,7 @@ const UserWorkloadRow = ({
       })}
 
       {/* Capacity Column */}
-      <div className="row-cell capacity-cell">
+      <div className="flex items-center justify-center p-2.5 min-h-[80px]">
         <CapacityBar
           percentage={capacity.percentage}
           allocated={capacity.totalAllocated}

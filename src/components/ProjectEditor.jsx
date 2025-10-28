@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import dropdownOptionsService from '../services/DropdownOptionsService';
 import triageCalculationService from '../services/TriageCalculationService';
-import './ProjectEditor.css';
 
 /**
  * ProjectEditor - Edit mode for project information
@@ -154,13 +153,13 @@ const ProjectEditor = ({
   };
 
   return (
-    <div className="project-editor">
-      <div className="editor-content">
+    <div className="flex flex-col h-full">
+      <div className="flex-1 overflow-y-auto px-8 py-8 max-w-[1400px] mx-auto w-full md:px-4 md:py-4 sm:px-2.5 sm:py-2.5 custom-scrollbar">
         {/* Basic Project Information */}
-        <div className="form-section">
-          <h3>📋 Basic Project Information</h3>
-          <div className="form-grid">
-            <div className="form-group">
+        <div className="bg-white dark:bg-gray-800 rounded-lg mb-6 p-6 shadow-md md:p-4 md:mb-4 sm:p-3">
+          <h3 className="form-section-header">📋 Basic Project Information</h3>
+          <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 2xl:gap-6 lg:grid-cols-2 lg:gap-4 md:grid-cols-1 md:gap-4">
+            <div className="flex flex-col gap-1.5">
               <label htmlFor="projectName">Project Name *</label>
               <input
                 type="text"
@@ -174,7 +173,7 @@ const ProjectEditor = ({
               {errors.projectName && <span className="error-message">{errors.projectName}</span>}
             </div>
 
-            <div className="form-group">
+            <div className="flex flex-col gap-1.5">
               <label htmlFor="rfaNumber">RFA Number *</label>
               <input
                 type="text"
@@ -188,7 +187,7 @@ const ProjectEditor = ({
               {errors.rfaNumber && <span className="error-message">{errors.rfaNumber}</span>}
             </div>
 
-            <div className="form-group">
+            <div className="flex flex-col gap-1.5">
               <label htmlFor="agentNumber">Agent Number *</label>
               <input
                 type="text"
@@ -202,7 +201,7 @@ const ProjectEditor = ({
               {errors.agentNumber && <span className="error-message">{errors.agentNumber}</span>}
             </div>
 
-            <div className="form-group">
+            <div className="flex flex-col gap-1.5">
               <label htmlFor="projectContainer">Project Container *</label>
               <input
                 type="text"
@@ -216,7 +215,7 @@ const ProjectEditor = ({
               {errors.projectContainer && <span className="error-message">{errors.projectContainer}</span>}
             </div>
 
-            <div className="form-group">
+            <div className="flex flex-col gap-1.5">
               <label htmlFor="rfaType">RFA Type *</label>
               <select
                 id="rfaType"
@@ -233,7 +232,7 @@ const ProjectEditor = ({
               {errors.rfaType && <span className="error-message">{errors.rfaType}</span>}
             </div>
 
-            <div className="form-group">
+            <div className="flex flex-col gap-1.5">
               <label htmlFor="regionalTeam">Regional Team *</label>
               <select
                 id="regionalTeam"
@@ -250,7 +249,7 @@ const ProjectEditor = ({
               {errors.regionalTeam && <span className="error-message">{errors.regionalTeam}</span>}
             </div>
 
-            <div className="form-group">
+            <div className="flex flex-col gap-1.5">
               <label htmlFor="nationalAccount">National Account</label>
               <select
                 id="nationalAccount"
@@ -264,7 +263,7 @@ const ProjectEditor = ({
               </select>
             </div>
 
-            <div className="form-group">
+            <div className="flex flex-col gap-1.5">
               <label htmlFor="status">Status</label>
               <select
                 id="status"
@@ -281,7 +280,7 @@ const ProjectEditor = ({
               {errors.status && <span className="error-message">{errors.status}</span>}
             </div>
 
-            <div className="form-group form-group-full">
+            <div className="flex flex-col gap-1.5 col-span-full">
               <label htmlFor="projectNotes">
                 Project Notes {formData.status === 'Completed' && <span className="required-indicator">*</span>}
               </label>
@@ -301,10 +300,10 @@ const ProjectEditor = ({
         </div>
 
         {/* Project Details */}
-        <div className="form-section">
-          <h3>📊 Project Details</h3>
-          <div className="form-grid">
-            <div className="form-group">
+        <div className="bg-white dark:bg-gray-800 rounded-lg mb-6 p-6 shadow-md md:p-4 md:mb-4 sm:p-3">
+          <h3 className="form-section-header">📊 Project Details</h3>
+          <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 2xl:gap-6 lg:grid-cols-2 lg:gap-4 md:grid-cols-1 md:gap-4">
+            <div className="flex flex-col gap-1.5">
               <label htmlFor="complexity">Complexity</label>
               <select
                 id="complexity"
@@ -319,7 +318,7 @@ const ProjectEditor = ({
               </select>
             </div>
 
-            <div className="form-group">
+            <div className="flex flex-col gap-1.5">
               <label htmlFor="rfaValue">RFA Value</label>
               <input
                 type="number"
@@ -333,7 +332,7 @@ const ProjectEditor = ({
               />
             </div>
 
-            <div className="form-group">
+            <div className="flex flex-col gap-1.5">
               <label htmlFor="products">Products</label>
               <textarea
                 id="products"
@@ -345,7 +344,7 @@ const ProjectEditor = ({
               />
             </div>
 
-            <div className="form-group">
+            <div className="flex flex-col gap-1.5">
               <label htmlFor="assignedTo">Assigned To</label>
               <input
                 type="text"
@@ -357,7 +356,7 @@ const ProjectEditor = ({
               />
             </div>
 
-            <div className="form-group">
+            <div className="flex flex-col gap-1.5">
               <label htmlFor="repContacts">Rep Contacts</label>
               <textarea
                 id="repContacts"
@@ -372,10 +371,10 @@ const ProjectEditor = ({
         </div>
 
         {/* Important Dates */}
-        <div className="form-section">
-          <h3>📅 Important Dates</h3>
-          <div className="form-grid">
-            <div className="form-group">
+        <div className="bg-white dark:bg-gray-800 rounded-lg mb-6 p-6 shadow-md md:p-4 md:mb-4 sm:p-3">
+          <h3 className="form-section-header">📅 Important Dates</h3>
+          <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 2xl:gap-6 lg:grid-cols-2 lg:gap-4 md:grid-cols-1 md:gap-4">
+            <div className="flex flex-col gap-1.5">
               <label htmlFor="ecd">ECD (Expected Completion Date)</label>
               <input
                 type="date"
@@ -386,7 +385,7 @@ const ProjectEditor = ({
               />
             </div>
 
-            <div className="form-group">
+            <div className="flex flex-col gap-1.5">
               <label htmlFor="requestedDate">Requested Date</label>
               <input
                 type="date"
@@ -397,7 +396,7 @@ const ProjectEditor = ({
               />
             </div>
 
-            <div className="form-group">
+            <div className="flex flex-col gap-1.5">
               <label htmlFor="submittedDate">Submitted Date</label>
               <input
                 type="date"
@@ -408,7 +407,7 @@ const ProjectEditor = ({
               />
             </div>
 
-            <div className="form-group">
+            <div className="flex flex-col gap-1.5">
               <label htmlFor="dueDate">Due Date</label>
               <input
                 type="date"
@@ -422,8 +421,8 @@ const ProjectEditor = ({
         </div>
 
         {/* Triage Configuration */}
-        <div className="form-section">
-          <h3>🧮 Triage Configuration</h3>
+        <div className="bg-white dark:bg-gray-800 rounded-lg mb-6 p-6 shadow-md md:p-4 md:mb-4 sm:p-3">
+          <h3 className="form-section-header">🧮 Triage Configuration</h3>
           
           {/* Panel Schedules */}
           <div className="form-group">
@@ -481,9 +480,9 @@ const ProjectEditor = ({
 
           {/* Layout/BOM */}
           {formData.hasSubmittals && (
-            <div className="form-group">
+            <div className="flex flex-col gap-1.5">
               <label>Needs Layout/BOM</label>
-              <div className="radio-group">
+              <div className="flex gap-5 mt-1 md:flex-col md:gap-2.5">
                 <label>
                   <input
                     type="radio"
@@ -509,9 +508,9 @@ const ProjectEditor = ({
           )}
 
           {/* Triage Results */}
-          <div className="triage-results-section">
-            <div className="form-grid">
-              <div className="form-group">
+          <div className="bg-gray-100 dark:bg-gray-700 p-5 rounded-lg mt-4">
+            <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 2xl:gap-6 lg:grid-cols-2 lg:gap-4 md:grid-cols-1 md:gap-4">
+              <div className="flex flex-col gap-1.5">
                 <label htmlFor="totalTriage">Total Triage Time (hours)</label>
                 <input
                   type="number"
@@ -525,7 +524,7 @@ const ProjectEditor = ({
                 />
               </div>
 
-              <div className="form-group">
+              <div className="flex flex-col gap-1.5">
                 <label htmlFor="selfQC">Self QC (hours)</label>
                 <input
                   type="number"
@@ -539,7 +538,7 @@ const ProjectEditor = ({
                 />
               </div>
 
-              <div className="form-group">
+              <div className="flex flex-col gap-1.5">
                 <label htmlFor="fluff">Fluff (hours)</label>
                 <input
                   type="number"
@@ -554,12 +553,12 @@ const ProjectEditor = ({
               </div>
             </div>
 
-            <div className="triage-actions">
+            <div className="flex justify-center mt-5">
               <button
                 type="button"
                 onClick={calculateTriage}
                 disabled={isCalculatingTriage}
-                className="btn btn-secondary"
+                className="btn-secondary"
               >
                 {isCalculatingTriage ? 'Calculating...' : '🧮 Recalculate Triage'}
               </button>
@@ -572,10 +571,10 @@ const ProjectEditor = ({
         </div>
 
         {/* Additional Settings */}
-        <div className="form-section">
-          <h3>⚙️ Additional Settings</h3>
-          <div className="form-grid">
-            <div className="form-group">
+        <div className="bg-white dark:bg-gray-800 rounded-lg mb-6 p-6 shadow-md md:p-4 md:mb-4 sm:p-3">
+          <h3 className="form-section-header">⚙️ Additional Settings</h3>
+          <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 2xl:gap-6 lg:grid-cols-2 lg:gap-4 md:grid-cols-1 md:gap-4">
+            <div className="flex flex-col gap-1.5">
               <label htmlFor="saveLocation">Save Location</label>
               <select
                 id="saveLocation"
@@ -588,9 +587,9 @@ const ProjectEditor = ({
               </select>
             </div>
 
-            <div className="form-group">
+            <div className="flex flex-col gap-1.5">
               <label>Is Revision</label>
-              <div className="radio-group">
+              <div className="flex gap-5 mt-1 md:flex-col md:gap-2.5">
                 <label>
                   <input
                     type="radio"
@@ -614,9 +613,9 @@ const ProjectEditor = ({
               </div>
             </div>
 
-            <div className="form-group">
+            <div className="flex flex-col gap-1.5">
               <label>First Available</label>
-              <div className="radio-group">
+              <div className="flex gap-5 mt-1 md:flex-col md:gap-2.5">
                 <label>
                   <input
                     type="radio"
@@ -644,18 +643,18 @@ const ProjectEditor = ({
       </div>
 
       {/* Save/Cancel Actions */}
-      <div className="editor-actions">
+      <div className="flex justify-end gap-3 px-8 py-5 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shadow-[0_-2px_4px_rgba(0,0,0,0.1)] dark:shadow-[0_-2px_4px_rgba(0,0,0,0.3)] md:flex-col md:px-5 md:py-4 sm:px-4 sm:py-3">
         <button
           onClick={onCancel}
           disabled={isSaving}
-          className="btn btn-secondary"
+          className="btn-secondary"
         >
           Cancel
         </button>
         <button
           onClick={handleSave}
           disabled={isSaving}
-          className="btn btn-primary"
+          className="btn-primary"
         >
           {isSaving ? 'Saving...' : 'Save Changes'}
         </button>

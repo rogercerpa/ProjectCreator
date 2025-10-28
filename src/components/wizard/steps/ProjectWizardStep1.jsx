@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import WizardLayout from '../components/WizardLayout';
 import RevisionConfigurationDialog from '../components/RevisionConfigurationDialog';
+import NotificationToast from '../../NotificationToast';
 import dropdownOptionsService from '../../../services/DropdownOptionsService';
 import triageCalculationService from '../../../services/TriageCalculationService';
 import MultiSelectDropdown from '../../MultiSelectDropdown';
@@ -698,18 +699,12 @@ const ProjectWizardStep1 = ({
         const requiredFields = ['projectName', 'rfaNumber', 'agentNumber', 'projectContainer', 'rfaType'];
         const importedRequiredCount = requiredFields.filter(field => importedFieldNames.includes(field)).length;
         
-        let successMessage = `✅ RFA information imported successfully!\n\n`;
-        successMessage += `📊 Import Summary:\n`;
-        successMessage += `• ${importedCount} total fields imported\n`;
-        successMessage += `• ${importedRequiredCount}/${requiredFields.length} required fields filled\n`;
-        
+        let successMessage = `✅ RFA imported! ${importedCount} fields • ${importedRequiredCount}/${requiredFields.length} required filled`;
         if (conflictFields.length > 0) {
-          successMessage += `• ${conflictFields.length} existing fields were overwritten\n`;
+          successMessage += ` • ${conflictFields.length} overwritten`;
         }
         
-        successMessage += `\n💡 Fields with blue highlighting were imported from Agile.`;
-        
-        alert(successMessage);
+        showToast(successMessage, 'success');
         
         // Auto-clear highlighting after 3 seconds
         setTimeout(() => {
@@ -1421,9 +1416,14 @@ const ProjectWizardStep1 = ({
     <>
     {/* Toast Notification */}
     {toast.show && (
-      <div className={`toast-notification toast-${toast.type}`}>
-        {toast.message}
-      </div>
+      <NotificationToast
+        notification={{
+          message: toast.message,
+          type: toast.type
+        }}
+        onClose={() => setToast({ show: false, message: '', type: 'success' })}
+        duration={5000}
+      />
     )}
     
     <div className="max-w-6xl mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
@@ -1520,7 +1520,7 @@ const ProjectWizardStep1 = ({
               type="button"
               onClick={handlePasteRFAInfo}
               disabled={isPasting}
-              className="px-4 py-2 text-sm font-semibold bg-white/90 hover:bg-white text-primary-700 rounded shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="min-w-[220px] px-4 py-2 text-sm font-semibold bg-white/90 hover:bg-white text-primary-700 rounded shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               onMouseEnter={() => setShowTooltip(true)}
               onMouseLeave={() => setShowTooltip(false)}
               onFocus={() => setShowTooltip(true)}
@@ -1696,9 +1696,9 @@ const ProjectWizardStep1 = ({
         <div className="wizard-step-content">
 
         {/* PRESERVED: Exact form structure from ProjectForm.jsx lines 513-788 */}
-        <div className="form-section">
-          <h3>Basic Project Information</h3>
-          <div className="form-grid">
+        <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-6 shadow-md">
+          <h3 className="form-section-header">📋 Basic Project Information</h3>
+          <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1">
             <div className={`form-group ${getFieldClasses('projectName')}`}>
               <label htmlFor="projectName">Project Name *</label>
               <input

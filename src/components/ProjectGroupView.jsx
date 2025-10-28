@@ -1,5 +1,4 @@
 import React from 'react';
-import './ProjectGroupView.css';
 
 function ProjectGroupView({ 
   projects, 
@@ -57,25 +56,25 @@ function ProjectGroupView({
     }
   };
 
-  const getGroupColor = (groupKey, groupValue) => {
+  const getGroupColorClass = (groupKey, groupValue) => {
     switch (groupKey) {
       case 'status':
         switch (groupValue.toLowerCase()) {
-          case 'active': return 'status-active';
-          case 'draft': return 'status-draft';
-          case 'complete': return 'status-complete';
-          case 'archived': return 'status-archived';
-          default: return 'status-default';
+          case 'active': return 'bg-gradient-to-r from-success-500 to-green-600';
+          case 'draft': return 'bg-gradient-to-r from-info-500 to-blue-600';
+          case 'complete': return 'bg-gradient-to-r from-purple-500 to-purple-600';
+          case 'archived': return 'bg-gradient-to-r from-gray-500 to-gray-600';
+          default: return 'bg-gradient-to-r from-gray-300 to-gray-400';
         }
       case 'triageLevel':
         switch (groupValue.toLowerCase()) {
-          case 'high': return 'triage-high';
-          case 'medium': return 'triage-medium';
-          case 'low': return 'triage-low';
-          default: return 'triage-default';
+          case 'high': return 'bg-gradient-to-r from-error-500 to-red-600';
+          case 'medium': return 'bg-gradient-to-r from-warning-500 to-orange-600';
+          case 'low': return 'bg-gradient-to-r from-success-500 to-green-600';
+          default: return 'bg-gradient-to-r from-gray-300 to-gray-400';
         }
       default:
-        return 'group-default';
+        return 'bg-gradient-to-r from-primary-500 to-purple-600';
     }
   };
 
@@ -102,40 +101,84 @@ function ProjectGroupView({
     return a.localeCompare(b);
   });
 
+  // Get density-based padding classes
+  const getDensityPadding = () => {
+    if (density === 'compact') return {
+      header: 'px-4 py-3',
+      content: 'p-4',
+      title: 'text-base',
+      iconSize: 'w-7 h-7 text-base'
+    };
+    if (density === 'comfortable') return {
+      header: 'px-8 py-6',
+      content: 'p-8',
+      title: 'text-xl',
+      iconSize: 'w-9 h-9 text-2xl'
+    };
+    return {
+      header: 'px-6 py-4',
+      content: 'p-6',
+      title: 'text-lg',
+      iconSize: 'w-8 h-8 text-xl'
+    };
+  };
+
+  // Get grid columns based on density
+  const getGridCols = () => {
+    if (density === 'compact') return 'grid-cols-[repeat(auto-fill,minmax(300px,1fr))] lg:grid-cols-[repeat(auto-fill,minmax(250px,1fr))]';
+    if (density === 'comfortable') return 'grid-cols-[repeat(auto-fill,minmax(380px,1fr))] lg:grid-cols-[repeat(auto-fill,minmax(320px,1fr))]';
+    return 'grid-cols-[repeat(auto-fill,minmax(350px,1fr))] lg:grid-cols-[repeat(auto-fill,minmax(280px,1fr))]';
+  };
+
+  const densityClasses = getDensityPadding();
+  const gridCols = getGridCols();
+
   if (projects.length === 0) {
     return (
-      <div className="group-view-empty">
-        <div className="empty-icon">📂</div>
-        <h3>No Projects Found</h3>
-        <p>No projects match your current filters.</p>
+      <div className="text-center py-16 px-8 text-gray-600 dark:text-gray-400">
+        <div className="text-6xl mb-4 opacity-50">📂</div>
+        <h3 className="text-2xl text-gray-700 dark:text-gray-300 mb-2 font-medium">
+          No Projects Found
+        </h3>
+        <p className="text-base m-0">No projects match your current filters.</p>
       </div>
     );
   }
 
   return (
-    <div className={`project-group-view ${viewMode}-view ${density}`}>
+    <div className={`flex flex-col ${density === 'compact' ? 'gap-4' : density === 'comfortable' ? 'gap-8' : 'gap-8'} lg:gap-6 md:gap-4`}>
       {sortedGroupKeys.map(groupKey => {
         const groupProjects = groupedProjects[groupKey];
         const groupIcon = getGroupIcon(groupBy, groupKey);
-        const groupColor = getGroupColor(groupBy, groupKey);
+        const groupColorClass = getGroupColorClass(groupBy, groupKey);
         
         return (
-          <div key={groupKey} className={`project-group ${groupColor}`}>
-            <div className="group-header">
-              <div className="group-info">
-                <span className="group-icon">{groupIcon}</span>
-                <h3 className="group-title">{groupKey}</h3>
-                <span className="group-count">
+          <div 
+            key={groupKey} 
+            className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm transition-all hover:shadow-lg animate-slideUp focus-within:outline-2 focus-within:outline-primary-600 focus-within:outline-offset-2"
+          >
+            <div className={`${densityClasses.header} bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 relative overflow-hidden`}>
+              {/* Top gradient accent */}
+              <div className={`absolute top-0 left-0 right-0 h-0.5 ${groupColorClass}`} />
+              
+              <div className="flex items-center gap-3">
+                <span className={`${densityClasses.iconSize} flex items-center justify-center bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700`}>
+                  {groupIcon}
+                </span>
+                <h3 className={`${densityClasses.title} font-semibold text-gray-800 dark:text-gray-200 m-0 flex-1`}>
+                  {groupKey}
+                </h3>
+                <span className="text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 px-3 py-1 rounded-xl border border-gray-200 dark:border-gray-700 font-medium">
                   {groupProjects.length} project{groupProjects.length !== 1 ? 's' : ''}
                 </span>
               </div>
             </div>
             
-            <div className="group-content">
+            <div className={viewMode === 'table' ? 'p-0' : densityClasses.content}>
               {viewMode === 'table' ? (
                 renderTableView(groupProjects)
               ) : (
-                <div className="group-cards">
+                <div className={`grid ${gridCols} ${density === 'compact' ? 'gap-4' : density === 'comfortable' ? 'gap-8' : 'gap-6'} lg:gap-5 md:gap-4 md:grid-cols-1`}>
                   {renderCardView(groupProjects)}
                 </div>
               )}

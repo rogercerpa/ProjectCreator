@@ -416,10 +416,10 @@ const ProjectWizardStep2 = ({
             <div className="panel-fields">
               <h5>Panel Schedule Fields:</h5>
               
-              <div className="fields-row">
-                <div className="lmp-section">
-                  <h6>LMPs:</h6>
-                  <div className="form-grid compact">
+              <div className="grid grid-cols-3 gap-4 lg:grid-cols-2 md:grid-cols-1">
+                <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <h6 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3 uppercase tracking-wide">LMPs:</h6>
+                  <div className="grid grid-cols-3 gap-3">
                     <div className="form-group">
                       <label htmlFor="largeLMPs">Large</label>
                       <input
@@ -462,9 +462,9 @@ const ProjectWizardStep2 = ({
                   </div>
                 </div>
                 
-                <div className="nlight-section">
-                  <h6>nLight ARPs:</h6>
-                  <div className="form-grid compact">
+                <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <h6 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3 uppercase tracking-wide">nLight ARPs:</h6>
+                  <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                     <div className="form-group">
                       <label htmlFor="arp8">ARP 8</label>
                       <input
@@ -521,9 +521,9 @@ const ProjectWizardStep2 = ({
                 </div>
               </div>
               
-              <div className="esheets-section">
-                <h6>Panel Schedules (Shown on E-Sheets):</h6>
-                <div className="radio-group">
+              <div className="col-span-full p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                <h6 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3 uppercase tracking-wide">Panel Schedules (Shown on E-Sheets):</h6>
+                <div className="flex gap-5">
                   <label>
                     <input
                       type="radio"

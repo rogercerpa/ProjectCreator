@@ -3,7 +3,6 @@
  */
 
 import React from 'react';
-import './CapacityBar.css';
 
 const CapacityBar = ({ percentage, allocated, total }) => {
   
@@ -32,17 +31,22 @@ const CapacityBar = ({ percentage, allocated, total }) => {
   const capacityStatus = getCapacityStatus();
 
   return (
-    <div className="capacity-bar-container">
-      <div className="capacity-info">
-        <span className="capacity-label">{Math.round(percentage)}%</span>
-        <span className="capacity-status" style={{ color: capacityColor }}>
+    <div className="flex flex-col gap-1.5 w-full">
+      <div className="flex justify-between items-center">
+        <span className="text-sm font-bold text-gray-800 dark:text-gray-200">
+          {Math.round(percentage)}%
+        </span>
+        <span 
+          className="text-xs font-semibold uppercase tracking-wide"
+          style={{ color: capacityColor }}
+        >
           {capacityStatus}
         </span>
       </div>
       
-      <div className="capacity-bar">
+      <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded overflow-hidden">
         <div
-          className="capacity-fill"
+          className="h-full rounded transition-all duration-300 ease-out"
           style={{
             width: `${cappedPercentage}%`,
             backgroundColor: capacityColor
@@ -50,7 +54,7 @@ const CapacityBar = ({ percentage, allocated, total }) => {
         />
       </div>
       
-      <div className="capacity-hours">
+      <div className="text-xs text-gray-600 dark:text-gray-400 text-center">
         {allocated.toFixed(1)}h / {total}h
       </div>
     </div>

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import dropdownOptionsService from '../services/DropdownOptionsService';
 import triageCalculationService from '../services/TriageCalculationService';
-import './TriageCalculatorModal.css';
 
 /**
  * TriageCalculatorModal - Standalone triage calculator modal
@@ -129,68 +128,61 @@ const TriageCalculatorModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" onClick={handleCancel}>
-      <div className="triage-calculator-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <div className="modal-title">
-            <h2>🧮 Triage Calculator</h2>
-            <p className="modal-subtitle">Recalculate project triage time</p>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[10000] p-3 animate-fadeIn" onClick={handleCancel}>
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-[1400px] w-full max-h-[95vh] flex flex-col animate-slideUp" onClick={(e) => e.stopPropagation()}>
+        <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-br from-primary-600 to-blue-700 dark:from-primary-800 dark:to-blue-900 text-white rounded-t-xl">
+          <div>
+            <h2 className="m-0 text-xl font-semibold">🧮 Triage Calculator</h2>
+            <p className="m-0 text-xs opacity-90">{formData.projectName || 'Untitled Project'} - {formData.rfaNumber || 'N/A'}</p>
           </div>
-          <button className="modal-close" onClick={handleCancel}>×</button>
+          <button className="bg-white/20 border-none text-white text-2xl leading-none w-8 h-8 rounded-md cursor-pointer p-0 transition-all hover:bg-white/30 hover:scale-110" onClick={handleCancel}>×</button>
         </div>
 
-        <div className="modal-body">
-          {/* Project Context */}
-          <div className="project-context">
-            <h4>{formData.projectName || 'Untitled Project'}</h4>
-            <div className="context-info">
-              <span><strong>RFA:</strong> {formData.rfaNumber || 'N/A'}</span>
-              <span><strong>Type:</strong> {formData.rfaType || 'N/A'}</span>
-            </div>
-          </div>
-
+        <div className="flex-1 overflow-y-auto px-6 py-4 custom-scrollbar">
           {/* Before/After Comparison */}
           {triageResults && (
-            <div className="triage-comparison">
-              <div className="comparison-item">
-                <span className="comparison-label">Original:</span>
-                <span className="comparison-value">{originalTriage.totalTriage.toFixed(1)} hours</span>
+            <div className="flex items-center justify-center gap-4 p-4 bg-gradient-to-br from-info-50 to-purple-50 dark:from-info-900/20 dark:to-purple-900/20 rounded-lg mb-4">
+              <div className="flex flex-col items-center gap-1">
+                <span className="text-xs text-gray-600 dark:text-gray-400 uppercase">Original:</span>
+                <span className="text-2xl font-bold text-gray-800 dark:text-gray-200">{originalTriage.totalTriage.toFixed(1)} hours</span>
               </div>
-              <div className="comparison-arrow">→</div>
-              <div className="comparison-item">
-                <span className="comparison-label">New:</span>
-                <span className={`comparison-value ${
-                  triageResults.totalTriage > originalTriage.totalTriage ? 'increased' : 
-                  triageResults.totalTriage < originalTriage.totalTriage ? 'decreased' : ''
+              <div className="text-2xl text-gray-400 dark:text-gray-500">→</div>
+              <div className="flex flex-col items-center gap-1">
+                <span className="text-xs text-gray-600 dark:text-gray-400 uppercase">New:</span>
+                <span className={`text-2xl font-bold ${
+                  triageResults.totalTriage > originalTriage.totalTriage ? 'text-error-600 dark:text-error-400' : 
+                  triageResults.totalTriage < originalTriage.totalTriage ? 'text-success-600 dark:text-success-400' : 'text-gray-800 dark:text-gray-200'
                 }`}>
                   {triageResults.totalTriage.toFixed(1)} hours
                 </span>
               </div>
-              <div className="comparison-diff">
+              <div className="flex flex-col gap-1">
                 {triageResults.totalTriage > originalTriage.totalTriage && (
-                  <span className="diff-badge increased">
+                  <span className="px-3 py-1 bg-error-100 dark:bg-error-900/30 text-error-700 dark:text-error-300 rounded-full text-sm font-semibold">
                     +{(triageResults.totalTriage - originalTriage.totalTriage).toFixed(1)}h
                   </span>
                 )}
                 {triageResults.totalTriage < originalTriage.totalTriage && (
-                  <span className="diff-badge decreased">
+                  <span className="px-3 py-1 bg-success-100 dark:bg-success-900/30 text-success-700 dark:text-success-300 rounded-full text-sm font-semibold">
                     -{(originalTriage.totalTriage - triageResults.totalTriage).toFixed(1)}h
                   </span>
                 )}
                 {triageResults.totalTriage === originalTriage.totalTriage && (
-                  <span className="diff-badge unchanged">No change</span>
+                  <span className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full text-sm font-semibold">No change</span>
                 )}
               </div>
             </div>
           )}
 
-          {/* Triage Configuration */}
-          <div className="triage-section">
-            <h3>Configuration</h3>
-            <div className="config-grid">
-              <div className="config-item">
-                <label>Panel Schedules:</label>
-                <div className="radio-group">
+          {/* Triage Configuration - Compact 2-Column Layout */}
+          <div className="grid grid-cols-2 gap-6 lg:grid-cols-1 mb-4">
+            {/* Left Column: Configuration */}
+            <div>
+              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">⚙️ Configuration</h3>
+              <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Panel Schedules:</label>
+                <div className="flex gap-5">
                   <label>
                     <input
                       type="radio"
@@ -237,9 +229,9 @@ const TriageCalculatorModal = ({
               </div>
 
               {formData.hasSubmittals && (
-                <div className="config-item">
-                  <label>Layout/BOM:</label>
-                  <div className="radio-group">
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Layout/BOM:</label>
+                  <div className="flex gap-5">
                     <label>
                       <input
                         type="radio"
@@ -261,18 +253,19 @@ const TriageCalculatorModal = ({
                   </div>
                 </div>
               )}
+              </div>
             </div>
-          </div>
 
-          {/* Panel Schedule Fields */}
-          {formData.hasPanelSchedules && (
-            <div className="triage-section">
-              <h3>Panel Schedule Details</h3>
+            {/* Right Column: Panel Schedule, Layout, Submittal Fields */}
+            <div>
+              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">📊 Field Details</h3>
               
-              <div className="subsection">
-                <h4>LMPs</h4>
-                <div className="form-grid compact">
-                  <div className="form-group">
+              {/* Panel Schedule Fields */}
+              {formData.hasPanelSchedules && (
+                <div className="mb-4">
+                  <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">LMPs</h4>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="flex flex-col gap-1.5">
                     <label>Large</label>
                     <input
                       type="number"
@@ -283,9 +276,9 @@ const TriageCalculatorModal = ({
                       step="1"
                       placeholder="0"
                     />
-                  </div>
-                  <div className="form-group">
-                    <label>Medium</label>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label>Medium</label>
                     <input
                       type="number"
                       name="mediumLMPs"
@@ -295,9 +288,9 @@ const TriageCalculatorModal = ({
                       step="1"
                       placeholder="0"
                     />
-                  </div>
-                  <div className="form-group">
-                    <label>Small</label>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label>Small</label>
                     <input
                       type="number"
                       name="smallLMPs"
@@ -307,15 +300,17 @@ const TriageCalculatorModal = ({
                       step="1"
                       placeholder="0"
                     />
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
-              <div className="subsection">
-                <h4>nLight ARPs</h4>
-                <div className="form-grid compact">
-                  <div className="form-group">
-                    <label>ARP 8</label>
+              {formData.hasPanelSchedules && (
+                <div className="mb-4">
+                  <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">nLight ARPs</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex flex-col gap-1.5">
+                      <label>ARP 8</label>
                     <input
                       type="number"
                       name="arp8"
@@ -326,7 +321,7 @@ const TriageCalculatorModal = ({
                       placeholder="0"
                     />
                   </div>
-                  <div className="form-group">
+                  <div className="flex flex-col gap-1.5">
                     <label>ARP 16</label>
                     <input
                       type="number"
@@ -338,7 +333,7 @@ const TriageCalculatorModal = ({
                       placeholder="0"
                     />
                   </div>
-                  <div className="form-group">
+                  <div className="flex flex-col gap-1.5">
                     <label>ARP 32</label>
                     <input
                       type="number"
@@ -350,7 +345,7 @@ const TriageCalculatorModal = ({
                       placeholder="0"
                     />
                   </div>
-                  <div className="form-group">
+                  <div className="flex flex-col gap-1.5">
                     <label>ARP 48</label>
                     <input
                       type="number"
@@ -361,44 +356,16 @@ const TriageCalculatorModal = ({
                       step="1"
                       placeholder="0"
                     />
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
-              <div className="subsection">
-                <h4>E-Sheets</h4>
-                <div className="radio-group">
-                  <label>
-                    <input
-                      type="radio"
-                      name="esheetsSchedules"
-                      value={2}
-                      checked={formData.esheetsSchedules === 2}
-                      onChange={() => setFormData({ ...formData, esheetsSchedules: 2 })}
-                    />
-                    No
-                  </label>
-                  <label>
-                    <input
-                      type="radio"
-                      name="esheetsSchedules"
-                      value={1}
-                      checked={formData.esheetsSchedules === 1}
-                      onChange={() => setFormData({ ...formData, esheetsSchedules: 1 })}
-                    />
-                    Yes
-                  </label>
-                </div>
-                <small>Panel schedules shown on E-Sheets</small>
-              </div>
-            </div>
-          )}
-
-          {/* Layout Fields */}
-          {(!formData.hasSubmittals || (formData.hasSubmittals && formData.needsLayoutBOM)) && (
-            <div className="triage-section">
-              <h3>Layout Details</h3>
-              <div className="form-grid">
+              {/* Layout Fields */}
+              {(!formData.hasSubmittals || (formData.hasSubmittals && formData.needsLayoutBOM)) && (
+                <div className="mb-4">
+                  <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">Layout Details</h4>
+                  <div className="grid grid-cols-2 gap-2">
                 <div className="form-group">
                   <label># of Rooms</label>
                   <input
@@ -476,14 +443,14 @@ const TriageCalculatorModal = ({
                   <small>hours</small>
                 </div>
               </div>
-            </div>
-          )}
+                </div>
+              )}
 
-          {/* Submittal Fields */}
-          {formData.hasSubmittals && (
-            <div className="triage-section">
-              <h3>Submittal Details</h3>
-              <div className="form-grid">
+              {/* Submittal Fields */}
+              {formData.hasSubmittals && (
+                <div className="mb-4">
+                  <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">Submittal Details</h4>
+                  <div className="grid grid-cols-2 gap-2">
                 <div className="form-group">
                   <label># of Rooms</label>
                   <input
@@ -523,13 +490,13 @@ const TriageCalculatorModal = ({
                   <small>hours</small>
                 </div>
               </div>
-            </div>
-          )}
+                </div>
+              )}
 
-          {/* Photometrics */}
-          {formData.showPhotometrics && (
-            <div className="triage-section">
-              <h3>Photometrics</h3>
+              {/* Photometrics */}
+              {formData.showPhotometrics && (
+                <div className="mb-4">
+                  <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">Photometrics</h4>
               <div className="form-group">
                 <label>Photo Software</label>
                 <select
@@ -543,13 +510,15 @@ const TriageCalculatorModal = ({
                   ))}
                 </select>
               </div>
+                </div>
+              )}
             </div>
-          )}
+          </div>
 
-          {/* Triage Results Section */}
-          <div className="triage-section">
-            <h3>Triage Results</h3>
-            <div className="form-grid">
+          {/* Triage Results Section - Full Width */}
+          <div className="mb-4">
+            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">📈 Triage Results</h3>
+            <div className="grid grid-cols-4 gap-3">
               <div className="form-group">
                 <label>Self QC</label>
                 <input
@@ -593,12 +562,12 @@ const TriageCalculatorModal = ({
           </div>
 
           {/* Calculate Button */}
-          <div className="calculate-section">
+          <div className="flex justify-center">
             <button
               type="button"
               onClick={calculateTriage}
               disabled={isCalculating}
-              className="btn btn-primary btn-calculate"
+              className="btn-primary"
             >
               {isCalculating ? 'Calculating...' : '🧮 Calculate Triage'}
             </button>
@@ -606,35 +575,35 @@ const TriageCalculatorModal = ({
 
           {/* Results Display */}
           {triageResults && (
-            <div className="results-display">
-              <h3>✅ Calculation Complete</h3>
-              <div className="results-grid">
-                <div className="result-item">
-                  <span className="result-label">Total Time:</span>
-                  <span className="result-value">{triageResults.totalTriage.toFixed(1)} hours</span>
+            <div className="bg-success-50 dark:bg-success-900/20 border-2 border-success-500 dark:border-success-700 rounded-lg p-5 mt-6">
+              <h3 className="text-lg font-semibold text-success-800 dark:text-success-200 mb-4">✅ Calculation Complete</h3>
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-1">
+                <div className="flex justify-between items-center p-3 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Total Time:</span>
+                  <span className="text-lg font-bold text-gray-900 dark:text-gray-100">{triageResults.totalTriage.toFixed(1)} hours</span>
                 </div>
-                <div className="result-item">
-                  <span className="result-label">Base Calculation:</span>
-                  <span className="result-value">{triageResults.baseTotal.toFixed(1)} hr</span>
+                <div className="flex justify-between items-center p-3 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Base Calculation:</span>
+                  <span className="text-lg font-bold text-gray-900 dark:text-gray-100">{triageResults.baseTotal.toFixed(1)} hr</span>
                 </div>
-                <div className="result-item">
-                  <span className="result-label">Quality Control:</span>
-                  <span className="result-value">{triageResults.selfQC.toFixed(1)} hr</span>
+                <div className="flex justify-between items-center p-3 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Quality Control:</span>
+                  <span className="text-lg font-bold text-gray-900 dark:text-gray-100">{triageResults.selfQC.toFixed(1)} hr</span>
                 </div>
-                <div className="result-item">
-                  <span className="result-label">Buffer Time:</span>
-                  <span className="result-value">{triageResults.fluff.toFixed(1)} hr</span>
+                <div className="flex justify-between items-center p-3 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Buffer Time:</span>
+                  <span className="text-lg font-bold text-gray-900 dark:text-gray-100">{triageResults.fluff.toFixed(1)} hr</span>
                 </div>
               </div>
             </div>
           )}
         </div>
 
-        <div className="modal-footer">
+        <div className="flex justify-end gap-3 px-6 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
           <button
             type="button"
             onClick={handleCancel}
-            className="btn btn-secondary"
+            className="btn-secondary"
           >
             Cancel
           </button>
@@ -642,7 +611,7 @@ const TriageCalculatorModal = ({
             type="button"
             onClick={handleSave}
             disabled={!triageResults}
-            className="btn btn-primary"
+            className="btn-primary"
           >
             Save & Close
           </button>
