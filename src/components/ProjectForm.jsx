@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import dropdownOptionsService from '../services/DropdownOptionsService';
 import triageCalculationService from '../services/TriageCalculationService';
+import EditableProductTags from './EditableProductTags';
 
 function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProjectCreated, onProjectUpdated }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -775,31 +776,15 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label>Products</label>
-              <div className="checkbox-group">
-                {dropdownOptions.productOptions.map(product => (
-                  <label key={product} className="checkbox-item">
-                    <input
-                      type="checkbox"
-                      name="products"
-                      value={product}
-                      checked={Array.isArray(formData.products) ? formData.products.includes(product) : false}
-                      onChange={(e) => {
-                        const currentProducts = Array.isArray(formData.products) ? formData.products : [];
-                        let newProducts;
-                        if (e.target.checked) {
-                          newProducts = [...currentProducts, product];
-                        } else {
-                          newProducts = currentProducts.filter(p => p !== product);
-                        }
-                        onFormDataChange({ ...formData, products: newProducts });
-                      }}
-                    />
-                    <span className="checkbox-label">{product}</span>
-                  </label>
-                ))}
-              </div>
-              <small className="field-hint">Select one or more products</small>
+              <EditableProductTags
+                label="Products"
+                options={dropdownOptions.productOptions || []}
+                selectedValues={Array.isArray(formData.products) ? formData.products : (formData.products ? [formData.products] : [])}
+                onChange={(selectedProducts) => {
+                  onFormDataChange({ ...formData, products: selectedProducts });
+                }}
+              />
+              <small className="field-hint">Hover over products to remove them. Use the dropdown to add products.</small>
             </div>
 
             <div className="flex flex-col gap-1.5">

@@ -348,7 +348,22 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
           </div>
           <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
             <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Products</label>
-            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.products || 'Not specified'}</span>
+            <div className="flex flex-wrap gap-2">
+              {Array.isArray(project.products) && project.products.length > 0 ? (
+                project.products.map((product, index) => (
+                  <span 
+                    key={index} 
+                    className="inline-flex items-center px-2.5 py-1 text-xs font-medium bg-primary-100 dark:bg-primary-900/30 text-primary-800 dark:text-primary-300 rounded-md border border-primary-200 dark:border-primary-700"
+                  >
+                    {product}
+                  </span>
+                ))
+              ) : (
+                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                  {typeof project.products === 'string' && project.products ? project.products : 'Not specified'}
+                </span>
+              )}
+            </div>
           </div>
           <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
             <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Assigned To</label>

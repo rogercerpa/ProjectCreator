@@ -35,13 +35,19 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onRefresh }) 
       if (!project) return false;
       
       const search = searchTerm.toLowerCase();
+      
+      // Handle products as array or string
+      const productsText = Array.isArray(project.products) 
+        ? project.products.join(' ') 
+        : (project.products || '');
+      
       const searchableFields = [
         project.projectName,
         project.rfaNumber,
         project.agentNumber,
         project.rfaType,
         project.projectType,
-        project.products,
+        productsText,
         project.projectContainer
       ];
       

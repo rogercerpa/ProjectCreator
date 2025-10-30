@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import dropdownOptionsService from '../services/DropdownOptionsService';
 import triageCalculationService from '../services/TriageCalculationService';
+import EditableProductTags from './EditableProductTags';
 
 /**
  * ProjectEditor - Edit mode for project information
@@ -333,15 +334,17 @@ const ProjectEditor = ({
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="products">Products</label>
-              <textarea
-                id="products"
-                name="products"
-                value={formData.products || ''}
-                onChange={handleInputChange}
-                placeholder="Enter products information"
-                rows="3"
+              <EditableProductTags
+                label="Products"
+                options={dropdownOptions.productOptions || []}
+                selectedValues={Array.isArray(formData.products) ? formData.products : (formData.products ? [formData.products] : [])}
+                onChange={(selectedProducts) => {
+                  const newFormData = { ...formData, products: selectedProducts };
+                  setFormData(newFormData);
+                  onProjectDataChange(newFormData);
+                }}
               />
+              <small className="field-hint">Click on a product tag to remove it. Use the dropdown to add products.</small>
             </div>
 
             <div className="flex flex-col gap-1.5">

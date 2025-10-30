@@ -4,7 +4,7 @@ import RevisionConfigurationDialog from '../components/RevisionConfigurationDial
 import NotificationToast from '../../NotificationToast';
 import dropdownOptionsService from '../../../services/DropdownOptionsService';
 import triageCalculationService from '../../../services/TriageCalculationService';
-import MultiSelectDropdown from '../../MultiSelectDropdown';
+import EditableProductTags from '../../EditableProductTags';
 import { parseAgileDate, getUserTimezone, formatDateTimeLocal } from '../../../utils/dateUtils';
 
 /**
@@ -2082,17 +2082,16 @@ const ProjectWizardStep1 = ({
             </div>
 
             <div className="form-group">
-              <MultiSelectDropdown
+              <EditableProductTags
                 label="Products"
                 options={dropdownOptions.productOptions}
                 selectedValues={Array.isArray(formData.products) ? formData.products : []}
                 onChange={(selectedProducts) => {
                   onFormDataChange({ ...formData, products: selectedProducts });
                 }}
-                placeholder="Select products"
                 isFieldImported={isFieldImported('products')}
               />
-              <small className="field-hint">Select one or more products</small>
+              <small className="field-hint">Hover over products to remove them. Use the dropdown to add products.</small>
             </div>
 
             <div className={`form-group ${isFieldImported('assignedTo') ? 'imported-field' : ''}`}>
