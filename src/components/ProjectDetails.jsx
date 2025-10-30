@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import TriageCalculatorModal from './TriageCalculatorModal';
+import NotificationToast from './NotificationToast';
 
 /**
  * ProjectDetails - Read-only display of project information
@@ -7,7 +8,7 @@ import TriageCalculatorModal from './TriageCalculatorModal';
  */
 const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
   const [isExporting, setIsExporting] = useState(false);
-  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+  const [notification, setNotification] = useState(null);
   const [showTriageModal, setShowTriageModal] = useState(false);
 
   // Debug: Log whenever ProjectDetails receives new props
@@ -20,10 +21,16 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
 
   // Show toast notification
   const showToast = (message, type = 'success') => {
-    setToast({ show: true, message, type });
-    setTimeout(() => {
-      setToast({ show: false, message: '', type: 'success' });
-    }, 3000);
+    setNotification({
+      id: Date.now(),
+      message,
+      type
+    });
+  };
+
+  // Clear notification
+  const clearNotification = () => {
+    setNotification(null);
   };
 
   const formatDate = (dateString) => {
@@ -230,9 +237,13 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
   return (
     <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 h-full overflow-y-auto custom-scrollbar">
       {/* Toast Notification */}
-      {toast.show && (
-        <div className={`toast-notification toast-${toast.type}`}>
-          {toast.message}
+      {notification && (
+        <div className="fixed top-5 right-5 z-[10000] min-w-[300px] max-w-md">
+          <NotificationToast
+            notification={notification}
+            onClose={clearNotification}
+            duration={3000}
+          />
         </div>
       )}
 
