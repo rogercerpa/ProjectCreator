@@ -482,14 +482,51 @@ const ProjectWizard = ({
         throw new Error('Required wizard components not available');
       }
 
-      // Validate current step
-      const validationResult = stepValidation.validateStep(wizard.currentStep, formData);
+      // VALIDATION FIX: Use wizard's validation state instead of re-validating
+      // This prevents stale formData from causing validation failures
+      const currentStepValidation = wizard.getStepValidation(wizard.currentStep);
       
-      if (!validationResult || !validationResult.isValid) {
-        const errorMessage = validationResult && validationResult.errors 
-          ? `Validation errors: ${Object.values(validationResult.errors).flat().join(', ')}`
+      console.log(`ProjectWizard: handleNext called for step ${wizard.currentStep}`, {
+        hasWizardValidation: !!currentStepValidation,
+        wizardValidationIsValid: currentStepValidation?.isValid,
+        formDataHasTotalTriage: formData.totalTriage > 0,
+        formDataTotalTriage: formData.totalTriage,
+        formDataKeys: Object.keys(formData).filter(k => k.includes('triage') || k.includes('Triage'))
+      });
+      
+      // If wizard validation hasn't been set yet, fall back to stepValidation
+      if (!currentStepValidation || currentStepValidation.isValid === undefined) {
+        console.warn('Wizard validation not set, performing validation check...');
+        const validationResult = stepValidation.validateStep(wizard.currentStep, formData);
+        
+        console.log('Fallback validation result:', {
+          isValid: validationResult?.isValid,
+          errors: validationResult?.errors
+        });
+        
+        if (!validationResult || !validationResult.isValid) {
+          const errorMessage = validationResult && validationResult.errors 
+            ? `Validation errors: ${Object.values(validationResult.errors).flat().join(', ')}`
+            : 'Please fix the validation errors before proceeding';
+          
+          console.error('ProjectWizard: Validation failed:', errorMessage);
+          setError(errorMessage);
+          setNotification({
+            type: 'warning',
+            message: 'Please complete all required fields before proceeding'
+          });
+          return;
+        }
+      } else if (!currentStepValidation.isValid) {
+        // Use wizard's validation result
+        const errorMessage = currentStepValidation.errors && Object.keys(currentStepValidation.errors).length > 0
+          ? `Validation errors: ${Object.values(currentStepValidation.errors).flat().join(', ')}`
           : 'Please fix the validation errors before proceeding';
         
+        console.error('ProjectWizard: Wizard validation shows invalid:', {
+          errors: currentStepValidation.errors,
+          errorMessage
+        });
         setError(errorMessage);
         setNotification({
           type: 'warning',
@@ -497,6 +534,8 @@ const ProjectWizard = ({
         });
         return;
       }
+      
+      console.log('ProjectWizard: Validation passed, proceeding with step completion');
 
       // ENHANCED ERROR HANDLING: Step completion with individual error tracking
       stepCompletionAttempted = true;

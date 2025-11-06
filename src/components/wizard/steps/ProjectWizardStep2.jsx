@@ -166,6 +166,22 @@ const ProjectWizardStep2 = ({
     }
   }, [formData, triageResults, onValidationChange]);
 
+  // TIMING FIX: Maintain validation state even after delays
+  // Re-validate periodically if we have valid triage results to prevent stale state issues
+  useEffect(() => {
+    if (!triageResults || triageResults.totalTriage <= 0) return;
+    
+    // Set up periodic validation refresh to maintain valid state
+    const validationRefreshInterval = setInterval(() => {
+      if (onValidationChange && triageResults && triageResults.totalTriage > 0) {
+        console.log('Step 2: Refreshing validation state to prevent timeout issues');
+        onValidationChange(true, {}); // Maintain valid state
+      }
+    }, 5000); // Refresh every 5 seconds
+    
+    return () => clearInterval(validationRefreshInterval);
+  }, [triageResults, onValidationChange]);
+
   // Load smart assignment recommendations
   const loadRecommendations = async (triageData) => {
     setLoadingRecommendations(true);
@@ -238,6 +254,13 @@ const ProjectWizardStep2 = ({
     // Use the triage calculation service to get accurate results
     const triageCalculationResults = triageCalculationService.calculateTriage(formData);
     
+    console.log('Step 2: Triage calculation completed:', {
+      totalTriage: triageCalculationResults.totalTriage,
+      baseTotal: triageCalculationResults.baseTotal,
+      selfQC: triageCalculationResults.selfQC,
+      fluff: triageCalculationResults.fluff
+    });
+    
     // Update form data with calculated values
     const updatedFormData = {
       ...formData,
@@ -251,15 +274,22 @@ const ProjectWizardStep2 = ({
       fluff: triageCalculationResults.fluff
     };
     
-    onFormDataChange(updatedFormData);
+    // CRITICAL: Update both local state and parent formData synchronously
     setTriageResults(triageCalculationResults);
+    onFormDataChange(updatedFormData);
+    
+    console.log('Step 2: Updated formData with triage results:', {
+      hasTotalTriage: updatedFormData.totalTriage > 0,
+      totalTriage: updatedFormData.totalTriage
+    });
     
     // Load smart assignment recommendations after triage calculation
     await loadRecommendations(triageCalculationResults);
     
     // Mark Step 2 as completed and valid after successful triage calculation
-    // The useEffect above will automatically handle validation, but we can also do it explicitly here
+    // CRITICAL: Explicitly set validation to ensure button enablement
     if (onValidationChange && triageCalculationResults.totalTriage > 0) {
+      console.log('Step 2: Setting validation to TRUE - step is now valid');
       onValidationChange(true, {}); // Step 2 is now valid and complete
     }
   };

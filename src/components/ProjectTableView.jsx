@@ -25,24 +25,17 @@ function ProjectTableView({
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     
-    // Use the dateUtils function to format with timezone awareness
-    // If it's already in datetime-local format (YYYY-MM-DDTHH:MM), use it directly
-    if (dateString.includes('T') && dateString.length <= 16) {
-      return formatDateTimeLocal(dateString, true);
-    }
-    
-    // Otherwise, treat as ISO string and extract the local part
     try {
-      // Just display the date/time as-is from the string without conversion
       const date = new Date(dateString);
-      const formatted = date.toLocaleDateString('en-US', {
+      const formatted = date.toLocaleString('en-US', {
+        year: 'numeric',
         month: 'short',
         day: 'numeric',
-        year: 'numeric',
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
+        hour12: true
       });
-      return `${formatted} (${getUserTimezone().abbreviation})`;
+      return formatted;
     } catch (error) {
       return dateString;
     }

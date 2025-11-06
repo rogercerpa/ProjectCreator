@@ -36,14 +36,14 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
   const formatDate = (dateString) => {
     if (!dateString) return 'Not set';
     const date = new Date(dateString);
-    // Use UTC to avoid timezone offset issues
-    return date.toLocaleDateString('en-US', {
+    // Display in user's local timezone with both date and time
+    return date.toLocaleString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
-      timeZone: 'UTC'
+      hour12: true
     });
   };
 

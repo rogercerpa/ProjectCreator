@@ -44,21 +44,32 @@ const ProjectEditor = ({
     }
   }, [project]);
 
-  // Helper function to convert date input value to ISO string (preserves timezone)
-  const dateInputToISO = (dateValue) => {
-    if (!dateValue) return '';
-    // Date input gives us YYYY-MM-DD, convert to ISO at noon UTC to avoid timezone issues
-    const date = new Date(dateValue + 'T12:00:00.000Z');
-    return date.toISOString();
+  // Helper function to convert datetime-local input value to ISO string
+  const dateTimeInputToISO = (dateTimeValue) => {
+    if (!dateTimeValue) return '';
+    try {
+      // datetime-local gives us "YYYY-MM-DDTHH:mm" in local timezone
+      // Convert to ISO string preserving the time
+      const date = new Date(dateTimeValue);
+      return date.toISOString();
+    } catch {
+      return '';
+    }
   };
 
-  // Helper function to convert ISO string to date input format
-  const isoToDateInput = (isoString) => {
+  // Helper function to convert ISO string to datetime-local input format
+  const isoToDateTimeInput = (isoString) => {
     if (!isoString) return '';
     try {
       const date = new Date(isoString);
-      // Format as YYYY-MM-DD for date input
-      return date.toISOString().split('T')[0];
+      // Format as YYYY-MM-DDTHH:mm for datetime-local input
+      // Use local timezone to show the correct time to user
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      return `${year}-${month}-${day}T${hours}:${minutes}`;
     } catch {
       return '';
     }
@@ -71,9 +82,9 @@ const ProjectEditor = ({
     let processedValue = value;
     if (type === 'number') {
       processedValue = value === '' ? 0 : parseFloat(value) || 0;
-    } else if (type === 'date') {
-      // Convert date input to ISO string to avoid timezone issues
-      processedValue = dateInputToISO(value);
+    } else if (type === 'datetime-local') {
+      // Convert datetime-local input to ISO string preserving time
+      processedValue = dateTimeInputToISO(value);
     }
     
     const newFormData = { ...formData, [name]: processedValue };
@@ -378,45 +389,45 @@ const ProjectEditor = ({
           <h3 className="form-section-header">📅 Important Dates</h3>
           <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 2xl:gap-6 lg:grid-cols-2 lg:gap-4 md:grid-cols-1 md:gap-4">
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="ecd">ECD (Expected Completion Date)</label>
+              <label htmlFor="ecd">ECD (Expected Completion Date & Time)</label>
               <input
-                type="date"
+                type="datetime-local"
                 id="ecd"
                 name="ecd"
-                value={isoToDateInput(formData.ecd)}
+                value={isoToDateTimeInput(formData.ecd)}
                 onChange={handleInputChange}
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="requestedDate">Requested Date</label>
+              <label htmlFor="requestedDate">Requested Date & Time</label>
               <input
-                type="date"
+                type="datetime-local"
                 id="requestedDate"
                 name="requestedDate"
-                value={isoToDateInput(formData.requestedDate)}
+                value={isoToDateTimeInput(formData.requestedDate)}
                 onChange={handleInputChange}
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="submittedDate">Submitted Date</label>
+              <label htmlFor="submittedDate">Submitted Date & Time</label>
               <input
-                type="date"
+                type="datetime-local"
                 id="submittedDate"
                 name="submittedDate"
-                value={isoToDateInput(formData.submittedDate)}
+                value={isoToDateTimeInput(formData.submittedDate)}
                 onChange={handleInputChange}
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="dueDate">Due Date</label>
+              <label htmlFor="dueDate">Due Date & Time</label>
               <input
-                type="date"
+                type="datetime-local"
                 id="dueDate"
                 name="dueDate"
-                value={isoToDateInput(formData.dueDate)}
+                value={isoToDateTimeInput(formData.dueDate)}
                 onChange={handleInputChange}
               />
             </div>
