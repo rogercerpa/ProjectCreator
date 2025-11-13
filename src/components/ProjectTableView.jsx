@@ -11,6 +11,39 @@ function ProjectTableView({
   sortOrder,
   onSort
 }) {
+  // Define all available columns
+  const allColumns = [
+    { key: 'projectName', label: 'Project Name', sortable: true, width: '20%', minWidth: '180px' },
+    { key: 'rfaNumber', label: 'RFA Number', sortable: true, width: '10%', minWidth: '110px' },
+    { key: 'rfaValue', label: 'RFA Value', sortable: true, width: '10%', minWidth: '110px' },
+    { key: 'rfaType', label: 'RFA Type', sortable: true, width: '12%', minWidth: '120px' },
+    { key: 'projectType', label: 'Project Type', sortable: true, width: '12%', minWidth: '130px' },
+    { key: 'agentNumber', label: 'Agent Number', sortable: true, width: '10%', minWidth: '110px' },
+    { key: 'projectContainer', label: 'Project Container', sortable: true, width: '12%', minWidth: '130px' },
+    { key: 'ecd', label: 'ECD', sortable: true, width: '12%', minWidth: '120px' },
+    { key: 'requestedDate', label: 'Requested Date', sortable: true, width: '12%', minWidth: '140px' },
+    { key: 'actions', label: 'Actions', sortable: false, width: '5%', minWidth: '80px' }
+  ];
+
+  // Initialize column order from localStorage
+  const [columnOrder, setColumnOrder] = useState(() => {
+    const savedOrder = localStorage.getItem('projectTableColumnOrder');
+    if (savedOrder) {
+      try {
+        const parsed = JSON.parse(savedOrder);
+        // Validate that saved order contains valid column keys
+        const validKeys = allColumns.map(col => col.key);
+        const isValid = parsed.every(key => validKeys.includes(key));
+        if (isValid && parsed.length === allColumns.length) {
+          return parsed;
+        }
+      } catch (e) {
+        console.warn('Failed to parse saved column order, using defaults');
+      }
+    }
+    return allColumns.map(col => col.key);
+  });
+
   const [visibleColumns, setVisibleColumns] = useState(() => {
     const saved = localStorage.getItem('projectTableVisibleColumns');
     if (saved) {
@@ -22,6 +55,8 @@ function ProjectTableView({
     }
     return ['projectName', 'rfaNumber', 'agentNumber', 'projectContainer', 'ecd', 'requestedDate', 'actions'];
   });
+
+  const [draggedColumn, setDraggedColumn] = useState(null);
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     
@@ -82,19 +117,68 @@ function ProjectTableView({
 
   const handleResetColumns = () => {
     const defaultColumns = ['projectName', 'rfaNumber', 'agentNumber', 'projectContainer', 'ecd', 'requestedDate', 'actions'];
+    const defaultOrder = allColumns.map(col => col.key);
     setVisibleColumns(defaultColumns);
+    setColumnOrder(defaultOrder);
     localStorage.setItem('projectTableVisibleColumns', JSON.stringify(defaultColumns));
+    localStorage.setItem('projectTableColumnOrder', JSON.stringify(defaultOrder));
   };
 
-  const columns = [
-    { key: 'projectName', label: 'Project Name', sortable: true, width: '25%', minWidth: '200px' },
-    { key: 'rfaNumber', label: 'RFA Number', sortable: true, width: '12%', minWidth: '120px' },
-    { key: 'agentNumber', label: 'Agent Number', sortable: true, width: '12%', minWidth: '120px' },
-    { key: 'projectContainer', label: 'Project Container', sortable: true, width: '18%', minWidth: '150px' },
-    { key: 'ecd', label: 'ECD', sortable: true, width: '13%', minWidth: '130px' },
-    { key: 'requestedDate', label: 'Requested Date', sortable: true, width: '15%', minWidth: '150px' },
-    { key: 'actions', label: 'Actions', sortable: false, width: '5%', minWidth: '80px' }
-  ];
+  const handleColumnReorder = (newOrder) => {
+    setColumnOrder(newOrder);
+    localStorage.setItem('projectTableColumnOrder', JSON.stringify(newOrder));
+  };
+
+  // Drag and drop handlers for table headers
+  const handleDragStart = (e, columnKey) => {
+    setDraggedColumn(columnKey);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', e.target);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e, targetColumnKey) => {
+    e.preventDefault();
+    if (!draggedColumn || draggedColumn === targetColumnKey) {
+      setDraggedColumn(null);
+      return;
+    }
+
+    const newOrder = [...columnOrder];
+    const draggedIndex = newOrder.indexOf(draggedColumn);
+    const targetIndex = newOrder.indexOf(targetColumnKey);
+
+    // Remove dragged item and insert at target position
+    newOrder.splice(draggedIndex, 1);
+    newOrder.splice(targetIndex, 0, draggedColumn);
+
+    handleColumnReorder(newOrder);
+    setDraggedColumn(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedColumn(null);
+  };
+
+  // Format currency
+  const formatCurrency = (value) => {
+    if (!value) return 'N/A';
+    const numValue = parseFloat(value);
+    if (isNaN(numValue)) return value;
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(numValue);
+  };
+
+  // Get ordered columns based on current order
+  const getOrderedColumns = () => {
+    return columnOrder.map(key => allColumns.find(col => col.key === key)).filter(Boolean);
+  };
 
   if (projects.length === 0) {
     return (
@@ -106,16 +190,19 @@ function ProjectTableView({
     );
   }
 
-  // Filter columns based on visibility
-  const visibleColumnsData = columns.filter(col => visibleColumns.includes(col.key));
+  // Filter and order columns based on visibility and order
+  const orderedColumns = getOrderedColumns();
+  const visibleColumnsData = orderedColumns.filter(col => visibleColumns.includes(col.key));
 
   return (
     <div className={`bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden ${density === 'compact' ? 'text-sm' : density === 'comfortable' ? 'text-base' : 'text-sm'}`}>
       <div className="flex justify-end items-center px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
         <ColumnVisibilityControl
-          columns={columns}
+          columns={allColumns}
           visibleColumns={visibleColumns}
+          columnOrder={columnOrder}
           onColumnToggle={handleColumnToggle}
+          onColumnReorder={handleColumnReorder}
           onResetColumns={handleResetColumns}
         />
       </div>
@@ -126,14 +213,23 @@ function ProjectTableView({
               {visibleColumnsData.map((column) => (
                 <th
                   key={column.key}
-                  className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 ${column.sortable ? 'cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600' : ''} ${sortBy === column.key ? 'text-primary-600 dark:text-primary-400' : ''}`}
-                  style={{ width: column.width, minWidth: column.minWidth }}
+                  draggable={true}
+                  onDragStart={(e) => handleDragStart(e, column.key)}
+                  onDragOver={handleDragOver}
+                  onDrop={(e) => handleDrop(e, column.key)}
+                  onDragEnd={handleDragEnd}
+                  className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 ${column.sortable ? 'cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600' : ''} ${sortBy === column.key ? 'text-primary-600 dark:text-primary-400' : ''} ${draggedColumn === column.key ? 'opacity-50' : ''} transition-opacity`}
+                  style={{ width: column.width, minWidth: column.minWidth, cursor: 'move' }}
                   onClick={column.sortable ? () => handleHeaderClick(column.key) : undefined}
+                  title="Drag to reorder columns"
                 >
-                  {column.label}
-                  {column.sortable && (
-                    <span className="sort-icon">{getSortIcon(column.key)}</span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-400 dark:text-gray-500">⋮⋮</span>
+                    <span>{column.label}</span>
+                    {column.sortable && (
+                      <span className="sort-icon">{getSortIcon(column.key)}</span>
+                    )}
+                  </div>
                 </th>
               ))}
             </tr>
@@ -161,6 +257,24 @@ function ProjectTableView({
                       return (
                         <td key={column.key} className="px-4 py-3 text-sm text-primary-600 dark:text-primary-400 font-medium">
                           <span className="rfa-number">{project.rfaNumber || 'N/A'}</span>
+                        </td>
+                      );
+                    case 'rfaValue':
+                      return (
+                        <td key={column.key} className="px-4 py-3 text-sm text-green-600 dark:text-green-400 font-medium">
+                          <span className="rfa-value">{formatCurrency(project.rfaValue)}</span>
+                        </td>
+                      );
+                    case 'rfaType':
+                      return (
+                        <td key={column.key} className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+                          <span className="rfa-type">{project.rfaType || 'N/A'}</span>
+                        </td>
+                      );
+                    case 'projectType':
+                      return (
+                        <td key={column.key} className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+                          <span className="project-type">{project.projectType || project.customProjectType || 'N/A'}</span>
                         </td>
                       );
                     case 'agentNumber':

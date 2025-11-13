@@ -46,6 +46,7 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onRefresh }) 
         project.rfaNumber,
         project.agentNumber,
         project.rfaType,
+        project.rfaValue,
         project.projectType,
         productsText,
         project.projectContainer
@@ -68,6 +69,13 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onRefresh }) 
     if (sortBy === 'createdAt' || sortBy === 'updatedAt') {
       aValue = new Date(aValue);
       bValue = new Date(bValue);
+    }
+
+    // Handle currency/numeric fields that might be stored as strings
+    if (sortBy === 'rfaValue') {
+      aValue = parseFloat(aValue) || 0;
+      bValue = parseFloat(bValue) || 0;
+      return sortOrder === 'asc' ? aValue - bValue : bValue - aValue;
     }
 
     // Handle numeric sorting
