@@ -92,7 +92,8 @@ const createDefaultFormData = () => ({
   dasFee: 0,
   dasFeeManual: false,
   dasStatus: 'Waiting on Order',
-  dasRepEmail: ''
+  dasRepEmail: '',
+  dasRepEmailList: []
 });
 
 function App() {

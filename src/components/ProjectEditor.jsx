@@ -26,6 +26,22 @@ const ProjectEditor = ({
     setFormData(updatedData);
     onProjectDataChange(updatedData);
   };
+  const handleRepEmailListChange = (nextList) => {
+    const sanitizedList = (nextList || [])
+      .map((entry) => ({
+        email: (entry?.email || '').trim(),
+        name: (entry?.name || '').trim(),
+        agencyName: (entry?.agencyName || '').trim()
+      }))
+      .filter((entry) => entry.email);
+    const updatedData = {
+      ...formData,
+      dasRepEmailList: sanitizedList,
+      dasRepEmail: sanitizedList.map((entry) => entry.email).join('; ')
+    };
+    setFormData(updatedData);
+    onProjectDataChange(updatedData);
+  };
   const handlePaidServicesEmail = () => {
     const result = openPaidServicesEmail(formData);
     if (result.success) {
@@ -102,6 +118,15 @@ const ProjectEditor = ({
     }
     
     const newFormData = { ...formData, [name]: processedValue };
+    
+    if (name === 'dasRepEmail') {
+      const manualEmails = (processedValue || '')
+        .split(/[;,]+/)
+        .map((email) => email.trim())
+        .filter(Boolean)
+        .map((email) => ({ email, name: '', agencyName: '' }));
+      newFormData.dasRepEmailList = manualEmails;
+    }
     
     // Validate if status is changing to 'Completed'
     if (name === 'status' && processedValue === 'Completed') {
@@ -474,6 +499,8 @@ const ProjectEditor = ({
             errors={errors}
             showEmailButton
             onRequestEmail={handlePaidServicesEmail}
+            repEmailList={formData.dasRepEmailList}
+            onRepEmailListChange={handleRepEmailListChange}
           />
         </div>
 

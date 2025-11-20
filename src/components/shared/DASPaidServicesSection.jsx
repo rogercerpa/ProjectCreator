@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 
 const BASE_NEW_RATE = 350;
 const BASE_REVISION_RATE = 265;
+const EMAIL_REGEX = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
 
 const STATUS_OPTIONS = ['Waiting on Order', 'Paid', 'Cancelled'];
 const COST_OPTIONS = [
@@ -46,6 +47,149 @@ const fieldError = (errors, key) => {
   return value || null;
 };
 
+const RepEmailSelector = ({
+  selected = [],
+  onChange,
+  options = [],
+  onSearch,
+  status,
+  readOnly
+}) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    const handler = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  useEffect(() => {
+    if (!onSearch) return;
+    const trimmed = searchTerm.trim();
+    if (trimmed.length < 2) {
+      return;
+    }
+    const handler = setTimeout(() => {
+      onSearch(trimmed);
+      setIsDropdownOpen(true);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchTerm, onSearch]);
+
+  const handleAddEntry = (entry) => {
+    if (!entry?.email || readOnly) return;
+    const exists = (selected || []).some(
+      (item) => item?.email?.toLowerCase() === entry.email.toLowerCase()
+    );
+    if (exists) return;
+    onChange([...(selected || []), entry]);
+    setSearchTerm('');
+    setIsDropdownOpen(false);
+  };
+
+  const handleManualEntry = () => {
+    const trimmed = searchTerm.trim();
+    if (!EMAIL_REGEX.test(trimmed)) return;
+    handleAddEntry({ email: trimmed, name: '', agencyName: '' });
+  };
+
+  const handleKeyDown = (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      handleManualEntry();
+    }
+  };
+
+  const handleRemove = (email) => {
+    if (readOnly) return;
+    onChange((selected || []).filter((entry) => entry.email !== email));
+  };
+
+  const normalizedOptions = (options || []).filter((option) => option?.email);
+  const showDropdown = isDropdownOpen && normalizedOptions.length > 0 && !readOnly;
+
+  return (
+    <div className="flex flex-col gap-2" ref={containerRef}>
+      <div className="flex flex-wrap gap-2">
+        {(selected || []).length === 0 && (
+          <span className="text-xs text-gray-500 dark:text-gray-400">No recipients selected yet.</span>
+        )}
+        {(selected || []).map((entry) => (
+          <span
+            key={entry.email}
+            className="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-primary-100 dark:bg-primary-900/30 text-xs text-primary-900 dark:text-primary-100"
+          >
+            <span>
+              {entry.name || entry.email}
+              {entry.agencyName ? ` • ${entry.agencyName}` : ''}
+            </span>
+            {!readOnly && (
+              <button
+                type="button"
+                onClick={() => handleRemove(entry.email)}
+                className="text-primary-700 dark:text-primary-300 hover:text-primary-900"
+                aria-label="Remove email"
+              >
+                ×
+              </button>
+            )}
+          </span>
+        ))}
+      </div>
+      <div className="relative">
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          onFocus={() => !readOnly && setIsDropdownOpen(true)}
+          onKeyDown={handleKeyDown}
+          placeholder={readOnly ? 'Emails locked' : 'Type a name or email to search…'}
+          disabled={readOnly}
+          className="input"
+        />
+        {showDropdown && (
+          <div className="absolute z-20 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-56 overflow-y-auto">
+            {normalizedOptions.map((option) => (
+              <button
+                key={option.email}
+                type="button"
+                onClick={() => handleAddEntry(option)}
+                className="w-full px-3 py-2 text-left text-sm text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <div className="font-semibold">{option.name || option.email}</div>
+                <div className="text-xs text-gray-600 dark:text-gray-300">
+                  {option.email}
+                  {option.agencyName ? ` • ${option.agencyName}` : ''}
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      {!readOnly && (
+        <span className="text-xs text-gray-500 dark:text-gray-400">
+          Press Enter to add a custom email address.
+        </span>
+      )}
+      {status?.state === 'searching' && (
+        <span className="text-xs text-warning-600 dark:text-warning-400">{status.message}</span>
+      )}
+      {status?.state === 'notFound' && (
+        <span className="text-xs text-warning-600 dark:text-warning-400">{status.message}</span>
+      )}
+      {status?.state === 'error' && (
+        <span className="text-xs text-error-600 dark:text-error-400">{status.message}</span>
+      )}
+    </div>
+  );
+};
+
 const DASPaidServicesSection = ({
   formData = {},
   onChange,
@@ -56,7 +200,12 @@ const DASPaidServicesSection = ({
   emailButtonLabel = 'Draft Outlook Email',
   onRequestEmail,
   emailButtonDisabled = false,
-  highlight = false
+  highlight = false,
+  repEmailStatus = null,
+  repEmailList = [],
+  onRepEmailListChange,
+  repEmailOptions = [],
+  onRepEmailSearch
 }) => {
   const {
     isRevision = false,
@@ -69,8 +218,10 @@ const DASPaidServicesSection = ({
     dasFee = 0,
     dasFeeManual = false,
     dasStatus = STATUS_OPTIONS[0],
-    dasRepEmail = ''
+    dasRepEmail = '',
+    dasRepEmailList = []
   } = formData;
+  const resolvedRepEmailList = repEmailList ?? dasRepEmailList ?? [];
 
   const sectionClasses = [
     'rounded-lg border-2 p-5 shadow-sm space-y-4',
@@ -206,11 +357,12 @@ const DASPaidServicesSection = ({
 
   const canSendEmail = useMemo(() => {
     if (!dasPaidServiceEnabled) return false;
-    if (!dasRepEmail) return false;
+    const hasExplicitEmails = Array.isArray(resolvedRepEmailList) && resolvedRepEmailList.length > 0;
+    if (!hasExplicitEmails && !dasRepEmail) return false;
     if (!dasLightingPages || !dasCostPerPage) return false;
     if (!dasFee) return false;
     return true;
-  }, [dasPaidServiceEnabled, dasRepEmail, dasLightingPages, dasCostPerPage, dasFee]);
+  }, [dasPaidServiceEnabled, dasRepEmail, resolvedRepEmailList, dasLightingPages, dasCostPerPage, dasFee]);
 
   return (
     <section className={sectionClasses}>
@@ -384,18 +536,40 @@ const DASPaidServicesSection = ({
                 ))}
               </select>
             </div>
-            <div className="flex flex-col">
+            <div className="flex flex-col gap-2">
               <label className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                 Rep contact email
               </label>
-              <input
-                type="email"
-                name="dasRepEmail"
-                disabled={readOnly}
-                value={dasRepEmail}
-                onChange={(e) => handleUpdate({ dasRepEmail: e.target.value })}
-                className={`input ${fieldError(errors, 'dasRepEmail') ? 'error' : ''}`}
-              />
+              {typeof onRepEmailListChange === 'function' ? (
+                <RepEmailSelector
+                  selected={resolvedRepEmailList}
+                  onChange={onRepEmailListChange}
+                  options={repEmailOptions}
+                  onSearch={onRepEmailSearch}
+                  status={repEmailStatus}
+                  readOnly={readOnly}
+                />
+              ) : (
+                <>
+                  <input
+                    type="email"
+                    name="dasRepEmail"
+                    disabled={readOnly}
+                    value={dasRepEmail}
+                    onChange={(e) => handleUpdate({ dasRepEmail: e.target.value })}
+                    className={`input ${fieldError(errors, 'dasRepEmail') ? 'error' : ''}`}
+                  />
+                  {repEmailStatus?.state === 'searching' && (
+                    <span className="text-xs text-warning-600 mt-1">{repEmailStatus.message}</span>
+                  )}
+                  {repEmailStatus?.state === 'notFound' && (
+                    <span className="text-xs text-warning-600 mt-1">{repEmailStatus.message}</span>
+                  )}
+                  {repEmailStatus?.state === 'error' && (
+                    <span className="text-xs text-error-600 mt-1">{repEmailStatus.message}</span>
+                  )}
+                </>
+              )}
               {fieldError(errors, 'dasRepEmail') && (
                 <span className="text-xs text-error-600 mt-1">{fieldError(errors, 'dasRepEmail')}</span>
               )}

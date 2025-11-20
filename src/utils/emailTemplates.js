@@ -53,6 +53,27 @@ export const extractRepName = (repContacts) => {
   return firstName || 'there';
 };
 
+const normalizeRecipients = (project) => {
+  const explicitList = Array.isArray(project?.dasRepEmailList)
+    ? project.dasRepEmailList
+        .map((entry) => entry?.email)
+        .filter(Boolean)
+    : [];
+
+  if (explicitList.length > 0) {
+    return explicitList;
+  }
+
+  if (typeof project?.dasRepEmail === 'string') {
+    return project.dasRepEmail
+      .split(/[;,]+/)
+      .map((email) => email.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+};
+
 export const buildPaidServicesEmail = (project = {}, options = {}) => {
   const missingFields = [];
   const lightingPages = Number(project.dasLightingPages || 0);
@@ -63,7 +84,13 @@ export const buildPaidServicesEmail = (project = {}, options = {}) => {
   if (!costPerPage) missingFields.push('cost per page');
   if (!totalFee) missingFields.push('fee');
 
-  const toEmail = project.dasRepEmail || extractEmailFromRepContacts(project.repContacts, options.fallbackEmail);
+  const recipients = normalizeRecipients(project);
+  let toEmail = recipients.join('; ');
+
+  if (!toEmail) {
+    toEmail = project.dasRepEmail || extractEmailFromRepContacts(project.repContacts, options.fallbackEmail);
+  }
+
   if (!toEmail) missingFields.push('rep email');
 
   const subjectParts = [
@@ -116,7 +143,11 @@ export const openPaidServicesEmail = (project, options = {}) => {
   }
 
   if (typeof window !== 'undefined' && result.mailto) {
-    window.open(result.mailto, '_blank');
+    if (window.electronAPI?.openExternal) {
+      window.electronAPI.openExternal(result.mailto);
+    } else {
+      window.location.href = result.mailto;
+    }
   }
 
   return { success: true, ...result };

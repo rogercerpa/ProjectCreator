@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import WizardLayout from '../components/WizardLayout';
 import RevisionConfigurationDialog from '../components/RevisionConfigurationDialog';
 import NotificationToast from '../../NotificationToast';
@@ -8,6 +8,105 @@ import EditableProductTags from '../../EditableProductTags';
 import { parseAgileDate, getUserTimezone, formatDateTimeLocal } from '../../../utils/dateUtils';
 import { openPaidServicesEmail } from '../../../utils/emailTemplates';
 import DASPaidServicesSection from '../../shared/DASPaidServicesSection';
+
+const REP_EMAIL_REGEX = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
+const ZERO_WIDTH_REGEX = /[\u200B-\u200D\uFEFF]/g;
+const PRIVATE_USE_REGEX = /[\uE000-\uF8FF]/g;
+
+const sanitizeTextValue = (value = '') => {
+  if (typeof value !== 'string') return value;
+  return value
+    .replace(ZERO_WIDTH_REGEX, '')
+    .replace(PRIVATE_USE_REGEX, '')
+    .replace(/\u00A0/g, ' ');
+};
+
+const sanitizePayloadStrings = (payload) => {
+  if (payload === null || payload === undefined) return payload;
+  if (typeof payload === 'string') return sanitizeTextValue(payload);
+  if (Array.isArray(payload)) {
+    return payload.map((item) => sanitizePayloadStrings(item));
+  }
+  if (typeof payload === 'object') {
+    const sanitized = {};
+    Object.keys(payload).forEach((key) => {
+      sanitized[key] = sanitizePayloadStrings(payload[key]);
+    });
+    return sanitized;
+  }
+  return payload;
+};
+
+const cleanRepContactFragment = (value = '') => {
+  return value
+    .replace(ZERO_WIDTH_REGEX, '')
+    .replace(/\s+/g, ' ')
+    .replace(/\(.*?\)/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+const getPrimaryRepContactName = (value = '') => {
+  if (!value) return '';
+  const primarySegment = value.split(/[\/&;\n]+/)[0] || '';
+  const cleaned = cleanRepContactFragment(primarySegment);
+  if (!cleaned) return '';
+  if (cleaned.includes(',')) {
+    const [last, first] = cleaned.split(',');
+    return `${(first || '').trim()} ${(last || '').trim()}`.replace(/\s+/g, ' ').trim();
+  }
+  return cleaned;
+};
+
+const createComparisonKey = (value = '') => value.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+const buildRepSearchCandidates = (value = '') => {
+  const base = sanitizeTextValue(value);
+  if (!base) return [];
+  const candidates = new Set([base]);
+  const parts = base.split(' ').filter(Boolean);
+  if (parts.length >= 2) {
+    const first = parts[0];
+    const last = parts[parts.length - 1];
+    candidates.add(`${first} ${last}`.trim());
+    candidates.add(`${last} ${first}`.trim());
+    candidates.add(first);
+    candidates.add(last);
+  } else if (parts.length === 1) {
+    candidates.add(parts[0]);
+  }
+  return Array.from(candidates).filter(Boolean);
+};
+
+const pickBestAgencyEmail = (agencies, comparisonKey, plainTarget) => {
+  if (!Array.isArray(agencies)) return null;
+  const targetLower = (plainTarget || '').toLowerCase();
+  let fallback = null;
+
+  for (const agency of agencies) {
+    const email = agency?.contactEmail || agency?.email;
+    if (!email) continue;
+    const contactName = agency?.contactName || '';
+    const contactKey = createComparisonKey(contactName);
+    if (comparisonKey && contactKey && contactKey === comparisonKey) {
+      return email;
+    }
+    if (
+      !fallback &&
+      comparisonKey &&
+      contactKey &&
+      (contactKey.includes(comparisonKey) || comparisonKey.includes(contactKey))
+    ) {
+      fallback = email;
+      continue;
+    }
+    if (!fallback && targetLower && contactName.toLowerCase().includes(targetLower)) {
+      fallback = email;
+    }
+  }
+
+  return fallback;
+};
 
 /**
  * ProjectWizardStep1 - Basic Project Information
@@ -32,6 +131,109 @@ const ProjectWizardStep1 = ({
   const [customProjectType, setCustomProjectType] = useState('');
   const [isCustomProjectTypeMode, setIsCustomProjectTypeMode] = useState(false);
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+  const latestFormDataRef = useRef(formData);
+  const repEmailLookupRef = useRef({ lastQuery: null, pendingQuery: null });
+  const [repEmailLookupStatus, setRepEmailLookupStatus] = useState({ state: 'idle', message: '' });
+  const [repEmailOptions, setRepEmailOptions] = useState([]);
+  const repEmailSearchAbortRef = useRef(0);
+  const handleRepEmailListChange = useCallback((nextList) => {
+    const sanitizedList = (nextList || [])
+      .map((entry) => ({
+        email: sanitizeTextValue(entry?.email || ''),
+        name: sanitizeTextValue(entry?.name || ''),
+        agencyName: sanitizeTextValue(entry?.agencyName || '')
+      }))
+      .filter((entry) => entry.email);
+    
+    onFormDataChange({
+      ...formData,
+      dasRepEmailList: sanitizedList,
+      dasRepEmail: sanitizedList.map((entry) => entry.email).join('; ')
+    });
+  }, [formData, onFormDataChange]);
+
+  const fetchRepEmailOptions = useCallback(async (terms, options = {}) => {
+    if (typeof window === 'undefined' || !window.electronAPI?.agenciesSearch) {
+      return [];
+    }
+    
+    const normalizedTerms = (Array.isArray(terms) ? terms : [terms])
+      .map((term) => (term || '').trim())
+      .filter((term) => term.length >= 2);
+    
+    if (normalizedTerms.length === 0) {
+      if (!options.keepExisting) {
+        setRepEmailOptions([]);
+      }
+      if (options.updateStatus !== false) {
+        setRepEmailLookupStatus({ state: 'idle', message: '' });
+      }
+      return [];
+    }
+    
+    const requestId = Date.now();
+    repEmailSearchAbortRef.current = requestId;
+    
+    if (options.updateStatus !== false) {
+      setRepEmailLookupStatus({ state: 'searching', message: 'Searching agency directory…' });
+    }
+    
+    const seenEmails = new Set();
+    const matches = [];
+    
+    try {
+      for (const term of normalizedTerms) {
+        const result = await window.electronAPI.agenciesSearch(term, { region: 'all', role: 'all' });
+        
+        if (repEmailSearchAbortRef.current !== requestId) {
+          return matches;
+        }
+        
+        if (result?.success && Array.isArray(result.agencies)) {
+          result.agencies.forEach((agency) => {
+            const email = agency?.contactEmail;
+            if (!email || seenEmails.has(email)) {
+              return;
+            }
+            
+            seenEmails.add(email);
+            matches.push({
+              email,
+              name: agency?.contactName || agency?.agentName || '',
+              agencyName: agency?.agencyName || '',
+              label: `${agency?.contactName || 'Unknown'} • ${agency?.agencyName || 'Agency'}`,
+            });
+          });
+        }
+      }
+      
+      setRepEmailOptions(matches);
+      
+      if (options.updateStatus !== false) {
+        if (matches.length === 0) {
+          setRepEmailLookupStatus({ state: 'notFound', message: 'No rep contact email found in agency directory.' });
+        } else {
+          setRepEmailLookupStatus({ state: 'ready', message: '' });
+        }
+      }
+      
+      return matches;
+    } catch (error) {
+      console.warn('Failed to search agency directory:', error);
+      if (options.updateStatus !== false) {
+        setRepEmailLookupStatus({ state: 'error', message: 'Rep email lookup failed.' });
+      }
+      return [];
+    }
+  }, []);
+
+  const handleRepEmailSearch = useCallback(async (query) => {
+    return fetchRepEmailOptions(query, { keepExisting: false });
+  }, [fetchRepEmailOptions]);
+
+  useEffect(() => {
+    latestFormDataRef.current = formData;
+  }, [formData]);
   
   // SIMPLIFIED: Single state object for duplicate checking
   const [duplicateCheckState, setDuplicateCheckState] = useState({
@@ -155,6 +357,81 @@ const ProjectWizardStep1 = ({
       });
     }
   };
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.electronAPI?.agenciesSearch) {
+      return;
+    }
+
+    const repRaw = formData.repContacts;
+    if (!repRaw || repRaw.trim().length < 3) {
+      repEmailLookupRef.current.lastQuery = null;
+      repEmailLookupRef.current.pendingQuery = null;
+      setRepEmailLookupStatus({ state: 'idle', message: '' });
+      setRepEmailOptions([]);
+      return;
+    }
+
+    if (formData.dasRepEmail && formData.dasRepEmail.trim()) {
+      return;
+    }
+
+    const inlineEmailMatch = repRaw.match(REP_EMAIL_REGEX);
+    if (inlineEmailMatch) {
+      const latest = latestFormDataRef.current;
+        if (!(latest.dasRepEmailList || []).length) {
+          handleRepEmailListChange([{
+            email: inlineEmailMatch[0],
+            name: getPrimaryRepContactName(repRaw),
+            agencyName: ''
+          }]);
+        }
+        repEmailLookupRef.current.lastQuery = createComparisonKey(repRaw);
+        setRepEmailLookupStatus({ state: 'ready', message: '' });
+      return;
+    }
+
+    const primaryName = getPrimaryRepContactName(repRaw);
+    if (!primaryName) {
+      return;
+    }
+
+    const comparisonKey = createComparisonKey(primaryName);
+    if (!comparisonKey) {
+      return;
+    }
+
+    if (
+      repEmailLookupRef.current.pendingQuery === comparisonKey ||
+      repEmailLookupRef.current.lastQuery === comparisonKey
+    ) {
+      return;
+    }
+
+    repEmailLookupRef.current.pendingQuery = comparisonKey;
+    setRepEmailLookupStatus({ state: 'searching', message: 'Searching agency directory…' });
+    let cancelled = false;
+
+    const runLookup = async () => {
+      const candidates = buildRepSearchCandidates(primaryName);
+      const matches = await fetchRepEmailOptions(candidates, { keepExisting: false });
+      if (cancelled) return;
+      repEmailLookupRef.current.pendingQuery = null;
+      repEmailLookupRef.current.lastQuery = comparisonKey;
+      
+      if (matches.length === 1 && !(latestFormDataRef.current.dasRepEmailList || []).length) {
+        handleRepEmailListChange([matches[0]]);
+      } else if (matches.length === 0 && !(latestFormDataRef.current.dasRepEmailList || []).length) {
+        setRepEmailLookupStatus({ state: 'notFound', message: 'No rep contact email found in agency directory.' });
+      }
+    };
+
+    runLookup();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchRepEmailOptions, formData.repContacts, handleRepEmailListChange]);
 
   // CLEAN: "-0 version only" duplicate check for manual entry
   useEffect(() => {
@@ -513,8 +790,20 @@ const ProjectWizardStep1 = ({
     if (type === 'number') {
       processedValue = value === '' ? 0 : parseFloat(value) || 0;
     }
+    if (typeof processedValue === 'string') {
+      processedValue = sanitizeTextValue(processedValue);
+    }
     
     const newFormData = { ...formData, [name]: processedValue };
+    
+    if (name === 'dasRepEmail') {
+      const manualEmails = processedValue
+        .split(/[;,]+/)
+        .map((email) => sanitizeTextValue(email).trim())
+        .filter(Boolean)
+        .map((email) => ({ email, name: '', agencyName: '' }));
+      newFormData.dasRepEmailList = manualEmails;
+    }
     
     // Handle RFA type changes to show/hide triage sections
     if (name === 'rfaType') {
@@ -716,8 +1005,9 @@ const ProjectWizardStep1 = ({
       }
       
       if (parsedData) {
+        const sanitizedData = sanitizePayloadStrings(parsedData);
         // Track which fields were imported for visual feedback
-        const importedFieldNames = Object.keys(parsedData);
+        const importedFieldNames = Object.keys(sanitizedData);
         setImportedFields(importedFieldNames);
         
         // Enhanced data merging with conflict detection
@@ -727,10 +1017,10 @@ const ProjectWizardStep1 = ({
         // Check for existing data conflicts
         importedFieldNames.forEach(fieldName => {
           if (formData[fieldName] && formData[fieldName] !== '' && 
-              formData[fieldName] !== parsedData[fieldName]) {
+              formData[fieldName] !== sanitizedData[fieldName]) {
             conflictFields.push(fieldName);
           }
-          updatedFormData[fieldName] = parsedData[fieldName];
+          updatedFormData[fieldName] = sanitizedData[fieldName];
         });
         
         onFormDataChange(updatedFormData);
@@ -2154,7 +2444,10 @@ const ProjectWizardStep1 = ({
                 options={dropdownOptions.productOptions}
                 selectedValues={Array.isArray(formData.products) ? formData.products : []}
                 onChange={(selectedProducts) => {
-                  onFormDataChange({ ...formData, products: selectedProducts });
+                  const sanitizedProducts = (selectedProducts || [])
+                    .map((product) => sanitizeTextValue(product))
+                    .filter(Boolean);
+                  onFormDataChange({ ...formData, products: sanitizedProducts });
                 }}
                 isFieldImported={isFieldImported('products')}
               />
@@ -2233,6 +2526,11 @@ const ProjectWizardStep1 = ({
               showEmailButton
               onRequestEmail={handlePaidServicesEmailDraft}
               highlight={!shouldAutoShowPaidServices}
+              repEmailStatus={repEmailLookupStatus}
+              repEmailList={formData.dasRepEmailList}
+              onRepEmailListChange={handleRepEmailListChange}
+              repEmailOptions={repEmailOptions}
+              onRepEmailSearch={handleRepEmailSearch}
             />
           )}
         </div>
