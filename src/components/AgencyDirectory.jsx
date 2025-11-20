@@ -460,101 +460,156 @@ function AgencyDirectory() {
   const renderAgencyModal = () => {
     if (!selectedAgency) return null;
 
+    const infoRow = (label, value, options = {}) => {
+      if (!value && value !== 0) return null;
+
+      const { isLink = false, href = '', accent = false } = options;
+
+      return (
+        <div className="flex items-start justify-between gap-4">
+          <span className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            {label}
+          </span>
+          {isLink ? (
+            <a
+              href={href}
+              className="text-sm font-semibold text-primary-600 dark:text-primary-300 hover:underline break-all text-right"
+            >
+              {value}
+            </a>
+          ) : (
+            <span
+              className={`text-sm font-semibold text-right ${
+                accent ? 'text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-200'
+              }`}
+            >
+              {value}
+            </span>
+          )}
+        </div>
+      );
+    };
+
+    const statusPill = (label, isPositive) => (
+      <span
+        className={`px-3 py-1 rounded-full text-xs font-semibold ${
+          isPositive
+            ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+            : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'
+        }`}
+      >
+        {label}
+      </span>
+    );
+
     return (
-      <div className="modal-overlay" onClick={() => setSelectedAgency(null)}>
-        <div className="agency-modal" onClick={e => e.stopPropagation()}>
-          <div className="modal-header">
-            <h2>{selectedAgency.agencyName}</h2>
-            <div className="modal-header-actions">
-              {selectedAgency.contactEmail && (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4"
+        onClick={() => setSelectedAgency(null)}
+      >
+        <div
+          className="relative w-full max-w-3xl overflow-hidden rounded-2xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-2xl"
+          onClick={e => e.stopPropagation()}
+        >
+          <div className="bg-gradient-to-r from-primary-600 via-secondary-600 to-secondary-400 text-white p-6 pb-8">
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+              <div>
+                <p className="text-sm uppercase tracking-[0.3em] text-white/70 mb-1">Agency</p>
+                <h2 className="text-2xl font-bold">{selectedAgency.agencyName}</h2>
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-white/80">
+                  {selectedAgency.region && (
+                    <span className="inline-flex items-center gap-1">
+                      📍 <span>{selectedAgency.region}</span>
+                    </span>
+                  )}
+                  {selectedAgency.agencyNumber && (
+                    <span className="inline-flex items-center gap-1">
+                      🆔 <span>#{selectedAgency.agencyNumber}</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                {selectedAgency.contactEmail && (
+                  <button
+                    onClick={() => handleIndividualEmail(selectedAgency)}
+                    className="inline-flex items-center gap-2 rounded-xl bg-white/20 px-4 py-2 text-sm font-semibold text-white backdrop-blur hover:bg-white/30"
+                    title={`Email ${selectedAgency.contactName || 'contact'}`}
+                  >
+                    ✉️ Email Contact
+                  </button>
+                )}
                 <button
-                  onClick={() => handleIndividualEmail(selectedAgency)}
-                  className="btn btn-primary email-contact-btn"
-                  title={`Email ${selectedAgency.contactName}`}
+                  className="rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
+                  onClick={() => setSelectedAgency(null)}
+                  aria-label="Close"
                 >
-                  <span className="btn-icon">✉️</span>
-                  <span className="btn-text">Email Contact</span>
+                  ✕
                 </button>
-              )}
-              <button 
-                className="close-btn"
-                onClick={() => setSelectedAgency(null)}
-              >
-                ✕
-              </button>
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              {selectedAgency.fastService && statusPill(`Fast Service: ${selectedAgency.fastService}`, selectedAgency.fastService === 'Yes')}
+              {selectedAgency.sae && statusPill(`SAE: ${selectedAgency.sae}`, selectedAgency.sae === 'Yes')}
+              {selectedAgency.mainContact === 'Yes' && statusPill('Main Contact', true)}
             </div>
           </div>
-          
-          <div className="modal-content">
-            <div className="agency-info-grid">
-              <div className="info-section">
-                <h3>Contact Information</h3>
-                <div className="info-item">
-                  <label>Contact Name:</label>
-                  <span>{selectedAgency.contactName}</span>
+
+          <div className="p-6 space-y-6">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <div className="rounded-2xl border border-gray-100 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-800/60">
+                <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-4">
+                  Contact Information
+                </h3>
+                <div className="space-y-4">
+                  {infoRow('Contact Name', selectedAgency.contactName, { accent: true })}
+                  {infoRow('Role', selectedAgency.role)}
+                  {infoRow('Phone', formatPhoneNumber(selectedAgency.phoneNumber), {
+                    isLink: Boolean(selectedAgency.phoneNumber),
+                    href: `tel:${selectedAgency.phoneNumber}`
+                  })}
+                  {infoRow('Email', selectedAgency.contactEmail, {
+                    isLink: Boolean(selectedAgency.contactEmail),
+                    href: `mailto:${selectedAgency.contactEmail}`
+                  })}
+                  {infoRow('Main Contact', selectedAgency.mainContact)}
                 </div>
-                <div className="info-item">
-                  <label>Email:</label>
-                  <span>
-                    <a href={`mailto:${selectedAgency.contactEmail}`}>
-                      {selectedAgency.contactEmail}
-                    </a>
-                  </span>
-                </div>
-                <div className="info-item">
-                  <label>Phone:</label>
-                  <span>
-                    <a href={`tel:${selectedAgency.phoneNumber}`}>
-                      {formatPhoneNumber(selectedAgency.phoneNumber)}
-                    </a>
-                  </span>
-                </div>
-                <div className="info-item">
-                  <label>Role:</label>
-                  <span>{selectedAgency.role}</span>
-                </div>
-                {selectedAgency.mainContact && (
-                  <div className="info-item">
-                    <label>Main Contact:</label>
-                    <span>{selectedAgency.mainContact}</span>
-                  </div>
-                )}
               </div>
-              
-              <div className="info-section">
-                <h3>Agency Details</h3>
-                <div className="info-item">
-                  <label>Agency Number:</label>
-                  <span>{selectedAgency.agencyNumber}</span>
+
+              <div className="rounded-2xl border border-gray-100 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-800/60">
+                <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-4">
+                  Agency Details
+                </h3>
+                <div className="space-y-4">
+                  {infoRow('Agency Number', selectedAgency.agencyNumber)}
+                  {infoRow('Region', selectedAgency.region)}
+                  {infoRow('RGP ID', selectedAgency.rgpId)}
+                  {infoRow('Fast Service', selectedAgency.fastService)}
+                  {infoRow('SAE', selectedAgency.sae)}
+                  {infoRow('Text Service Start', selectedAgency.textServiceStartDate)}
                 </div>
-                <div className="info-item">
-                  <label>Region:</label>
-                  <span>{selectedAgency.region}</span>
-                </div>
-                <div className="info-item">
-                  <label>RGP ID:</label>
-                  <span>{selectedAgency.rgpId}</span>
-                </div>
-                <div className="info-item">
-                  <label>Fast Service:</label>
-                  <span className={selectedAgency.fastService === 'Yes' ? 'service-yes' : 'service-no'}>
-                    {selectedAgency.fastService}
-                  </span>
-                </div>
-                <div className="info-item">
-                  <label>SAE:</label>
-                  <span className={selectedAgency.sae === 'Yes' ? 'service-yes' : 'service-no'}>
-                    {selectedAgency.sae}
-                  </span>
-                </div>
-                {selectedAgency.textServiceStartDate && (
-                  <div className="info-item">
-                    <label>Text Service Start:</label>
-                    <span>{selectedAgency.textServiceStartDate}</span>
-                  </div>
-                )}
               </div>
             </div>
+
+            {(selectedAgency.notes || selectedAgency.specialInstructions) && (
+              <div className="rounded-2xl border border-primary-100 bg-primary-50/60 p-5 dark:border-primary-900/40 dark:bg-primary-900/10">
+                <h3 className="text-sm font-semibold uppercase tracking-wider text-primary-700 dark:text-primary-300 mb-3">
+                  Additional Details
+                </h3>
+                {selectedAgency.notes && (
+                  <p className="text-sm text-gray-700 dark:text-gray-200 mb-2">
+                    {selectedAgency.notes}
+                  </p>
+                )}
+                {selectedAgency.specialInstructions && (
+                  <p className="text-sm text-gray-700 dark:text-gray-200">
+                    <strong>Instructions:</strong> {selectedAgency.specialInstructions}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

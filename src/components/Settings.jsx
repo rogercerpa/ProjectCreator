@@ -498,7 +498,14 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
 
   const handleModalSave = async (updatedAgency) => {
     try {
-      const result = await window.electronAPI.agenciesUpdate(updatedAgency);
+      // Extract ID and updates separately - API expects (agencyId, updates)
+      const { id, ...updates } = updatedAgency;
+      
+      if (!id) {
+        throw new Error('Agency ID is required for update');
+      }
+      
+      const result = await window.electronAPI.agenciesUpdate(id, updates);
       if (result.success) {
         await loadAgencies();
         await loadAgencyStats();
@@ -2330,6 +2337,8 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
             editingAgencyModal={editingAgencyModal}
             handleModalSave={handleModalSave}
             AgencyEditModal={AgencyEditModal}
+            regionalTeams={settings.regionalTeams || []}
+            assignedToOptions={settings.assignedToOptions || []}
           />
         );
 
@@ -2744,24 +2753,23 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
                             onChange={(e) => setAgencyFormData({...agencyFormData, region: e.target.value})}
                           >
                             <option value="">Select region</option>
-                            <option value="Region 1">Region 1</option>
-                            <option value="Region 2">Region 2</option>
-                            <option value="Region 3">Region 3</option>
-                            <option value="Region 4">Region 4</option>
-                            <option value="Region 5">Region 5</option>
-                            <option value="International">International</option>
-                            <option value="Unknown">Unknown</option>
+                            {settings.regionalTeams && settings.regionalTeams.map(region => (
+                              <option key={region} value={region}>{region}</option>
+                            ))}
                           </select>
                         </div>
                         
                         <div className="form-group">
                           <label>Main Contact</label>
-                          <input
-                            type="text"
+                          <select
                             value={agencyFormData.mainContact}
                             onChange={(e) => setAgencyFormData({...agencyFormData, mainContact: e.target.value})}
-                            placeholder="Enter main contact"
-                          />
+                          >
+                            <option value="">Select main contact</option>
+                            {settings.assignedToOptions && settings.assignedToOptions.map(contact => (
+                              <option key={contact} value={contact}>{contact}</option>
+                            ))}
+                          </select>
                         </div>
                         
                         <div className="form-group">
@@ -2933,6 +2941,8 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
                 onClose={handleModalClose}
                 agency={editingAgencyModal}
                 onSave={handleModalSave}
+                regionalTeams={settings.regionalTeams || []}
+                assignedToOptions={settings.assignedToOptions || []}
               />
             </div>
           </div>

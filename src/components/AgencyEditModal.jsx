@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const AgencyEditModal = ({ isOpen, onClose, agency, onSave }) => {
+const AgencyEditModal = ({ isOpen, onClose, agency, onSave, regionalTeams = [], assignedToOptions = [] }) => {
   const [formData, setFormData] = useState({
     agencyNumber: '',
     agencyName: '',
@@ -267,13 +267,9 @@ const AgencyEditModal = ({ isOpen, onClose, agency, onSave }) => {
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 transition-all focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               >
                 <option value="">Select region</option>
-                <option value="Region 1">Region 1</option>
-                <option value="Region 2">Region 2</option>
-                <option value="Region 3">Region 3</option>
-                <option value="Region 4">Region 4</option>
-                <option value="Region 5">Region 5</option>
-                <option value="International">International</option>
-                <option value="Unknown">Unknown</option>
+                {regionalTeams && regionalTeams.map(region => (
+                  <option key={region} value={region}>{region}</option>
+                ))}
               </select>
             </div>
             
@@ -282,15 +278,18 @@ const AgencyEditModal = ({ isOpen, onClose, agency, onSave }) => {
               <label htmlFor="mainContact" className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
                 Main Contact
               </label>
-              <input
-                type="text"
+              <select
                 id="mainContact"
                 name="mainContact"
                 value={formData.mainContact}
                 onChange={handleInputChange}
-                placeholder="Enter main contact"
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 transition-all focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              />
+              >
+                <option value="">Select main contact</option>
+                {assignedToOptions && assignedToOptions.map(contact => (
+                  <option key={contact} value={contact}>{contact}</option>
+                ))}
+              </select>
             </div>
             
             {/* SAE */}

@@ -38,7 +38,9 @@ const AgenciesTab = ({
   handleModalClose,
   editingAgencyModal,
   handleModalSave,
-  AgencyEditModal
+  AgencyEditModal,
+  regionalTeams,
+  assignedToOptions
 }) => {
   return (
     <div className="space-y-6">
@@ -481,25 +483,24 @@ const AgenciesTab = ({
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 transition-all focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 >
                   <option value="">Select region</option>
-                  <option value="Region 1">Region 1</option>
-                  <option value="Region 2">Region 2</option>
-                  <option value="Region 3">Region 3</option>
-                  <option value="Region 4">Region 4</option>
-                  <option value="Region 5">Region 5</option>
-                  <option value="International">International</option>
-                  <option value="Unknown">Unknown</option>
+                  {regionalTeams && regionalTeams.map(region => (
+                    <option key={region} value={region}>{region}</option>
+                  ))}
                 </select>
               </div>
               
               <div>
                 <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Main Contact</label>
-                <input
-                  type="text"
+                <select
                   value={agencyFormData.mainContact}
                   onChange={(e) => setAgencyFormData({...agencyFormData, mainContact: e.target.value})}
-                  placeholder="Enter main contact"
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 transition-all focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
+                >
+                  <option value="">Select main contact</option>
+                  {assignedToOptions && assignedToOptions.map(contact => (
+                    <option key={contact} value={contact}>{contact}</option>
+                  ))}
+                </select>
               </div>
               
               <div>
@@ -678,6 +679,8 @@ const AgenciesTab = ({
         onClose={handleModalClose}
         agency={editingAgencyModal}
         onSave={handleModalSave}
+        regionalTeams={regionalTeams}
+        assignedToOptions={assignedToOptions}
       />
     </div>
   );
