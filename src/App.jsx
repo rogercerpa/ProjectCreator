@@ -23,6 +23,78 @@ const ProjectDraftService = window.electron ?
   window.electron.require('./src/services/ProjectDraftService') : 
   null;
 
+const createDefaultFormData = () => ({
+  projectName: '',
+  rfaNumber: '',
+  agentNumber: '',
+  projectContainer: '',
+  rfaType: '',
+  regionalTeam: '',
+  ecd: '',
+  nationalAccount: 'Default',
+  complexity: '',
+  rfaValue: '',
+  status: '',
+  products: '',
+  assignedTo: '',
+  repContacts: '',
+  requestedDate: '',
+  submittedDate: '',
+  // Unified Triage Control Fields
+  hasPanelSchedules: false,
+  hasSubmittals: false,
+  needsLayoutBOM: false,
+  // Panel Schedule Fields
+  largeLMPs: 0,
+  mediumLMPs: 0,
+  smallLMPs: 0,
+  arp8: 0,
+  arp16: 0,
+  arp32: 0,
+  arp48: 0,
+  esheetsSchedules: 2,
+  showPanelSchedules: false,
+  // Layout Fields
+  numOfRooms: 0,
+  overrideRooms: 0,
+  roomMultiplier: 2,
+  reviewSetup: 0.5,
+  numOfPages: 1,
+  specReview: 0,
+  // Submittal Fields
+  numOfSubRooms: 0,
+  overrideSubRooms: 0,
+  riserMultiplier: 1,
+  soo: 0.5,
+  // Photometrics Fields
+  photoSoftware: 'VL',
+  // Triage Results
+  saveLocation: 'Server',
+  isRevision: false,
+  dueDate: '',
+  totalTriage: 0,
+  panelTime: 0,
+  layoutTime: 0,
+  submittalTime: 0,
+  pageBonus: 0,
+  baseTotal: 0,
+  selfQC: 0,
+  fluff: 0,
+  // Additional Fields
+  firstAvailable: false,
+  // DAS Paid Services
+  dasPaidServiceEnabled: false,
+  dasPaidServiceForced: false,
+  dasCostOption: 'new',
+  dasCostPerPage: 350,
+  dasCostPerPageManual: false,
+  dasLightingPages: 0,
+  dasFee: 0,
+  dasFeeManual: false,
+  dasStatus: 'Waiting on Order',
+  dasRepEmail: ''
+});
+
 function App() {
   
   const [isLoading, setIsLoading] = useState(true);
@@ -40,66 +112,7 @@ function App() {
   const [showMigrationAssistant, setShowMigrationAssistant] = useState(false);
   const [userInterfacePreference, setUserInterfacePreference] = useState(null);
   const [isFirstVisit, setIsFirstVisit] = useState(false);
-  const [formData, setFormData] = useState({
-    projectName: '',
-    rfaNumber: '',
-    agentNumber: '',
-    projectContainer: '',
-    rfaType: '',
-    regionalTeam: '',
-    ecd: '',
-    nationalAccount: 'Default',
-    complexity: '',
-    rfaValue: '',
-    status: '',
-    products: '',
-    assignedTo: '',
-    repContacts: '',
-    requestedDate: '',
-    submittedDate: '',
-    // Unified Triage Control Fields
-    hasPanelSchedules: false, // Panel Schedules YES/NO
-    hasSubmittals: false, // Submittal Section YES/NO
-    needsLayoutBOM: false, // Needs Layout/BOM created YES/NO (only shown when hasSubmittals = true)
-    // Panel Schedule Fields
-    largeLMPs: 0,
-    mediumLMPs: 0,
-    smallLMPs: 0,
-    arp8: 0,
-    arp16: 0,
-    arp32: 0,
-    arp48: 0,
-    esheetsSchedules: 2, // 1 = Yes, 2 = No
-    showPanelSchedules: false, // Keep for backward compatibility
-    // Layout Fields
-    numOfRooms: 0,
-    overrideRooms: 0,
-    roomMultiplier: 2,
-    reviewSetup: 0.5,
-    numOfPages: 1,
-    specReview: 0,
-    // Submittal Fields
-    numOfSubRooms: 0,
-    overrideSubRooms: 0,
-    riserMultiplier: 1,
-    soo: 0.5,
-    // Photometrics Fields
-    photoSoftware: 'VL',
-    // Triage Results
-    saveLocation: 'Server',
-    isRevision: false,
-    dueDate: '',
-    totalTriage: 0,
-    panelTime: 0,
-    layoutTime: 0,
-    submittalTime: 0,
-    pageBonus: 0,
-    baseTotal: 0,
-    selfQC: 0,
-    fluff: 0,
-    // Additional Fields
-    firstAvailable: false
-  });
+  const [formData, setFormData] = useState(() => createDefaultFormData());
 
   // Initialize monitoring services
   const initializeMonitoringServices = async () => {
@@ -381,62 +394,7 @@ function App() {
   };
 
   const handleFormReset = () => {
-    setFormData({
-      projectName: '',
-      rfaNumber: '',
-      agentNumber: '',
-      projectContainer: '',
-      rfaType: '',
-      regionalTeam: '',
-      ecd: '',
-      nationalAccount: 'Default',
-      complexity: '',
-      rfaValue: '',
-      status: '',
-      products: '',
-      assignedTo: '',
-      repContacts: '',
-      requestedDate: '',
-      submittedDate: '',
-      // Panel Schedule Fields
-      largeLMPs: 0,
-      mediumLMPs: 0,
-      smallLMPs: 0,
-      arp8: 0,
-      arp16: 0,
-      arp32: 0,
-      arp48: 0,
-      esheetsSchedules: 2, // 1 = Yes, 2 = No
-      showPanelSchedules: false,
-      // Layout Fields
-      numOfRooms: 0,
-      overrideRooms: 0,
-      roomMultiplier: 2,
-      reviewSetup: 0.5,
-      numOfPages: 1,
-      specReview: 0,
-      // Submittal Fields
-      numOfSubRooms: 0,
-      overrideSubRooms: 0,
-      riserMultiplier: 1,
-      soo: 0.5,
-      // Photometrics Fields
-      photoSoftware: 'VL',
-      // Triage Results
-      saveLocation: 'Server',
-      isRevision: false,
-      dueDate: '',
-      totalTriage: 0,
-      panelTime: 0,
-      layoutTime: 0,
-      submittalTime: 0,
-      pageBonus: 0,
-      baseTotal: 0,
-      selfQC: 0,
-      fluff: 0,
-      // Additional Fields
-      firstAvailable: false
-    });
+    setFormData(createDefaultFormData());
   };
 
   // Handle project deletion

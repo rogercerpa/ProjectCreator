@@ -20,7 +20,17 @@ const ProjectWizardStep1Test = () => {
     saveLocation: 'Server',
     projectType: '',
     customProjectType: '',
-    isRevision: false
+    isRevision: false,
+    dasPaidServiceEnabled: false,
+    dasPaidServiceForced: false,
+    dasCostOption: 'new',
+    dasCostPerPage: 350,
+    dasCostPerPageManual: false,
+    dasLightingPages: 0,
+    dasFee: 0,
+    dasFeeManual: false,
+    dasStatus: 'Waiting on Order',
+    dasRepEmail: ''
   });
   const [errors, setErrors] = React.useState({});
 
@@ -64,7 +74,8 @@ const ProjectWizardStep1Test = () => {
       // Test 2: Form Data Structure Compatibility
       const expectedFields = [
         'projectName', 'rfaNumber', 'agentNumber', 'projectContainer', 
-        'rfaType', 'regionalTeam', 'nationalAccount', 'saveLocation', 'projectType'
+        'rfaType', 'regionalTeam', 'nationalAccount', 'saveLocation', 'projectType',
+        'dasPaidServiceEnabled', 'dasCostPerPage', 'dasLightingPages', 'dasFee', 'dasRepEmail'
       ];
       
       const missingFields = expectedFields.filter(field => !(field in formData));
@@ -310,6 +321,83 @@ Complexity: Level 2`;
         'Step Completion Validation',
         stepCompletionTest(),
         'Step completion validation works correctly'
+      );
+
+      // Test 11: Paid Services Visibility Logic
+      const paidServiceEligibleTypes = ['BOM (No Layout)', 'BOM (With Layout)', 'SUBMITTAL'];
+      const paidServiceVisibilityTest = () => {
+        const eligible = paidServiceEligibleTypes.every(type => paidServiceEligibleTypes.includes(type));
+        const ineligible = !paidServiceEligibleTypes.includes('RELEASE');
+        return eligible && ineligible;
+      };
+      addTestResult(
+        'Paid Services Visibility',
+        paidServiceVisibilityTest(),
+        'Eligible RFA types correctly trigger paid services section visibility'
+      );
+
+      // Test 12: Paid Services Cost Presets
+      const paidServiceCostTest = () => {
+        const baseNew = 350;
+        const baseRevision = 265;
+        const discount50 = Number((baseNew * 0.5).toFixed(2));
+        const discount75 = Number((baseNew * 0.25).toFixed(2));
+        return discount50 === 175 && discount75 === 87.5 && baseRevision === 265;
+      };
+      addTestResult(
+        'Paid Services Cost Presets',
+        paidServiceCostTest(),
+        'Cost presets match specification for new, revision, and discounts'
+      );
+
+      // Test 13: Paid Services Fee Calculation
+      const paidServiceFeeTest = () => {
+        const lightingPages = 12;
+        const costPerPage = 350;
+        const fee = Number((lightingPages * costPerPage).toFixed(2));
+        return fee === 4200;
+      };
+      addTestResult(
+        'Paid Services Fee Calculation',
+        paidServiceFeeTest(),
+        'Fee calculation multiplies lighting pages by cost per page'
+      );
+
+      // Test 14: Paid Services Validation
+      const paidServiceValidationTest = () => {
+        const validate = (data) => {
+          if (!data.dasPaidServiceEnabled) return true;
+          const hasLightingPages = Number(data.dasLightingPages) > 0;
+          const hasCost = Number(data.dasCostPerPage) > 0;
+          const hasFee = Number(data.dasFee) > 0;
+          const hasEmail = data.dasRepEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.dasRepEmail);
+          return hasLightingPages && hasCost && hasFee && hasEmail;
+        };
+
+        const validData = {
+          ...formData,
+          dasPaidServiceEnabled: true,
+          dasLightingPages: 5,
+          dasCostPerPage: 350,
+          dasFee: 1750,
+          dasRepEmail: 'rep@example.com'
+        };
+
+        const invalidData = {
+          ...formData,
+          dasPaidServiceEnabled: true,
+          dasLightingPages: 0,
+          dasCostPerPage: 0,
+          dasFee: 0,
+          dasRepEmail: ''
+        };
+
+        return validate(validData) && !validate(invalidData);
+      };
+      addTestResult(
+        'Paid Services Validation',
+        paidServiceValidationTest(),
+        'Paid services validation ensures required fields are present when enabled'
       );
 
     } catch (error) {

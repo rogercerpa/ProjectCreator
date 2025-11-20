@@ -38,6 +38,37 @@ const useStepValidation = () => {
           }
           return null;
         },
+        dasCostPerPage: (value, formData) => {
+          if (!formData.dasPaidServiceEnabled) return null;
+          if (!value || Number(value) <= 0) {
+            return 'Cost per page must be greater than 0';
+          }
+          return null;
+        },
+        dasLightingPages: (value, formData) => {
+          if (!formData.dasPaidServiceEnabled) return null;
+          if (!value || Number(value) <= 0) {
+            return 'Lighting pages is required';
+          }
+          return null;
+        },
+        dasFee: (value, formData) => {
+          if (!formData.dasPaidServiceEnabled) return null;
+          if (!value || Number(value) <= 0) {
+            return 'Fee must be greater than 0';
+          }
+          return null;
+        },
+        dasRepEmail: (value, formData) => {
+          if (!formData.dasPaidServiceEnabled) return null;
+          if (!value || value.trim() === '') {
+            return 'Rep email is required';
+          }
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
+            return 'Rep email is invalid';
+          }
+          return null;
+        },
         revision: (value, formData) => {
           // Revision-specific validation
           if (formData.isRevision) {
@@ -101,9 +132,14 @@ const useStepValidation = () => {
   const validateField = useCallback((fieldName, value, stepNumber = 1, allFormData = {}) => {
     const stepRules = validationRules[`step${stepNumber}`] || {};
     const errors = [];
+    const requiredSet = new Set(stepRules.required || []);
+
+    if (stepNumber === 1 && allFormData.dasPaidServiceEnabled) {
+      ['dasCostPerPage', 'dasLightingPages', 'dasFee', 'dasRepEmail'].forEach(field => requiredSet.add(field));
+    }
 
     // Required field validation
-    if (stepRules.required && stepRules.required.includes(fieldName)) {
+    if (requiredSet.has(fieldName)) {
       if (!value || (typeof value === 'string' && value.trim() === '')) {
         errors.push(`${fieldName.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())} is required`);
       }
@@ -133,9 +169,14 @@ const useStepValidation = () => {
     const stepErrors = {};
     let isValid = true;
 
-    // Validate required fields
-    if (stepRules.required) {
-      stepRules.required.forEach(fieldName => {
+    // Validate required fields (including dynamic DAS paid service fields)
+    let requiredFields = stepRules.required || [];
+    if (stepNumber === 1 && formData?.dasPaidServiceEnabled) {
+      requiredFields = [...new Set([...requiredFields, 'dasCostPerPage', 'dasLightingPages', 'dasFee', 'dasRepEmail'])];
+    }
+
+    if (requiredFields.length > 0) {
+      requiredFields.forEach(fieldName => {
         const fieldErrors = validateField(fieldName, formData[fieldName], stepNumber, formData);
         if (fieldErrors.length > 0) {
           stepErrors[fieldName] = fieldErrors;

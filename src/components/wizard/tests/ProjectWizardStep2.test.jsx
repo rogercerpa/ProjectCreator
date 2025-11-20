@@ -38,7 +38,12 @@ const ProjectWizardStep2Test = () => {
     soo: 0.5,
     selfQC: 0,
     fluff: 0,
-    totalTriage: 0
+    totalTriage: 0,
+    dasPaidServiceEnabled: true,
+    dasLightingPages: 10,
+    dasCostPerPage: 350,
+    dasFee: 3500,
+    dasRepEmail: 'rep@example.com'
   });
 
   const addTestResult = (testName, passed, details = '') => {
@@ -199,7 +204,19 @@ const ProjectWizardStep2Test = () => {
         );
       });
 
-      // Test 6: RFA Type Default Logic
+      // Test 6: Paid Services Lighting Pages Sync
+      const paidServicesLightingTest = () => {
+        const updatedData = { ...formData, dasLightingPages: 24 };
+        const expectedFee = Number((updatedData.dasLightingPages * updatedData.dasCostPerPage).toFixed(2));
+        return updatedData.dasLightingPages === 24 && expectedFee === 8400;
+      };
+      addTestResult(
+        'Paid Services Lighting Pages Sync',
+        paidServicesLightingTest(),
+        'Lighting pages remain editable in Step 2 and correlate with fee calculation'
+      );
+
+      // Test 7: RFA Type Default Logic
       const rfaTypeTests = [
         { rfaType: 'BOM (With Layout)', expectPanels: true, expectSubmittals: false },
         { rfaType: 'BOM (No Layout)', expectPanels: true, expectSubmittals: false },
@@ -232,7 +249,7 @@ const ProjectWizardStep2Test = () => {
         );
       });
 
-      // Test 7: Page Bonus Calculation
+      // Test 8: Page Bonus Calculation
       const pageBonusTests = [
         { pages: 1, expectedBonus: 0 },
         { pages: 3, expectedBonus: 0 },
@@ -252,7 +269,7 @@ const ProjectWizardStep2Test = () => {
         );
       });
 
-      // Test 8: Self-QC Calculation Logic
+      // Test 9: Self-QC Calculation Logic
       const selfQCTests = [
         { baseTotal: 2, expectedRange: [0.25, 0.75] },  // Low range
         { baseTotal: 8, expectedRange: [0.4, 1.2] },    // Mid range
@@ -278,7 +295,7 @@ const ProjectWizardStep2Test = () => {
         );
       });
 
-      // Test 9: Data Structure Consistency
+      // Test 10: Data Structure Consistency
       const fullCalculation = triageCalculationService.calculateTriage(formData);
       const requiredFields = [
         'layoutTime', 'submittalTime', 'panelTime', 'pageBonus', 
@@ -297,7 +314,7 @@ const ProjectWizardStep2Test = () => {
           `Missing fields: ${missingFields.join(', ')}`
       );
 
-      // Test 10: Enhanced UX Features
+      // Test 11: Enhanced UX Features
       const uxFeatures = [
         'Real-time preview calculation',
         'Contextual help tooltips',

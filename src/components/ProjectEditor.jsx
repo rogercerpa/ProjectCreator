@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import dropdownOptionsService from '../services/DropdownOptionsService';
 import triageCalculationService from '../services/TriageCalculationService';
 import EditableProductTags from './EditableProductTags';
+import DASPaidServicesSection from './shared/DASPaidServicesSection';
+import { openPaidServicesEmail } from '../utils/emailTemplates';
 
 /**
  * ProjectEditor - Edit mode for project information
@@ -20,6 +22,18 @@ const ProjectEditor = ({
   const [triageResults, setTriageResults] = useState(null);
   const [isCalculatingTriage, setIsCalculatingTriage] = useState(false);
   const [errors, setErrors] = useState({});
+  const handleDasPaidServicesChange = (updatedData) => {
+    setFormData(updatedData);
+    onProjectDataChange(updatedData);
+  };
+  const handlePaidServicesEmail = () => {
+    const result = openPaidServicesEmail(formData);
+    if (result.success) {
+      window.alert('Outlook email drafted with paid services details.');
+    } else if (result.missingFields?.length) {
+      window.alert(`Add ${result.missingFields.join(', ')} to draft the email.`);
+    }
+  };
 
   // Load dropdown options
   useEffect(() => {
@@ -152,6 +166,23 @@ const ProjectEditor = ({
         newErrors[field] = 'This field is required';
       }
     });
+
+    if (formData.dasPaidServiceEnabled) {
+      if (!formData.dasCostPerPage || Number(formData.dasCostPerPage) <= 0) {
+        newErrors.dasCostPerPage = 'Cost per page must be greater than 0';
+      }
+      if (!formData.dasLightingPages || Number(formData.dasLightingPages) <= 0) {
+        newErrors.dasLightingPages = 'Lighting pages is required';
+      }
+      if (!formData.dasFee || Number(formData.dasFee) <= 0) {
+        newErrors.dasFee = 'Fee must be greater than 0';
+      }
+      if (!formData.dasRepEmail || formData.dasRepEmail.trim() === '') {
+        newErrors.dasRepEmail = 'Rep email is required';
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.dasRepEmail.trim())) {
+        newErrors.dasRepEmail = 'Rep email is invalid';
+      }
+    }
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -432,6 +463,18 @@ const ProjectEditor = ({
               />
             </div>
           </div>
+        </div>
+
+        {/* DAS Paid Services */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg mb-6 p-6 shadow-md md:p-4 md:mb-4 sm:p-3">
+          <h3 className="form-section-header">💡 DAS Paid Services</h3>
+          <DASPaidServicesSection
+            formData={formData}
+            onChange={handleDasPaidServicesChange}
+            errors={errors}
+            showEmailButton
+            onRequestEmail={handlePaidServicesEmail}
+          />
         </div>
 
         {/* Triage Configuration */}

@@ -6,6 +6,8 @@ import dropdownOptionsService from '../../../services/DropdownOptionsService';
 import triageCalculationService from '../../../services/TriageCalculationService';
 import EditableProductTags from '../../EditableProductTags';
 import { parseAgileDate, getUserTimezone, formatDateTimeLocal } from '../../../utils/dateUtils';
+import { openPaidServicesEmail } from '../../../utils/emailTemplates';
+import DASPaidServicesSection from '../../shared/DASPaidServicesSection';
 
 /**
  * ProjectWizardStep1 - Basic Project Information
@@ -113,6 +115,45 @@ const ProjectWizardStep1 = ({
            isValidProjectContainer(projectContainer) &&
            rfaNumber &&
            rfaNumber.length > 2;
+  };
+
+  const paidServiceEligibleTypes = ['BOM (No Layout)', 'BOM (With Layout)', 'SUBMITTAL'];
+  const shouldAutoShowPaidServices = paidServiceEligibleTypes.includes(formData.rfaType);
+  const shouldRenderPaidServices = shouldAutoShowPaidServices || formData.dasPaidServiceForced || formData.dasPaidServiceEnabled;
+
+  const handlePaidServicesForceToggle = (checked) => {
+    if (!onFormDataChange) return;
+    const updates = {
+      dasPaidServiceForced: checked
+    };
+
+    if (checked) {
+      updates.dasPaidServiceEnabled = true;
+    } else if (!shouldAutoShowPaidServices) {
+      updates.dasPaidServiceEnabled = false;
+    }
+
+    onFormDataChange({
+      ...formData,
+      ...updates
+    });
+  };
+
+  const handlePaidServicesEmailDraft = () => {
+    const result = openPaidServicesEmail(formData);
+    if (result.success) {
+      setToast({
+        show: true,
+        message: 'Outlook email draft prepared with paid services details.',
+        type: 'success'
+      });
+    } else if (result.missingFields?.length) {
+      setToast({
+        show: true,
+        message: `Add ${result.missingFields.join(', ')} before drafting the email.`,
+        type: 'error'
+      });
+    }
   };
 
   // CLEAN: "-0 version only" duplicate check for manual entry
@@ -1295,6 +1336,18 @@ const ProjectWizardStep1 = ({
         return value && value !== '';
       case 'regionalTeam':
         return value && value !== '';
+      case 'dasCostPerPage':
+        if (!allFormData.dasPaidServiceEnabled) return true;
+        return Number(value) > 0;
+      case 'dasLightingPages':
+        if (!allFormData.dasPaidServiceEnabled) return true;
+        return Number(value) > 0;
+      case 'dasFee':
+        if (!allFormData.dasPaidServiceEnabled) return true;
+        return Number(value) > 0;
+      case 'dasRepEmail':
+        if (!allFormData.dasPaidServiceEnabled) return true;
+        return value && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
       default:
         return true; // Non-required fields are always valid
     }
@@ -1399,15 +1452,29 @@ const ProjectWizardStep1 = ({
 
   // Progress calculation for validation feedback
   const getValidationProgress = () => {
-    const requiredFields = ['projectName', 'rfaNumber', 'agentNumber', 'projectContainer', 'rfaType', 'regionalTeam'];
-    const validRequiredFields = requiredFields.filter(field => 
-      formData[field] && formData[field].trim() !== '' && validateField(field, formData[field])
-    );
+    const baseRequiredFields = ['projectName', 'rfaNumber', 'agentNumber', 'projectContainer', 'rfaType', 'regionalTeam'];
+    const paidServiceFields = formData.dasPaidServiceEnabled
+      ? ['dasCostPerPage', 'dasLightingPages', 'dasFee', 'dasRepEmail']
+      : [];
+    const requiredFields = [...baseRequiredFields, ...paidServiceFields];
+
+    const hasValue = (value) => {
+      if (value === null || value === undefined) return false;
+      if (typeof value === 'string') {
+        return value.trim() !== '';
+      }
+      return true;
+    };
+
+    const validRequiredFields = requiredFields.filter((field) => {
+      const value = formData[field];
+      return hasValue(value) && validateField(field, value);
+    });
     
     return {
       valid: validRequiredFields.length,
       total: requiredFields.length,
-      percentage: Math.round((validRequiredFields.length / requiredFields.length) * 100),
+      percentage: requiredFields.length === 0 ? 100 : Math.round((validRequiredFields.length / requiredFields.length) * 100),
       complete: validRequiredFields.length === requiredFields.length
     };
   };
@@ -2135,6 +2202,39 @@ const ProjectWizardStep1 = ({
               <small className="field-hint">Due date in your local timezone ({getUserTimezone().abbreviation})</small>
             </div>
           </div>
+        </div>
+
+        <div className="mt-10 space-y-4">
+          {!shouldAutoShowPaidServices && (
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-4 bg-gray-50 dark:bg-gray-900 border border-dashed border-gray-300 dark:border-gray-700 rounded-lg">
+              <div>
+                <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">Add DAS Paid Services?</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  Enable this section if the request needs paid lighting pages even when RFA type does not auto-require it.
+                </p>
+              </div>
+              <label className="inline-flex items-center gap-2 text-sm text-gray-800 dark:text-gray-100">
+                <input
+                  type="checkbox"
+                  className="form-checkbox h-4 w-4 text-primary-600"
+                  checked={formData.dasPaidServiceForced || formData.dasPaidServiceEnabled}
+                  onChange={(e) => handlePaidServicesForceToggle(e.target.checked)}
+                />
+                Show paid services section
+              </label>
+            </div>
+          )}
+
+          {shouldRenderPaidServices && (
+            <DASPaidServicesSection
+              formData={formData}
+              onChange={onFormDataChange}
+              errors={errors}
+              showEmailButton
+              onRequestEmail={handlePaidServicesEmailDraft}
+              highlight={!shouldAutoShowPaidServices}
+            />
+          )}
         </div>
 
         {/* Advanced Fields Toggle */}

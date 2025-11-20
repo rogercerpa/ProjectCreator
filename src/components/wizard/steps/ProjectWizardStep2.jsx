@@ -437,6 +437,36 @@ const ProjectWizardStep2 = ({
           </div>
         </div>
 
+        {formData.dasPaidServiceEnabled && (
+          <div className="mt-4 p-4 bg-gradient-to-r from-primary-50 to-blue-50 dark:from-primary-900/20 dark:to-blue-900/20 border border-primary-200 dark:border-primary-800 rounded-lg flex flex-col gap-2">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">Lighting Pages (Paid Services)</p>
+                <p className="text-xs text-gray-600 dark:text-gray-300">
+                  Keep this in sync with the DAS paid services fee calculation.
+                </p>
+              </div>
+              <span className="text-sm font-semibold text-primary-700 dark:text-primary-300">
+                {formData.dasLightingPages || 0} pages × {formData.dasCostPerPage || 0} = {formData.dasFee || 0}
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <label className="text-xs uppercase tracking-wide text-gray-600 dark:text-gray-300">
+                Lighting pages
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                name="dasLightingPages"
+                value={formData.dasLightingPages || 0}
+                onChange={handleInputChange}
+                className="input w-32"
+              />
+            </div>
+          </div>
+        )}
+
         {/* DIRECT COPY: Dynamic Triage Fields from ProjectForm.jsx lines 916-1201 */}
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
           <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-3">Triage Calculation Fields</h4>

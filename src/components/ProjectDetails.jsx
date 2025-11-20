@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import TriageCalculatorModal from './TriageCalculatorModal';
 import NotificationToast from './NotificationToast';
+import { openPaidServicesEmail } from '../utils/emailTemplates';
 
 /**
  * ProjectDetails - Read-only display of project information
@@ -10,6 +11,12 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [notification, setNotification] = useState(null);
   const [showTriageModal, setShowTriageModal] = useState(false);
+  const hasPaidServices = !!project?.dasPaidServiceEnabled;
+  const canSendPaidServiceEmail = hasPaidServices &&
+    project?.dasRepEmail &&
+    project?.dasCostPerPage &&
+    project?.dasLightingPages &&
+    project?.dasFee;
 
   // Debug: Log whenever ProjectDetails receives new props
   useEffect(() => {
@@ -53,6 +60,15 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
       style: 'currency',
       currency: 'USD'
     }).format(value);
+  };
+
+  const handlePaidServicesEmail = () => {
+    const result = openPaidServicesEmail(project);
+    if (result.success) {
+      showToast('Outlook email drafted with paid services details.');
+    } else if (result.missingFields?.length) {
+      showToast(`Add ${result.missingFields.join(', ')} to draft the email.`, 'error');
+    }
   };
 
   // Helper function to map frontend project data to backend expected format
@@ -378,6 +394,78 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
             <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.firstAvailable ? 'Yes' : 'No'}</span>
           </div>
         </div>
+      </div>
+
+      {/* DAS Paid Services */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-6 shadow-md">
+        <div className="flex items-center justify-between mb-5 pb-4 border-b-2 border-gray-100 dark:border-gray-700">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">💡 DAS Paid Services</h2>
+          {hasPaidServices ? (
+            <span
+              className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                project.dasStatus === 'Paid'
+                  ? 'bg-success-100 text-success-700 dark:bg-success-900/30 dark:text-success-300'
+                  : project.dasStatus === 'Cancelled'
+                    ? 'bg-error-100 text-error-700 dark:bg-error-900/30 dark:text-error-300'
+                    : 'bg-warning-100 text-warning-700 dark:bg-warning-900/30 dark:text-warning-300'
+              }`}
+            >
+              {project.dasStatus || 'Waiting on Order'}
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={onEdit}
+              className="btn btn-outline btn-sm"
+            >
+              Enable Paid Services
+            </button>
+          )}
+        </div>
+
+        {hasPaidServices ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-1 gap-4">
+              <div className="flex flex-col gap-1 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Lighting Pages</span>
+                <span className="text-lg font-bold text-gray-900 dark:text-white">{project.dasLightingPages || 0}</span>
+              </div>
+              <div className="flex flex-col gap-1 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Cost per Page</span>
+                <span className="text-lg font-bold text-gray-900 dark:text-white">{formatCurrency(project.dasCostPerPage)}</span>
+              </div>
+              <div className="flex flex-col gap-1 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Fee</span>
+                <span className="text-lg font-bold text-primary-700 dark:text-primary-300">{formatCurrency(project.dasFee)}</span>
+              </div>
+              <div className="flex flex-col gap-1 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Rep Email</span>
+                <span className="text-sm font-medium text-gray-900 dark:text-white">{project.dasRepEmail || 'Not set'}</span>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-3 justify-end">
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={!canSendPaidServiceEmail}
+                onClick={handlePaidServicesEmail}
+              >
+                Draft Outlook Email
+              </button>
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={onEdit}
+              >
+                ✏️ Edit Paid Services
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-gray-600 dark:text-gray-300">
+            Paid services are not enabled for this project. Click &quot;Edit&quot; to add lighting pages, cost per page, and fee details.
+          </p>
+        )}
       </div>
 
       {/* Dates */}
