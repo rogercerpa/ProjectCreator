@@ -52,7 +52,7 @@ class ErrorBoundary extends React.Component {
           height: '100vh',
           color: 'white',
           textAlign: 'center',
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          background: 'var(--brand-gradient)',
           fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
           padding: '2rem'
         }}>
@@ -100,7 +100,7 @@ function LoadingFallback() {
       height: '100vh',
       color: 'white',
       textAlign: 'center',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      background: 'var(--brand-gradient)',
       fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
     }}>
       <h1>Project Creator</h1>
@@ -165,7 +165,7 @@ if (container) {
         height: 100vh;
         color: white;
         text-align: center;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: var(--brand-gradient);
         padding: 2rem;
       ">
         <h1>❌ Fatal Error</h1>
@@ -199,7 +199,7 @@ if (container) {
       height: 100vh;
       color: white;
       text-align: center;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: var(--brand-gradient);
     ">
       <h1>❌ Critical Error</h1>
       <p>Root container element not found</p>

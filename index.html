@@ -20,6 +20,10 @@
     </script>
     
     <style>
+        :root {
+            --brand-gradient: linear-gradient(135deg, #007239 0%, #0099D8 100%);
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -28,7 +32,7 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--brand-gradient);
             height: 100vh;
             overflow: hidden;
         }

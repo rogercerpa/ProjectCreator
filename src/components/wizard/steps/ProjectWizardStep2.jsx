@@ -50,7 +50,7 @@ const AnimatedCounter = ({ value, duration = 1000 }) => {
 const Confetti = ({ active }) => {
   if (!active) return null;
 
-  const colors = ['#007bff', '#28a745', '#ffc107', '#dc3545', '#17a2b8', '#6f42c1'];
+  const colors = ['#007239', '#004d32', '#409f68', '#0099d8', '#000000', '#485865'];
   const confettiPieces = Array.from({ length: 50 }, (_, i) => ({
     id: i,
     left: Math.random() * 100,

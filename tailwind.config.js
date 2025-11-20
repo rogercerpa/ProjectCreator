@@ -8,30 +8,30 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Primary brand colors from existing design
+        // Primary brand colors (Acuity green/black/slate)
         primary: {
-          50: '#f5f7ff',
-          100: '#ebf0ff',
-          200: '#d6e0ff',
-          300: '#b8c9ff',
-          400: '#93a8ff',
-          500: '#667eea', // Main primary color
-          600: '#5a67d8',
-          700: '#4c51bf',
-          800: '#434190',
-          900: '#3c366b',
+          50: '#f0f5f2',
+          100: '#d9e7de',
+          200: '#bfd6c8',
+          300: '#91b69f',
+          400: '#485865', // Slate accent
+          500: '#007239', // Core brand green
+          600: '#005a2d',
+          700: '#003d1f',
+          800: '#002414',
+          900: '#000000', // Deep anchoring tone
         },
         secondary: {
-          50: '#faf5ff',
-          100: '#f3e8ff',
-          200: '#e9d5ff',
-          300: '#d8b4fe',
-          400: '#c084fc',
-          500: '#764ba2', // Main secondary color
-          600: '#6b46c1',
-          700: '#5a3a9a',
-          800: '#4c3273',
-          900: '#3f2a5f',
+          50: '#e6f5fa',
+          100: '#c2eaf2',
+          200: '#8fd8e7',
+          300: '#0099d8', // Vibrant accent blue
+          400: '#31b4cc',
+          500: '#409f68', // Supporting green
+          600: '#2f8052',
+          700: '#004d32', // Deep secondary
+          800: '#003726',
+          900: '#002217',
         },
         // Semantic colors
         success: {
