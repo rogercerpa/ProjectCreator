@@ -52,7 +52,7 @@ class WorkloadExcelService {
   }
 
   /**
-   * Export projects to Excel
+   * Export projects to Excel (incremental update)
    */
   async exportProjectsToExcel(projects, filePath, fieldMapping) {
     try {
@@ -67,23 +67,61 @@ class WorkloadExcelService {
       // Read workbook
       const workbook = XLSX.readFile(filePath);
       const sheetName = 'Projects';
-
-      // Map projects to Excel rows
       const projectMapping = fieldMapping.projects;
       const headers = this.fieldMappingService.getExcelHeaders(projectMapping);
-      const rows = [headers];
+      const idColumn = 'ProjectID'; // Excel column name for ID
 
+      // Read existing Excel data and create map by ID
+      let existingRowsMap = new Map();
+      let preservedRows = [];
+      
+      if (workbook.Sheets[sheetName]) {
+        const existingData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+        existingData.forEach((row) => {
+          const id = row[idColumn];
+          if (id) {
+            // Convert Excel row object to array format
+            const rowArray = headers.map(header => row[header] || '');
+            existingRowsMap.set(String(id), rowArray);
+          }
+        });
+      }
+
+      // Build rows array starting with headers
+      const rows = [headers];
+      let updatedCount = 0;
+      let addedCount = 0;
+
+      // Process each project from app
       for (const project of projects) {
         const row = this.fieldMappingService.mapObjectToExcelRow(project, projectMapping);
         const rowArray = headers.map(header => row[header] || '');
-        rows.push(rowArray);
+        const projectId = String(row[idColumn] || '');
+
+        if (existingRowsMap.has(projectId)) {
+          // Update existing row - replace in map
+          existingRowsMap.set(projectId, rowArray);
+          updatedCount++;
+        } else {
+          // Add new row
+          rows.push(rowArray);
+          addedCount++;
+        }
       }
 
-      // Create worksheet
+      // Add all rows from map (both updated and preserved)
+      const allRows = Array.from(existingRowsMap.values());
+      rows.push(...allRows);
+      
+      const preservedCount = allRows.length - updatedCount;
+
+      // Create worksheet with merged data
       const worksheet = XLSX.utils.aoa_to_sheet(rows);
 
       // Replace existing sheet
-      if (workbook.Sheets[sheetName]) {
+      const sheetIndex = workbook.SheetNames.indexOf(sheetName);
+      if (sheetIndex !== -1) {
+        workbook.SheetNames.splice(sheetIndex, 1);
         delete workbook.Sheets[sheetName];
       }
       XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
@@ -94,7 +132,10 @@ class WorkloadExcelService {
       return {
         success: true,
         exported: projects.length,
-        message: `Exported ${projects.length} projects to Excel`
+        added: addedCount,
+        updated: updatedCount,
+        preserved: preservedCount,
+        message: `Exported ${projects.length} projects: ${addedCount} added, ${updatedCount} updated, ${preservedCount} preserved from Excel`
       };
     } catch (error) {
       console.error('Error exporting projects to Excel:', error);
@@ -106,7 +147,7 @@ class WorkloadExcelService {
   }
 
   /**
-   * Export assignments to Excel
+   * Export assignments to Excel (incremental update)
    */
   async exportAssignmentsToExcel(assignments, filePath, fieldMapping) {
     try {
@@ -121,23 +162,60 @@ class WorkloadExcelService {
       // Read workbook
       const workbook = XLSX.readFile(filePath);
       const sheetName = 'Assignments';
-
-      // Map assignments to Excel rows
       const assignmentMapping = fieldMapping.assignments;
       const headers = this.fieldMappingService.getExcelHeaders(assignmentMapping);
-      const rows = [headers];
+      const idColumn = 'AssignmentID'; // Excel column name for ID
 
+      // Read existing Excel data and create map by ID
+      let existingRowsMap = new Map();
+      
+      if (workbook.Sheets[sheetName]) {
+        const existingData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+        existingData.forEach((row) => {
+          const id = row[idColumn];
+          if (id) {
+            // Convert Excel row object to array format
+            const rowArray = headers.map(header => row[header] || '');
+            existingRowsMap.set(String(id), rowArray);
+          }
+        });
+      }
+
+      // Build rows array starting with headers
+      const rows = [headers];
+      let updatedCount = 0;
+      let addedCount = 0;
+
+      // Process each assignment from app
       for (const assignment of assignments) {
         const row = this.fieldMappingService.mapObjectToExcelRow(assignment, assignmentMapping);
         const rowArray = headers.map(header => row[header] || '');
-        rows.push(rowArray);
+        const assignmentId = String(row[idColumn] || '');
+
+        if (existingRowsMap.has(assignmentId)) {
+          // Update existing row - replace in map
+          existingRowsMap.set(assignmentId, rowArray);
+          updatedCount++;
+        } else {
+          // Add new row
+          rows.push(rowArray);
+          addedCount++;
+        }
       }
 
-      // Create worksheet
+      // Add all rows from map (both updated and preserved)
+      const allRows = Array.from(existingRowsMap.values());
+      rows.push(...allRows);
+      
+      const preservedCount = allRows.length - updatedCount;
+
+      // Create worksheet with merged data
       const worksheet = XLSX.utils.aoa_to_sheet(rows);
 
       // Replace existing sheet
-      if (workbook.Sheets[sheetName]) {
+      const sheetIndex = workbook.SheetNames.indexOf(sheetName);
+      if (sheetIndex !== -1) {
+        workbook.SheetNames.splice(sheetIndex, 1);
         delete workbook.Sheets[sheetName];
       }
       XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
@@ -148,7 +226,10 @@ class WorkloadExcelService {
       return {
         success: true,
         exported: assignments.length,
-        message: `Exported ${assignments.length} assignments to Excel`
+        added: addedCount,
+        updated: updatedCount,
+        preserved: preservedCount,
+        message: `Exported ${assignments.length} assignments: ${addedCount} added, ${updatedCount} updated, ${preservedCount} preserved from Excel`
       };
     } catch (error) {
       console.error('Error exporting assignments to Excel:', error);
@@ -160,7 +241,7 @@ class WorkloadExcelService {
   }
 
   /**
-   * Export users to Excel
+   * Export users to Excel (incremental update)
    */
   async exportUsersToExcel(users, filePath, fieldMapping) {
     try {
@@ -175,23 +256,60 @@ class WorkloadExcelService {
       // Read workbook
       const workbook = XLSX.readFile(filePath);
       const sheetName = 'Users';
-
-      // Map users to Excel rows
       const userMapping = fieldMapping.users;
       const headers = this.fieldMappingService.getExcelHeaders(userMapping);
-      const rows = [headers];
+      const idColumn = 'UserID'; // Excel column name for ID
 
+      // Read existing Excel data and create map by ID
+      let existingRowsMap = new Map();
+      
+      if (workbook.Sheets[sheetName]) {
+        const existingData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+        existingData.forEach((row) => {
+          const id = row[idColumn];
+          if (id) {
+            // Convert Excel row object to array format
+            const rowArray = headers.map(header => row[header] || '');
+            existingRowsMap.set(String(id), rowArray);
+          }
+        });
+      }
+
+      // Build rows array starting with headers
+      const rows = [headers];
+      let updatedCount = 0;
+      let addedCount = 0;
+
+      // Process each user from app
       for (const user of users) {
         const row = this.fieldMappingService.mapObjectToExcelRow(user, userMapping);
         const rowArray = headers.map(header => row[header] || '');
-        rows.push(rowArray);
+        const userId = String(row[idColumn] || '');
+
+        if (existingRowsMap.has(userId)) {
+          // Update existing row - replace in map
+          existingRowsMap.set(userId, rowArray);
+          updatedCount++;
+        } else {
+          // Add new row
+          rows.push(rowArray);
+          addedCount++;
+        }
       }
 
-      // Create worksheet
+      // Add all rows from map (both updated and preserved)
+      const allRows = Array.from(existingRowsMap.values());
+      rows.push(...allRows);
+      
+      const preservedCount = allRows.length - updatedCount;
+
+      // Create worksheet with merged data
       const worksheet = XLSX.utils.aoa_to_sheet(rows);
 
       // Replace existing sheet
-      if (workbook.Sheets[sheetName]) {
+      const sheetIndex = workbook.SheetNames.indexOf(sheetName);
+      if (sheetIndex !== -1) {
+        workbook.SheetNames.splice(sheetIndex, 1);
         delete workbook.Sheets[sheetName];
       }
       XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
@@ -202,7 +320,10 @@ class WorkloadExcelService {
       return {
         success: true,
         exported: users.length,
-        message: `Exported ${users.length} users to Excel`
+        added: addedCount,
+        updated: updatedCount,
+        preserved: preservedCount,
+        message: `Exported ${users.length} users: ${addedCount} added, ${updatedCount} updated, ${preservedCount} preserved from Excel`
       };
     } catch (error) {
       console.error('Error exporting users to Excel:', error);

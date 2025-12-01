@@ -2007,26 +2007,35 @@ ipcMain.handle('workload-excel:test-file-path', async (event, filePath) => {
 
 ipcMain.handle('workload-excel:browse-file', async () => {
   try {
-    const result = await dialog.showOpenDialog(mainWindow, {
-      title: 'Select Excel Workload File',
+    // Use save dialog to allow creating a new file
+    const result = await dialog.showSaveDialog(mainWindow, {
+      title: 'Select or Create Excel Workload File',
       filters: [
-        { name: 'Excel Files', extensions: ['xlsx', 'xls'] },
+        { name: 'Excel Files', extensions: ['xlsx'] },
         { name: 'All Files', extensions: ['*'] }
       ],
-      properties: ['openFile']
+      defaultPath: 'ProjectWorkload.xlsx'
     });
     
-    if (result.canceled || result.filePaths.length === 0) {
-      return { success: false, error: 'No file selected' };
+    if (result.canceled || !result.filePath) {
+      return { success: false, error: 'No file selected', canceled: true };
     }
     
-    const filePath = result.filePaths[0];
-    const testResult = await workloadExcelService.testFilePath(filePath);
+    const filePath = result.filePath;
     
-    if (testResult.success) {
-      return { success: true, filePath };
-    } else {
-      return { success: false, error: testResult.error };
+    // If file doesn't exist, that's okay - we'll create it with the template
+    // Just check if the directory is accessible
+    const path = require('path');
+    const fs = require('fs-extra');
+    const dir = path.dirname(filePath);
+    
+    try {
+      await fs.ensureDir(dir);
+      // Check if we can write to the directory
+      await fs.access(dir, fs.constants.W_OK);
+      return { success: true, filePath, isNew: !await fs.pathExists(filePath) };
+    } catch (error) {
+      return { success: false, error: `Cannot access directory: ${error.message}` };
     }
   } catch (error) {
     console.error('Error browsing for Excel file:', error);

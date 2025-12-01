@@ -1627,23 +1627,27 @@ ipcMain.handle("workload-excel:test-file-path", async (event, filePath) => {
 });
 ipcMain.handle("workload-excel:browse-file", async () => {
   try {
-    const result = await dialog.showOpenDialog(mainWindow, {
-      title: "Select Excel Workload File",
+    const result = await dialog.showSaveDialog(mainWindow, {
+      title: "Select or Create Excel Workload File",
       filters: [
-        { name: "Excel Files", extensions: ["xlsx", "xls"] },
+        { name: "Excel Files", extensions: ["xlsx"] },
         { name: "All Files", extensions: ["*"] }
       ],
-      properties: ["openFile"]
+      defaultPath: "ProjectWorkload.xlsx"
     });
-    if (result.canceled || result.filePaths.length === 0) {
-      return { success: false, error: "No file selected" };
+    if (result.canceled || !result.filePath) {
+      return { success: false, error: "No file selected", canceled: true };
     }
-    const filePath = result.filePaths[0];
-    const testResult = await workloadExcelService.testFilePath(filePath);
-    if (testResult.success) {
-      return { success: true, filePath };
-    } else {
-      return { success: false, error: testResult.error };
+    const filePath = result.filePath;
+    const path2 = require("path");
+    const fs2 = require("fs-extra");
+    const dir = path2.dirname(filePath);
+    try {
+      await fs2.ensureDir(dir);
+      await fs2.access(dir, fs2.constants.W_OK);
+      return { success: true, filePath, isNew: !await fs2.pathExists(filePath) };
+    } catch (error) {
+      return { success: false, error: `Cannot access directory: ${error.message}` };
     }
   } catch (error) {
     console.error("Error browsing for Excel file:", error);
