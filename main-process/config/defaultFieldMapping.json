@@ -1,0 +1,394 @@
+{
+  "projects": {
+    "ProjectID": {
+      "appField": "id",
+      "enabled": true,
+      "required": true,
+      "dataType": "string",
+      "description": "Unique project identifier"
+    },
+    "ProjectNumber": {
+      "appField": "number",
+      "enabled": true,
+      "required": true,
+      "dataType": "string",
+      "description": "Project number"
+    },
+    "ProjectName": {
+      "appField": "name",
+      "enabled": true,
+      "required": true,
+      "dataType": "string",
+      "description": "Project name"
+    },
+    "RFANumber": {
+      "appField": "rfaNumber",
+      "enabled": true,
+      "required": false,
+      "dataType": "string",
+      "description": "RFA number"
+    },
+    "ProjectContainer": {
+      "appField": "container",
+      "enabled": true,
+      "required": false,
+      "dataType": "string",
+      "description": "Project container/folder"
+    },
+    "ClientName": {
+      "appField": "client",
+      "enabled": true,
+      "required": false,
+      "dataType": "string",
+      "description": "Client name"
+    },
+    "ProjectType": {
+      "appField": "type",
+      "enabled": true,
+      "required": false,
+      "dataType": "string",
+      "description": "Type of project"
+    },
+    "Status": {
+      "appField": "status",
+      "enabled": true,
+      "required": true,
+      "dataType": "string",
+      "description": "Current project status"
+    },
+    "CreatedDate": {
+      "appField": "createdDate",
+      "enabled": true,
+      "required": false,
+      "dataType": "date",
+      "description": "Date project was created"
+    },
+    "DueDate": {
+      "appField": "dueDate",
+      "enabled": true,
+      "required": false,
+      "dataType": "date",
+      "description": "Project due date"
+    },
+    "AssignedTo": {
+      "appField": "assignedTo",
+      "enabled": true,
+      "required": false,
+      "dataType": "string",
+      "description": "Person assigned to project"
+    },
+    "Priority": {
+      "appField": "priority",
+      "enabled": true,
+      "required": false,
+      "dataType": "string",
+      "description": "Project priority level"
+    },
+    "FolderPath": {
+      "appField": "folderPath",
+      "enabled": true,
+      "required": false,
+      "dataType": "string",
+      "description": "Path to project folder"
+    },
+    "LastUpdated": {
+      "appField": "lastModified",
+      "enabled": true,
+      "required": false,
+      "dataType": "date",
+      "description": "Last update timestamp"
+    }
+  },
+  "assignments": {
+    "AssignmentID": {
+      "appField": "id",
+      "enabled": true,
+      "required": true,
+      "dataType": "string",
+      "description": "Unique assignment identifier"
+    },
+    "ProjectID": {
+      "appField": "projectId",
+      "enabled": true,
+      "required": true,
+      "dataType": "string",
+      "description": "Associated project ID"
+    },
+    "ProjectNumber": {
+      "appField": "projectNumber",
+      "enabled": true,
+      "required": false,
+      "dataType": "string",
+      "description": "Associated project number"
+    },
+    "ProjectName": {
+      "appField": "projectName",
+      "enabled": true,
+      "required": false,
+      "dataType": "string",
+      "description": "Associated project name"
+    },
+    "RFANumber": {
+      "appField": "rfaNumber",
+      "enabled": true,
+      "required": false,
+      "dataType": "string",
+      "description": "Associated RFA number"
+    },
+    "UserID": {
+      "appField": "userId",
+      "enabled": true,
+      "required": true,
+      "dataType": "string",
+      "description": "Assigned user ID"
+    },
+    "UserName": {
+      "appField": "userName",
+      "enabled": true,
+      "required": false,
+      "dataType": "string",
+      "description": "Assigned user name"
+    },
+    "UserEmail": {
+      "appField": "userEmail",
+      "enabled": true,
+      "required": false,
+      "dataType": "string",
+      "description": "Assigned user email"
+    },
+    "StartDate": {
+      "appField": "startDate",
+      "enabled": true,
+      "required": false,
+      "dataType": "date",
+      "description": "Assignment start date"
+    },
+    "DueDate": {
+      "appField": "dueDate",
+      "enabled": true,
+      "required": false,
+      "dataType": "date",
+      "description": "Assignment due date"
+    },
+    "HoursAllocated": {
+      "appField": "hoursAllocated",
+      "enabled": true,
+      "required": false,
+      "dataType": "number",
+      "description": "Hours allocated for assignment"
+    },
+    "HoursWorked": {
+      "appField": "hoursWorked",
+      "enabled": true,
+      "required": false,
+      "dataType": "number",
+      "description": "Hours worked on assignment"
+    },
+    "HoursRemaining": {
+      "appField": "hoursRemaining",
+      "enabled": true,
+      "required": false,
+      "dataType": "number",
+      "description": "Hours remaining"
+    },
+    "Status": {
+      "appField": "status",
+      "enabled": true,
+      "required": true,
+      "dataType": "string",
+      "description": "Assignment status"
+    },
+    "Priority": {
+      "appField": "priority",
+      "enabled": true,
+      "required": false,
+      "dataType": "string",
+      "description": "Assignment priority"
+    },
+    "Notes": {
+      "appField": "notes",
+      "enabled": true,
+      "required": false,
+      "dataType": "string",
+      "description": "Assignment notes"
+    },
+    "LastUpdated": {
+      "appField": "lastModified",
+      "enabled": true,
+      "required": false,
+      "dataType": "date",
+      "description": "Last update timestamp"
+    },
+    "CompletedDate": {
+      "appField": "completedDate",
+      "enabled": true,
+      "required": false,
+      "dataType": "date",
+      "description": "Date assignment was completed"
+    }
+  },
+  "users": {
+    "UserID": {
+      "appField": "id",
+      "enabled": true,
+      "required": true,
+      "dataType": "string",
+      "description": "Unique user identifier"
+    },
+    "UserName": {
+      "appField": "name",
+      "enabled": true,
+      "required": true,
+      "dataType": "string",
+      "description": "User name"
+    },
+    "Email": {
+      "appField": "email",
+      "enabled": true,
+      "required": true,
+      "dataType": "string",
+      "description": "User email address"
+    },
+    "Role": {
+      "appField": "role",
+      "enabled": true,
+      "required": false,
+      "dataType": "string",
+      "description": "User role"
+    },
+    "WeeklyCapacity": {
+      "appField": "weeklyCapacity",
+      "enabled": true,
+      "required": false,
+      "dataType": "number",
+      "description": "Weekly hours capacity"
+    },
+    "Region": {
+      "appField": "region",
+      "enabled": true,
+      "required": false,
+      "dataType": "string",
+      "description": "User region"
+    },
+    "Team": {
+      "appField": "team",
+      "enabled": true,
+      "required": false,
+      "dataType": "string",
+      "description": "Team name"
+    },
+    "IsActive": {
+      "appField": "isActive",
+      "enabled": true,
+      "required": false,
+      "dataType": "boolean",
+      "description": "Whether user is active"
+    },
+    "LastSeen": {
+      "appField": "metadata.lastSeen",
+      "enabled": true,
+      "required": false,
+      "dataType": "date",
+      "description": "Last seen timestamp"
+    }
+  },
+  "timeTracking": {
+    "EntryID": {
+      "appField": "id",
+      "enabled": true,
+      "required": true,
+      "dataType": "string",
+      "description": "Unique time entry identifier"
+    },
+    "AssignmentID": {
+      "appField": "assignmentId",
+      "enabled": true,
+      "required": true,
+      "dataType": "string",
+      "description": "Associated assignment ID"
+    },
+    "ProjectID": {
+      "appField": "projectId",
+      "enabled": true,
+      "required": false,
+      "dataType": "string",
+      "description": "Associated project ID"
+    },
+    "ProjectNumber": {
+      "appField": "projectNumber",
+      "enabled": true,
+      "required": false,
+      "dataType": "string",
+      "description": "Associated project number"
+    },
+    "ProjectName": {
+      "appField": "projectName",
+      "enabled": true,
+      "required": false,
+      "dataType": "string",
+      "description": "Associated project name"
+    },
+    "UserID": {
+      "appField": "userId",
+      "enabled": true,
+      "required": true,
+      "dataType": "string",
+      "description": "User who logged time"
+    },
+    "UserName": {
+      "appField": "userName",
+      "enabled": true,
+      "required": false,
+      "dataType": "string",
+      "description": "User name"
+    },
+    "Date": {
+      "appField": "date",
+      "enabled": true,
+      "required": true,
+      "dataType": "date",
+      "description": "Date of work"
+    },
+    "HoursWorked": {
+      "appField": "hoursWorked",
+      "enabled": true,
+      "required": true,
+      "dataType": "number",
+      "description": "Hours worked"
+    },
+    "TaskDescription": {
+      "appField": "taskDescription",
+      "enabled": true,
+      "required": false,
+      "dataType": "string",
+      "description": "Description of work done"
+    },
+    "Notes": {
+      "appField": "notes",
+      "enabled": true,
+      "required": false,
+      "dataType": "string",
+      "description": "Additional notes"
+    },
+    "EntryDate": {
+      "appField": "entryDate",
+      "enabled": true,
+      "required": false,
+      "dataType": "date",
+      "description": "Date entry was created"
+    },
+    "Category": {
+      "appField": "category",
+      "enabled": true,
+      "required": false,
+      "dataType": "string",
+      "description": "Time entry category"
+    }
+  }
+}
+
+
+
+
+
+

@@ -51,6 +51,9 @@ const OneDriveSyncService = require('./main-process/services/OneDriveSyncService
 const WorkloadPersistenceService = require('./main-process/services/WorkloadPersistenceService');
 const FileWatcherService = require('./main-process/services/FileWatcherService');
 const WebSocketService = require('./main-process/services/WebSocketService');
+const FieldMappingService = require('./main-process/services/FieldMappingService');
+const WorkloadExcelService = require('./main-process/services/WorkloadExcelService');
+const WorkloadExcelSyncService = require('./main-process/services/WorkloadExcelSyncService');
 
 // Import package.json for version info
 const packageJson = require('./package.json');
@@ -81,6 +84,40 @@ const oneDriveSyncService = new OneDriveSyncService();
 const workloadPersistenceService = new WorkloadPersistenceService();
 let fileWatcherService = null; // Initialized when user configures shared folder
 const webSocketService = new WebSocketService();
+const fieldMappingService = new FieldMappingService();
+const workloadExcelService = new WorkloadExcelService(fieldMappingService);
+const workloadExcelSyncService = new WorkloadExcelSyncService(workloadExcelService, fieldMappingService, settingsService);
+
+// Setup workload Excel sync event listeners
+workloadExcelSyncService.on('syncStarted', (data) => {
+  if (mainWindow) {
+    mainWindow.webContents.send('workload-excel:sync-started', data);
+  }
+});
+
+workloadExcelSyncService.on('syncCompleted', (data) => {
+  if (mainWindow) {
+    mainWindow.webContents.send('workload-excel:sync-completed', data);
+  }
+});
+
+workloadExcelSyncService.on('autoSyncStarted', (data) => {
+  if (mainWindow) {
+    mainWindow.webContents.send('workload-excel:auto-sync-started', data);
+  }
+});
+
+workloadExcelSyncService.on('autoSyncStopped', () => {
+  if (mainWindow) {
+    mainWindow.webContents.send('workload-excel:auto-sync-stopped');
+  }
+});
+
+workloadExcelSyncService.on('settingsUpdated', (settings) => {
+  if (mainWindow) {
+    mainWindow.webContents.send('workload-excel:settings-updated', settings);
+  }
+});
 
 function createWindow() {
   // Create the browser window
@@ -143,6 +180,18 @@ app.whenReady().then(async () => {
     console.log('✅ Agency sync service initialized');
   } catch (error) {
     console.error('Error initializing sync service:', error);
+  }
+  
+  // Initialize workload Excel sync service
+  try {
+    const result = await workloadExcelSyncService.initialize();
+    if (result.success) {
+      console.log('✅ Workload Excel sync service initialized');
+    } else {
+      console.warn('⚠️ Workload Excel sync service initialization failed:', result.error);
+    }
+  } catch (error) {
+    console.error('❌ Error initializing workload Excel sync service:', error);
   }
   
   createWindow();
@@ -1898,6 +1947,368 @@ ipcMain.handle('workload:file-watcher-status', async () => {
     return { success: true, status: { isWatching: false } };
   } catch (error) {
     console.error('Error getting file watcher status:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// ===== WORKLOAD EXCEL SYNC IPC HANDLERS =====
+
+// Field Mapping operations
+ipcMain.handle('workload-excel:field-mapping-get', async () => {
+  try {
+    const result = await fieldMappingService.getFieldMapping(settingsService);
+    return result;
+  } catch (error) {
+    console.error('Error getting field mapping:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('workload-excel:field-mapping-save', async (event, mapping) => {
+  try {
+    const result = await fieldMappingService.saveFieldMapping(settingsService, mapping);
+    return result;
+  } catch (error) {
+    console.error('Error saving field mapping:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('workload-excel:field-mapping-reset', async () => {
+  try {
+    const result = await fieldMappingService.resetToDefault(settingsService);
+    return result;
+  } catch (error) {
+    console.error('Error resetting field mapping:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('workload-excel:field-mapping-validate', async (event, mapping) => {
+  try {
+    const validation = fieldMappingService.validateMapping(mapping);
+    return { success: true, validation };
+  } catch (error) {
+    console.error('Error validating field mapping:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Excel file operations
+ipcMain.handle('workload-excel:test-file-path', async (event, filePath) => {
+  try {
+    const result = await workloadExcelService.testFilePath(filePath);
+    return result;
+  } catch (error) {
+    console.error('Error testing file path:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('workload-excel:browse-file', async () => {
+  try {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: 'Select Excel Workload File',
+      filters: [
+        { name: 'Excel Files', extensions: ['xlsx', 'xls'] },
+        { name: 'All Files', extensions: ['*'] }
+      ],
+      properties: ['openFile']
+    });
+    
+    if (result.canceled || result.filePaths.length === 0) {
+      return { success: false, error: 'No file selected' };
+    }
+    
+    const filePath = result.filePaths[0];
+    const testResult = await workloadExcelService.testFilePath(filePath);
+    
+    if (testResult.success) {
+      return { success: true, filePath };
+    } else {
+      return { success: false, error: testResult.error };
+    }
+  } catch (error) {
+    console.error('Error browsing for Excel file:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('workload-excel:initialize-workbook', async (event, filePath) => {
+  try {
+    const fieldMappingResult = await fieldMappingService.getFieldMapping(settingsService);
+    if (!fieldMappingResult.success) {
+      return { success: false, error: 'Failed to load field mapping' };
+    }
+    
+    const result = await workloadExcelService.initializeWorkbook(filePath, fieldMappingResult.mapping);
+    return result;
+  } catch (error) {
+    console.error('Error initializing workbook:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('workload-excel:get-headers', async (event, filePath, sheetName) => {
+  try {
+    const result = await workloadExcelService.getExcelHeaders(filePath, sheetName);
+    return result;
+  } catch (error) {
+    console.error('Error getting Excel headers:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Export operations
+ipcMain.handle('workload-excel:export-projects', async (event, projects, filePath) => {
+  try {
+    const fieldMappingResult = await fieldMappingService.getFieldMapping(settingsService);
+    if (!fieldMappingResult.success) {
+      return { success: false, error: 'Failed to load field mapping' };
+    }
+    
+    const result = await workloadExcelService.exportProjectsToExcel(projects, filePath, fieldMappingResult.mapping);
+    return result;
+  } catch (error) {
+    console.error('Error exporting projects:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('workload-excel:export-assignments', async (event, assignments, filePath) => {
+  try {
+    const fieldMappingResult = await fieldMappingService.getFieldMapping(settingsService);
+    if (!fieldMappingResult.success) {
+      return { success: false, error: 'Failed to load field mapping' };
+    }
+    
+    const result = await workloadExcelService.exportAssignmentsToExcel(assignments, filePath, fieldMappingResult.mapping);
+    return result;
+  } catch (error) {
+    console.error('Error exporting assignments:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('workload-excel:export-users', async (event, users, filePath) => {
+  try {
+    const fieldMappingResult = await fieldMappingService.getFieldMapping(settingsService);
+    if (!fieldMappingResult.success) {
+      return { success: false, error: 'Failed to load field mapping' };
+    }
+    
+    const result = await workloadExcelService.exportUsersToExcel(users, filePath, fieldMappingResult.mapping);
+    return result;
+  } catch (error) {
+    console.error('Error exporting users:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('workload-excel:export-all', async (event, data, filePath) => {
+  try {
+    const fieldMappingResult = await fieldMappingService.getFieldMapping(settingsService);
+    if (!fieldMappingResult.success) {
+      return { success: false, error: 'Failed to load field mapping' };
+    }
+    
+    const result = await workloadExcelService.exportAllToExcel(data, filePath, fieldMappingResult.mapping);
+    return result;
+  } catch (error) {
+    console.error('Error exporting all data:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Import operations
+ipcMain.handle('workload-excel:import-projects', async (event, filePath) => {
+  try {
+    const fieldMappingResult = await fieldMappingService.getFieldMapping(settingsService);
+    if (!fieldMappingResult.success) {
+      return { success: false, error: 'Failed to load field mapping' };
+    }
+    
+    const result = await workloadExcelService.importProjectsFromExcel(filePath, fieldMappingResult.mapping);
+    
+    // If import successful, update local persistence
+    if (result.success && result.projects) {
+      for (const project of result.projects) {
+        // Update project in persistence if it exists, or create new
+        await projectPersistenceService.saveProject(project);
+      }
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Error importing projects:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('workload-excel:import-assignments', async (event, filePath) => {
+  try {
+    const fieldMappingResult = await fieldMappingService.getFieldMapping(settingsService);
+    if (!fieldMappingResult.success) {
+      return { success: false, error: 'Failed to load field mapping' };
+    }
+    
+    const result = await workloadExcelService.importAssignmentsFromExcel(filePath, fieldMappingResult.mapping);
+    
+    // If import successful, update local persistence
+    if (result.success && result.assignments) {
+      for (const assignment of result.assignments) {
+        await workloadPersistenceService.saveAssignment(assignment);
+      }
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Error importing assignments:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('workload-excel:import-users', async (event, filePath) => {
+  try {
+    const fieldMappingResult = await fieldMappingService.getFieldMapping(settingsService);
+    if (!fieldMappingResult.success) {
+      return { success: false, error: 'Failed to load field mapping' };
+    }
+    
+    const result = await workloadExcelService.importUsersFromExcel(filePath, fieldMappingResult.mapping);
+    
+    // If import successful, update local persistence
+    if (result.success && result.users) {
+      for (const user of result.users) {
+        await workloadPersistenceService.saveUser(user);
+      }
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Error importing users:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('workload-excel:import-all', async (event, filePath) => {
+  try {
+    const fieldMappingResult = await fieldMappingService.getFieldMapping(settingsService);
+    if (!fieldMappingResult.success) {
+      return { success: false, error: 'Failed to load field mapping' };
+    }
+    
+    const result = await workloadExcelService.importAllFromExcel(filePath, fieldMappingResult.mapping);
+    
+    // If import successful, update local persistence for all data types
+    if (result.success && result.data) {
+      // Update projects
+      if (result.data.projects) {
+        for (const project of result.data.projects) {
+          await projectPersistenceService.saveProject(project);
+        }
+      }
+      
+      // Update assignments
+      if (result.data.assignments) {
+        for (const assignment of result.data.assignments) {
+          await workloadPersistenceService.saveAssignment(assignment);
+        }
+      }
+      
+      // Update users
+      if (result.data.users) {
+        for (const user of result.data.users) {
+          await workloadPersistenceService.saveUser(user);
+        }
+      }
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Error importing all data:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Sync settings operations
+ipcMain.handle('workload-excel:sync-settings-get', async () => {
+  try {
+    const result = await workloadExcelSyncService.getSyncSettings();
+    return result;
+  } catch (error) {
+    console.error('Error getting sync settings:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('workload-excel:sync-settings-update', async (event, newSettings) => {
+  try {
+    const result = await workloadExcelSyncService.updateSyncSettings(newSettings);
+    return result;
+  } catch (error) {
+    console.error('Error updating sync settings:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Sync operations
+ipcMain.handle('workload-excel:sync-start-auto', async (event, filePath) => {
+  try {
+    const result = await workloadExcelSyncService.startAutoSync(filePath);
+    return result;
+  } catch (error) {
+    console.error('Error starting auto-sync:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('workload-excel:sync-stop-auto', async () => {
+  try {
+    const result = await workloadExcelSyncService.stopAutoSync();
+    return result;
+  } catch (error) {
+    console.error('Error stopping auto-sync:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('workload-excel:sync-from-excel', async (event, filePath) => {
+  try {
+    const result = await workloadExcelSyncService.syncFromExcel(filePath);
+    return result;
+  } catch (error) {
+    console.error('Error syncing from Excel:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('workload-excel:sync-to-excel', async (event, data, filePath) => {
+  try {
+    const result = await workloadExcelSyncService.syncToExcel(data, filePath);
+    return result;
+  } catch (error) {
+    console.error('Error syncing to Excel:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('workload-excel:sync-bidirectional', async (event, appData, filePath) => {
+  try {
+    const result = await workloadExcelSyncService.performBidirectionalSync(appData, filePath);
+    return result;
+  } catch (error) {
+    console.error('Error performing bidirectional sync:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('workload-excel:sync-status', async () => {
+  try {
+    const status = workloadExcelSyncService.getSyncStatus();
+    return { success: true, status };
+  } catch (error) {
+    console.error('Error getting sync status:', error);
     return { success: false, error: error.message };
   }
 });

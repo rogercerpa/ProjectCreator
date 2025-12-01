@@ -208,6 +208,42 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Backup operations
   workloadBackupCreate: () => ipcRenderer.invoke('workload:backup-create'),
   
+  // ===== WORKLOAD EXCEL SYNC APIs =====
+  
+  // Field Mapping operations
+  workloadExcelFieldMappingGet: () => ipcRenderer.invoke('workload-excel:field-mapping-get'),
+  workloadExcelFieldMappingSave: (mapping) => ipcRenderer.invoke('workload-excel:field-mapping-save', mapping),
+  workloadExcelFieldMappingReset: () => ipcRenderer.invoke('workload-excel:field-mapping-reset'),
+  workloadExcelFieldMappingValidate: (mapping) => ipcRenderer.invoke('workload-excel:field-mapping-validate', mapping),
+  
+  // Excel operations
+  workloadExcelTestFilePath: (filePath) => ipcRenderer.invoke('workload-excel:test-file-path', filePath),
+  workloadExcelInitializeWorkbook: (filePath) => ipcRenderer.invoke('workload-excel:initialize-workbook', filePath),
+  workloadExcelGetHeaders: (filePath, sheetName) => ipcRenderer.invoke('workload-excel:get-headers', filePath, sheetName),
+  workloadExcelBrowseFile: () => ipcRenderer.invoke('workload-excel:browse-file'),
+  
+  // Export operations
+  workloadExcelExportProjects: (projects, filePath) => ipcRenderer.invoke('workload-excel:export-projects', projects, filePath),
+  workloadExcelExportAssignments: (assignments, filePath) => ipcRenderer.invoke('workload-excel:export-assignments', assignments, filePath),
+  workloadExcelExportUsers: (users, filePath) => ipcRenderer.invoke('workload-excel:export-users', users, filePath),
+  workloadExcelExportAll: (data, filePath) => ipcRenderer.invoke('workload-excel:export-all', data, filePath),
+  
+  // Import operations
+  workloadExcelImportProjects: (filePath) => ipcRenderer.invoke('workload-excel:import-projects', filePath),
+  workloadExcelImportAssignments: (filePath) => ipcRenderer.invoke('workload-excel:import-assignments', filePath),
+  workloadExcelImportUsers: (filePath) => ipcRenderer.invoke('workload-excel:import-users', filePath),
+  workloadExcelImportAll: (filePath) => ipcRenderer.invoke('workload-excel:import-all', filePath),
+  
+  // Sync operations
+  workloadExcelSyncSettingsGet: () => ipcRenderer.invoke('workload-excel:sync-settings-get'),
+  workloadExcelSyncSettingsUpdate: (settings) => ipcRenderer.invoke('workload-excel:sync-settings-update', settings),
+  workloadExcelSyncStartAuto: (filePath) => ipcRenderer.invoke('workload-excel:sync-start-auto', filePath),
+  workloadExcelSyncStopAuto: () => ipcRenderer.invoke('workload-excel:sync-stop-auto'),
+  workloadExcelSyncFromExcel: (filePath) => ipcRenderer.invoke('workload-excel:sync-from-excel', filePath),
+  workloadExcelSyncToExcel: (data, filePath) => ipcRenderer.invoke('workload-excel:sync-to-excel', data, filePath),
+  workloadExcelSyncBidirectional: (appData, filePath) => ipcRenderer.invoke('workload-excel:sync-bidirectional', appData, filePath),
+  workloadExcelSyncStatus: () => ipcRenderer.invoke('workload-excel:sync-status'),
+  
   // Event listeners for real-time updates
   onWorkloadFileChanged: (callback) => {
     ipcRenderer.on('workload:file-changed', (event, data) => callback(data));
@@ -220,6 +256,28 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onWorkloadAssignmentsFileChanged: (callback) => {
     ipcRenderer.on('workload:assignments-file-changed', (event, data) => callback(data));
     return () => ipcRenderer.removeAllListeners('workload:assignments-file-changed');
+  },
+  
+  // Workload Excel Sync Event Listeners
+  onWorkloadExcelSyncStarted: (callback) => {
+    ipcRenderer.on('workload-excel:sync-started', (event, data) => callback(data));
+    return () => ipcRenderer.removeAllListeners('workload-excel:sync-started');
+  },
+  onWorkloadExcelSyncCompleted: (callback) => {
+    ipcRenderer.on('workload-excel:sync-completed', (event, data) => callback(data));
+    return () => ipcRenderer.removeAllListeners('workload-excel:sync-completed');
+  },
+  onWorkloadExcelAutoSyncStarted: (callback) => {
+    ipcRenderer.on('workload-excel:auto-sync-started', (event, data) => callback(data));
+    return () => ipcRenderer.removeAllListeners('workload-excel:auto-sync-started');
+  },
+  onWorkloadExcelAutoSyncStopped: (callback) => {
+    ipcRenderer.on('workload-excel:auto-sync-stopped', (event) => callback());
+    return () => ipcRenderer.removeAllListeners('workload-excel:auto-sync-stopped');
+  },
+  onWorkloadExcelSettingsUpdated: (callback) => {
+    ipcRenderer.on('workload-excel:settings-updated', (event, settings) => callback(settings));
+    return () => ipcRenderer.removeAllListeners('workload-excel:settings-updated');
   },
   
   // WebSocket event listeners
