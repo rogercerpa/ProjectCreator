@@ -1638,14 +1638,22 @@ ipcMain.handle("workload-excel:browse-file", async () => {
     if (result.canceled || !result.filePath) {
       return { success: false, error: "No file selected", canceled: true };
     }
-    const filePath = result.filePath;
+    let filePath = result.filePath;
     const path2 = require("path");
+    if (!filePath.toLowerCase().endsWith(".xlsx")) {
+      filePath = filePath + ".xlsx";
+    }
+    const pathInfo = await workloadExcelService.validateFilePath(filePath);
+    if (!pathInfo.isValid) {
+      return { success: false, error: pathInfo.error };
+    }
+    const normalizedPath = pathInfo.path;
     const fs2 = require("fs-extra");
-    const dir = path2.dirname(filePath);
+    const dir = path2.dirname(normalizedPath);
     try {
       await fs2.ensureDir(dir);
       await fs2.access(dir, fs2.constants.W_OK);
-      return { success: true, filePath, isNew: !await fs2.pathExists(filePath) };
+      return { success: true, filePath: normalizedPath, isNew: !await fs2.pathExists(normalizedPath) };
     } catch (error) {
       return { success: false, error: `Cannot access directory: ${error.message}` };
     }

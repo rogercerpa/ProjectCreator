@@ -28,6 +28,23 @@ const ProjectAssignmentCard = ({
   };
 
   /**
+   * Get task type display info
+   */
+  const getTaskTypeInfo = () => {
+    if (!assignment.taskType) return null;
+    
+    const taskTypeMap = {
+      'TRIAGE': { label: 'Triage', icon: '🔍', color: 'text-blue-600 dark:text-blue-400' },
+      'DESIGN': { label: 'Design', icon: '✏️', color: 'text-purple-600 dark:text-purple-400' },
+      'QC': { label: 'QC', icon: '✅', color: 'text-green-600 dark:text-green-400' }
+    };
+    
+    return taskTypeMap[assignment.taskType] || { label: assignment.taskType, icon: '', color: 'text-gray-600 dark:text-gray-400' };
+  };
+
+  const taskTypeInfo = getTaskTypeInfo();
+
+  /**
    * Check if overdue
    */
   const isOverdue = () => {
@@ -65,6 +82,11 @@ const ProjectAssignmentCard = ({
         <div className="flex items-center justify-between gap-1.5">
           <span className="text-xs font-semibold text-gray-800 dark:text-gray-200 whitespace-nowrap overflow-hidden text-ellipsis flex-1 flex items-center gap-1 sm:text-[10px]">
             {priorityIcon && <span className="text-[10px]">{priorityIcon}</span>}
+            {taskTypeInfo && (
+              <span className={`text-[10px] ${taskTypeInfo.color}`} title={taskTypeInfo.label}>
+                {taskTypeInfo.icon}
+              </span>
+            )}
             {assignment.projectName || assignment.rfaNumber || assignment.projectId}
           </span>
           {daysUntilDue !== null && !overdue && (
@@ -92,13 +114,25 @@ const ProjectAssignmentCard = ({
       <div className="flex justify-between items-start gap-2.5 mb-3">
         <div className="text-sm font-bold text-gray-800 dark:text-gray-200 flex-1 flex items-center gap-1.5">
           {priorityIcon && <span className="text-xs">{priorityIcon}</span>}
+          {taskTypeInfo && (
+            <span className={`text-xs font-semibold ${taskTypeInfo.color}`} title={taskTypeInfo.label}>
+              {taskTypeInfo.icon}
+            </span>
+          )}
           {assignment.projectName || assignment.rfaNumber || assignment.projectId}
         </div>
-        <div 
-          className="px-2 py-1 text-[10px] font-bold text-white rounded uppercase whitespace-nowrap"
-          style={{ backgroundColor: statusColor }}
-        >
-          {assignment.status || 'ASSIGNED'}
+        <div className="flex items-center gap-1.5">
+          {taskTypeInfo && (
+            <span className={`px-2 py-1 text-[10px] font-semibold rounded uppercase whitespace-nowrap ${taskTypeInfo.color} bg-gray-100 dark:bg-gray-700`}>
+              {taskTypeInfo.label}
+            </span>
+          )}
+          <div 
+            className="px-2 py-1 text-[10px] font-bold text-white rounded uppercase whitespace-nowrap"
+            style={{ backgroundColor: statusColor }}
+          >
+            {assignment.status || 'ASSIGNED'}
+          </div>
         </div>
       </div>
 

@@ -414,18 +414,64 @@ const ProjectEditor = ({
               <small className="field-hint">Click on a product tag to remove it. Use the dropdown to add products.</small>
             </div>
 
+          </div>
+        </div>
+
+        {/* WorkTask Section */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg mb-6 p-6 shadow-md md:p-4 md:mb-4 sm:p-3">
+          <h3 className="form-section-header">👥 WorkTask</h3>
+          <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 2xl:gap-6 lg:grid-cols-2 lg:gap-4 md:grid-cols-1 md:gap-4">
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="assignedTo">Assigned To</label>
-              <input
-                type="text"
-                id="assignedTo"
-                name="assignedTo"
-                value={formData.assignedTo || ''}
+              <label htmlFor="triagedBy">Triaged By</label>
+              <select
+                id="triagedBy"
+                name="triagedBy"
+                value={formData.triagedBy || ''}
                 onChange={handleInputChange}
-                placeholder="Enter assigned person"
-              />
+              >
+                <option value="">Select Triaged By</option>
+                {dropdownOptions.assignedToOptions?.map(person => (
+                  <option key={person} value={person}>{person}</option>
+                ))}
+              </select>
             </div>
 
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="designBy">Design By</label>
+              <select
+                id="designBy"
+                name="designBy"
+                value={formData.designBy || ''}
+                onChange={handleInputChange}
+              >
+                <option value="">Select Design By</option>
+                {dropdownOptions.assignedToOptions?.map(person => (
+                  <option key={person} value={person}>{person}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="qcBy">QC By</label>
+              <select
+                id="qcBy"
+                name="qcBy"
+                value={formData.qcBy || ''}
+                onChange={handleInputChange}
+              >
+                <option value="">Select QC By</option>
+                {dropdownOptions.assignedToOptions?.map(person => (
+                  <option key={person} value={person}>{person}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Additional Information */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg mb-6 p-6 shadow-md md:p-4 md:mb-4 sm:p-3">
+          <h3 className="form-section-header">📋 Additional Information</h3>
+          <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 2xl:gap-6 lg:grid-cols-2 lg:gap-4 md:grid-cols-1 md:gap-4">
             <div className="flex flex-col gap-1.5">
               <label htmlFor="repContacts">Rep Contacts</label>
               <textarea

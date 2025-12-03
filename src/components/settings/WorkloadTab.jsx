@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useImperativeHandle, forwardRef, useRef } from 'react';
 
-const WorkloadTab = ({ settings, setSettings }) => {
+const WorkloadTab = forwardRef(({ settings, setSettings }, ref) => {
   const [excelSettings, setExcelSettings] = useState({
     enabled: false,
     mode: 'manual',
@@ -11,6 +11,23 @@ const WorkloadTab = ({ settings, setSettings }) => {
   });
   const [syncStatus, setSyncStatus] = useState(null);
   const [filePathValid, setFilePathValid] = useState(null);
+  
+  // Use a ref to always have access to the latest excelSettings
+  const excelSettingsRef = useRef(excelSettings);
+  
+  // Keep ref in sync with state
+  useEffect(() => {
+    excelSettingsRef.current = excelSettings;
+  }, [excelSettings]);
+
+  // Expose current settings and save function to parent via ref
+  useImperativeHandle(ref, () => ({
+    getCurrentSettings: () => excelSettingsRef.current,
+    saveSettings: async () => {
+      // Always use the latest settings from ref
+      return await handleExcelSettingsUpdate(excelSettingsRef.current);
+    }
+  }));
 
   // Load Excel sync settings on mount
   useEffect(() => {
@@ -38,13 +55,17 @@ const WorkloadTab = ({ settings, setSettings }) => {
           setExcelSettings(result.settings);
           setSyncStatus({ type: 'success', message: 'Settings saved successfully' });
           setTimeout(() => setSyncStatus(null), 3000);
+          return result;
         } else {
           setSyncStatus({ type: 'error', message: result.error || 'Failed to save settings' });
+          return result;
         }
       }
+      return { success: false, error: 'API not available' };
     } catch (error) {
       console.error('Error updating Excel sync settings:', error);
       setSyncStatus({ type: 'error', message: error.message });
+      return { success: false, error: error.message };
     }
   };
 
@@ -453,6 +474,8 @@ const WorkloadTab = ({ settings, setSettings }) => {
       </div>
     </div>
   );
-};
+});
+
+WorkloadTab.displayName = 'WorkloadTab';
 
 export default WorkloadTab;

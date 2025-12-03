@@ -18,6 +18,7 @@ class Assignment {
     this.priority = data.priority || 'medium'; // low, medium, high, urgent
     this.assignedBy = data.assignedBy || '';
     this.notes = data.notes || '';
+    this.taskType = data.taskType || null; // TRIAGE, DESIGN, QC, or null (for backward compatibility)
     this.metadata = {
       createdAt: data.metadata?.createdAt || new Date().toISOString(),
       lastModified: data.metadata?.lastModified || new Date().toISOString(),
@@ -143,6 +144,7 @@ class Assignment {
       priority: this.priority,
       assignedBy: this.assignedBy,
       notes: this.notes,
+      taskType: this.taskType,
       metadata: this.metadata
     };
   }

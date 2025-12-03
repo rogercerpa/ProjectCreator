@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import AgencyEditModal from './AgencyEditModal';
 import dropdownOptionsService from '../services/DropdownOptionsService';
 import triageCalculationService from '../services/TriageCalculationService';
@@ -85,6 +85,9 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
   const [editingIndex, setEditingIndex] = useState(-1);
   const [newValue, setNewValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Ref for WorkloadTab to access its current settings
+  const workloadTabRef = useRef(null);
   
   // New state for improved Form Settings UX
   const [selectedCategory, setSelectedCategory] = useState('rfaTypes');
@@ -831,6 +834,9 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
   const saveSettings = async () => {
     try {
       setIsLoading(true);
+      const errors = [];
+      
+      // Save main settings
       if (electronAPI && electronAPI.settingsSave) {
         const result = await electronAPI.settingsSave(settings);
         if (result && result.success) {
@@ -838,15 +844,46 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
           dropdownOptionsService.updateOptions(settings);
           // Update the triage calculation service with new settings
           triageCalculationService.updateSettings(settings);
-          alert('Settings saved successfully!');
         } else {
-          alert('Failed to save settings. Please try again.');
+          errors.push('Main settings: ' + (result?.error || 'Failed to save'));
         }
       } else {
         // In development mode, just update the services
         dropdownOptionsService.updateOptions(settings);
         triageCalculationService.updateSettings(settings);
-        alert('Settings updated (development mode - not persisted)');
+      }
+      
+      // Save WorkloadTab Excel sync settings
+      if (workloadTabRef.current) {
+        try {
+          const workloadResult = await workloadTabRef.current.saveSettings();
+          if (!workloadResult || !workloadResult.success) {
+            errors.push('Workload settings: ' + (workloadResult?.error || 'Failed to save'));
+          }
+        } catch (error) {
+          console.error('Error saving WorkloadTab settings:', error);
+          errors.push('Workload settings: ' + error.message);
+        }
+      }
+      
+      // Save AgenciesTab sync settings
+      if (syncSettings && electronAPI && electronAPI.syncUpdateSettings) {
+        try {
+          const syncResult = await electronAPI.syncUpdateSettings(syncSettings);
+          if (!syncResult || !syncResult.success) {
+            errors.push('Agency sync settings: ' + (syncResult?.error || 'Failed to save'));
+          }
+        } catch (error) {
+          console.error('Error saving Agency sync settings:', error);
+          errors.push('Agency sync settings: ' + error.message);
+        }
+      }
+      
+      // Show result message
+      if (errors.length === 0) {
+        alert('All settings saved successfully!');
+      } else {
+        alert('Settings saved with some errors:\n' + errors.join('\n'));
       }
     } catch (error) {
       console.error('Failed to save settings:', error);
@@ -3175,6 +3212,7 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
       case 'workload':
         return (
           <WorkloadTab
+            ref={workloadTabRef}
             settings={settings}
             setSettings={setSettings}
           />

@@ -7,15 +7,15 @@
       "dataType": "string",
       "description": "Unique project identifier"
     },
-    "ProjectNumber": {
-      "appField": "number",
+    "RFAType": {
+      "appField": "rfaType",
       "enabled": true,
-      "required": true,
+      "required": false,
       "dataType": "string",
-      "description": "Project number"
+      "description": "RFA Type"
     },
     "ProjectName": {
-      "appField": "name",
+      "appField": "projectName",
       "enabled": true,
       "required": true,
       "dataType": "string",
@@ -29,25 +29,25 @@
       "description": "RFA number"
     },
     "ProjectContainer": {
-      "appField": "container",
+      "appField": "projectContainer",
       "enabled": true,
       "required": false,
       "dataType": "string",
       "description": "Project container/folder"
     },
     "ClientName": {
-      "appField": "client",
+      "appField": "repContacts",
       "enabled": true,
       "required": false,
       "dataType": "string",
-      "description": "Client name"
+      "description": "Rep Contact (Client name)"
     },
     "ProjectType": {
-      "appField": "type",
+      "appField": "projectType",
       "enabled": true,
       "required": false,
       "dataType": "string",
-      "description": "Type of project"
+      "description": "Project Type (Building/Project category)"
     },
     "Status": {
       "appField": "status",
@@ -57,11 +57,11 @@
       "description": "Current project status"
     },
     "CreatedDate": {
-      "appField": "createdDate",
+      "appField": "submittedDate",
       "enabled": true,
       "required": false,
       "dataType": "date",
-      "description": "Date project was created"
+      "description": "Submitted Date (Date project was created)"
     },
     "DueDate": {
       "appField": "dueDate",
@@ -70,12 +70,26 @@
       "dataType": "date",
       "description": "Project due date"
     },
-    "AssignedTo": {
-      "appField": "assignedTo",
+    "TriagedBy": {
+      "appField": "triagedBy",
       "enabled": true,
       "required": false,
       "dataType": "string",
-      "description": "Person assigned to project"
+      "description": "Person who triaged the project"
+    },
+    "DesignBy": {
+      "appField": "designBy",
+      "enabled": true,
+      "required": false,
+      "dataType": "string",
+      "description": "Person who designed the project"
+    },
+    "QCBy": {
+      "appField": "qcBy",
+      "enabled": true,
+      "required": false,
+      "dataType": "string",
+      "description": "Person who performed QC on the project"
     },
     "Priority": {
       "appField": "priority",
@@ -114,12 +128,12 @@
       "dataType": "string",
       "description": "Associated project ID"
     },
-    "ProjectNumber": {
-      "appField": "projectNumber",
+    "RFAType": {
+      "appField": "rfaType",
       "enabled": true,
       "required": false,
       "dataType": "string",
-      "description": "Associated project number"
+      "description": "RFA Type"
     },
     "ProjectName": {
       "appField": "projectName",
@@ -197,6 +211,13 @@
       "required": true,
       "dataType": "string",
       "description": "Assignment status"
+    },
+    "TaskType": {
+      "appField": "taskType",
+      "enabled": true,
+      "required": false,
+      "dataType": "string",
+      "description": "Work task type: TRIAGE, DESIGN, QC, or empty for general assignments"
     },
     "Priority": {
       "appField": "priority",
@@ -314,12 +335,12 @@
       "dataType": "string",
       "description": "Associated project ID"
     },
-    "ProjectNumber": {
-      "appField": "projectNumber",
+    "RFAType": {
+      "appField": "rfaType",
       "enabled": true,
       "required": false,
       "dataType": "string",
-      "description": "Associated project number"
+      "description": "RFA Type"
     },
     "ProjectName": {
       "appField": "projectName",

@@ -212,11 +212,65 @@ class FieldMappingService {
     for (const [excelColumn, fieldConfig] of Object.entries(sheetMapping)) {
       if (!fieldConfig.enabled) continue;
 
-      const value = this.getMappedValue(obj, fieldConfig.appField);
+      let value = this.getMappedValue(obj, fieldConfig.appField);
+      
+      // Special handling for projectType: use customProjectType if projectType is 'Other' or empty
+      if (fieldConfig.appField === 'projectType') {
+        if (!value || value === 'Other') {
+          value = obj?.customProjectType || value;
+        }
+      }
+
       row[excelColumn] = this.formatValueForExcel(value, fieldConfig.dataType);
     }
 
     return row;
+  }
+
+  /**
+   * Format a date value to a readable Excel date string (YYYY-MM-DD)
+   */
+  formatDateForExcel(value) {
+    if (!value) return '';
+
+    let date;
+    
+    // Handle Date objects
+    if (value instanceof Date) {
+      date = value;
+    }
+    // Handle ISO strings (e.g., "2025-09-11T17:35:10.184Z" or "2025-09-11T17:35")
+    else if (typeof value === 'string') {
+      // Try to parse ISO string
+      date = new Date(value);
+      // If parsing failed, try other formats
+      if (isNaN(date.getTime())) {
+        // Try parsing as simple date string
+        const parts = value.split(/[-/]/);
+        if (parts.length === 3) {
+          date = new Date(parts[0], parts[1] - 1, parts[2]);
+        }
+      }
+    }
+    // Handle timestamps
+    else if (typeof value === 'number') {
+      date = new Date(value);
+    }
+    else {
+      return '';
+    }
+
+    // Validate date
+    if (!date || isNaN(date.getTime())) {
+      return '';
+    }
+
+    // Format as YYYY-MM-DD (Excel-friendly format)
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}`;
   }
 
   /**
@@ -227,13 +281,7 @@ class FieldMappingService {
 
     switch (dataType) {
       case 'date':
-        if (value instanceof Date) {
-          return value.toISOString();
-        }
-        if (typeof value === 'string') {
-          return value;
-        }
-        return '';
+        return this.formatDateForExcel(value);
 
       case 'number':
         const num = Number(value);

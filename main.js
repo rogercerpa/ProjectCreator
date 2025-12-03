@@ -2021,19 +2021,30 @@ ipcMain.handle('workload-excel:browse-file', async () => {
       return { success: false, error: 'No file selected', canceled: true };
     }
     
-    const filePath = result.filePath;
+    let filePath = result.filePath;
     
-    // If file doesn't exist, that's okay - we'll create it with the template
-    // Just check if the directory is accessible
+    // Ensure file path ends with .xlsx
     const path = require('path');
+    if (!filePath.toLowerCase().endsWith('.xlsx')) {
+      filePath = filePath + '.xlsx';
+    }
+    
+    // Validate the path using the service
+    const pathInfo = await workloadExcelService.validateFilePath(filePath);
+    if (!pathInfo.isValid) {
+      return { success: false, error: pathInfo.error };
+    }
+    
+    const normalizedPath = pathInfo.path;
+    
+    // Check if we can write to the directory
     const fs = require('fs-extra');
-    const dir = path.dirname(filePath);
+    const dir = path.dirname(normalizedPath);
     
     try {
       await fs.ensureDir(dir);
-      // Check if we can write to the directory
       await fs.access(dir, fs.constants.W_OK);
-      return { success: true, filePath, isNew: !await fs.pathExists(filePath) };
+      return { success: true, filePath: normalizedPath, isNew: !await fs.pathExists(normalizedPath) };
     } catch (error) {
       return { success: false, error: `Cannot access directory: ${error.message}` };
     }

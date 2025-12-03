@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import NotificationToast from './NotificationToast';
 
-const WorkloadDashboard = ({ onNavigateToProject }) => {
+const WorkloadDashboard = ({ onNavigateToProject, onNavigateToSettings }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState({
     totalProjects: 0,
@@ -22,8 +22,14 @@ const WorkloadDashboard = ({ onNavigateToProject }) => {
     lastExport: null
   });
   const [recentActivity, setRecentActivity] = useState([]);
+  const [allAssignments, setAllAssignments] = useState([]); // Store all assignments for filtering
+  const [users, setUsers] = useState([]);
   const [syncStatus, setSyncStatus] = useState(null);
   const [notification, setNotification] = useState(null);
+  
+  // Filter state
+  const [taskTypeFilter, setTaskTypeFilter] = useState('all'); // 'all', 'TRIAGE', 'DESIGN', 'QC'
+  const [userFilter, setUserFilter] = useState('all'); // 'all' or userId
 
   useEffect(() => {
     initializeDashboard();
@@ -32,6 +38,9 @@ const WorkloadDashboard = ({ onNavigateToProject }) => {
   const initializeDashboard = async () => {
     try {
       setIsLoading(true);
+      
+      // Load users first (needed for resolving user names in assignments)
+      await loadUsers();
       
       // Load stats
       await loadStats();
@@ -65,8 +74,11 @@ const WorkloadDashboard = ({ onNavigateToProject }) => {
       
       setStats({
         totalProjects: projects.length,
-        activeAssignments: assignments.filter(a => a.status !== 'completed').length,
-        teamMembers: users.length,
+        activeAssignments: assignments.filter(a => 
+          a.status !== 'COMPLETE' && 
+          a.status !== 'completed'
+        ).length,
+        teamMembers: users.filter(u => u.isActive !== false).length,
         capacityUtilization: calculateAverageCapacity(users, assignments)
       });
     } catch (error) {
@@ -75,16 +87,46 @@ const WorkloadDashboard = ({ onNavigateToProject }) => {
   };
 
   const calculateAverageCapacity = (users, assignments) => {
-    if (users.length === 0) return 0;
+    // Filter to only active users
+    const activeUsers = users.filter(u => u.isActive !== false);
     
-    const totalCapacity = users.reduce((sum, user) => {
-      const userAssignments = assignments.filter(a => a.userId === user.id && a.status !== 'completed');
+    if (activeUsers.length === 0) return 0;
+    
+    // Calculate utilization for each active user
+    const userUtilizations = activeUsers.map(user => {
+      // Get user's active assignments (not completed)
+      // Status can be: ASSIGNED, IN PROGRESS, IN QC, COMPLETE, PAUSE
+      const userAssignments = assignments.filter(a => 
+        a.userId === user.id && 
+        a.status !== 'COMPLETE' && 
+        a.status !== 'completed' // Handle both cases
+      );
+      
+      // Sum up allocated hours
       const hoursAllocated = userAssignments.reduce((sum, a) => sum + (a.hoursAllocated || 0), 0);
+      
+      // Get weekly capacity (default to 40 if not set)
       const weeklyCapacity = user.weeklyCapacity || 40;
-      return sum + (hoursAllocated / weeklyCapacity);
-    }, 0);
+      
+      // Calculate utilization ratio (can exceed 100% if over-allocated)
+      const utilization = weeklyCapacity > 0 ? (hoursAllocated / weeklyCapacity) : 0;
+      
+      return {
+        userId: user.id,
+        userName: user.name,
+        hoursAllocated,
+        weeklyCapacity,
+        utilization,
+        assignmentCount: userAssignments.length
+      };
+    });
     
-    return Math.round((totalCapacity / users.length) * 100);
+    // Calculate average utilization across all active users
+    const totalUtilization = userUtilizations.reduce((sum, u) => sum + u.utilization, 0);
+    const averageUtilization = totalUtilization / activeUsers.length;
+    
+    // Round to nearest integer percentage
+    return Math.round(averageUtilization * 100);
   };
 
   const loadExcelSettings = async () => {
@@ -100,19 +142,93 @@ const WorkloadDashboard = ({ onNavigateToProject }) => {
     }
   };
 
+  const loadUsers = async () => {
+    try {
+      const usersResult = await window.electronAPI.workloadUsersLoadAll();
+      if (usersResult.success) {
+        setUsers(usersResult.users || []);
+        return usersResult.users || [];
+      }
+      return [];
+    } catch (error) {
+      console.error('Error loading users:', error);
+      return [];
+    }
+  };
+
   const loadRecentActivity = async () => {
     try {
+      // Load users if not already loaded
+      let currentUsers = users;
+      if (currentUsers.length === 0) {
+        currentUsers = await loadUsers();
+      }
+      
       const assignmentsResult = await window.electronAPI.workloadAssignmentsLoadAll();
       if (assignmentsResult.success) {
-        const sorted = assignmentsResult.assignments
-          .sort((a, b) => new Date(b.lastModified || b.createdDate) - new Date(a.lastModified || a.createdDate))
-          .slice(0, 10);
-        setRecentActivity(sorted);
+        // Create user lookup map
+        const userMap = new Map(currentUsers.map(u => [u.id, u]));
+        
+        // Enrich assignments with user names
+        const enriched = (assignmentsResult.assignments || [])
+          .map(assignment => {
+            const user = userMap.get(assignment.userId);
+            return {
+              ...assignment,
+              userName: user?.name || 'Unknown User',
+              userEmail: user?.email || ''
+            };
+          });
+        
+        // Store all assignments for filtering
+        setAllAssignments(enriched);
+        
+        // Apply filters and sort
+        applyFilters(enriched);
+      } else {
+        console.warn('Failed to load assignments:', assignmentsResult.error);
+        setAllAssignments([]);
+        setRecentActivity([]);
       }
     } catch (error) {
       console.error('Error loading recent activity:', error);
+      setAllAssignments([]);
+      setRecentActivity([]);
     }
   };
+
+  const applyFilters = (assignments = allAssignments) => {
+    let filtered = [...assignments];
+    
+    // Filter by task type
+    if (taskTypeFilter !== 'all') {
+      filtered = filtered.filter(a => a.taskType === taskTypeFilter);
+    }
+    
+    // Filter by user
+    if (userFilter !== 'all') {
+      filtered = filtered.filter(a => a.userId === userFilter);
+    }
+    
+    // Sort by last modified (newest first) and limit to 10
+    const sorted = filtered
+      .sort((a, b) => {
+        const dateA = new Date(a.metadata?.lastModified || a.metadata?.createdAt || 0);
+        const dateB = new Date(b.metadata?.lastModified || b.metadata?.createdAt || 0);
+        return dateB - dateA; // Newest first
+      })
+      .slice(0, 10);
+    
+    setRecentActivity(sorted);
+  };
+
+  // Update filters when they change
+  useEffect(() => {
+    if (allAssignments.length > 0) {
+      applyFilters(allAssignments);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [taskTypeFilter, userFilter, allAssignments]);
 
   const handleOpenMSLists = () => {
     if (excelSettings.msListsUrl) {
@@ -137,6 +253,7 @@ const WorkloadDashboard = ({ onNavigateToProject }) => {
           type: 'success', 
           message: `Synced: ${result.data.projects.length} projects, ${result.data.assignments.length} assignments`
         });
+        await loadUsers();
         await loadStats();
         await loadRecentActivity();
         await loadExcelSettings();
@@ -195,6 +312,47 @@ const WorkloadDashboard = ({ onNavigateToProject }) => {
 
   const clearNotification = () => {
     setNotification(null);
+  };
+
+  const getTimeAgo = (date) => {
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+  };
+
+  const handleAssignmentClick = async (assignment) => {
+    if (!assignment.projectId) {
+      showNotification('error', 'Project ID not found for this assignment');
+      return;
+    }
+
+    if (!onNavigateToProject) {
+      console.warn('onNavigateToProject callback not provided');
+      return;
+    }
+
+    try {
+      // Load the full project data
+      const projectResult = await window.electronAPI.projectLoad(assignment.projectId);
+      
+      if (projectResult && projectResult.success && projectResult.project) {
+        // Navigate with the full project object
+        onNavigateToProject(projectResult.project);
+      } else {
+        showNotification('error', projectResult?.error || 'Project not found');
+      }
+    } catch (error) {
+      console.error('Error loading project:', error);
+      showNotification('error', 'Failed to load project: ' + error.message);
+    }
   };
 
   if (isLoading) {
@@ -283,33 +441,143 @@ const WorkloadDashboard = ({ onNavigateToProject }) => {
         {/* Recent Activity */}
         <div className="lg:col-span-2">
           <div className="p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Recent Activity</h2>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Recent Activity</h2>
+              
+              {/* Filter Controls */}
+              <div className="flex flex-wrap gap-3">
+                {/* Task Type Filter */}
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                    Task:
+                  </label>
+                  <select
+                    value={taskTypeFilter}
+                    onChange={(e) => setTaskTypeFilter(e.target.value)}
+                    className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="all">All Tasks</option>
+                    <option value="TRIAGE">Triage</option>
+                    <option value="DESIGN">Design</option>
+                    <option value="QC">QC</option>
+                  </select>
+                </div>
+                
+                {/* User Filter */}
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                    User:
+                  </label>
+                  <select
+                    value={userFilter}
+                    onChange={(e) => setUserFilter(e.target.value)}
+                    className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 min-w-[150px]"
+                  >
+                    <option value="all">All Users</option>
+                    {users
+                      .filter(u => u.isActive !== false)
+                      .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+                      .map(user => (
+                        <option key={user.id} value={user.id}>
+                          {user.name || 'Unknown'}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              </div>
+            </div>
             {recentActivity.length === 0 ? (
-              <p className="text-gray-600 dark:text-gray-400 text-center py-8">No recent assignments</p>
+              <div className="text-center py-8">
+                <p className="text-gray-600 dark:text-gray-400 mb-2">
+                  {taskTypeFilter !== 'all' || userFilter !== 'all' 
+                    ? 'No assignments match the selected filters' 
+                    : 'No recent assignments'}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-500">
+                  {taskTypeFilter !== 'all' || userFilter !== 'all' 
+                    ? 'Try adjusting your filters or check back later' 
+                    : 'Assignments will appear here as they are created or updated'}
+                </p>
+                {(taskTypeFilter !== 'all' || userFilter !== 'all') && (
+                  <button
+                    onClick={() => {
+                      setTaskTypeFilter('all');
+                      setUserFilter('all');
+                    }}
+                    className="mt-3 px-4 py-2 text-sm bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-all"
+                  >
+                    Clear Filters
+                  </button>
+                )}
+              </div>
             ) : (
               <div className="space-y-3">
-                {recentActivity.slice(0, 5).map(assignment => (
-                  <div key={assignment.id} className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="font-medium text-gray-900 dark:text-white">
-                          {assignment.projectName || assignment.projectNumber || 'Project'}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {assignment.userName} • {assignment.status}
-                        </p>
+                {recentActivity.slice(0, 5).map(assignment => {
+                  const lastModified = assignment.metadata?.lastModified || assignment.metadata?.createdAt;
+                  const timeAgo = lastModified ? getTimeAgo(new Date(lastModified)) : '';
+                  
+                  return (
+                    <div 
+                      key={assignment.id} 
+                      className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors cursor-pointer"
+                      onClick={() => handleAssignmentClick(assignment)}
+                    >
+                      <div className="flex justify-between items-start gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-medium text-gray-900 dark:text-white truncate">
+                              {assignment.projectName || assignment.rfaNumber || 'Unnamed Project'}
+                            </p>
+                            {assignment.taskType && (
+                              <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">
+                                {assignment.taskType}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                            <span>{assignment.userName || 'Unassigned'}</span>
+                            <span>•</span>
+                            <span className={`capitalize ${
+                              assignment.status === 'COMPLETE' ? 'text-green-600 dark:text-green-400' :
+                              assignment.status === 'IN PROGRESS' ? 'text-blue-600 dark:text-blue-400' :
+                              assignment.status === 'IN QC' ? 'text-yellow-600 dark:text-yellow-400' :
+                              assignment.status === 'PAUSE' ? 'text-orange-600 dark:text-orange-400' :
+                              'text-gray-600 dark:text-gray-400'
+                            }`}>
+                              {assignment.status || 'ASSIGNED'}
+                            </span>
+                            {assignment.dueDate && (
+                              <>
+                                <span>•</span>
+                                <span className="text-xs">Due: {new Date(assignment.dueDate).toLocaleDateString()}</span>
+                              </>
+                            )}
+                          </div>
+                          {timeAgo && (
+                            <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                              {timeAgo}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex flex-col items-end gap-2">
+                          <span className={`px-2 py-1 rounded text-xs font-medium whitespace-nowrap ${
+                            assignment.priority === 'urgent' ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' :
+                            assignment.priority === 'high' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300' :
+                            assignment.priority === 'medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300' :
+                            'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+                          }`}>
+                            {assignment.priority || 'normal'}
+                          </span>
+                          {assignment.hoursAllocated > 0 && (
+                            <span className="text-xs text-gray-500 dark:text-gray-500">
+                              {assignment.hoursAllocated}h
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${
-                        assignment.priority === 'urgent' ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' :
-                        assignment.priority === 'high' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300' :
-                        assignment.priority === 'medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300' :
-                        'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
-                      }`}>
-                        {assignment.priority || 'normal'}
-                      </span>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -375,7 +643,14 @@ const WorkloadDashboard = ({ onNavigateToProject }) => {
               </button>
               
               <button
-                onClick={() => window.location.hash = '#/settings'}
+                onClick={() => {
+                  if (onNavigateToSettings) {
+                    onNavigateToSettings('workload');
+                  } else {
+                    // Fallback to hash navigation if callback not provided
+                    window.location.hash = '#/settings';
+                  }
+                }}
                 className="w-full px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition-all"
               >
                 ⚙️ Configure Settings

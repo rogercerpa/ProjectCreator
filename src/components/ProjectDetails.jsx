@@ -382,16 +382,31 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
             </div>
           </div>
           <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Assigned To</label>
-            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.assignedTo || 'Unassigned'}</span>
-          </div>
-          <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
             <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Rep Contacts</label>
             <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.repContacts || 'Not specified'}</span>
           </div>
           <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
             <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">First Available</label>
             <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.firstAvailable ? 'Yes' : 'No'}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* WorkTask Section */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-6 shadow-md">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-5 pb-4 border-b-2 border-gray-100 dark:border-gray-700">👥 WorkTask</h2>
+        <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1">
+          <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Triaged By</label>
+            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.triagedBy || 'Not assigned'}</span>
+          </div>
+          <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Design By</label>
+            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.designBy || 'Not assigned'}</span>
+          </div>
+          <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">QC By</label>
+            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.qcBy || 'Not assigned'}</span>
           </div>
         </div>
       </div>

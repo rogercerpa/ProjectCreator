@@ -15,6 +15,7 @@ const AssignmentDialog = ({ isOpen, onClose, onAssign, users, projects, editAssi
     dueDate: '',
     status: 'ASSIGNED',
     priority: 'medium',
+    taskType: '',
     notes: ''
   });
 
@@ -34,6 +35,7 @@ const AssignmentDialog = ({ isOpen, onClose, onAssign, users, projects, editAssi
         dueDate: editAssignment.dueDate || '',
         status: editAssignment.status || 'ASSIGNED',
         priority: editAssignment.priority || 'medium',
+        taskType: editAssignment.taskType || '',
         notes: editAssignment.notes || ''
       });
     } else {
@@ -48,6 +50,7 @@ const AssignmentDialog = ({ isOpen, onClose, onAssign, users, projects, editAssi
         dueDate: '',
         status: 'ASSIGNED',
         priority: 'medium',
+        taskType: '',
         notes: ''
       });
     }
@@ -136,7 +139,8 @@ const AssignmentDialog = ({ isOpen, onClose, onAssign, users, projects, editAssi
         ...formData,
         id: editAssignment?.id, // Keep existing ID if editing
         hoursAllocated: parseFloat(formData.hoursAllocated),
-        hoursSpent: editAssignment?.hoursSpent || 0 // Preserve hours spent when editing
+        hoursSpent: editAssignment?.hoursSpent || 0, // Preserve hours spent when editing
+        taskType: formData.taskType || null // Convert empty string to null for consistency
       };
 
       await onAssign(assignmentData);
@@ -246,6 +250,27 @@ const AssignmentDialog = ({ isOpen, onClose, onAssign, users, projects, editAssi
               />
               {errors.dueDate && <span className="text-error-600 dark:text-error-400 text-xs mt-1 block">{errors.dueDate}</span>}
             </div>
+          </div>
+
+          {/* Task Type */}
+          <div>
+            <label htmlFor="taskType" className="block mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
+              Work Task Type
+            </label>
+            <select
+              id="taskType"
+              value={formData.taskType}
+              onChange={(e) => handleChange('taskType', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 transition-all focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            >
+              <option value="">General Assignment (No specific task type)</option>
+              <option value="TRIAGE">🔍 Triage</option>
+              <option value="DESIGN">✏️ Design</option>
+              <option value="QC">✅ QC</option>
+            </select>
+            <small className="text-xs text-gray-500 dark:text-gray-400 mt-1 block">
+              Select the type of work task for this assignment. Leave blank for general assignments.
+            </small>
           </div>
 
           {/* Hours and Priority */}

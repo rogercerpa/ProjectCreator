@@ -794,46 +794,163 @@ const ProjectWizard = ({
           // Use the saved project with proper ID and timestamps
           const savedProject = saveResult.project;
 
-          // Create assignment for selected assignee if available
-          if (selectedAssignee) {
+          // Create assignments for work tasks (Triage, Design, QC)
+          const workTaskAssignments = [];
+          
+          // Helper function to find user by name
+          const findUserByName = async (userName) => {
+            if (!userName) return null;
             try {
-              setNotification({
-                type: 'info',
-                message: `Assigning project to ${selectedAssignee.name}...`
-              });
+              const usersResult = await window.electronAPI.workloadUsersLoadAll();
+              if (usersResult.success && usersResult.users) {
+                return usersResult.users.find(u => u.name === userName) || null;
+              }
+            } catch (error) {
+              console.error('Error finding user:', error);
+            }
+            return null;
+          };
 
+          // Helper function to create assignment
+          const createAssignment = async (user, taskType, taskName) => {
+            if (!user) return null;
+            
+            try {
               const assignment = {
                 id: `assignment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                userId: selectedAssignee.id,
+                userId: user.id,
                 projectId: savedProject.id,
                 projectName: savedProject.projectName,
                 rfaNumber: savedProject.rfaNumber,
-                estimatedHours: savedProject.totalTriage || 0,
+                hoursAllocated: savedProject.totalTriage || 0,
+                hoursSpent: 0,
                 startDate: new Date().toISOString().split('T')[0],
-                dueDate: savedProject.dueDate || null,
-                status: 'assigned',
+                dueDate: savedProject.dueDate ? new Date(savedProject.dueDate).toISOString().split('T')[0] : null,
+                status: 'ASSIGNED',
                 priority: savedProject.priority || 'medium',
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
+                taskType: taskType,
+                assignedBy: '',
+                notes: '',
+                metadata: {
+                  createdAt: new Date().toISOString(),
+                  lastModified: new Date().toISOString(),
+                  assignedAt: new Date().toISOString()
+                }
               };
 
               const assignmentResult = await window.electronAPI.workloadAssignmentSave(assignment);
               
               if (assignmentResult.success) {
-                console.log('ProjectWizard: Assignment created successfully:', assignment);
-                setNotification({
-                  type: 'success',
-                  message: `✅ Project assigned to ${selectedAssignee.name}!`
-                });
+                console.log(`ProjectWizard: ${taskName} assignment created successfully:`, assignment);
+                return { success: true, assignment, taskName, userName: user.name };
               } else {
-                console.error('ProjectWizard: Failed to create assignment:', assignmentResult.error);
+                console.error(`ProjectWizard: Failed to create ${taskName} assignment:`, assignmentResult.error);
+                return { success: false, error: assignmentResult.error, taskName, userName: user.name };
+              }
+            } catch (error) {
+              console.error(`ProjectWizard: Error creating ${taskName} assignment:`, error);
+              return { success: false, error: error.message, taskName, userName: user.name };
+            }
+          };
+
+          // Create assignments for each work task type
+          if (savedProject.triagedBy) {
+            const triageUser = await findUserByName(savedProject.triagedBy);
+            if (triageUser) {
+              const result = await createAssignment(triageUser, 'TRIAGE', 'Triage');
+              workTaskAssignments.push(result);
+            }
+          }
+
+          if (savedProject.designBy) {
+            const designUser = await findUserByName(savedProject.designBy);
+            if (designUser) {
+              const result = await createAssignment(designUser, 'DESIGN', 'Design');
+              workTaskAssignments.push(result);
+            }
+          }
+
+          if (savedProject.qcBy) {
+            const qcUser = await findUserByName(savedProject.qcBy);
+            if (qcUser) {
+              const result = await createAssignment(qcUser, 'QC', 'QC');
+              workTaskAssignments.push(result);
+            }
+          }
+
+          // Show notification about assignment creation results
+          const successfulAssignments = workTaskAssignments.filter(a => a && a.success);
+          const failedAssignments = workTaskAssignments.filter(a => a && !a.success);
+
+          if (successfulAssignments.length > 0) {
+            const taskNames = successfulAssignments.map(a => a.taskName).join(', ');
+            setNotification({
+              type: 'success',
+              message: `✅ Created ${successfulAssignments.length} work task assignment(s): ${taskNames}`
+            });
+          }
+
+          if (failedAssignments.length > 0) {
+            const taskNames = failedAssignments.map(a => a.taskName).join(', ');
+            setNotification({
+              type: 'warning',
+              message: `⚠️ Failed to create ${failedAssignments.length} assignment(s): ${taskNames}. You can assign them manually from the Workload Dashboard.`
+            });
+          }
+
+          // Legacy: Create assignment for selected assignee if available (for backward compatibility)
+          if (selectedAssignee) {
+            try {
+              // Check if an assignment already exists for this user and project
+              const existingAssignments = workTaskAssignments.filter(a => a && a.success && a.assignment.userId === selectedAssignee.id);
+              
+              if (existingAssignments.length === 0) {
+                // Only create if no work task assignment was created for this user
                 setNotification({
-                  type: 'warning',
-                  message: '⚠️ Project saved, but assignment failed. You can assign it manually from the Workload Dashboard.'
+                  type: 'info',
+                  message: `Assigning project to ${selectedAssignee.name}...`
                 });
+
+                const assignment = {
+                  id: `assignment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                  userId: selectedAssignee.id,
+                  projectId: savedProject.id,
+                  projectName: savedProject.projectName,
+                  rfaNumber: savedProject.rfaNumber,
+                  hoursAllocated: savedProject.totalTriage || 0,
+                  hoursSpent: 0,
+                  startDate: new Date().toISOString().split('T')[0],
+                  dueDate: savedProject.dueDate ? new Date(savedProject.dueDate).toISOString().split('T')[0] : null,
+                  status: 'ASSIGNED',
+                  priority: savedProject.priority || 'medium',
+                  taskType: null, // General assignment (no specific task type)
+                  assignedBy: '',
+                  notes: '',
+                  metadata: {
+                    createdAt: new Date().toISOString(),
+                    lastModified: new Date().toISOString(),
+                    assignedAt: new Date().toISOString()
+                  }
+                };
+
+                const assignmentResult = await window.electronAPI.workloadAssignmentSave(assignment);
+                
+                if (assignmentResult.success) {
+                  console.log('ProjectWizard: General assignment created successfully:', assignment);
+                  setNotification({
+                    type: 'success',
+                    message: `✅ Project assigned to ${selectedAssignee.name}!`
+                  });
+                } else {
+                  console.error('ProjectWizard: Failed to create general assignment:', assignmentResult.error);
+                  setNotification({
+                    type: 'warning',
+                    message: '⚠️ Project saved, but assignment failed. You can assign it manually from the Workload Dashboard.'
+                  });
+                }
               }
             } catch (assignmentError) {
-              console.error('ProjectWizard: Error creating assignment:', assignmentError);
+              console.error('ProjectWizard: Error creating general assignment:', assignmentError);
               // Don't fail the whole process if assignment fails
               setNotification({
                 type: 'warning',

@@ -704,6 +704,49 @@ const ProjectWizardStep1 = ({
     }
   }, [dropdownOptions.defaultRegionalTeam]); // Only trigger when default changes
 
+  // Set default triagedBy and qcBy from user profile (only if fields are empty)
+  useEffect(() => {
+    // Only set defaults if fields are currently empty
+    if (formData.triagedBy || formData.qcBy) {
+      return; // Don't overwrite existing values
+    }
+    
+    const loadUserDefaults = async () => {
+      try {
+        if (window.electronAPI?.settingsLoad) {
+          const settingsResult = await window.electronAPI.settingsLoad();
+          if (settingsResult?.success && settingsResult.data?.workloadSettings?.userName) {
+            const userName = settingsResult.data.workloadSettings.userName;
+            const updates = {};
+            
+            // Set triagedBy if not already set
+            if (!formData.triagedBy && userName) {
+              updates.triagedBy = userName;
+            }
+            
+            // Set qcBy if not already set
+            if (!formData.qcBy && userName) {
+              updates.qcBy = userName;
+            }
+            
+            // Only update if there are changes
+            if (Object.keys(updates).length > 0) {
+              onFormDataChange({
+                ...formData,
+                ...updates
+              });
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load user defaults for WorkTask fields:', error);
+      }
+    };
+    
+    loadUserDefaults();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
+
   // HTA-like automatic revision detection (try first before showing dialog)
   const handleAutomaticRevisionDetection = async () => {
     try {
@@ -926,7 +969,9 @@ const ProjectWizardStep1 = ({
             rfaValue: '',
             status: '',
             products: '',
-            assignedTo: '',
+            triagedBy: '',
+            designBy: '',
+            qcBy: '',
             repContacts: '',
             requestedDate: '',
             submittedDate: '',
@@ -1533,10 +1578,20 @@ const ProjectWizardStep1 = ({
       parsedData.products = productsArray;
     }
     
-    // Extract Assigned To - Look for "Assigned To: Cerpa, Roger"
-    const assignedMatch = clipboardText.match(/Assigned To:\s*([^\n\r]+)/);
-    if (assignedMatch) {
-      parsedData.assignedTo = assignedMatch[1].trim();
+    // Extract WorkTask fields - Look for "Triaged By:", "Design By:", "QC By:"
+    const triagedMatch = clipboardText.match(/Triaged By:\s*([^\n\r]+)/i);
+    if (triagedMatch) {
+      parsedData.triagedBy = triagedMatch[1].trim();
+    }
+    
+    const designMatch = clipboardText.match(/Design By:\s*([^\n\r]+)/i);
+    if (designMatch) {
+      parsedData.designBy = designMatch[1].trim();
+    }
+    
+    const qcMatch = clipboardText.match(/QC By:\s*([^\n\r]+)/i);
+    if (qcMatch) {
+      parsedData.qcBy = qcMatch[1].trim();
     }
     
     // Extract Rep Contacts - Look for "Rep Contacts: Vranesh, Eileen"
@@ -2453,23 +2508,66 @@ const ProjectWizardStep1 = ({
               />
               <small className="field-hint">Hover over products to remove them. Use the dropdown to add products.</small>
             </div>
+          </div>
+        </div>
 
-            <div className={`form-group ${isFieldImported('assignedTo') ? 'imported-field' : ''}`}>
-              <label htmlFor="assignedTo">Assigned To</label>
+        {/* WorkTask Section */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-6 shadow-md mt-6">
+          <h3 className="form-section-header">👥 WorkTask</h3>
+          <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1">
+            <div className={`form-group ${isFieldImported('triagedBy') ? 'imported-field' : ''}`}>
+              <label htmlFor="triagedBy">Triaged By</label>
               <select
-                id="assignedTo"
-                name="assignedTo"
-                value={formData.assignedTo || ''}
+                id="triagedBy"
+                name="triagedBy"
+                value={formData.triagedBy || ''}
                 onChange={handleInputChange}
               >
-                <option value="">Select Assigned To</option>
+                <option value="">Select Triaged By</option>
                 {dropdownOptions.assignedToOptions.map(person => (
                   <option key={person} value={person}>{person}</option>
                 ))}
               </select>
-              {isFieldImported('assignedTo') && <span className="import-indicator">📋 Imported</span>}
+              {isFieldImported('triagedBy') && <span className="import-indicator">📋 Imported</span>}
             </div>
 
+            <div className={`form-group ${isFieldImported('designBy') ? 'imported-field' : ''}`}>
+              <label htmlFor="designBy">Design By</label>
+              <select
+                id="designBy"
+                name="designBy"
+                value={formData.designBy || ''}
+                onChange={handleInputChange}
+              >
+                <option value="">Select Design By</option>
+                {dropdownOptions.assignedToOptions.map(person => (
+                  <option key={person} value={person}>{person}</option>
+                ))}
+              </select>
+              {isFieldImported('designBy') && <span className="import-indicator">📋 Imported</span>}
+            </div>
+
+            <div className={`form-group ${isFieldImported('qcBy') ? 'imported-field' : ''}`}>
+              <label htmlFor="qcBy">QC By</label>
+              <select
+                id="qcBy"
+                name="qcBy"
+                value={formData.qcBy || ''}
+                onChange={handleInputChange}
+              >
+                <option value="">Select QC By</option>
+                {dropdownOptions.assignedToOptions.map(person => (
+                  <option key={person} value={person}>{person}</option>
+                ))}
+              </select>
+              {isFieldImported('qcBy') && <span className="import-indicator">📋 Imported</span>}
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-6 shadow-md mt-6">
+          <h3 className="form-section-header">📋 Additional Information</h3>
+          <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1">
             <div className={`form-group ${isFieldImported('repContacts') ? 'imported-field' : ''}`}>
               <label htmlFor="repContacts">Rep Contacts</label>
               <input

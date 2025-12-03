@@ -78,6 +78,49 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
     }
   }, [dropdownOptions.defaultRegionalTeam]); // Only trigger when default changes
 
+  // Set default triagedBy and qcBy from user profile (only if fields are empty)
+  useEffect(() => {
+    // Only set defaults if fields are currently empty
+    if (formData.triagedBy || formData.qcBy) {
+      return; // Don't overwrite existing values
+    }
+    
+    const loadUserDefaults = async () => {
+      try {
+        if (window.electronAPI?.settingsLoad) {
+          const settingsResult = await window.electronAPI.settingsLoad();
+          if (settingsResult?.success && settingsResult.data?.workloadSettings?.userName) {
+            const userName = settingsResult.data.workloadSettings.userName;
+            const updates = {};
+            
+            // Set triagedBy if not already set
+            if (!formData.triagedBy && userName) {
+              updates.triagedBy = userName;
+            }
+            
+            // Set qcBy if not already set
+            if (!formData.qcBy && userName) {
+              updates.qcBy = userName;
+            }
+            
+            // Only update if there are changes
+            if (Object.keys(updates).length > 0) {
+              onFormDataChange({
+                ...formData,
+                ...updates
+              });
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load user defaults for WorkTask fields:', error);
+      }
+    };
+    
+    loadUserDefaults();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
+
   const handleInputChange = (e) => {
     const { name, value, type } = e.target;
     
@@ -360,10 +403,20 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
       parsedData.products = productsArray;
     }
     
-    // Extract Assigned To - Look for "Assigned To: Cerpa, Roger"
-    const assignedMatch = clipboardText.match(/Assigned To:\s*([^\n\r]+)/);
-    if (assignedMatch) {
-      parsedData.assignedTo = assignedMatch[1].trim();
+    // Extract WorkTask fields - Look for "Triaged By:", "Design By:", "QC By:"
+    const triagedMatch = clipboardText.match(/Triaged By:\s*([^\n\r]+)/i);
+    if (triagedMatch) {
+      parsedData.triagedBy = triagedMatch[1].trim();
+    }
+    
+    const designMatch = clipboardText.match(/Design By:\s*([^\n\r]+)/i);
+    if (designMatch) {
+      parsedData.designBy = designMatch[1].trim();
+    }
+    
+    const qcMatch = clipboardText.match(/QC By:\s*([^\n\r]+)/i);
+    if (qcMatch) {
+      parsedData.qcBy = qcMatch[1].trim();
     }
     
     // Extract Rep Contacts - Look for "Rep Contacts: Vranesh, Eileen"
@@ -787,21 +840,64 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
               <small className="field-hint">Hover over products to remove them. Use the dropdown to add products.</small>
             </div>
 
+          </div>
+        </div>
+
+        {/* WorkTask Section */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg mb-6 p-6 shadow-md">
+          <h3>👥 WorkTask</h3>
+          <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1">
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="assignedTo">Assigned To</label>
+              <label htmlFor="triagedBy">Triaged By</label>
               <select
-                id="assignedTo"
-                name="assignedTo"
-                value={formData.assignedTo}
+                id="triagedBy"
+                name="triagedBy"
+                value={formData.triagedBy || ''}
                 onChange={handleInputChange}
               >
-                <option value="">Select Assigned To</option>
+                <option value="">Select Triaged By</option>
                 {dropdownOptions.assignedToOptions.map(person => (
                   <option key={person} value={person}>{person}</option>
                 ))}
               </select>
             </div>
 
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="designBy">Design By</label>
+              <select
+                id="designBy"
+                name="designBy"
+                value={formData.designBy || ''}
+                onChange={handleInputChange}
+              >
+                <option value="">Select Design By</option>
+                {dropdownOptions.assignedToOptions.map(person => (
+                  <option key={person} value={person}>{person}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="qcBy">QC By</label>
+              <select
+                id="qcBy"
+                name="qcBy"
+                value={formData.qcBy || ''}
+                onChange={handleInputChange}
+              >
+                <option value="">Select QC By</option>
+                {dropdownOptions.assignedToOptions.map(person => (
+                  <option key={person} value={person}>{person}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Additional Information Section */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg mb-6 p-6 shadow-md">
+          <h3>📋 Additional Information</h3>
+          <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1">
             <div className="flex flex-col gap-1.5">
               <label htmlFor="repContacts">Rep Contacts</label>
               <input

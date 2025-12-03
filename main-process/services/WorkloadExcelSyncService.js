@@ -73,6 +73,16 @@ class WorkloadExcelSyncService extends EventEmitter {
     try {
       console.log('📝 Updating workload sync settings:', newSettings);
       
+      // Validate file path if provided
+      if (newSettings.filePath) {
+        const pathInfo = await this.workloadExcelService.validateFilePath(newSettings.filePath);
+        if (!pathInfo.isValid) {
+          return { success: false, error: `Invalid file path: ${pathInfo.error}` };
+        }
+        // Use normalized path
+        newSettings.filePath = pathInfo.path;
+      }
+      
       const currentSettings = await this.settingsService.getSettings();
       const updatedSettings = {
         ...currentSettings,

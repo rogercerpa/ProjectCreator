@@ -9,6 +9,100 @@ class WorkloadExcelService {
   }
 
   /**
+   * Validate and normalize file path
+   */
+  async validateFilePath(filePath) {
+    try {
+      if (!filePath || !filePath.trim()) {
+        return { isValid: false, error: 'File path is required' };
+      }
+
+      // Remove any surrounding quotes
+      let normalizedPath = filePath.trim().replace(/^["']|["']$/g, '');
+
+      // Check if path ends with .xlsx or .xls
+      const ext = path.extname(normalizedPath).toLowerCase();
+      if (!['.xlsx', '.xls'].includes(ext)) {
+        // If it's a directory, suggest adding filename
+        try {
+          const stats = await fs.stat(normalizedPath);
+          if (stats.isDirectory()) {
+            return { 
+              isValid: false, 
+              error: `Path is a directory. Please select a file (e.g., ${path.join(normalizedPath, 'ProjectWorkload.xlsx')})` 
+            };
+          }
+        } catch (e) {
+          // Path doesn't exist, might be new file - that's okay if it has .xlsx extension
+          if (!normalizedPath.toLowerCase().endsWith('.xlsx') && !normalizedPath.toLowerCase().endsWith('.xls')) {
+            return { 
+              isValid: false, 
+              error: 'File path must end with .xlsx or .xls extension' 
+            };
+          }
+        }
+      }
+
+      // If file exists, check it's actually a file
+      if (await fs.pathExists(normalizedPath)) {
+        const stats = await fs.stat(normalizedPath);
+        if (!stats.isFile()) {
+          return { 
+            isValid: false, 
+            error: 'Path exists but is not a file. Please select an Excel file.' 
+          };
+        }
+      }
+
+      // Check if directory is writable (for new files)
+      const dir = path.dirname(normalizedPath);
+      try {
+        await fs.ensureDir(dir);
+        await fs.access(dir, fs.constants.W_OK);
+      } catch (error) {
+        return { 
+          isValid: false, 
+          error: `Cannot write to directory: ${error.message}` 
+        };
+      }
+
+      return { isValid: true, path: normalizedPath };
+    } catch (error) {
+      return { isValid: false, error: error.message };
+    }
+  }
+
+  /**
+   * Helper function to update cell value while preserving formatting
+   */
+  updateCellValue(worksheet, row, col, value, formatSourceRow = null) {
+    const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+    const existingCell = worksheet[cellAddress];
+    
+    if (existingCell) {
+      // Preserve existing cell structure (styles, formatting, etc.) - only update value
+      existingCell.v = value;
+      existingCell.w = undefined; // Clear formatted text, Excel will regenerate
+      existingCell.t = typeof value === 'number' ? 'n' : (value === null || value === undefined ? 'z' : 's');
+    } else {
+      // New cell - try to copy formatting from source row if provided
+      const formatSource = formatSourceRow !== null ? worksheet[XLSX.utils.encode_cell({ r: formatSourceRow, c: col })] : null;
+      
+      const newCell = {
+        v: value,
+        t: typeof value === 'number' ? 'n' : (value === null || value === undefined ? 'z' : 's')
+      };
+      
+      // Copy style if available
+      if (formatSource && formatSource.s) {
+        newCell.s = formatSource.s;
+      }
+      
+      worksheet[cellAddress] = newCell;
+    }
+  }
+
+  /**
    * Initialize Excel workbook with template structure
    */
   async initializeWorkbook(filePath, fieldMapping) {
@@ -52,43 +146,91 @@ class WorkloadExcelService {
   }
 
   /**
-   * Export projects to Excel (incremental update)
+   * Export projects to Excel (incremental update - preserves tables and formatting)
    */
   async exportProjectsToExcel(projects, filePath, fieldMapping) {
     try {
+      // Validate file path
+      const pathInfo = await this.validateFilePath(filePath);
+      if (!pathInfo.isValid) {
+        return { success: false, error: pathInfo.error };
+      }
+      
+      // Use the normalized path
+      const normalizedPath = pathInfo.path;
+
       // Check if file exists, if not initialize it
-      if (!await fs.pathExists(filePath)) {
-        const initResult = await this.initializeWorkbook(filePath, fieldMapping);
+      if (!await fs.pathExists(normalizedPath)) {
+        const initResult = await this.initializeWorkbook(normalizedPath, fieldMapping);
         if (!initResult.success) {
           return initResult;
         }
       }
 
       // Read workbook
-      const workbook = XLSX.readFile(filePath);
+      const workbook = XLSX.readFile(normalizedPath, { cellStyles: true, cellNF: true });
       const sheetName = 'Projects';
       const projectMapping = fieldMapping.projects;
       const headers = this.fieldMappingService.getExcelHeaders(projectMapping);
       const idColumn = 'ProjectID'; // Excel column name for ID
 
+      // Get or create worksheet
+      let worksheet = workbook.Sheets[sheetName];
+      const isNewSheet = !worksheet;
+      
+      if (isNewSheet) {
+        // Create new sheet with headers
+        worksheet = XLSX.utils.aoa_to_sheet([headers]);
+        XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+      }
+
       // Read existing Excel data and create map by ID
       let existingRowsMap = new Map();
-      let preservedRows = [];
+      let headerRowIndex = 0;
+      let dataStartRow = 1;
       
-      if (workbook.Sheets[sheetName]) {
-        const existingData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
-        existingData.forEach((row) => {
+      // Find header row and existing data
+      const range = worksheet['!ref'] ? XLSX.utils.decode_range(worksheet['!ref']) : { s: { r: 0, c: 0 }, e: { r: 0, c: headers.length - 1 } };
+      
+      // Try to find header row
+      for (let row = 0; row <= Math.min(10, range.e.r); row++) {
+        const rowHeaders = [];
+        for (let col = 0; col < headers.length; col++) {
+          const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+          const cell = worksheet[cellAddress];
+          const cellValue = cell ? (cell.v || cell.w || '').toString().trim() : '';
+          if (cellValue) rowHeaders.push(cellValue);
+        }
+        
+        // Check if this row matches our headers
+        const matches = headers.filter((h, i) => rowHeaders[i] === h).length;
+        if (matches >= headers.length * 0.8) { // 80% match threshold
+          headerRowIndex = row;
+          dataStartRow = row + 1;
+          break;
+        }
+      }
+
+      // If no header row found, assume first row is headers
+      if (headerRowIndex === 0 && range.e.r > 0) {
+        dataStartRow = 1;
+      }
+
+      // Read existing data rows
+      if (range.e.r >= dataStartRow) {
+        const existingData = XLSX.utils.sheet_to_json(worksheet, { range: dataStartRow, defval: '' });
+        existingData.forEach((row, index) => {
           const id = row[idColumn];
           if (id) {
-            // Convert Excel row object to array format
+            const rowIndex = dataStartRow + index;
             const rowArray = headers.map(header => row[header] || '');
-            existingRowsMap.set(String(id), rowArray);
+            existingRowsMap.set(String(id), { rowArray, rowIndex });
           }
         });
       }
 
-      // Build rows array starting with headers
-      const rows = [headers];
+      // Build map of projects to export
+      const projectsToExport = new Map();
       let updatedCount = 0;
       let addedCount = 0;
 
@@ -99,35 +241,76 @@ class WorkloadExcelService {
         const projectId = String(row[idColumn] || '');
 
         if (existingRowsMap.has(projectId)) {
-          // Update existing row - replace in map
-          existingRowsMap.set(projectId, rowArray);
+          // Update existing row
+          const existing = existingRowsMap.get(projectId);
+          projectsToExport.set(projectId, { rowArray, rowIndex: existing.rowIndex, isUpdate: true });
+          existingRowsMap.delete(projectId); // Mark as processed
           updatedCount++;
         } else {
-          // Add new row
-          rows.push(rowArray);
+          // New row - will be added
+          projectsToExport.set(projectId, { rowArray, rowIndex: -1, isUpdate: false });
           addedCount++;
         }
       }
 
-      // Add all rows from map (both updated and preserved)
-      const allRows = Array.from(existingRowsMap.values());
-      rows.push(...allRows);
-      
-      const preservedCount = allRows.length - updatedCount;
+      // Preserve rows from Excel that don't exist in app (these will be kept at the end)
+      const preservedCount = existingRowsMap.size;
+      const preservedRows = Array.from(existingRowsMap.values());
 
-      // Create worksheet with merged data
-      const worksheet = XLSX.utils.aoa_to_sheet(rows);
-
-      // Replace existing sheet
-      const sheetIndex = workbook.SheetNames.indexOf(sheetName);
-      if (sheetIndex !== -1) {
-        workbook.SheetNames.splice(sheetIndex, 1);
-        delete workbook.Sheets[sheetName];
+      // Clear all existing data rows (but keep headers) to prevent duplicates
+      const currentRange = worksheet['!ref'] ? XLSX.utils.decode_range(worksheet['!ref']) : range;
+      if (currentRange.e.r >= dataStartRow) {
+        for (let row = dataStartRow; row <= currentRange.e.r; row++) {
+          for (let col = 0; col < headers.length; col++) {
+            const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+            if (worksheet[cellAddress]) {
+              delete worksheet[cellAddress];
+            }
+          }
+        }
       }
-      XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
 
-      // Write workbook
-      XLSX.writeFile(workbook, filePath);
+      // Start writing data rows right after header
+      let currentDataRow = dataStartRow;
+
+      // 1. Write NEW rows at the top (IDs that don't exist in Excel)
+      const newRows = Array.from(projectsToExport.values()).filter(r => !r.isUpdate);
+      newRows.forEach(({ rowArray }) => {
+        rowArray.forEach((value, colIndex) => {
+          this.updateCellValue(worksheet, currentDataRow, colIndex, value, headerRowIndex);
+        });
+        currentDataRow++;
+      });
+
+      // 2. Write UPDATED rows (IDs that exist in both app and Excel)
+      const updatedRows = Array.from(projectsToExport.values()).filter(r => r.isUpdate);
+      updatedRows.forEach(({ rowArray }) => {
+        rowArray.forEach((value, colIndex) => {
+          this.updateCellValue(worksheet, currentDataRow, colIndex, value, headerRowIndex);
+        });
+        currentDataRow++;
+      });
+
+      // 3. Write PRESERVED rows at the end (IDs that exist in Excel but not in app)
+      preservedRows.forEach(({ rowArray }) => {
+        rowArray.forEach((value, colIndex) => {
+          this.updateCellValue(worksheet, currentDataRow, colIndex, value, headerRowIndex);
+        });
+        currentDataRow++;
+      });
+
+      // Calculate last data row (currentDataRow - 1 because we increment after writing)
+      const lastDataRow = currentDataRow - 1;
+
+      // Update worksheet range to include all data
+      const newRange = {
+        s: { r: 0, c: 0 },
+        e: { r: lastDataRow, c: headers.length - 1 }
+      };
+      worksheet['!ref'] = XLSX.utils.encode_range(newRange);
+
+      // Write workbook - preserve as much structure as possible
+      XLSX.writeFile(workbook, normalizedPath, { bookType: 'xlsx' });
 
       return {
         success: true,
@@ -147,85 +330,192 @@ class WorkloadExcelService {
   }
 
   /**
-   * Export assignments to Excel (incremental update)
+   * Export assignments to Excel (incremental update - preserves tables and formatting)
+   * Enriches assignments with rfaType from projects and userName/userEmail from users
    */
-  async exportAssignmentsToExcel(assignments, filePath, fieldMapping) {
+  async exportAssignmentsToExcel(assignments, filePath, fieldMapping, projects = [], users = []) {
     try {
+      // Validate file path
+      const pathInfo = await this.validateFilePath(filePath);
+      if (!pathInfo.isValid) {
+        return { success: false, error: pathInfo.error };
+      }
+      
+      // Use the normalized path
+      const normalizedPath = pathInfo.path;
+
+      // Enrich assignments with missing data
+      const enrichedAssignments = assignments.map(assignment => {
+        const enriched = { ...assignment };
+        
+        // Look up project to get rfaType
+        if (assignment.projectId && projects.length > 0) {
+          const project = projects.find(p => p.id === assignment.projectId);
+          if (project) {
+            enriched.rfaType = project.rfaType || '';
+          }
+        }
+        
+        // Look up user to get userName and userEmail
+        if (assignment.userId && users.length > 0) {
+          const user = users.find(u => u.id === assignment.userId);
+          if (user) {
+            enriched.userName = user.name || '';
+            enriched.userEmail = user.email || '';
+          }
+        }
+        
+        return enriched;
+      });
       // Check if file exists, if not initialize it
-      if (!await fs.pathExists(filePath)) {
-        const initResult = await this.initializeWorkbook(filePath, fieldMapping);
+      if (!await fs.pathExists(normalizedPath)) {
+        const initResult = await this.initializeWorkbook(normalizedPath, fieldMapping);
         if (!initResult.success) {
           return initResult;
         }
       }
 
       // Read workbook
-      const workbook = XLSX.readFile(filePath);
+      const workbook = XLSX.readFile(normalizedPath, { cellStyles: true, cellNF: true });
       const sheetName = 'Assignments';
       const assignmentMapping = fieldMapping.assignments;
       const headers = this.fieldMappingService.getExcelHeaders(assignmentMapping);
       const idColumn = 'AssignmentID'; // Excel column name for ID
 
+      // Get or create worksheet
+      let worksheet = workbook.Sheets[sheetName];
+      const isNewSheet = !worksheet;
+      
+      if (isNewSheet) {
+        worksheet = XLSX.utils.aoa_to_sheet([headers]);
+        XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+      }
+
       // Read existing Excel data and create map by ID
       let existingRowsMap = new Map();
+      let headerRowIndex = 0;
+      let dataStartRow = 1;
       
-      if (workbook.Sheets[sheetName]) {
-        const existingData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
-        existingData.forEach((row) => {
+      const range = worksheet['!ref'] ? XLSX.utils.decode_range(worksheet['!ref']) : { s: { r: 0, c: 0 }, e: { r: 0, c: headers.length - 1 } };
+      
+      // Find header row
+      for (let row = 0; row <= Math.min(10, range.e.r); row++) {
+        const rowHeaders = [];
+        for (let col = 0; col < headers.length; col++) {
+          const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+          const cell = worksheet[cellAddress];
+          const cellValue = cell ? (cell.v || cell.w || '').toString().trim() : '';
+          if (cellValue) rowHeaders.push(cellValue);
+        }
+        
+        const matches = headers.filter((h, i) => rowHeaders[i] === h).length;
+        if (matches >= headers.length * 0.8) {
+          headerRowIndex = row;
+          dataStartRow = row + 1;
+          break;
+        }
+      }
+
+      if (headerRowIndex === 0 && range.e.r > 0) {
+        dataStartRow = 1;
+      }
+
+      // Read existing data rows
+      if (range.e.r >= dataStartRow) {
+        const existingData = XLSX.utils.sheet_to_json(worksheet, { range: dataStartRow, defval: '' });
+        existingData.forEach((row, index) => {
           const id = row[idColumn];
           if (id) {
-            // Convert Excel row object to array format
+            const rowIndex = dataStartRow + index;
             const rowArray = headers.map(header => row[header] || '');
-            existingRowsMap.set(String(id), rowArray);
+            existingRowsMap.set(String(id), { rowArray, rowIndex });
           }
         });
       }
 
-      // Build rows array starting with headers
-      const rows = [headers];
+      // Build map of assignments to export
+      const assignmentsToExport = new Map();
       let updatedCount = 0;
       let addedCount = 0;
 
-      // Process each assignment from app
-      for (const assignment of assignments) {
+      // Process each assignment from app (use enriched assignments)
+      for (const assignment of enrichedAssignments) {
         const row = this.fieldMappingService.mapObjectToExcelRow(assignment, assignmentMapping);
         const rowArray = headers.map(header => row[header] || '');
         const assignmentId = String(row[idColumn] || '');
 
         if (existingRowsMap.has(assignmentId)) {
-          // Update existing row - replace in map
-          existingRowsMap.set(assignmentId, rowArray);
+          const existing = existingRowsMap.get(assignmentId);
+          assignmentsToExport.set(assignmentId, { rowArray, rowIndex: existing.rowIndex, isUpdate: true });
+          existingRowsMap.delete(assignmentId);
           updatedCount++;
         } else {
-          // Add new row
-          rows.push(rowArray);
+          assignmentsToExport.set(assignmentId, { rowArray, rowIndex: -1, isUpdate: false });
           addedCount++;
         }
       }
 
-      // Add all rows from map (both updated and preserved)
-      const allRows = Array.from(existingRowsMap.values());
-      rows.push(...allRows);
-      
-      const preservedCount = allRows.length - updatedCount;
+      const preservedCount = existingRowsMap.size;
+      const preservedRows = Array.from(existingRowsMap.values());
 
-      // Create worksheet with merged data
-      const worksheet = XLSX.utils.aoa_to_sheet(rows);
-
-      // Replace existing sheet
-      const sheetIndex = workbook.SheetNames.indexOf(sheetName);
-      if (sheetIndex !== -1) {
-        workbook.SheetNames.splice(sheetIndex, 1);
-        delete workbook.Sheets[sheetName];
+      // Clear all existing data rows (but keep headers) to prevent duplicates
+      const currentRange = worksheet['!ref'] ? XLSX.utils.decode_range(worksheet['!ref']) : range;
+      if (currentRange.e.r >= dataStartRow) {
+        for (let row = dataStartRow; row <= currentRange.e.r; row++) {
+          for (let col = 0; col < headers.length; col++) {
+            const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+            if (worksheet[cellAddress]) {
+              delete worksheet[cellAddress];
+            }
+          }
+        }
       }
-      XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
 
-      // Write workbook
-      XLSX.writeFile(workbook, filePath);
+      // Start writing data rows right after header
+      let currentDataRow = dataStartRow;
+
+      // 1. Write NEW rows at the top (IDs that don't exist in Excel)
+      const newRows = Array.from(assignmentsToExport.values()).filter(r => !r.isUpdate);
+      newRows.forEach(({ rowArray }) => {
+        rowArray.forEach((value, colIndex) => {
+          this.updateCellValue(worksheet, currentDataRow, colIndex, value, headerRowIndex);
+        });
+        currentDataRow++;
+      });
+
+      // 2. Write UPDATED rows (IDs that exist in both app and Excel)
+      const updatedRows = Array.from(assignmentsToExport.values()).filter(r => r.isUpdate);
+      updatedRows.forEach(({ rowArray }) => {
+        rowArray.forEach((value, colIndex) => {
+          this.updateCellValue(worksheet, currentDataRow, colIndex, value, headerRowIndex);
+        });
+        currentDataRow++;
+      });
+
+      // 3. Write PRESERVED rows at the end (IDs that exist in Excel but not in app)
+      preservedRows.forEach(({ rowArray }) => {
+        rowArray.forEach((value, colIndex) => {
+          this.updateCellValue(worksheet, currentDataRow, colIndex, value, headerRowIndex);
+        });
+        currentDataRow++;
+      });
+
+      // Calculate last data row
+      const lastDataRow = currentDataRow - 1;
+
+      // Update worksheet range to include all data
+      const newRange = {
+        s: { r: 0, c: 0 },
+        e: { r: lastDataRow, c: headers.length - 1 }
+      };
+      worksheet['!ref'] = XLSX.utils.encode_range(newRange);
+
+      // Write workbook - preserve as much structure as possible
+      XLSX.writeFile(workbook, normalizedPath, { bookType: 'xlsx' });
 
       return {
         success: true,
-        exported: assignments.length,
+        exported: enrichedAssignments.length,
         added: addedCount,
         updated: updatedCount,
         preserved: preservedCount,
@@ -241,42 +531,87 @@ class WorkloadExcelService {
   }
 
   /**
-   * Export users to Excel (incremental update)
+   * Export users to Excel (incremental update - preserves tables and formatting)
    */
   async exportUsersToExcel(users, filePath, fieldMapping) {
     try {
+      // Validate file path
+      const pathInfo = await this.validateFilePath(filePath);
+      if (!pathInfo.isValid) {
+        return { success: false, error: pathInfo.error };
+      }
+      
+      // Use the normalized path
+      const normalizedPath = pathInfo.path;
+
       // Check if file exists, if not initialize it
-      if (!await fs.pathExists(filePath)) {
-        const initResult = await this.initializeWorkbook(filePath, fieldMapping);
+      if (!await fs.pathExists(normalizedPath)) {
+        const initResult = await this.initializeWorkbook(normalizedPath, fieldMapping);
         if (!initResult.success) {
           return initResult;
         }
       }
 
       // Read workbook
-      const workbook = XLSX.readFile(filePath);
+      const workbook = XLSX.readFile(normalizedPath, { cellStyles: true, cellNF: true });
       const sheetName = 'Users';
       const userMapping = fieldMapping.users;
       const headers = this.fieldMappingService.getExcelHeaders(userMapping);
       const idColumn = 'UserID'; // Excel column name for ID
 
+      // Get or create worksheet
+      let worksheet = workbook.Sheets[sheetName];
+      const isNewSheet = !worksheet;
+      
+      if (isNewSheet) {
+        worksheet = XLSX.utils.aoa_to_sheet([headers]);
+        XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+      }
+
       // Read existing Excel data and create map by ID
       let existingRowsMap = new Map();
+      let headerRowIndex = 0;
+      let dataStartRow = 1;
       
-      if (workbook.Sheets[sheetName]) {
-        const existingData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
-        existingData.forEach((row) => {
+      const range = worksheet['!ref'] ? XLSX.utils.decode_range(worksheet['!ref']) : { s: { r: 0, c: 0 }, e: { r: 0, c: headers.length - 1 } };
+      
+      // Find header row
+      for (let row = 0; row <= Math.min(10, range.e.r); row++) {
+        const rowHeaders = [];
+        for (let col = 0; col < headers.length; col++) {
+          const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+          const cell = worksheet[cellAddress];
+          const cellValue = cell ? (cell.v || cell.w || '').toString().trim() : '';
+          if (cellValue) rowHeaders.push(cellValue);
+        }
+        
+        const matches = headers.filter((h, i) => rowHeaders[i] === h).length;
+        if (matches >= headers.length * 0.8) {
+          headerRowIndex = row;
+          dataStartRow = row + 1;
+          break;
+        }
+      }
+
+      if (headerRowIndex === 0 && range.e.r > 0) {
+        dataStartRow = 1;
+      }
+
+      // Read existing data rows
+      if (range.e.r >= dataStartRow) {
+        const existingData = XLSX.utils.sheet_to_json(worksheet, { range: dataStartRow, defval: '' });
+        existingData.forEach((row, index) => {
           const id = row[idColumn];
           if (id) {
-            // Convert Excel row object to array format
+            const rowIndex = dataStartRow + index;
             const rowArray = headers.map(header => row[header] || '');
-            existingRowsMap.set(String(id), rowArray);
+            existingRowsMap.set(String(id), { rowArray, rowIndex });
           }
         });
       }
 
-      // Build rows array starting with headers
-      const rows = [headers];
+      // Build map of users to export
+      const usersToExport = new Map();
       let updatedCount = 0;
       let addedCount = 0;
 
@@ -287,35 +622,73 @@ class WorkloadExcelService {
         const userId = String(row[idColumn] || '');
 
         if (existingRowsMap.has(userId)) {
-          // Update existing row - replace in map
-          existingRowsMap.set(userId, rowArray);
+          const existing = existingRowsMap.get(userId);
+          usersToExport.set(userId, { rowArray, rowIndex: existing.rowIndex, isUpdate: true });
+          existingRowsMap.delete(userId);
           updatedCount++;
         } else {
-          // Add new row
-          rows.push(rowArray);
+          usersToExport.set(userId, { rowArray, rowIndex: -1, isUpdate: false });
           addedCount++;
         }
       }
 
-      // Add all rows from map (both updated and preserved)
-      const allRows = Array.from(existingRowsMap.values());
-      rows.push(...allRows);
-      
-      const preservedCount = allRows.length - updatedCount;
+      const preservedCount = existingRowsMap.size;
+      const preservedRows = Array.from(existingRowsMap.values());
 
-      // Create worksheet with merged data
-      const worksheet = XLSX.utils.aoa_to_sheet(rows);
-
-      // Replace existing sheet
-      const sheetIndex = workbook.SheetNames.indexOf(sheetName);
-      if (sheetIndex !== -1) {
-        workbook.SheetNames.splice(sheetIndex, 1);
-        delete workbook.Sheets[sheetName];
+      // Clear all existing data rows (but keep headers) to prevent duplicates
+      const currentRange = worksheet['!ref'] ? XLSX.utils.decode_range(worksheet['!ref']) : range;
+      if (currentRange.e.r >= dataStartRow) {
+        for (let row = dataStartRow; row <= currentRange.e.r; row++) {
+          for (let col = 0; col < headers.length; col++) {
+            const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+            if (worksheet[cellAddress]) {
+              delete worksheet[cellAddress];
+            }
+          }
+        }
       }
-      XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
 
-      // Write workbook
-      XLSX.writeFile(workbook, filePath);
+      // Start writing data rows right after header
+      let currentDataRow = dataStartRow;
+
+      // 1. Write NEW rows at the top (IDs that don't exist in Excel)
+      const newRows = Array.from(usersToExport.values()).filter(r => !r.isUpdate);
+      newRows.forEach(({ rowArray }) => {
+        rowArray.forEach((value, colIndex) => {
+          this.updateCellValue(worksheet, currentDataRow, colIndex, value, headerRowIndex);
+        });
+        currentDataRow++;
+      });
+
+      // 2. Write UPDATED rows (IDs that exist in both app and Excel)
+      const updatedRows = Array.from(usersToExport.values()).filter(r => r.isUpdate);
+      updatedRows.forEach(({ rowArray }) => {
+        rowArray.forEach((value, colIndex) => {
+          this.updateCellValue(worksheet, currentDataRow, colIndex, value, headerRowIndex);
+        });
+        currentDataRow++;
+      });
+
+      // 3. Write PRESERVED rows at the end (IDs that exist in Excel but not in app)
+      preservedRows.forEach(({ rowArray }) => {
+        rowArray.forEach((value, colIndex) => {
+          this.updateCellValue(worksheet, currentDataRow, colIndex, value, headerRowIndex);
+        });
+        currentDataRow++;
+      });
+
+      // Calculate last data row
+      const lastDataRow = currentDataRow - 1;
+
+      // Update worksheet range to include all data
+      const newRange = {
+        s: { r: 0, c: 0 },
+        e: { r: lastDataRow, c: headers.length - 1 }
+      };
+      worksheet['!ref'] = XLSX.utils.encode_range(newRange);
+
+      // Write workbook - preserve as much structure as possible
+      XLSX.writeFile(workbook, normalizedPath, { bookType: 'xlsx' });
 
       return {
         success: true,
@@ -356,9 +729,15 @@ class WorkloadExcelService {
         }
       }
 
-      // Export assignments
+      // Export assignments (pass projects and users for enrichment)
       if (data.assignments && data.assignments.length > 0) {
-        const assignmentResult = await this.exportAssignmentsToExcel(data.assignments, filePath, fieldMapping);
+        const assignmentResult = await this.exportAssignmentsToExcel(
+          data.assignments, 
+          filePath, 
+          fieldMapping,
+          data.projects || [],
+          data.users || []
+        );
         if (assignmentResult.success) {
           results.assignments = assignmentResult.exported;
         } else {
@@ -591,51 +970,44 @@ class WorkloadExcelService {
    */
   async testFilePath(filePath) {
     try {
-      if (!filePath || !filePath.trim()) {
+      // Use the same validation as export functions
+      const pathInfo = await this.validateFilePath(filePath);
+      if (!pathInfo.isValid) {
         return {
           success: false,
-          error: 'File path is required'
+          error: pathInfo.error
         };
       }
 
-      // Check if file exists
-      if (!await fs.pathExists(filePath)) {
+      const normalizedPath = pathInfo.path;
+
+      // If file exists, get file info
+      if (await fs.pathExists(normalizedPath)) {
+        const stats = await fs.stat(normalizedPath);
+        
+        // Try to read file
+        await fs.access(normalizedPath, fs.constants.R_OK | fs.constants.W_OK);
+
         return {
-          success: false,
-          error: 'File does not exist'
+          success: true,
+          fileInfo: {
+            path: normalizedPath,
+            size: stats.size,
+            lastModified: stats.mtime.toISOString()
+          },
+          message: 'File path is valid and accessible'
+        };
+      } else {
+        // File doesn't exist yet, but path is valid
+        return {
+          success: true,
+          fileInfo: {
+            path: normalizedPath,
+            isNew: true
+          },
+          message: 'File path is valid. File will be created on first export.'
         };
       }
-
-      // Check if it's a file (not directory)
-      const stats = await fs.stat(filePath);
-      if (!stats.isFile()) {
-        return {
-          success: false,
-          error: 'Path is not a file'
-        };
-      }
-
-      // Check file extension
-      const ext = path.extname(filePath).toLowerCase();
-      if (!['.xlsx', '.xls'].includes(ext)) {
-        return {
-          success: false,
-          error: 'File must be an Excel file (.xlsx or .xls)'
-        };
-      }
-
-      // Try to read file
-      await fs.access(filePath, fs.constants.R_OK | fs.constants.W_OK);
-
-      return {
-        success: true,
-        fileInfo: {
-          path: filePath,
-          size: stats.size,
-          lastModified: stats.mtime.toISOString()
-        },
-        message: 'File path is valid and accessible'
-      };
     } catch (error) {
       console.error('Error testing file path:', error);
       return {

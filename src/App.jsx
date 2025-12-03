@@ -36,7 +36,9 @@ const createDefaultFormData = () => ({
   rfaValue: '',
   status: '',
   products: '',
-  assignedTo: '',
+  triagedBy: '',
+  designBy: '',
+  qcBy: '',
   repContacts: '',
   requestedDate: '',
   submittedDate: '',
@@ -353,6 +355,170 @@ function App() {
     }
   };
 
+  // Helper function to sync work task assignments when project is updated
+  const syncWorkTaskAssignments = async (project) => {
+    try {
+      // Load existing assignments for this project
+      const assignmentsResult = await window.electronAPI.workloadAssignmentsLoadAll();
+      if (!assignmentsResult.success) return;
+      
+      const allAssignments = assignmentsResult.assignments || [];
+      const projectAssignments = allAssignments.filter(a => a.projectId === project.id);
+      
+      // Helper to find user by name
+      const findUserByName = async (userName) => {
+        if (!userName) return null;
+        try {
+          const usersResult = await window.electronAPI.workloadUsersLoadAll();
+          if (usersResult.success && usersResult.users) {
+            return usersResult.users.find(u => u.name === userName) || null;
+          }
+        } catch (error) {
+          console.error('Error finding user:', error);
+        }
+        return null;
+      };
+
+      // Helper to create/update assignment
+      const createOrUpdateAssignment = async (user, taskType, taskName) => {
+        if (!user) return null;
+        
+        // Check if assignment already exists for this project and task type
+        const existingAssignment = projectAssignments.find(
+          a => a.taskType === taskType
+        );
+        
+        if (existingAssignment) {
+          // Assignment exists, check if user changed
+          if (existingAssignment.userId !== user.id) {
+            // User changed, update the assignment
+            const updatedAssignment = {
+              ...existingAssignment,
+              userId: user.id,
+              metadata: {
+                ...existingAssignment.metadata,
+                lastModified: new Date().toISOString()
+              }
+            };
+            const result = await window.electronAPI.workloadAssignmentSave(updatedAssignment);
+            if (result.success) {
+              return { success: true, action: 'updated', taskName };
+            } else {
+              return { success: false, error: result.error, taskName };
+            }
+          }
+          // User unchanged, no action needed
+          return { success: true, action: 'unchanged', taskName };
+        } else {
+          // Create new assignment
+          const assignment = {
+            id: `assignment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            userId: user.id,
+            projectId: project.id,
+            projectName: project.projectName,
+            rfaNumber: project.rfaNumber,
+            hoursAllocated: project.totalTriage || 0,
+            hoursSpent: 0,
+            startDate: new Date().toISOString().split('T')[0],
+            dueDate: project.dueDate ? new Date(project.dueDate).toISOString().split('T')[0] : null,
+            status: 'ASSIGNED',
+            priority: project.priority || 'medium',
+            taskType: taskType,
+            assignedBy: '',
+            notes: '',
+            metadata: {
+              createdAt: new Date().toISOString(),
+              lastModified: new Date().toISOString(),
+              assignedAt: new Date().toISOString()
+            }
+          };
+          
+          const result = await window.electronAPI.workloadAssignmentSave(assignment);
+          if (result.success) {
+            return { success: true, action: 'created', taskName };
+          } else {
+            return { success: false, error: result.error, taskName };
+          }
+        }
+      };
+
+      // Helper to delete assignment
+      const deleteAssignment = async (assignmentId) => {
+        try {
+          const result = await window.electronAPI.workloadAssignmentDelete(assignmentId);
+          return { success: result.success || false };
+        } catch (error) {
+          console.error('Error deleting assignment:', error);
+          return { success: false, error: error.message };
+        }
+      };
+
+      // Sync TRIAGE assignment
+      const triageResults = [];
+      if (project.triagedBy) {
+        const triageUser = await findUserByName(project.triagedBy);
+        if (triageUser) {
+          const result = await createOrUpdateAssignment(triageUser, 'TRIAGE', 'Triage');
+          triageResults.push(result);
+        }
+      } else {
+        // Remove triage assignment if field is cleared
+        const triageAssignment = projectAssignments.find(a => a.taskType === 'TRIAGE');
+        if (triageAssignment) {
+          await deleteAssignment(triageAssignment.id);
+        }
+      }
+
+      // Sync DESIGN assignment
+      if (project.designBy) {
+        const designUser = await findUserByName(project.designBy);
+        if (designUser) {
+          const result = await createOrUpdateAssignment(designUser, 'DESIGN', 'Design');
+          triageResults.push(result);
+        }
+      } else {
+        // Remove design assignment if field is cleared
+        const designAssignment = projectAssignments.find(a => a.taskType === 'DESIGN');
+        if (designAssignment) {
+          await deleteAssignment(designAssignment.id);
+        }
+      }
+
+      // Sync QC assignment
+      if (project.qcBy) {
+        const qcUser = await findUserByName(project.qcBy);
+        if (qcUser) {
+          const result = await createOrUpdateAssignment(qcUser, 'QC', 'QC');
+          triageResults.push(result);
+        }
+      } else {
+        // Remove QC assignment if field is cleared
+        const qcAssignment = projectAssignments.find(a => a.taskType === 'QC');
+        if (qcAssignment) {
+          await deleteAssignment(qcAssignment.id);
+        }
+      }
+
+      // Remove assignments for task types that no longer have users
+      const validTaskTypes = [];
+      if (project.triagedBy) validTaskTypes.push('TRIAGE');
+      if (project.designBy) validTaskTypes.push('DESIGN');
+      if (project.qcBy) validTaskTypes.push('QC');
+      
+      const assignmentsToRemove = projectAssignments.filter(
+        a => a.taskType && !validTaskTypes.includes(a.taskType)
+      );
+      
+      for (const assignment of assignmentsToRemove) {
+        await deleteAssignment(assignment.id);
+      }
+
+    } catch (error) {
+      console.error('Error syncing work task assignments:', error);
+      // Don't throw - assignment sync failure shouldn't block project update
+    }
+  };
+
   const handleProjectUpdated = async (updatedProject, alreadySaved = false) => {
     try {
       let projectToUse = updatedProject;
@@ -372,6 +538,9 @@ function App() {
         console.log('✅ App.jsx: Using already-saved project data');
         console.log('✅ App.jsx: Project ECD:', projectToUse.ecd);
       }
+      
+      // Sync work task assignments
+      await syncWorkTaskAssignments(projectToUse);
       
       // Update state with the project data
       setProjects(prev => 
@@ -394,8 +563,24 @@ function App() {
     setFormData(newFormData);
   };
 
-  const handleFormReset = () => {
-    setFormData(createDefaultFormData());
+  const handleFormReset = async () => {
+    const defaultData = createDefaultFormData();
+    
+    // Load user settings to set defaults for triagedBy and qcBy
+    try {
+      if (window.electronAPI?.settingsLoad) {
+        const settingsResult = await window.electronAPI.settingsLoad();
+        if (settingsResult?.success && settingsResult.data?.workloadSettings?.userName) {
+          const userName = settingsResult.data.workloadSettings.userName;
+          defaultData.triagedBy = userName;
+          defaultData.qcBy = userName;
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load user defaults for WorkTask fields:', error);
+    }
+    
+    setFormData(defaultData);
   };
 
   // Handle project deletion
@@ -691,6 +876,10 @@ function App() {
             onNavigateToProject={(project) => {
               setCurrentProject(project);
               setCurrentView('project-management');
+            }}
+            onNavigateToSettings={(tab) => {
+              setSettingsTab(tab);
+              setCurrentView('settings');
             }}
           />;
         case 'settings':
