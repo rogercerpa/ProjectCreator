@@ -347,3 +347,5 @@ first(body('Get_items')?['value'])?['Id']
 5. ✅ Train team on MS Lists usage
 
 
+
+
