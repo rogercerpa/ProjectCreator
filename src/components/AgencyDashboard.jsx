@@ -7,6 +7,10 @@ import AgencyDesignRequirementsTab from './agency/AgencyDesignRequirementsTab';
 import AgencyProductFocusTab from './agency/AgencyProductFocusTab';
 import AgencyTrainingTab from './agency/AgencyTrainingTab';
 import AgencyEmailTemplatesTab from './agency/AgencyEmailTemplatesTab';
+import AgencyMarketStrategyTab from './agency/AgencyMarketStrategyTab';
+import AgencyAnalyticsTab from './agency/AgencyAnalyticsTab';
+import AgencyTasksTab from './agency/AgencyTasksTab';
+import AgencySettingsTab from './agency/AgencySettingsTab';
 
 function AgencyDashboard({ agency, onBack, onProjectSelect }) {
   const [activeTab, setActiveTab] = useState('overview');
@@ -50,6 +54,10 @@ function AgencyDashboard({ agency, onBack, onProjectSelect }) {
     { id: 'products', label: 'Product Focus', icon: '📦' },
     { id: 'training', label: 'Training', icon: '🎓' },
     { id: 'templates', label: 'Email Templates', icon: '📧' },
+    { id: 'strategy', label: 'Market Strategy', icon: '📈' },
+    { id: 'analytics', label: 'Analytics', icon: '📊' },
+    { id: 'tasks', label: 'Tasks', icon: '✅' },
+    { id: 'settings', label: 'Settings', icon: '⚙️' },
   ];
 
   const handleQuickAction = async (action) => {
@@ -156,18 +164,18 @@ function AgencyDashboard({ agency, onBack, onProjectSelect }) {
       {/* Tabs */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="px-6">
-          <div className="flex gap-1">
+          <div className="flex gap-1 overflow-x-auto custom-scrollbar">
             {tabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-3 font-medium text-sm transition-all border-b-2 ${
+                className={`px-3 py-3 font-medium text-sm transition-all border-b-2 whitespace-nowrap ${
                   activeTab === tab.id
                     ? 'border-primary-600 text-primary-600 dark:border-primary-400 dark:text-primary-400'
                     : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                 }`}
               >
-                <span className="mr-2">{tab.icon}</span>
+                <span className="mr-1.5">{tab.icon}</span>
                 {tab.label}
               </button>
             ))}
@@ -212,6 +220,18 @@ function AgencyDashboard({ agency, onBack, onProjectSelect }) {
             )}
             {activeTab === 'templates' && (
               <AgencyEmailTemplatesTab agency={agency} />
+            )}
+            {activeTab === 'strategy' && (
+              <AgencyMarketStrategyTab agency={agency} />
+            )}
+            {activeTab === 'analytics' && (
+              <AgencyAnalyticsTab agency={agency} />
+            )}
+            {activeTab === 'tasks' && (
+              <AgencyTasksTab agency={agency} />
+            )}
+            {activeTab === 'settings' && (
+              <AgencySettingsTab agency={agency} />
             )}
           </>
         )}

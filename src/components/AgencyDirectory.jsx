@@ -7,10 +7,29 @@ function AgencyDirectory({ onAgencySelect }) {
   const [agencies, setAgencies] = useState([]);
   const [filteredAgencies, setFilteredAgencies] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filters, setFilters] = useState({
-    region: 'all',
-    role: 'all'
+  const [searchTerm, setSearchTerm] = useState(() => {
+    // Load saved search term from localStorage
+    const savedSearchTerm = localStorage.getItem('agencyDirectorySearchTerm');
+    return savedSearchTerm || '';
+  });
+  const [filters, setFilters] = useState(() => {
+    // Load saved filters from localStorage
+    try {
+      const savedFilters = localStorage.getItem('agencyDirectoryFilters');
+      if (savedFilters) {
+        const parsed = JSON.parse(savedFilters);
+        return {
+          region: parsed.region || 'all',
+          role: parsed.role || 'all'
+        };
+      }
+    } catch (error) {
+      console.warn('Error loading saved filters:', error);
+    }
+    return {
+      region: 'all',
+      role: 'all'
+    };
   });
   const [filterOptions, setFilterOptions] = useState({
     regions: [],
@@ -117,10 +136,19 @@ function AgencyDirectory({ onAgencySelect }) {
 
   // Handle filter changes
   const handleFilterChange = (filterType, value) => {
-    setFilters(prev => ({
-      ...prev,
-      [filterType]: value
-    }));
+    setFilters(prev => {
+      const newFilters = {
+        ...prev,
+        [filterType]: value
+      };
+      // Save to localStorage
+      try {
+        localStorage.setItem('agencyDirectoryFilters', JSON.stringify(newFilters));
+      } catch (error) {
+        console.warn('Error saving filters to localStorage:', error);
+      }
+      return newFilters;
+    });
   };
 
   // Handle view mode changes
@@ -132,6 +160,13 @@ function AgencyDirectory({ onAgencySelect }) {
   // Clear all filters
   const clearFilters = () => {
     setSearchTerm('');
+    // Clear from localStorage
+    try {
+      localStorage.removeItem('agencyDirectorySearchTerm');
+      localStorage.removeItem('agencyDirectoryFilters');
+    } catch (error) {
+      console.warn('Error clearing filters from localStorage:', error);
+    }
     setFilters({
       region: 'all',
       role: 'all'
@@ -682,13 +717,33 @@ function AgencyDirectory({ onAgencySelect }) {
               type="text"
               placeholder="Search agencies, contacts, emails, phone numbers..."
               value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
+              onChange={e => {
+                const newSearchTerm = e.target.value;
+                setSearchTerm(newSearchTerm);
+                // Save to localStorage
+                try {
+                  if (newSearchTerm) {
+                    localStorage.setItem('agencyDirectorySearchTerm', newSearchTerm);
+                  } else {
+                    localStorage.removeItem('agencyDirectorySearchTerm');
+                  }
+                } catch (error) {
+                  console.warn('Error saving search term to localStorage:', error);
+                }
+              }}
               className="w-full pl-4 pr-10 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 placeholder-gray-400 dark:placeholder-gray-500"
             />
             {searchTerm && (
               <button 
                 className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                onClick={() => setSearchTerm('')}
+                onClick={() => {
+                  setSearchTerm('');
+                  try {
+                    localStorage.removeItem('agencyDirectorySearchTerm');
+                  } catch (error) {
+                    console.warn('Error clearing search term from localStorage:', error);
+                  }
+                }}
                 title="Clear search"
               >
                 ✕

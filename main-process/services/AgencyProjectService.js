@@ -11,14 +11,16 @@ class AgencyProjectService {
     try {
       const allProjects = await this.projectPersistenceService.loadProjects();
       
-      // Filter projects by agency name or agent number
+      // Filter projects by agency name (primary matching method)
+      // Note: agentNumber parameter is kept for API compatibility but not used in matching
+      // because agency.agencyNumber (agency record ID) != project.agentNumber (agent number from project creation)
       const agencyProjects = allProjects.filter(project => {
-        const matchesName = agencyName && project.agencyName && 
-          project.agencyName.toLowerCase() === agencyName.toLowerCase();
-        const matchesNumber = agentNumber && project.agentNumber && 
-          project.agentNumber.toLowerCase() === agentNumber.toLowerCase();
+        if (!agencyName || !project.agencyName) {
+          return false;
+        }
         
-        return matchesName || matchesNumber;
+        // Match by agency name (case-insensitive)
+        return project.agencyName.toLowerCase() === agencyName.toLowerCase();
       });
 
       return {
