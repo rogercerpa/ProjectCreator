@@ -74,6 +74,59 @@ const ProjectEditor = ({
     }
   }, [project]);
 
+  // Agency lookup: Auto-populate Agency Name when Agency Number is entered
+  useEffect(() => {
+    const lookupAgencyName = async () => {
+      const agencyNumber = formData.agentNumber?.trim();
+      
+      // Skip if agency number is empty or agency name already matches
+      if (!agencyNumber) {
+        if (formData.agencyName) {
+          // Clear agency name if agency number is cleared
+          const newFormData = { ...formData, agencyName: '' };
+          setFormData(newFormData);
+          onProjectDataChange(newFormData);
+        }
+        return;
+      }
+
+      // Skip if we already have an agency name that matches (avoid unnecessary lookups)
+      if (formData.agencyName && formData.agencyName.trim()) {
+        return;
+      }
+
+      try {
+        if (window.electronAPI?.agenciesSearch) {
+          // Search for agency by agency number
+          const result = await window.electronAPI.agenciesSearch(agencyNumber, { region: 'all', role: 'all' });
+          
+          if (result?.success && Array.isArray(result.agencies)) {
+            // Find exact match by agency number
+            const matchedAgency = result.agencies.find(
+              agency => agency?.agencyNumber?.toLowerCase() === agencyNumber.toLowerCase()
+            );
+            
+            if (matchedAgency?.agencyName) {
+              const newFormData = { ...formData, agencyName: matchedAgency.agencyName };
+              setFormData(newFormData);
+              onProjectDataChange(newFormData);
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to lookup agency name:', error);
+      }
+    };
+
+    // Debounce the lookup to avoid excessive API calls
+    const timeoutId = setTimeout(() => {
+      lookupAgencyName();
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.agentNumber]);
+
   // Helper function to convert datetime-local input value to ISO string
   const dateTimeInputToISO = (dateTimeValue) => {
     if (!dateTimeValue) return '';
@@ -223,9 +276,9 @@ const ProjectEditor = ({
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto px-8 py-8 max-w-[1400px] mx-auto w-full md:px-4 md:py-4 sm:px-2.5 sm:py-2.5 custom-scrollbar">
-        {/* Basic Project Information */}
+        {/* Project Info Section */}
         <div className="bg-white dark:bg-gray-800 rounded-lg mb-6 p-6 shadow-md md:p-4 md:mb-4 sm:p-3">
-          <h3 className="form-section-header">📋 Basic Project Information</h3>
+          <h3 className="form-section-header">📋 Project Info</h3>
           <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 2xl:gap-6 lg:grid-cols-2 lg:gap-4 md:grid-cols-1 md:gap-4">
             <div className="flex flex-col gap-1.5">
               <label htmlFor="projectName">Project Name *</label>
@@ -242,31 +295,30 @@ const ProjectEditor = ({
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="rfaNumber">RFA Number *</label>
-              <input
-                type="text"
-                id="rfaNumber"
-                name="rfaNumber"
-                value={formData.rfaNumber || ''}
+              <label htmlFor="projectType">Project Type</label>
+              <select
+                id="projectType"
+                name="projectType"
+                value={formData.projectType || ''}
                 onChange={handleInputChange}
-                className={errors.rfaNumber ? 'error' : ''}
-                placeholder="Enter RFA number"
-              />
-              {errors.rfaNumber && <span className="error-message">{errors.rfaNumber}</span>}
+              >
+                <option value="">Select Project Type</option>
+                {(dropdownOptions.projectTypes || []).map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="agentNumber">Agent Number *</label>
+              <label htmlFor="projectAddress">Project Address</label>
               <input
                 type="text"
-                id="agentNumber"
-                name="agentNumber"
-                value={formData.agentNumber || ''}
+                id="projectAddress"
+                name="projectAddress"
+                value={formData.projectAddress || ''}
                 onChange={handleInputChange}
-                className={errors.agentNumber ? 'error' : ''}
-                placeholder="Enter agent number"
+                placeholder="Enter project address"
               />
-              {errors.agentNumber && <span className="error-message">{errors.agentNumber}</span>}
             </div>
 
             <div className="flex flex-col gap-1.5">
@@ -283,25 +335,147 @@ const ProjectEditor = ({
               {errors.projectContainer && <span className="error-message">{errors.projectContainer}</span>}
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="rfaType">RFA Type *</label>
-              <select
-                id="rfaType"
-                name="rfaType"
-                value={formData.rfaType || ''}
+            <div className="flex flex-col gap-1.5 col-span-full">
+              <label htmlFor="projectNotes">
+                Project Notes {formData.status === 'Completed' && <span className="required-indicator">*</span>}
+              </label>
+              <textarea
+                id="projectNotes"
+                name="projectNotes"
+                value={formData.projectNotes || ''}
                 onChange={handleInputChange}
-                className={errors.rfaType ? 'error' : ''}
-              >
-                <option value="">Select RFA Type</option>
-                {(dropdownOptions.rfaTypes || []).map(type => (
-                  <option key={type} value={type}>{type}</option>
-                ))}
-              </select>
-              {errors.rfaType && <span className="error-message">{errors.rfaType}</span>}
+                className={errors.projectNotes ? 'error' : ''}
+                placeholder="Enter project notes or comments (required when marking as Completed)"
+                rows="4"
+              />
+              {errors.projectNotes && <span className="error-message">{errors.projectNotes}</span>}
+              <small className="field-hint">Required when marking project as Completed</small>
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="regionalTeam">Regional Team *</label>
+              <EditableProductTags
+                label="Products"
+                options={dropdownOptions.productOptions || []}
+                selectedValues={Array.isArray(formData.products) ? formData.products : (formData.products ? [formData.products] : [])}
+                onChange={(selectedProducts) => {
+                  const newFormData = { ...formData, products: selectedProducts };
+                  setFormData(newFormData);
+                  onProjectDataChange(newFormData);
+                }}
+              />
+              <small className="field-hint">Click on a product tag to remove it. Use the dropdown to add products.</small>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="projectStage">Project Stage</label>
+              <select
+                id="projectStage"
+                name="projectStage"
+                value={formData.projectStage || ''}
+                onChange={handleInputChange}
+              >
+                <option value="">Select Project Stage</option>
+                {(dropdownOptions.projectStages || []).map(stage => (
+                  <option key={stage} value={stage}>{stage}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="designProcessPhase">Design Process Phase</label>
+              <select
+                id="designProcessPhase"
+                name="designProcessPhase"
+                value={formData.designProcessPhase || ''}
+                onChange={handleInputChange}
+              >
+                <option value="">Select Design Process Phase</option>
+                {(dropdownOptions.designProcessPhases || []).map(phase => (
+                  <option key={phase} value={phase}>{phase}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  id="buyAmericanOrBaba"
+                  name="buyAmericanOrBaba"
+                  checked={formData.buyAmericanOrBaba || false}
+                  onChange={(e) => {
+                    const newFormData = { ...formData, buyAmericanOrBaba: e.target.checked };
+                    setFormData(newFormData);
+                    onProjectDataChange(newFormData);
+                  }}
+                />
+                Buy American or BABA
+              </label>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="saveLocation">Project Folder Save Location</label>
+              <select
+                id="saveLocation"
+                name="saveLocation"
+                value={formData.saveLocation || 'Server'}
+                onChange={handleInputChange}
+              >
+                {(dropdownOptions.saveLocations || []).map(location => (
+                  <option key={location} value={location}>{location}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Agency Info Section */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg mb-6 p-6 shadow-md md:p-4 md:mb-4 sm:p-3">
+          <h3 className="form-section-header">🏢 Agency Info</h3>
+          <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 2xl:gap-6 lg:grid-cols-2 lg:gap-4 md:grid-cols-1 md:gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="agencyName">Agency Name</label>
+              <input
+                type="text"
+                id="agencyName"
+                name="agencyName"
+                value={formData.agencyName || ''}
+                onChange={handleInputChange}
+                placeholder="Auto-populated from agency number"
+                readOnly
+                className="readonly-field"
+              />
+              <small className="field-hint">Automatically populated when Agency Number is entered</small>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="agentNumber">Agency Number *</label>
+              <input
+                type="text"
+                id="agentNumber"
+                name="agentNumber"
+                value={formData.agentNumber || ''}
+                onChange={handleInputChange}
+                className={errors.agentNumber ? 'error' : ''}
+                placeholder="Enter agency number"
+              />
+              {errors.agentNumber && <span className="error-message">{errors.agentNumber}</span>}
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="repContacts">Agent Contact</label>
+              <textarea
+                id="repContacts"
+                name="repContacts"
+                value={formData.repContacts || ''}
+                onChange={handleInputChange}
+                placeholder="Enter agent contact information"
+                rows="3"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="regionalTeam">Region *</label>
               <select
                 id="regionalTeam"
                 name="regionalTeam"
@@ -309,7 +483,7 @@ const ProjectEditor = ({
                 onChange={handleInputChange}
                 className={errors.regionalTeam ? 'error' : ''}
               >
-                <option value="">Select Regional Team</option>
+                <option value="">Select Region</option>
                 {(dropdownOptions.regionalTeams || []).map(team => (
                   <option key={team} value={team}>{team}</option>
                 ))}
@@ -330,60 +504,76 @@ const ProjectEditor = ({
                 ))}
               </select>
             </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="status">Status</label>
-              <select
-                id="status"
-                name="status"
-                value={formData.status || 'Active'}
-                onChange={handleInputChange}
-                className={errors.status ? 'error' : ''}
-              >
-                <option value="Active">Active</option>
-                <option value="On Hold">On Hold</option>
-                <option value="Completed">Completed</option>
-                <option value="Cancelled">Cancelled</option>
-              </select>
-              {errors.status && <span className="error-message">{errors.status}</span>}
-            </div>
-
-            <div className="flex flex-col gap-1.5 col-span-full">
-              <label htmlFor="projectNotes">
-                Project Notes {formData.status === 'Completed' && <span className="required-indicator">*</span>}
-              </label>
-              <textarea
-                id="projectNotes"
-                name="projectNotes"
-                value={formData.projectNotes || ''}
-                onChange={handleInputChange}
-                className={errors.projectNotes ? 'error' : ''}
-                placeholder="Enter project notes or comments (required when marking as Completed)"
-                rows="4"
-              />
-              {errors.projectNotes && <span className="error-message">{errors.projectNotes}</span>}
-              <small className="field-hint">Required when marking project as Completed</small>
-            </div>
           </div>
         </div>
 
-        {/* Project Details */}
+        {/* RFA Info Section */}
         <div className="bg-white dark:bg-gray-800 rounded-lg mb-6 p-6 shadow-md md:p-4 md:mb-4 sm:p-3">
-          <h3 className="form-section-header">📊 Project Details</h3>
+          <h3 className="form-section-header">📄 RFA Info</h3>
           <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 2xl:gap-6 lg:grid-cols-2 lg:gap-4 md:grid-cols-1 md:gap-4">
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="complexity">Complexity</label>
-              <select
-                id="complexity"
-                name="complexity"
-                value={formData.complexity || ''}
+              <label htmlFor="rfaNumber">RFA Number *</label>
+              <input
+                type="text"
+                id="rfaNumber"
+                name="rfaNumber"
+                value={formData.rfaNumber || ''}
                 onChange={handleInputChange}
+                className={errors.rfaNumber ? 'error' : ''}
+                placeholder="Enter RFA number"
+              />
+              {errors.rfaNumber && <span className="error-message">{errors.rfaNumber}</span>}
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="rfaType">RFA Type *</label>
+              <select
+                id="rfaType"
+                name="rfaType"
+                value={formData.rfaType || ''}
+                onChange={handleInputChange}
+                className={errors.rfaType ? 'error' : ''}
               >
-                <option value="">Select Complexity</option>
-                {(dropdownOptions.complexityLevels || []).map(level => (
-                  <option key={level} value={level}>{level}</option>
+                <option value="">Select RFA Type</option>
+                {(dropdownOptions.rfaTypes || []).map(type => (
+                  <option key={type} value={type}>{type}</option>
                 ))}
               </select>
+              {errors.rfaType && <span className="error-message">{errors.rfaType}</span>}
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label>Revision Type *</label>
+              <div className="flex gap-5 mt-1 md:flex-col md:gap-2.5">
+                <label>
+                  <input
+                    type="radio"
+                    name="isRevision"
+                    value="false"
+                    checked={!formData.isRevision}
+                    onChange={() => {
+                      const newFormData = { ...formData, isRevision: false };
+                      setFormData(newFormData);
+                      onProjectDataChange(newFormData);
+                    }}
+                  />
+                  New Project
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="isRevision"
+                    value="true"
+                    checked={formData.isRevision}
+                    onChange={() => {
+                      const newFormData = { ...formData, isRevision: true };
+                      setFormData(newFormData);
+                      onProjectDataChange(newFormData);
+                    }}
+                  />
+                  Revision
+                </label>
+              </div>
             </div>
 
             <div className="flex flex-col gap-1.5">
@@ -401,19 +591,34 @@ const ProjectEditor = ({
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <EditableProductTags
-                label="Products"
-                options={dropdownOptions.productOptions || []}
-                selectedValues={Array.isArray(formData.products) ? formData.products : (formData.products ? [formData.products] : [])}
-                onChange={(selectedProducts) => {
-                  const newFormData = { ...formData, products: selectedProducts };
-                  setFormData(newFormData);
-                  onProjectDataChange(newFormData);
-                }}
-              />
-              <small className="field-hint">Click on a product tag to remove it. Use the dropdown to add products.</small>
+              <label htmlFor="rfaStatus">RFA Status</label>
+              <select
+                id="rfaStatus"
+                name="rfaStatus"
+                value={formData.rfaStatus || ''}
+                onChange={handleInputChange}
+              >
+                <option value="">Select RFA Status</option>
+                {(dropdownOptions.rfaStatuses || []).map(status => (
+                  <option key={status} value={status}>{status}</option>
+                ))}
+              </select>
             </div>
 
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="rfaComplexity">RFA Complexity</label>
+              <select
+                id="rfaComplexity"
+                name="rfaComplexity"
+                value={formData.rfaComplexity || ''}
+                onChange={handleInputChange}
+              >
+                <option value="">Select RFA Complexity</option>
+                {(dropdownOptions.rfaComplexityLevels || []).map(level => (
+                  <option key={level} value={level}>{level}</option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 
@@ -468,39 +673,10 @@ const ProjectEditor = ({
           </div>
         </div>
 
-        {/* Additional Information */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg mb-6 p-6 shadow-md md:p-4 md:mb-4 sm:p-3">
-          <h3 className="form-section-header">📋 Additional Information</h3>
-          <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 2xl:gap-6 lg:grid-cols-2 lg:gap-4 md:grid-cols-1 md:gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="repContacts">Rep Contacts</label>
-              <textarea
-                id="repContacts"
-                name="repContacts"
-                value={formData.repContacts || ''}
-                onChange={handleInputChange}
-                placeholder="Enter rep contact information"
-                rows="3"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Important Dates */}
+        {/* Important Dates Section */}
         <div className="bg-white dark:bg-gray-800 rounded-lg mb-6 p-6 shadow-md md:p-4 md:mb-4 sm:p-3">
           <h3 className="form-section-header">📅 Important Dates</h3>
           <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 2xl:gap-6 lg:grid-cols-2 lg:gap-4 md:grid-cols-1 md:gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="ecd">ECD (Expected Completion Date & Time)</label>
-              <input
-                type="datetime-local"
-                id="ecd"
-                name="ecd"
-                value={isoToDateTimeInput(formData.ecd)}
-                onChange={handleInputChange}
-              />
-            </div>
-
             <div className="flex flex-col gap-1.5">
               <label htmlFor="requestedDate">Requested Date & Time</label>
               <input
@@ -508,6 +684,17 @@ const ProjectEditor = ({
                 id="requestedDate"
                 name="requestedDate"
                 value={isoToDateTimeInput(formData.requestedDate)}
+                onChange={handleInputChange}
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="ecd">ECD (Expected Completion Date & Time)</label>
+              <input
+                type="datetime-local"
+                id="ecd"
+                name="ecd"
+                value={isoToDateTimeInput(formData.ecd)}
                 onChange={handleInputChange}
               />
             </div>
@@ -533,6 +720,28 @@ const ProjectEditor = ({
                 onChange={handleInputChange}
               />
             </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="neededByDate">Needed by Date & Time</label>
+              <input
+                type="datetime-local"
+                id="neededByDate"
+                name="neededByDate"
+                value={isoToDateTimeInput(formData.neededByDate)}
+                onChange={handleInputChange}
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="bidDate">Bid Date & Time</label>
+              <input
+                type="datetime-local"
+                id="bidDate"
+                name="bidDate"
+                value={isoToDateTimeInput(formData.bidDate)}
+                onChange={handleInputChange}
+              />
+            </div>
           </div>
         </div>
 
@@ -550,89 +759,203 @@ const ProjectEditor = ({
           />
         </div>
 
-        {/* Triage Configuration */}
+        {/* Triage Calculation Section */}
         <div className="bg-white dark:bg-gray-800 rounded-lg mb-6 p-6 shadow-md md:p-4 md:mb-4 sm:p-3">
-          <h3 className="form-section-header">🧮 Triage Configuration</h3>
+          <h3 className="form-section-header">🧮 Triage Calculation</h3>
           
-          {/* Panel Schedules */}
-          <div className="form-group">
-            <label>Panel Schedules</label>
-            <div className="radio-group">
-              <label>
-                <input
-                  type="radio"
-                  name="hasPanelSchedules"
-                  value="false"
-                  checked={!formData.hasPanelSchedules}
-                  onChange={() => setFormData(prev => ({ ...prev, hasPanelSchedules: false }))}
-                />
-                No
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  name="hasPanelSchedules"
-                  value="true"
-                  checked={formData.hasPanelSchedules}
-                  onChange={() => setFormData(prev => ({ ...prev, hasPanelSchedules: true }))}
-                />
-                Yes
-              </label>
+          {/* Total Triage - Prominent Display */}
+          <div className="mb-6 p-5 bg-gradient-to-br from-primary-50 to-blue-50 dark:from-primary-900/20 dark:to-blue-900/20 rounded-lg border-2 border-primary-500 dark:border-primary-700">
+            <label className="text-sm font-semibold text-primary-700 dark:text-primary-300 uppercase tracking-wide">Total Triage Time</label>
+            <div className="text-3xl font-bold text-primary-600 dark:text-primary-400 mt-2">{formData.totalTriage || 0} hours</div>
+          </div>
+
+          {/* Configuration */}
+          <div className="mb-6">
+            <h4 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">⚙️ Configuration</h4>
+            <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 2xl:gap-6 lg:grid-cols-2 lg:gap-4 md:grid-cols-1 md:gap-4">
+              <div className="form-group">
+                <label>Panel Schedules</label>
+                <div className="radio-group">
+                  <label>
+                    <input
+                      type="radio"
+                      name="hasPanelSchedules"
+                      value="false"
+                      checked={!formData.hasPanelSchedules}
+                      onChange={() => {
+                        const newFormData = { ...formData, hasPanelSchedules: false };
+                        setFormData(newFormData);
+                        onProjectDataChange(newFormData);
+                      }}
+                    />
+                    No
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      name="hasPanelSchedules"
+                      value="true"
+                      checked={formData.hasPanelSchedules}
+                      onChange={() => {
+                        const newFormData = { ...formData, hasPanelSchedules: true };
+                        setFormData(newFormData);
+                        onProjectDataChange(newFormData);
+                      }}
+                    />
+                    Yes
+                  </label>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>Submittal Section</label>
+                <div className="radio-group">
+                  <label>
+                    <input
+                      type="radio"
+                      name="hasSubmittals"
+                      value="false"
+                      checked={!formData.hasSubmittals}
+                      onChange={() => {
+                        const newFormData = { ...formData, hasSubmittals: false, needsLayoutBOM: false };
+                        setFormData(newFormData);
+                        onProjectDataChange(newFormData);
+                      }}
+                    />
+                    No
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      name="hasSubmittals"
+                      value="true"
+                      checked={formData.hasSubmittals}
+                      onChange={() => {
+                        const newFormData = { ...formData, hasSubmittals: true };
+                        setFormData(newFormData);
+                        onProjectDataChange(newFormData);
+                      }}
+                    />
+                    Yes
+                  </label>
+                </div>
+              </div>
+
+              {formData.hasSubmittals && (
+                <div className="form-group">
+                  <label>Needs Layout/BOM</label>
+                  <div className="radio-group">
+                    <label>
+                      <input
+                        type="radio"
+                        name="needsLayoutBOM"
+                        value="false"
+                        checked={!formData.needsLayoutBOM}
+                        onChange={() => {
+                          const newFormData = { ...formData, needsLayoutBOM: false };
+                          setFormData(newFormData);
+                          onProjectDataChange(newFormData);
+                        }}
+                      />
+                      No
+                    </label>
+                    <label>
+                      <input
+                        type="radio"
+                        name="needsLayoutBOM"
+                        value="true"
+                        checked={formData.needsLayoutBOM}
+                        onChange={() => {
+                          const newFormData = { ...formData, needsLayoutBOM: true };
+                          setFormData(newFormData);
+                          onProjectDataChange(newFormData);
+                        }}
+                      />
+                      Yes
+                    </label>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Submittal Section */}
-          <div className="form-group">
-            <label>Submittal Section</label>
-            <div className="radio-group">
-              <label>
-                <input
-                  type="radio"
-                  name="hasSubmittals"
-                  value="false"
-                  checked={!formData.hasSubmittals}
-                  onChange={() => setFormData(prev => ({ ...prev, hasSubmittals: false, needsLayoutBOM: false }))}
-                />
-                No
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  name="hasSubmittals"
-                  value="true"
-                  checked={formData.hasSubmittals}
-                  onChange={() => setFormData(prev => ({ ...prev, hasSubmittals: true }))}
-                />
-                Yes
-              </label>
-            </div>
-          </div>
-
-          {/* Layout/BOM */}
-          {formData.hasSubmittals && (
-            <div className="flex flex-col gap-1.5">
-              <label>Needs Layout/BOM</label>
-              <div className="flex gap-5 mt-1 md:flex-col md:gap-2.5">
-                <label>
+          {/* Layout Details subsection */}
+          {(!formData.hasSubmittals || (formData.hasSubmittals && formData.needsLayoutBOM)) && (
+            <div className="mb-6">
+              <h4 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">📐 Layout Details</h4>
+              <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 2xl:gap-6 lg:grid-cols-2 lg:gap-4 md:grid-cols-1 md:gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="numOfRooms">Number of Rooms</label>
                   <input
-                    type="radio"
-                    name="needsLayoutBOM"
-                    value="false"
-                    checked={!formData.needsLayoutBOM}
-                    onChange={() => setFormData(prev => ({ ...prev, needsLayoutBOM: false }))}
+                    type="number"
+                    id="numOfRooms"
+                    name="numOfRooms"
+                    value={formData.numOfRooms || 0}
+                    onChange={handleInputChange}
+                    min="0"
+                    step="1"
                   />
-                  No
-                </label>
-                <label>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="roomMultiplier">Room Multiplier</label>
                   <input
-                    type="radio"
-                    name="needsLayoutBOM"
-                    value="true"
-                    checked={formData.needsLayoutBOM}
-                    onChange={() => setFormData(prev => ({ ...prev, needsLayoutBOM: true }))}
+                    type="number"
+                    id="roomMultiplier"
+                    name="roomMultiplier"
+                    value={formData.roomMultiplier || 2}
+                    onChange={handleInputChange}
+                    min="0"
+                    step="0.1"
                   />
-                  Yes
-                </label>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="overrideRooms">Override Rooms</label>
+                  <input
+                    type="number"
+                    id="overrideRooms"
+                    name="overrideRooms"
+                    value={formData.overrideRooms || 0}
+                    onChange={handleInputChange}
+                    min="0"
+                    step="0.25"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="reviewSetup">Review/Setup Time</label>
+                  <input
+                    type="number"
+                    id="reviewSetup"
+                    name="reviewSetup"
+                    value={formData.reviewSetup || 0}
+                    onChange={handleInputChange}
+                    min="0"
+                    step="0.25"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="numOfPages">Number of Pages</label>
+                  <input
+                    type="number"
+                    id="numOfPages"
+                    name="numOfPages"
+                    value={formData.numOfPages || 1}
+                    onChange={handleInputChange}
+                    min="1"
+                    step="1"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="specReview">Spec Review</label>
+                  <input
+                    type="number"
+                    id="specReview"
+                    name="specReview"
+                    value={formData.specReview || 0}
+                    onChange={handleInputChange}
+                    min="0"
+                    step="0.25"
+                  />
+                </div>
               </div>
             </div>
           )}
@@ -700,76 +1023,6 @@ const ProjectEditor = ({
           </div>
         </div>
 
-        {/* Additional Settings */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg mb-6 p-6 shadow-md md:p-4 md:mb-4 sm:p-3">
-          <h3 className="form-section-header">⚙️ Additional Settings</h3>
-          <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 2xl:gap-6 lg:grid-cols-2 lg:gap-4 md:grid-cols-1 md:gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="saveLocation">Save Location</label>
-              <select
-                id="saveLocation"
-                name="saveLocation"
-                value={formData.saveLocation || 'Server'}
-                onChange={handleInputChange}
-              >
-                <option value="Server">Server</option>
-                <option value="Desktop">Desktop</option>
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label>Is Revision</label>
-              <div className="flex gap-5 mt-1 md:flex-col md:gap-2.5">
-                <label>
-                  <input
-                    type="radio"
-                    name="isRevision"
-                    value="false"
-                    checked={!formData.isRevision}
-                    onChange={() => setFormData(prev => ({ ...prev, isRevision: false }))}
-                  />
-                  No
-                </label>
-                <label>
-                  <input
-                    type="radio"
-                    name="isRevision"
-                    value="true"
-                    checked={formData.isRevision}
-                    onChange={() => setFormData(prev => ({ ...prev, isRevision: true }))}
-                  />
-                  Yes
-                </label>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label>First Available</label>
-              <div className="flex gap-5 mt-1 md:flex-col md:gap-2.5">
-                <label>
-                  <input
-                    type="radio"
-                    name="firstAvailable"
-                    value="false"
-                    checked={!formData.firstAvailable}
-                    onChange={() => setFormData(prev => ({ ...prev, firstAvailable: false }))}
-                  />
-                  No
-                </label>
-                <label>
-                  <input
-                    type="radio"
-                    name="firstAvailable"
-                    value="true"
-                    checked={formData.firstAvailable}
-                    onChange={() => setFormData(prev => ({ ...prev, firstAvailable: true }))}
-                  />
-                  Yes
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Save/Cancel Actions */}

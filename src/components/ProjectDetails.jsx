@@ -263,10 +263,10 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
         </div>
       )}
 
-      {/* Project Overview */}
+      {/* Project Info Section */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-6 shadow-md">
         <div className="flex justify-between items-center mb-6 pb-4 border-b-2 border-gray-100 dark:border-gray-700">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">📋 Project Overview</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">📋 Project Info</h2>
           <div className="flex gap-2">
             <button 
               onClick={handleCopyDates}
@@ -291,9 +291,6 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
             >
               📈 Copy to Agile
             </button>
-            <button onClick={onEdit} className="btn btn-outline btn-small">
-              ✏️ Edit
-            </button>
           </div>
         </div>
         <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1">
@@ -302,41 +299,22 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
             <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{project.projectName || 'Not specified'}</span>
           </div>
           <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">RFA Number</label>
-            <span className="text-sm font-bold text-primary-600 dark:text-primary-400">{project.rfaNumber || 'Not specified'}</span>
+            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Project Type</label>
+            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.projectType || 'Not specified'}</span>
           </div>
           <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Agent Number</label>
-            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.agentNumber || 'Not specified'}</span>
+            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Project Address</label>
+            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.projectAddress || 'Not specified'}</span>
           </div>
           <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
             <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Project Container</label>
             <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.projectContainer || 'Not specified'}</span>
           </div>
-          <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">RFA Type</label>
-            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.rfaType || 'Not specified'}</span>
-          </div>
-          <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Regional Team</label>
-            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.regionalTeam || 'Not specified'}</span>
-          </div>
-          <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">National Account</label>
-            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.nationalAccount || 'Not specified'}</span>
-          </div>
-          <div className="flex flex-col gap-2 p-3 bg-gradient-to-br from-primary-50 to-blue-50 dark:from-primary-900/20 dark:to-blue-900/20 rounded-lg border-2 border-primary-500 dark:border-primary-700">
-            <label className="text-xs font-semibold text-primary-700 dark:text-primary-300 uppercase tracking-wide">Status</label>
-            <span className={`text-sm font-bold ${project.status?.toLowerCase() === 'completed' ? 'text-success-600 dark:text-success-400' : project.status?.toLowerCase() === 'on hold' ? 'text-warning-600 dark:text-warning-400' : 'text-primary-600 dark:text-primary-400'}`}>
-              {project.status || 'Active'}
-            </span>
-          </div>
-          
           {project.projectNotes && (
-            <div className="detail-item detail-item-full">
-              <label>Project Notes</label>
-              <div className="col-span-full">
-                <span className="project-notes">{project.projectNotes}</span>
+            <div className="col-span-full flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+              <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Project Notes</label>
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.projectNotes}</span>
                 <button 
                   onClick={handleCopyNotes}
                   className="copy-notes-btn"
@@ -347,21 +325,6 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
               </div>
             </div>
           )}
-        </div>
-      </div>
-
-      {/* Project Details */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-6 shadow-md">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-5 pb-4 border-b-2 border-gray-100 dark:border-gray-700">📊 Project Details</h2>
-        <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1">
-          <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Complexity</label>
-            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.complexity || 'Not specified'}</span>
-          </div>
-          <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">RFA Value</label>
-            <span className="text-sm font-bold text-success-600 dark:text-success-400">{formatCurrency(project.rfaValue)}</span>
-          </div>
           <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
             <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Products</label>
             <div className="flex flex-wrap gap-2">
@@ -382,12 +345,80 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
             </div>
           </div>
           <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Rep Contacts</label>
+            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Project Stage</label>
+            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.projectStage || 'Not specified'}</span>
+          </div>
+          <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Design Process Phase</label>
+            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.designProcessPhase || 'Not specified'}</span>
+          </div>
+          <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Buy American or BABA</label>
+            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.buyAmericanOrBaba ? 'Yes' : 'No'}</span>
+          </div>
+          <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Project Folder Save Location</label>
+            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.saveLocation || 'Server'}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Agency Info Section */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-6 shadow-md">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-5 pb-4 border-b-2 border-gray-100 dark:border-gray-700">🏢 Agency Info</h2>
+        <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1">
+          <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Agency Name</label>
+            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.agencyName || 'Not specified'}</span>
+          </div>
+          <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Agency Number</label>
+            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.agentNumber || 'Not specified'}</span>
+          </div>
+          <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Agent Contact</label>
             <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.repContacts || 'Not specified'}</span>
           </div>
           <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">First Available</label>
-            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.firstAvailable ? 'Yes' : 'No'}</span>
+            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Region</label>
+            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.regionalTeam || 'Not specified'}</span>
+          </div>
+          <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">National Account</label>
+            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.nationalAccount || 'Not specified'}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* RFA Info Section */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-6 shadow-md">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-5 pb-4 border-b-2 border-gray-100 dark:border-gray-700">📄 RFA Info</h2>
+        <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1">
+          <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">RFA Number</label>
+            <span className="text-sm font-bold text-primary-600 dark:text-primary-400">{project.rfaNumber || 'Not specified'}</span>
+          </div>
+          <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">RFA Type</label>
+            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.rfaType || 'Not specified'}</span>
+          </div>
+          <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Revision Type</label>
+            <span className={`text-sm font-bold ${project.isRevision ? 'text-warning-600 dark:text-warning-400' : 'text-gray-600 dark:text-gray-400'}`}>
+              {project.isRevision ? 'Revision' : 'New Project'}
+            </span>
+          </div>
+          <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">RFA Value</label>
+            <span className="text-sm font-bold text-success-600 dark:text-success-400">{formatCurrency(project.rfaValue)}</span>
+          </div>
+          <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">RFA Status</label>
+            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.rfaStatus || 'Not specified'}</span>
+          </div>
+          <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">RFA Complexity</label>
+            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.rfaComplexity || 'Not specified'}</span>
           </div>
         </div>
       </div>
@@ -483,17 +514,17 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
         )}
       </div>
 
-      {/* Dates */}
+      {/* Important Dates Section */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-6 shadow-md">
         <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-5 pb-4 border-b-2 border-gray-100 dark:border-gray-700">📅 Important Dates</h2>
         <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1">
           <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">ECD</label>
-            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{formatDate(project.ecd)}</span>
-          </div>
-          <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
             <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Requested Date</label>
             <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{formatDate(project.requestedDate)}</span>
+          </div>
+          <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">ECD</label>
+            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{formatDate(project.ecd)}</span>
           </div>
           <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
             <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Submitted Date</label>
@@ -502,6 +533,14 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
           <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
             <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Due Date</label>
             <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{formatDate(project.dueDate)}</span>
+          </div>
+          <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Needed by Date</label>
+            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{formatDate(project.neededByDate)}</span>
+          </div>
+          <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Bid Date</label>
+            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{formatDate(project.bidDate)}</span>
           </div>
           <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
             <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Created</label>
@@ -514,11 +553,11 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
         </div>
       </div>
 
-      {/* Triage Information */}
-      {(project.totalTriage > 0 || project.hasPanelSchedules || project.hasSubmittals) && (
+      {/* Triage Calculation Section */}
+      {(project.totalTriage > 0 || project.hasPanelSchedules || project.hasSubmittals || (!project.hasSubmittals || (project.hasSubmittals && project.needsLayoutBOM))) && (
         <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-6 shadow-md">
           <div className="flex justify-between items-center mb-6 pb-4 border-b-2 border-gray-100 dark:border-gray-700">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">🧮 Triage Information</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">🧮 Triage Calculation</h2>
             <button 
               onClick={() => setShowTriageModal(true)}
               className="btn-outline-primary btn-sm"
@@ -535,9 +574,10 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
           </div>
           
           {/* Time Breakdown */}
-          <div className="mb-6">
-            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">⏱️ Time Breakdown</h3>
-            <div className="grid grid-cols-3 gap-4 2xl:grid-cols-5 lg:grid-cols-2 md:grid-cols-1">
+          {(project.panelTime > 0 || project.layoutTime > 0 || project.submittalTime > 0 || project.selfQC > 0 || project.fluff > 0) && (
+            <div className="mb-6">
+              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">⏱️ Time Breakdown</h3>
+              <div className="grid grid-cols-3 gap-4 2xl:grid-cols-5 lg:grid-cols-2 md:grid-cols-1">
                 {project.panelTime > 0 && (
                   <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
                     <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Panel Time</label>
@@ -569,10 +609,11 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
                   </div>
                 )}
               </div>
-          </div>
+            </div>
+          )}
 
           {/* Configuration */}
-          <div>
+          <div className="mb-6">
             <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">⚙️ Configuration</h3>
             <div className="grid grid-cols-3 gap-4 lg:grid-cols-2 md:grid-cols-1">
               <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
@@ -597,6 +638,39 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
               )}
             </div>
           </div>
+
+          {/* Layout Details subsection */}
+          {(!project.hasSubmittals || (project.hasSubmittals && project.needsLayoutBOM)) && (
+            <div>
+              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">📐 Layout Details</h3>
+              <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1">
+                <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+                  <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Number of Rooms</label>
+                  <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{project.numOfRooms || 0}</span>
+                </div>
+                <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+                  <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Room Multiplier</label>
+                  <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.roomMultiplier || 2} min/room</span>
+                </div>
+                <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+                  <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Override Rooms</label>
+                  <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.overrideRooms || 0} hr</span>
+                </div>
+                <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+                  <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Review/Setup Time</label>
+                  <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.reviewSetup || 0} hr</span>
+                </div>
+                <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+                  <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Number of Pages</label>
+                  <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{project.numOfPages || 1}</span>
+                </div>
+                <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+                  <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Spec Review</label>
+                  <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.specReview || 0} hr</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -657,39 +731,6 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
         </div>
       )}
 
-      {/* Layout Details */}
-      {(!project.hasSubmittals || (project.hasSubmittals && project.needsLayoutBOM)) && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-6 shadow-md">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-5 pb-4 border-b-2 border-gray-100 dark:border-gray-700">📐 Layout Details</h2>
-          <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1">
-            <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-              <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Number of Rooms</label>
-              <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{project.numOfRooms || 0}</span>
-            </div>
-            <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-              <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Room Multiplier</label>
-              <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.roomMultiplier || 2} min/room</span>
-            </div>
-            <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-              <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Override Rooms</label>
-              <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.overrideRooms || 0} hr</span>
-            </div>
-            <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-              <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Review/Setup Time</label>
-              <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.reviewSetup || 0} hr</span>
-            </div>
-            <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-              <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Number of Pages</label>
-              <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{project.numOfPages || 1}</span>
-            </div>
-            <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-              <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Spec Review</label>
-              <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.specReview || 0} hr</span>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Submittal Details */}
       {project.hasSubmittals && (
         <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-6 shadow-md">
@@ -725,27 +766,6 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
           </div>
         </div>
       )}
-
-      {/* Additional Settings */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-6 shadow-md">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-5 pb-4 border-b-2 border-gray-100 dark:border-gray-700">⚙️ Additional Settings</h2>
-        <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1">
-          <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Save Location</label>
-            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.saveLocation || 'Server'}</span>
-          </div>
-          <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Is Revision</label>
-            <span className={`text-sm font-bold ${project.isRevision ? 'text-warning-600 dark:text-warning-400' : 'text-gray-600 dark:text-gray-400'}`}>
-              {project.isRevision ? '✓ Yes' : '✗ No'}
-            </span>
-          </div>
-          <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Source</label>
-            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.sourceType === 'wizard' ? 'Project Wizard' : 'Classic Form'}</span>
-          </div>
-        </div>
-      </div>
 
       {/* Triage Calculator Modal */}
       <TriageCalculatorModal

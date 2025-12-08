@@ -377,8 +377,8 @@ const ProjectManagement = ({
 
   return (
     <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
-      {/* Responsive Header */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
+      {/* Responsive Header - Sticky */}
+      <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
         <div className="px-6 py-4">
           {/* Project Title and Meta */}
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -434,6 +434,17 @@ const ProjectManagement = ({
                     {isSaving ? 'Saving...' : 'Save Changes'}
                   </button>
                 </>
+              )}
+              
+              {/* Edit Button - Always visible in view mode */}
+              {currentMode === 'view' && (
+                <button 
+                  onClick={handleEdit} 
+                  className="btn btn-outline btn-small"
+                  title="Edit project"
+                >
+                  ✏️ Edit
+                </button>
               )}
               
               {/* OneDrive Sync Upload Button */}
