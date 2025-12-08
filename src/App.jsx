@@ -6,6 +6,7 @@ import ProjectWizard from './components/wizard/ProjectWizard';
 import ProjectManagement from './components/ProjectManagement';
 import ProjectList from './components/ProjectList';
 import AgencyDirectory from './components/AgencyDirectory';
+import AgencyDashboard from './components/AgencyDashboard';
 import WorkloadDashboard from './components/WorkloadDashboard';
 import DraftRecoveryModal from './components/wizard/components/DraftRecoveryModal';
 import MigrationAssistant from './components/wizard/components/MigrationAssistant';
@@ -113,6 +114,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentView, setCurrentView] = useState('welcome');
   const [currentProject, setCurrentProject] = useState(null);
+  const [currentAgency, setCurrentAgency] = useState(null);
   const [projects, setProjects] = useState([]);
   const [settingsTab, setSettingsTab] = useState('app-info');
   
@@ -880,7 +882,28 @@ function App() {
             />
           );
         case 'agencies':
-          return <AgencyDirectory />;
+          return (
+            <AgencyDirectory 
+              onAgencySelect={(agency) => {
+                setCurrentAgency(agency);
+                setCurrentView('agency-dashboard');
+              }}
+            />
+          );
+        case 'agency-dashboard':
+          return (
+            <AgencyDashboard 
+              agency={currentAgency}
+              onBack={() => {
+                setCurrentAgency(null);
+                setCurrentView('agencies');
+              }}
+              onProjectSelect={(project) => {
+                setCurrentProject(project);
+                setCurrentView('project-management');
+              }}
+            />
+          );
         case 'workload':
           return <WorkloadDashboard 
             onNavigateToProject={(project) => {

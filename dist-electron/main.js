@@ -26,6 +26,7 @@ const DuplicateProjectDetectionService = require("./main-process/services/Duplic
 const FormSettingsService = require("./main-process/services/FormSettingsService");
 const SecurityLoggingService = require("./main-process/services/SecurityLoggingService");
 const AgencyService = require("./main-process/services/AgencyService");
+const AgencyProjectService = require("./main-process/services/AgencyProjectService");
 const ExcelDiagnosticService = require("./main-process/services/ExcelDiagnosticService");
 const SettingsService = require("./main-process/services/SettingsService");
 const AgencySyncService = require("./main-process/services/AgencySyncService");
@@ -49,6 +50,7 @@ const duplicateProjectDetectionService = new DuplicateProjectDetectionService();
 const formSettingsService = new FormSettingsService();
 const securityLoggingService = new SecurityLoggingService();
 const agencyService = new AgencyService();
+const agencyProjectService = new AgencyProjectService();
 const excelDiagnosticService = new ExcelDiagnosticService();
 const settingsService = new SettingsService();
 const agencySyncService = new AgencySyncService(agencyService, settingsService);
@@ -902,6 +904,41 @@ ipcMain.handle("agencies-get-statistics", async () => {
 ipcMain.handle("agencies-export-excel", async (event, outputPath) => {
   try {
     return await agencyService.exportToExcel(outputPath);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("agency-projects-get-all", async (event, agencyName, agentNumber) => {
+  try {
+    return await agencyProjectService.getProjectsByAgency(agencyName, agentNumber);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("agency-projects-get-active", async (event, agencyName, agentNumber) => {
+  try {
+    return await agencyProjectService.getActiveProjectsByAgency(agencyName, agentNumber);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("agency-projects-get-recently-completed", async (event, agencyName, agentNumber, days) => {
+  try {
+    return await agencyProjectService.getRecentlyCompletedProjects(agencyName, agentNumber, days);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("agency-projects-get-statistics", async (event, agencyName, agentNumber) => {
+  try {
+    return await agencyProjectService.getAgencyProjectStatistics(agencyName, agentNumber);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("agency-projects-get-performance-metrics", async (event, agencyName, agentNumber) => {
+  try {
+    return await agencyProjectService.getAgencyPerformanceMetrics(agencyName, agentNumber);
   } catch (error) {
     return { success: false, error: error.message };
   }

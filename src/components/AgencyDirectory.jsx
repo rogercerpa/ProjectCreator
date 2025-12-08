@@ -3,7 +3,7 @@ import AgencyTableView from './AgencyTableView';
 import AgencySelectionModal from './AgencySelectionModal';
 import EmailTemplateLibrary from './EmailTemplateLibrary';
 
-function AgencyDirectory() {
+function AgencyDirectory({ onAgencySelect }) {
   const [agencies, setAgencies] = useState([]);
   const [filteredAgencies, setFilteredAgencies] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -278,12 +278,21 @@ function AgencyDirectory() {
     return phone;
   };
 
+  // Handle agency click - navigate to dashboard
+  const handleAgencyClick = (agency) => {
+    if (onAgencySelect) {
+      onAgencySelect(agency);
+    } else {
+      setSelectedAgency(agency);
+    }
+  };
+
   // Render agency card
   const renderAgencyCard = (agency) => (
     <div 
       key={agency.id} 
       className="p-5 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-lg shadow-md hover:shadow-xl hover:border-primary-400 dark:hover:border-primary-600 transition-all cursor-pointer group"
-      onClick={() => setSelectedAgency(agency)}
+      onClick={() => handleAgencyClick(agency)}
     >
       {/* Header */}
       <div className="mb-4 pb-3 border-b border-gray-200 dark:border-gray-700">
@@ -346,7 +355,7 @@ function AgencyDirectory() {
     <div 
       key={agent.id} 
       className="p-4 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-white dark:hover:bg-gray-700 hover:shadow-md transition-all cursor-pointer"
-      onClick={() => setSelectedAgency(agent)}
+      onClick={() => handleAgencyClick(agent)}
     >
       <div className="flex items-start justify-between gap-3">
         {/* Agent Info */}
@@ -804,7 +813,7 @@ function AgencyDirectory() {
             {viewMode === 'table' ? (
               <AgencyTableView
                 agencies={filteredAgencies}
-                onAgencySelect={setSelectedAgency}
+                onAgencySelect={handleAgencyClick}
               />
             ) : viewMode === 'grouped' ? (
               <div className="space-y-4 p-1">

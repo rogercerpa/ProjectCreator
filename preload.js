@@ -116,6 +116,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   selectExcelFile: () => ipcRenderer.invoke('select-excel-file'),
   excelDiagnose: (filePath) => ipcRenderer.invoke('excel-diagnose', filePath),
   
+  // Agency Project operations
+  agencyProjectsGetAll: (agencyName, agentNumber) => ipcRenderer.invoke('agency-projects-get-all', agencyName, agentNumber),
+  agencyProjectsGetActive: (agencyName, agentNumber) => ipcRenderer.invoke('agency-projects-get-active', agencyName, agentNumber),
+  agencyProjectsGetRecentlyCompleted: (agencyName, agentNumber, days) => ipcRenderer.invoke('agency-projects-get-recently-completed', agencyName, agentNumber, days),
+  agencyProjectsGetStatistics: (agencyName, agentNumber) => ipcRenderer.invoke('agency-projects-get-statistics', agencyName, agentNumber),
+  agencyProjectsGetPerformanceMetrics: (agencyName, agentNumber) => ipcRenderer.invoke('agency-projects-get-performance-metrics', agencyName, agentNumber),
+  
   // Sync operations
   syncGetSettings: () => ipcRenderer.invoke('sync-get-settings'),
   syncUpdateSettings: (newSettings) => ipcRenderer.invoke('sync-update-settings', newSettings),
