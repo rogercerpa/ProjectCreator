@@ -227,6 +227,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   workloadExcelExportAssignments: (assignments, filePath) => ipcRenderer.invoke('workload-excel:export-assignments', assignments, filePath),
   workloadExcelExportUsers: (users, filePath) => ipcRenderer.invoke('workload-excel:export-users', users, filePath),
   workloadExcelExportAll: (data, filePath) => ipcRenderer.invoke('workload-excel:export-all', data, filePath),
+  workloadExcelOptimizeFile: (filePath) => ipcRenderer.invoke('workload-excel:optimize-file', filePath),
   
   // Import operations
   workloadExcelImportProjects: (filePath) => ipcRenderer.invoke('workload-excel:import-projects', filePath),

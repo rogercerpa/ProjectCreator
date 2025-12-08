@@ -42,6 +42,16 @@ const createDefaultFormData = () => ({
   repContacts: '',
   requestedDate: '',
   submittedDate: '',
+  // New fields for reorganized form
+  projectAddress: '',
+  projectStage: '',
+  designProcessPhase: '',
+  buyAmericanOrBaba: false,
+  agencyName: '',
+  rfaStatus: '',
+  rfaComplexity: '',
+  neededByDate: '',
+  bidDate: '',
   // Unified Triage Control Fields
   hasPanelSchedules: false,
   hasSubmittals: false,

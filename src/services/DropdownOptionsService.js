@@ -36,7 +36,11 @@ class DropdownOptionsService {
       productOptions: ['nLight Wired', 'nLight Air', 'SensorSwitch', 'Pathway', 'Fresco', 'Controls - nLight'],
       assignedToOptions: ['John Doe', 'Jane Smith', 'Mike Johnson', 'Sarah Wilson', 'David Brown', 'Cerpa, Roger'],
       projectTypes: ['Middle School', 'High School', 'University', 'Hospital', 'Office Building', 'Restaurant', 'Government Building', 'Public Building', 'Stadium', 'Park', 'Hotel', 'Other'],
-      photoSoftware: ['VL', 'AGI', 'M3', 'M3+VL']
+      photoSoftware: ['VL', 'AGI', 'M3', 'M3+VL'],
+      projectStages: ['None', 'Postponed', 'Prospecting', 'Engagement', 'Solution', 'Commitment', 'Order Won', 'Order Lost', 'Dormant'],
+      designProcessPhases: ['None', 'Schematic Design', 'Design Development', 'Construction Documents', 'Bid & Negotiation', 'Construction Phase'],
+      rfaStatuses: ['None', 'Pending', 'In Progress', 'Completed', 'On Hold', 'Cancelled'],
+      rfaComplexityLevels: ['Level 1', 'Level 2', 'Level 3', 'Level 4']
     };
     
     this.options = { ...this.defaultOptions };

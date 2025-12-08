@@ -68,15 +68,38 @@ Inside the "Apply to each" loop:
    ```
    @equals(item()?['ProjectID'], items('Apply_to_each')?['ProjectID'])
    ```
+5. **Important:** Note the action name that Power Automate assigns (it will be shown above the action, e.g., "Filter_array" or "Filter_Array"). You'll need this exact name in the next steps.
+
+### Step 6.5: Store Filtered Result (Workaround for Dynamic Content Issue)
+
+Since the Filter array output doesn't always appear in dynamic content picker, we'll store it:
+
+1. Click **Add an action** (still inside the "Apply to each" loop, after Filter array)
+2. Search for **"Compose"** (Data operation)
+3. **Inputs:** 
+   - Click in the field
+   - Type manually (replace 'Filter_array' with your actual action name if different):
+   ```
+   body('Filter_array')
+   ```
+   - Or use: `outputs('Filter_array')?['body']`
+4. This stores the filtered result for easy reference
 
 ### Step 7: Add Condition
 
 1. Click **Add an action**
 2. Search for **"Condition"** (Control)
 3. **Choose a value:**
+   - Use the dynamic content picker and select **"Outputs"** from the "Compose" action
+   - Or type manually:
+   ```
+   length(outputs('Compose'))
+   ```
+   - Alternative if Compose doesn't work:
    ```
    length(body('Filter_array'))
    ```
+   (Replace 'Filter_array' with your actual action name)
 4. **Condition:** `is greater than`
 5. **Value:** `0`
 
@@ -87,8 +110,17 @@ Inside the "Apply to each" loop:
 3. **Site Address:** Your SharePoint site
 4. **List Name:** "Project Workload - Projects"
 5. **Id:** 
+   - **Option 1 (Recommended - Using Compose):** Use dynamic content picker, select **"Outputs"** from the "Compose" action, then wrap with `first()` and add `?['Id']`:
+   ```
+   first(outputs('Compose'))?['Id']
+   ```
+   - **Option 2 (Direct Filter array reference):** Type manually (replace 'Filter_array' with your actual action name):
    ```
    first(body('Filter_array'))?['Id']
+   ```
+   - **Option 3 (Alternative syntax):**
+   ```
+   first(outputs('Filter_array')?['body'])?['Id']
    ```
 6. **Title:** 
    ```
@@ -192,6 +224,8 @@ Once you have the scheduled flow working:
 2. Monitor the flow runs for errors
 3. Adjust the recurrence interval based on your needs
 4. Set up similar flows for Assignments, Users, and TimeTracking
+
+
 
 
 

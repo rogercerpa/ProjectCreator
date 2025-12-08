@@ -73,33 +73,84 @@ class WorkloadExcelService {
   }
 
   /**
-   * Helper function to update cell value while preserving formatting
+   * Helper function to update cell value (without preserving styles to prevent file bloat)
    */
-  updateCellValue(worksheet, row, col, value, formatSourceRow = null) {
+  updateCellValue(worksheet, row, col, value) {
     const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
-    const existingCell = worksheet[cellAddress];
     
-    if (existingCell) {
-      // Preserve existing cell structure (styles, formatting, etc.) - only update value
-      existingCell.v = value;
-      existingCell.w = undefined; // Clear formatted text, Excel will regenerate
-      existingCell.t = typeof value === 'number' ? 'n' : (value === null || value === undefined ? 'z' : 's');
-    } else {
-      // New cell - try to copy formatting from source row if provided
-      const formatSource = formatSourceRow !== null ? worksheet[XLSX.utils.encode_cell({ r: formatSourceRow, c: col })] : null;
+    // Create simple cell without styles to prevent file bloat
+    worksheet[cellAddress] = {
+      v: value,
+      t: typeof value === 'number' ? 'n' : (value === null || value === undefined ? 'z' : 's')
+    };
+  }
+
+  /**
+   * Trim worksheet range to only include rows and columns with actual data
+   */
+  trimWorksheetRange(worksheet) {
+    if (!worksheet || !worksheet['!ref']) return;
+    
+    const range = XLSX.utils.decode_range(worksheet['!ref']);
+    let minRow = range.s.r;
+    let maxRow = range.s.r;
+    let minCol = range.s.c;
+    let maxCol = range.s.c;
+    
+    // Find actual data bounds
+    Object.keys(worksheet).forEach(key => {
+      if (key.startsWith('!')) return; // Skip metadata
       
-      const newCell = {
-        v: value,
-        t: typeof value === 'number' ? 'n' : (value === null || value === undefined ? 'z' : 's')
-      };
-      
-      // Copy style if available
-      if (formatSource && formatSource.s) {
-        newCell.s = formatSource.s;
-      }
-      
-      worksheet[cellAddress] = newCell;
+      const cell = XLSX.utils.decode_cell(key);
+      if (cell.r < minRow) minRow = cell.r;
+      if (cell.r > maxRow) maxRow = cell.r;
+      if (cell.c < minCol) minCol = cell.c;
+      if (cell.c > maxCol) maxCol = cell.c;
+    });
+    
+    // Update range to only include actual data
+    if (maxRow >= minRow && maxCol >= minCol) {
+      worksheet['!ref'] = XLSX.utils.encode_range({
+        s: { r: minRow, c: minCol },
+        e: { r: maxRow, c: maxCol }
+      });
     }
+  }
+
+  /**
+   * Clean up workbook to remove unused styles and optimize file size
+   */
+  cleanupWorkbook(workbook) {
+    // Remove styles object to prevent bloat
+    if (workbook.Styles) {
+      delete workbook.Styles;
+    }
+    
+    // Clean up each worksheet
+    workbook.SheetNames.forEach(sheetName => {
+      const worksheet = workbook.Sheets[sheetName];
+      if (!worksheet) return;
+      
+      // Trim range to only include actual data
+      this.trimWorksheetRange(worksheet);
+      
+      // Remove style references from all cells
+      const range = worksheet['!ref'] ? XLSX.utils.decode_range(worksheet['!ref']) : null;
+      if (range) {
+        for (let row = range.s.r; row <= range.e.r; row++) {
+          for (let col = range.s.c; col <= range.e.c; col++) {
+            const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+            const cell = worksheet[cellAddress];
+            if (cell) {
+              // Remove style reference to prevent bloat
+              if (cell.s) delete cell.s;
+              // Remove formatted text cache
+              if (cell.w && cell.v) delete cell.w;
+            }
+          }
+        }
+      }
+    });
   }
 
   /**
@@ -128,8 +179,11 @@ class WorkloadExcelService {
       // Ensure directory exists
       await fs.ensureDir(path.dirname(filePath));
 
-      // Write workbook
-      XLSX.writeFile(workbook, filePath);
+      // Clean up workbook to remove unused styles
+      this.cleanupWorkbook(workbook);
+      
+      // Write workbook (styles already removed by cleanupWorkbook)
+      XLSX.writeFile(workbook, filePath, { bookType: 'xlsx' });
 
       return {
         success: true,
@@ -167,8 +221,8 @@ class WorkloadExcelService {
         }
       }
 
-      // Read workbook
-      const workbook = XLSX.readFile(normalizedPath, { cellStyles: true, cellNF: true });
+      // Read workbook (without cellStyles to prevent file bloat)
+      const workbook = XLSX.readFile(normalizedPath);
       const sheetName = 'Projects';
       const projectMapping = fieldMapping.projects;
       const headers = this.fieldMappingService.getExcelHeaders(projectMapping);
@@ -277,7 +331,7 @@ class WorkloadExcelService {
       const newRows = Array.from(projectsToExport.values()).filter(r => !r.isUpdate);
       newRows.forEach(({ rowArray }) => {
         rowArray.forEach((value, colIndex) => {
-          this.updateCellValue(worksheet, currentDataRow, colIndex, value, headerRowIndex);
+          this.updateCellValue(worksheet, currentDataRow, colIndex, value);
         });
         currentDataRow++;
       });
@@ -286,7 +340,7 @@ class WorkloadExcelService {
       const updatedRows = Array.from(projectsToExport.values()).filter(r => r.isUpdate);
       updatedRows.forEach(({ rowArray }) => {
         rowArray.forEach((value, colIndex) => {
-          this.updateCellValue(worksheet, currentDataRow, colIndex, value, headerRowIndex);
+          this.updateCellValue(worksheet, currentDataRow, colIndex, value);
         });
         currentDataRow++;
       });
@@ -294,7 +348,7 @@ class WorkloadExcelService {
       // 3. Write PRESERVED rows at the end (IDs that exist in Excel but not in app)
       preservedRows.forEach(({ rowArray }) => {
         rowArray.forEach((value, colIndex) => {
-          this.updateCellValue(worksheet, currentDataRow, colIndex, value, headerRowIndex);
+          this.updateCellValue(worksheet, currentDataRow, colIndex, value);
         });
         currentDataRow++;
       });
@@ -309,7 +363,10 @@ class WorkloadExcelService {
       };
       worksheet['!ref'] = XLSX.utils.encode_range(newRange);
 
-      // Write workbook - preserve as much structure as possible
+      // Clean up workbook to remove unused styles and optimize file size
+      this.cleanupWorkbook(workbook);
+      
+      // Write workbook (styles already removed by cleanupWorkbook)
       XLSX.writeFile(workbook, normalizedPath, { bookType: 'xlsx' });
 
       return {
@@ -375,8 +432,8 @@ class WorkloadExcelService {
         }
       }
 
-      // Read workbook
-      const workbook = XLSX.readFile(normalizedPath, { cellStyles: true, cellNF: true });
+      // Read workbook (without cellStyles to prevent file bloat)
+      const workbook = XLSX.readFile(normalizedPath);
       const sheetName = 'Assignments';
       const assignmentMapping = fieldMapping.assignments;
       const headers = this.fieldMappingService.getExcelHeaders(assignmentMapping);
@@ -478,7 +535,7 @@ class WorkloadExcelService {
       const newRows = Array.from(assignmentsToExport.values()).filter(r => !r.isUpdate);
       newRows.forEach(({ rowArray }) => {
         rowArray.forEach((value, colIndex) => {
-          this.updateCellValue(worksheet, currentDataRow, colIndex, value, headerRowIndex);
+          this.updateCellValue(worksheet, currentDataRow, colIndex, value);
         });
         currentDataRow++;
       });
@@ -487,7 +544,7 @@ class WorkloadExcelService {
       const updatedRows = Array.from(assignmentsToExport.values()).filter(r => r.isUpdate);
       updatedRows.forEach(({ rowArray }) => {
         rowArray.forEach((value, colIndex) => {
-          this.updateCellValue(worksheet, currentDataRow, colIndex, value, headerRowIndex);
+          this.updateCellValue(worksheet, currentDataRow, colIndex, value);
         });
         currentDataRow++;
       });
@@ -495,7 +552,7 @@ class WorkloadExcelService {
       // 3. Write PRESERVED rows at the end (IDs that exist in Excel but not in app)
       preservedRows.forEach(({ rowArray }) => {
         rowArray.forEach((value, colIndex) => {
-          this.updateCellValue(worksheet, currentDataRow, colIndex, value, headerRowIndex);
+          this.updateCellValue(worksheet, currentDataRow, colIndex, value);
         });
         currentDataRow++;
       });
@@ -510,7 +567,10 @@ class WorkloadExcelService {
       };
       worksheet['!ref'] = XLSX.utils.encode_range(newRange);
 
-      // Write workbook - preserve as much structure as possible
+      // Clean up workbook to remove unused styles and optimize file size
+      this.cleanupWorkbook(workbook);
+      
+      // Write workbook (styles already removed by cleanupWorkbook)
       XLSX.writeFile(workbook, normalizedPath, { bookType: 'xlsx' });
 
       return {
@@ -552,8 +612,8 @@ class WorkloadExcelService {
         }
       }
 
-      // Read workbook
-      const workbook = XLSX.readFile(normalizedPath, { cellStyles: true, cellNF: true });
+      // Read workbook (without cellStyles to prevent file bloat)
+      const workbook = XLSX.readFile(normalizedPath);
       const sheetName = 'Users';
       const userMapping = fieldMapping.users;
       const headers = this.fieldMappingService.getExcelHeaders(userMapping);
@@ -655,7 +715,7 @@ class WorkloadExcelService {
       const newRows = Array.from(usersToExport.values()).filter(r => !r.isUpdate);
       newRows.forEach(({ rowArray }) => {
         rowArray.forEach((value, colIndex) => {
-          this.updateCellValue(worksheet, currentDataRow, colIndex, value, headerRowIndex);
+          this.updateCellValue(worksheet, currentDataRow, colIndex, value);
         });
         currentDataRow++;
       });
@@ -664,7 +724,7 @@ class WorkloadExcelService {
       const updatedRows = Array.from(usersToExport.values()).filter(r => r.isUpdate);
       updatedRows.forEach(({ rowArray }) => {
         rowArray.forEach((value, colIndex) => {
-          this.updateCellValue(worksheet, currentDataRow, colIndex, value, headerRowIndex);
+          this.updateCellValue(worksheet, currentDataRow, colIndex, value);
         });
         currentDataRow++;
       });
@@ -672,7 +732,7 @@ class WorkloadExcelService {
       // 3. Write PRESERVED rows at the end (IDs that exist in Excel but not in app)
       preservedRows.forEach(({ rowArray }) => {
         rowArray.forEach((value, colIndex) => {
-          this.updateCellValue(worksheet, currentDataRow, colIndex, value, headerRowIndex);
+          this.updateCellValue(worksheet, currentDataRow, colIndex, value);
         });
         currentDataRow++;
       });
@@ -687,7 +747,10 @@ class WorkloadExcelService {
       };
       worksheet['!ref'] = XLSX.utils.encode_range(newRange);
 
-      // Write workbook - preserve as much structure as possible
+      // Clean up workbook to remove unused styles and optimize file size
+      this.cleanupWorkbook(workbook);
+      
+      // Write workbook (styles already removed by cleanupWorkbook)
       XLSX.writeFile(workbook, normalizedPath, { bookType: 'xlsx' });
 
       return {
@@ -1059,6 +1122,60 @@ class WorkloadExcelService {
       };
     } catch (error) {
       console.error('Error getting Excel headers:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * Optimize/repair an existing Excel file by removing styles and trimming ranges
+   * This fixes file bloat issues caused by accumulated styles
+   */
+  async optimizeExcelFile(filePath) {
+    try {
+      if (!await fs.pathExists(filePath)) {
+        return {
+          success: false,
+          error: 'Excel file does not exist'
+        };
+      }
+
+      // Get original file size
+      const originalStats = await fs.stat(filePath);
+      const originalSize = originalStats.size;
+
+      // Read workbook without styles to avoid loading bloat
+      const workbook = XLSX.readFile(filePath);
+
+      // Clean up the workbook (removes styles, trims ranges)
+      this.cleanupWorkbook(workbook);
+
+      // Create backup before overwriting
+      const backupPath = filePath + '.backup.' + Date.now();
+      await fs.copy(filePath, backupPath);
+
+      // Write optimized workbook (styles already removed by cleanupWorkbook)
+      XLSX.writeFile(workbook, filePath, { bookType: 'xlsx' });
+
+      // Get new file size
+      const newStats = await fs.stat(filePath);
+      const newSize = newStats.size;
+      const reduction = originalSize - newSize;
+      const reductionPercent = ((reduction / originalSize) * 100).toFixed(2);
+
+      return {
+        success: true,
+        originalSize,
+        newSize,
+        reduction,
+        reductionPercent,
+        backupPath,
+        message: `File optimized: ${(originalSize / 1024 / 1024).toFixed(2)} MB → ${(newSize / 1024 / 1024).toFixed(2)} MB (${reductionPercent}% reduction)`
+      };
+    } catch (error) {
+      console.error('Error optimizing Excel file:', error);
       return {
         success: false,
         error: error.message

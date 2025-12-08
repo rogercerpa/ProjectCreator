@@ -1,0 +1,32 @@
+{
+  "type": "OpenApiConnection",
+  "inputs": {
+    "parameters": {
+      "dataset": "https://acuitybrandsinc.sharepoint.com/sites/CIDAS-ProjectCreator",
+      "table": "a3a9d3e1-acd5-4573-be88-18d2cb8ca3ee",
+      "id": "@first(body('Get_items')?['value'])?['Id']",
+      "item/Title": "@triggerBody()?['ProjectName']",
+      "item/ProjectID": "@triggerBody()?['ProjectID']",
+      "item/field_2": "@triggerBody()?['ProjectName']",
+      "item/field_1": "@triggerBody()?['RFAType']",
+      "item/field_3": "@triggerBody()?['RFANumber']",
+      "item/field_4": "@triggerBody()?['ProjectContainer']",
+      "item/field_5": "@triggerBody()?['ClientName']",
+      "item/field_9": "@triggerBody()?['DueDate']",
+      "item/field_6": "@triggerBody()?['ProjectType']",
+      "item/field_7": "@triggerBody()?['Status']",
+      "item/field_8": "@triggerBody()?['CreatedDate']",
+      "item/field_13": "@triggerBody()?['Priority']",
+      "item/field_14": "@triggerBody()?['FolderPath']"
+    },
+    "host": {
+      "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+      "connection": "shared_sharepointonline",
+      "operationId": "PatchItem"
+    }
+  }
+}
+
+
+
+

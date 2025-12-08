@@ -2140,6 +2140,17 @@ ipcMain.handle('workload-excel:export-all', async (event, data, filePath) => {
   }
 });
 
+// Optimize/repair Excel file (removes styles to fix file bloat)
+ipcMain.handle('workload-excel:optimize-file', async (event, filePath) => {
+  try {
+    const result = await workloadExcelService.optimizeExcelFile(filePath);
+    return result;
+  } catch (error) {
+    console.error('Error optimizing Excel file:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 // Import operations
 ipcMain.handle('workload-excel:import-projects', async (event, filePath) => {
   try {

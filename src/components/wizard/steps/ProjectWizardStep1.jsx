@@ -747,6 +747,61 @@ const ProjectWizardStep1 = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount
 
+  // Agency lookup: Auto-populate Agency Name when Agency Number is entered
+  useEffect(() => {
+    const lookupAgencyName = async () => {
+      const agencyNumber = formData.agentNumber?.trim();
+      
+      // Skip if agency number is empty or agency name already matches
+      if (!agencyNumber) {
+        if (formData.agencyName) {
+          // Clear agency name if agency number is cleared
+          onFormDataChange({
+            ...formData,
+            agencyName: ''
+          });
+        }
+        return;
+      }
+
+      // Skip if we already have an agency name that matches (avoid unnecessary lookups)
+      if (formData.agencyName && formData.agencyName.trim()) {
+        return;
+      }
+
+      try {
+        if (window.electronAPI?.agenciesSearch) {
+          // Search for agency by agency number
+          const result = await window.electronAPI.agenciesSearch(agencyNumber, { region: 'all', role: 'all' });
+          
+          if (result?.success && Array.isArray(result.agencies)) {
+            // Find exact match by agency number
+            const matchedAgency = result.agencies.find(
+              agency => agency?.agencyNumber?.toLowerCase() === agencyNumber.toLowerCase()
+            );
+            
+            if (matchedAgency?.agencyName) {
+              onFormDataChange({
+                ...formData,
+                agencyName: matchedAgency.agencyName
+              });
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to lookup agency name:', error);
+      }
+    };
+
+    // Debounce the lookup to avoid excessive API calls
+    const timeoutId = setTimeout(() => {
+      lookupAgencyName();
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.agentNumber]);
+
   // HTA-like automatic revision detection (try first before showing dialog)
   const handleAutomaticRevisionDetection = async () => {
     try {
@@ -2107,9 +2162,9 @@ const ProjectWizardStep1 = ({
       <div className="wizard-content">
         <div className="wizard-step-content">
 
-        {/* PRESERVED: Exact form structure from ProjectForm.jsx lines 513-788 */}
+        {/* Project Info Section */}
         <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-6 shadow-md">
-          <h3 className="form-section-header">📋 Basic Project Information</h3>
+          <h3 className="form-section-header">📋 Project Info</h3>
           <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1">
             <div className={`form-group ${getFieldClasses('projectName')}`}>
               <label htmlFor="projectName">Project Name *</label>
@@ -2144,7 +2199,6 @@ const ProjectWizardStep1 = ({
                   value={customProjectType}
                   onChange={(e) => {
                     setCustomProjectType(e.target.value);
-                    // Only update formData with the custom type value, keep projectType as 'Other'
                     onFormDataChange({ 
                       ...formData, 
                       projectType: 'Other',
@@ -2152,7 +2206,6 @@ const ProjectWizardStep1 = ({
                     });
                   }}
                   onKeyDown={(e) => {
-                    // Allow user to press Escape to revert to dropdown
                     if (e.key === 'Escape') {
                       setIsCustomProjectTypeMode(false);
                       setCustomProjectType('');
@@ -2162,11 +2215,9 @@ const ProjectWizardStep1 = ({
                         customProjectType: '' 
                       });
                     }
-                    // Save custom type when user presses Enter
                     if (e.key === 'Enter' && customProjectType.trim()) {
                       const trimmedType = customProjectType.trim();
                       saveCustomProjectType(trimmedType);
-                      // Update formData with the final custom type name
                       onFormDataChange({ 
                         ...formData, 
                         projectType: trimmedType,
@@ -2176,11 +2227,9 @@ const ProjectWizardStep1 = ({
                     }
                   }}
                   onBlur={(e) => {
-                    // Save custom type when user finishes editing
                     if (e.target.value.trim()) {
                       const trimmedType = e.target.value.trim();
                       saveCustomProjectType(trimmedType);
-                      // Update formData with the final custom type name
                       onFormDataChange({ 
                         ...formData, 
                         projectType: trimmedType,
@@ -2188,7 +2237,6 @@ const ProjectWizardStep1 = ({
                       });
                       setIsCustomProjectTypeMode(false);
                     } else {
-                      // If field is empty, revert back to dropdown
                       setIsCustomProjectTypeMode(false);
                       setCustomProjectType('');
                       onFormDataChange({ 
@@ -2238,6 +2286,19 @@ const ProjectWizardStep1 = ({
               {isFieldImported('projectType') && <span className="import-indicator">📋 Imported</span>}
             </div>
 
+            <div className={`form-group ${isFieldImported('projectAddress') ? 'imported-field' : ''}`}>
+              <label htmlFor="projectAddress">Project Address</label>
+              <input
+                type="text"
+                id="projectAddress"
+                name="projectAddress"
+                value={formData.projectAddress || ''}
+                onChange={handleInputChange}
+                placeholder="Enter project address"
+              />
+              {isFieldImported('projectAddress') && <span className="import-indicator">📋 Imported</span>}
+            </div>
+
             <div className={`form-group ${getFieldClasses('projectContainer')}`}>
               <label htmlFor="projectContainer">Project Container *</label>
               <input
@@ -2262,6 +2323,189 @@ const ProjectWizardStep1 = ({
               {isFieldImported('projectContainer') && <span className="import-indicator">📋 Imported</span>}
             </div>
 
+            <div className={`form-group form-group-full ${isFieldImported('projectNotes') ? 'imported-field' : ''}`}>
+              <label htmlFor="projectNotes">Project Notes</label>
+              <textarea
+                id="projectNotes"
+                name="projectNotes"
+                value={formData.projectNotes || ''}
+                onChange={handleInputChange}
+                placeholder="Enter project notes or comments (optional)"
+                rows="3"
+              />
+              <small className="field-hint">Optional notes about the project. Required when marking project as completed.</small>
+              {isFieldImported('projectNotes') && <span className="import-indicator">📋 Imported</span>}
+            </div>
+
+            <div className="form-group">
+              <EditableProductTags
+                label="Products"
+                options={dropdownOptions.productOptions}
+                selectedValues={Array.isArray(formData.products) ? formData.products : []}
+                onChange={(selectedProducts) => {
+                  const sanitizedProducts = (selectedProducts || [])
+                    .map((product) => sanitizeTextValue(product))
+                    .filter(Boolean);
+                  onFormDataChange({ ...formData, products: sanitizedProducts });
+                }}
+                isFieldImported={isFieldImported('products')}
+              />
+              <small className="field-hint">Hover over products to remove them. Use the dropdown to add products.</small>
+            </div>
+
+            <div className={`form-group ${isFieldImported('projectStage') ? 'imported-field' : ''}`}>
+              <label htmlFor="projectStage">Project Stage</label>
+              <select
+                id="projectStage"
+                name="projectStage"
+                value={formData.projectStage || ''}
+                onChange={handleInputChange}
+              >
+                <option value="">Select Project Stage</option>
+                {(dropdownOptions.projectStages || []).map(stage => (
+                  <option key={stage} value={stage}>{stage}</option>
+                ))}
+              </select>
+              {isFieldImported('projectStage') && <span className="import-indicator">📋 Imported</span>}
+            </div>
+
+            <div className={`form-group ${isFieldImported('designProcessPhase') ? 'imported-field' : ''}`}>
+              <label htmlFor="designProcessPhase">Design Process Phase</label>
+              <select
+                id="designProcessPhase"
+                name="designProcessPhase"
+                value={formData.designProcessPhase || ''}
+                onChange={handleInputChange}
+              >
+                <option value="">Select Design Process Phase</option>
+                {(dropdownOptions.designProcessPhases || []).map(phase => (
+                  <option key={phase} value={phase}>{phase}</option>
+                ))}
+              </select>
+              {isFieldImported('designProcessPhase') && <span className="import-indicator">📋 Imported</span>}
+            </div>
+
+            <div className={`form-group ${isFieldImported('buyAmericanOrBaba') ? 'imported-field' : ''}`}>
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  id="buyAmericanOrBaba"
+                  name="buyAmericanOrBaba"
+                  checked={formData.buyAmericanOrBaba || false}
+                  onChange={(e) => {
+                    onFormDataChange({
+                      ...formData,
+                      buyAmericanOrBaba: e.target.checked
+                    });
+                  }}
+                />
+                Buy American or BABA
+              </label>
+              {isFieldImported('buyAmericanOrBaba') && <span className="import-indicator">📋 Imported</span>}
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="saveLocation">Project Folder Save Location</label>
+              <select
+                id="saveLocation"
+                name="saveLocation"
+                value={formData.saveLocation || 'Server'}
+                onChange={handleInputChange}
+              >
+                {dropdownOptions.saveLocations.map(location => (
+                  <option key={location} value={location}>{location}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Agency Info Section */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-6 shadow-md mt-6">
+          <h3 className="form-section-header">🏢 Agency Info</h3>
+          <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1">
+            <div className={`form-group ${isFieldImported('agencyName') ? 'imported-field' : ''}`}>
+              <label htmlFor="agencyName">Agency Name</label>
+              <input
+                type="text"
+                id="agencyName"
+                name="agencyName"
+                value={formData.agencyName || ''}
+                onChange={handleInputChange}
+                placeholder="Auto-populated from agency number"
+                readOnly
+                className="readonly-field"
+              />
+              <small className="field-hint">Automatically populated when Agency Number is entered</small>
+              {isFieldImported('agencyName') && <span className="import-indicator">📋 Imported</span>}
+            </div>
+
+            <div className={`form-group ${isFieldImported('agentNumber') ? 'imported-field' : ''}`}>
+              <label htmlFor="agentNumber">Agency Number *</label>
+              <input
+                type="text"
+                id="agentNumber"
+                name="agentNumber"
+                value={formData.agentNumber || ''}
+                onChange={handleInputChange}
+                className={errors.agentNumber ? 'error' : ''}
+                placeholder="Enter agency number"
+              />
+              {errors.agentNumber && <span className="error-message">{errors.agentNumber}</span>}
+              {isFieldImported('agentNumber') && <span className="import-indicator">📋 Imported</span>}
+            </div>
+
+            <div className={`form-group ${isFieldImported('repContacts') ? 'imported-field' : ''}`}>
+              <label htmlFor="repContacts">Agent Contact</label>
+              <input
+                type="text"
+                id="repContacts"
+                name="repContacts"
+                value={formData.repContacts || ''}
+                onChange={handleInputChange}
+                placeholder="e.g., Vranesh, Eileen"
+              />
+              {isFieldImported('repContacts') && <span className="import-indicator">📋 Imported</span>}
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="regionalTeam">Region *</label>
+              <select
+                id="regionalTeam"
+                name="regionalTeam"
+                value={formData.regionalTeam || ''}
+                onChange={handleInputChange}
+                className={errors.regionalTeam ? 'error' : ''}
+              >
+                <option value="">Select Region</option>
+                {dropdownOptions.regionalTeams.map(team => (
+                  <option key={team} value={team}>{team}</option>
+                ))}
+              </select>
+              {errors.regionalTeam && <span className="error-message">{errors.regionalTeam}</span>}
+            </div>
+
+            <div className={`form-group ${isFieldImported('nationalAccount') ? 'imported-field' : ''}`}>
+              <label htmlFor="nationalAccount">National Account</label>
+              <select
+                id="nationalAccount"
+                name="nationalAccount"
+                value={formData.nationalAccount || 'Default'}
+                onChange={handleInputChange}
+              >
+                {dropdownOptions.nationalAccounts.map(account => (
+                  <option key={account} value={account}>{account}</option>
+                ))}
+              </select>
+              {isFieldImported('nationalAccount') && <span className="import-indicator">📋 Imported</span>}
+            </div>
+          </div>
+        </div>
+
+        {/* RFA Info Section */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-6 shadow-md mt-6">
+          <h3 className="form-section-header">📄 RFA Info</h3>
+          <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1">
             <div className={`form-group ${isFieldImported('rfaNumber') ? 'imported-field' : ''}`}>
               <label htmlFor="rfaNumber">RFA Number *</label>
               <input
@@ -2275,6 +2519,24 @@ const ProjectWizardStep1 = ({
               />
               {errors.rfaNumber && <span className="error-message">{errors.rfaNumber}</span>}
               {isFieldImported('rfaNumber') && <span className="import-indicator">📋 Imported</span>}
+            </div>
+
+            <div className={`form-group ${isFieldImported('rfaType') ? 'imported-field' : ''}`}>
+              <label htmlFor="rfaType">RFA Type *</label>
+              <select
+                id="rfaType"
+                name="rfaType"
+                value={formData.rfaType || ''}
+                onChange={handleInputChange}
+                className={errors.rfaType ? 'error' : ''}
+              >
+                <option value="">Select RFA Type</option>
+                {dropdownOptions.rfaTypes.map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+              {errors.rfaType && <span className="error-message">{errors.rfaType}</span>}
+              {isFieldImported('rfaType') && <span className="import-indicator">📋 Imported</span>}
             </div>
 
             <div className={`form-group ${isFieldImported('isRevision') ? 'imported-field' : ''}`}>
@@ -2316,85 +2578,57 @@ const ProjectWizardStep1 = ({
               </div>
             )}
 
-            <div className={`form-group ${isFieldImported('rfaType') ? 'imported-field' : ''}`}>
-              <label htmlFor="rfaType">RFA Type *</label>
-              <select
-                id="rfaType"
-                name="rfaType"
-                value={formData.rfaType || ''}
-                onChange={handleInputChange}
-                className={errors.rfaType ? 'error' : ''}
-              >
-                <option value="">Select RFA Type</option>
-                {dropdownOptions.rfaTypes.map(type => (
-                  <option key={type} value={type}>{type}</option>
-                ))}
-              </select>
-              {errors.rfaType && <span className="error-message">{errors.rfaType}</span>}
-              {isFieldImported('rfaType') && <span className="import-indicator">📋 Imported</span>}
-            </div>
-
-            <div className={`form-group ${isFieldImported('agentNumber') ? 'imported-field' : ''}`}>
-              <label htmlFor="agentNumber">Agent Number *</label>
+            <div className={`form-group ${isFieldImported('rfaValue') ? 'imported-field' : ''}`}>
+              <label htmlFor="rfaValue">RFA Value</label>
               <input
                 type="text"
-                id="agentNumber"
-                name="agentNumber"
-                value={formData.agentNumber || ''}
+                id="rfaValue"
+                name="rfaValue"
+                value={formData.rfaValue || ''}
                 onChange={handleInputChange}
-                className={errors.agentNumber ? 'error' : ''}
-                placeholder="Enter agent number"
+                placeholder="Enter RFA value"
               />
-              {errors.agentNumber && <span className="error-message">{errors.agentNumber}</span>}
-              {isFieldImported('agentNumber') && <span className="import-indicator">📋 Imported</span>}
+              {isFieldImported('rfaValue') && <span className="import-indicator">📋 Imported</span>}
             </div>
 
-            <div className="form-group">
-              <label htmlFor="regionalTeam">Regional Team *</label>
+            <div className={`form-group ${isFieldImported('rfaStatus') ? 'imported-field' : ''}`}>
+              <label htmlFor="rfaStatus">RFA Status</label>
               <select
-                id="regionalTeam"
-                name="regionalTeam"
-                value={formData.regionalTeam || ''}
-                onChange={handleInputChange}
-                className={errors.regionalTeam ? 'error' : ''}
-              >
-                <option value="">Select Regional Team</option>
-                {dropdownOptions.regionalTeams.map(team => (
-                  <option key={team} value={team}>{team}</option>
-                ))}
-              </select>
-              {errors.regionalTeam && <span className="error-message">{errors.regionalTeam}</span>}
-            </div>
-
-            <div className={`form-group ${isFieldImported('nationalAccount') ? 'imported-field' : ''}`}>
-              <label htmlFor="nationalAccount">National Account</label>
-              <select
-                id="nationalAccount"
-                name="nationalAccount"
-                value={formData.nationalAccount || 'Default'}
+                id="rfaStatus"
+                name="rfaStatus"
+                value={formData.rfaStatus || ''}
                 onChange={handleInputChange}
               >
-                {dropdownOptions.nationalAccounts.map(account => (
-                  <option key={account} value={account}>{account}</option>
+                <option value="">Select RFA Status</option>
+                {(dropdownOptions.rfaStatuses || []).map(status => (
+                  <option key={status} value={status}>{status}</option>
                 ))}
               </select>
-              {isFieldImported('nationalAccount') && <span className="import-indicator">📋 Imported</span>}
+              {isFieldImported('rfaStatus') && <span className="import-indicator">📋 Imported</span>}
             </div>
 
-            <div className="form-group">
-              <label htmlFor="saveLocation">Save Location</label>
+            <div className={`form-group ${isFieldImported('rfaComplexity') ? 'imported-field' : ''}`}>
+              <label htmlFor="rfaComplexity">RFA Complexity</label>
               <select
-                id="saveLocation"
-                name="saveLocation"
-                value={formData.saveLocation || 'Server'}
+                id="rfaComplexity"
+                name="rfaComplexity"
+                value={formData.rfaComplexity || ''}
                 onChange={handleInputChange}
               >
-                {dropdownOptions.saveLocations.map(location => (
-                  <option key={location} value={location}>{location}</option>
+                <option value="">Select RFA Complexity</option>
+                {(dropdownOptions.rfaComplexityLevels || []).map(level => (
+                  <option key={level} value={level}>{level}</option>
                 ))}
               </select>
+              {isFieldImported('rfaComplexity') && <span className="import-indicator">📋 Imported</span>}
             </div>
+          </div>
+        </div>
 
+        {/* Important Dates Section */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-6 shadow-md mt-6">
+          <h3 className="form-section-header">📅 Important Dates</h3>
+          <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1">
             <div className={`form-group ${isFieldImported('requestedDate') ? 'imported-field' : ''}`}>
               <label htmlFor="requestedDate">Requested Date <span className="timezone-indicator">({getUserTimezone().abbreviation})</span></label>
               <input
@@ -2434,79 +2668,42 @@ const ProjectWizardStep1 = ({
               {isFieldImported('submittedDate') && <span className="import-indicator">📋 Imported</span>}
             </div>
 
-            <div className={`form-group ${isFieldImported('complexity') ? 'imported-field' : ''}`}>
-              <label htmlFor="complexity">Complexity</label>
-              <select
-                id="complexity"
-                name="complexity"
-                value={formData.complexity || ''}
-                onChange={handleInputChange}
-              >
-                <option value="">Select Complexity</option>
-                {dropdownOptions.complexityLevels.map(level => (
-                  <option key={level} value={level}>{level}</option>
-                ))}
-              </select>
-              {isFieldImported('complexity') && <span className="import-indicator">📋 Imported</span>}
-            </div>
-
-            <div className={`form-group ${isFieldImported('rfaValue') ? 'imported-field' : ''}`}>
-              <label htmlFor="rfaValue">RFA Value</label>
-              <input
-                type="text"
-                id="rfaValue"
-                name="rfaValue"
-                value={formData.rfaValue || ''}
-                onChange={handleInputChange}
-                placeholder="Enter RFA value"
-              />
-              {isFieldImported('rfaValue') && <span className="import-indicator">📋 Imported</span>}
-            </div>
-
-            <div className={`form-group ${isFieldImported('status') ? 'imported-field' : ''}`}>
-              <label htmlFor="status">Status</label>
-              <select
-                id="status"
-                name="status"
-                value={formData.status || ''}
-                onChange={handleInputChange}
-              >
-                <option value="">Select Status</option>
-                {dropdownOptions.statusOptions.map(status => (
-                  <option key={status} value={status}>{status}</option>
-                ))}
-              </select>
-              {isFieldImported('status') && <span className="import-indicator">📋 Imported</span>}
-            </div>
-
-            <div className={`form-group form-group-full ${isFieldImported('projectNotes') ? 'imported-field' : ''}`}>
-              <label htmlFor="projectNotes">Project Notes</label>
-              <textarea
-                id="projectNotes"
-                name="projectNotes"
-                value={formData.projectNotes || ''}
-                onChange={handleInputChange}
-                placeholder="Enter project notes or comments (optional)"
-                rows="3"
-              />
-              <small className="field-hint">Optional notes about the project. Required when marking project as completed.</small>
-              {isFieldImported('projectNotes') && <span className="import-indicator">📋 Imported</span>}
-            </div>
-
             <div className="form-group">
-              <EditableProductTags
-                label="Products"
-                options={dropdownOptions.productOptions}
-                selectedValues={Array.isArray(formData.products) ? formData.products : []}
-                onChange={(selectedProducts) => {
-                  const sanitizedProducts = (selectedProducts || [])
-                    .map((product) => sanitizeTextValue(product))
-                    .filter(Boolean);
-                  onFormDataChange({ ...formData, products: sanitizedProducts });
-                }}
-                isFieldImported={isFieldImported('products')}
+              <label htmlFor="dueDate">Due Date <span className="timezone-indicator">({getUserTimezone().abbreviation})</span></label>
+              <input
+                type="datetime-local"
+                id="dueDate"
+                name="dueDate"
+                value={formData.dueDate || ''}
+                onChange={handleInputChange}
               />
-              <small className="field-hint">Hover over products to remove them. Use the dropdown to add products.</small>
+              <small className="field-hint">Due date in your local timezone ({getUserTimezone().abbreviation})</small>
+            </div>
+
+            <div className={`form-group ${isFieldImported('neededByDate') ? 'imported-field' : ''}`}>
+              <label htmlFor="neededByDate">Needed by Date <span className="timezone-indicator">({getUserTimezone().abbreviation})</span></label>
+              <input
+                type="datetime-local"
+                id="neededByDate"
+                name="neededByDate"
+                value={formData.neededByDate || ''}
+                onChange={handleInputChange}
+              />
+              <small className="field-hint">Date in your local timezone ({getUserTimezone().abbreviation})</small>
+              {isFieldImported('neededByDate') && <span className="import-indicator">📋 Imported</span>}
+            </div>
+
+            <div className={`form-group ${isFieldImported('bidDate') ? 'imported-field' : ''}`}>
+              <label htmlFor="bidDate">Bid Date <span className="timezone-indicator">({getUserTimezone().abbreviation})</span></label>
+              <input
+                type="datetime-local"
+                id="bidDate"
+                name="bidDate"
+                value={formData.bidDate || ''}
+                onChange={handleInputChange}
+              />
+              <small className="field-hint">Date in your local timezone ({getUserTimezone().abbreviation})</small>
+              {isFieldImported('bidDate') && <span className="import-indicator">📋 Imported</span>}
             </div>
           </div>
         </div>
@@ -2561,36 +2758,6 @@ const ProjectWizardStep1 = ({
                 ))}
               </select>
               {isFieldImported('qcBy') && <span className="import-indicator">📋 Imported</span>}
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-6 shadow-md mt-6">
-          <h3 className="form-section-header">📋 Additional Information</h3>
-          <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1">
-            <div className={`form-group ${isFieldImported('repContacts') ? 'imported-field' : ''}`}>
-              <label htmlFor="repContacts">Rep Contacts</label>
-              <input
-                type="text"
-                id="repContacts"
-                name="repContacts"
-                value={formData.repContacts || ''}
-                onChange={handleInputChange}
-                placeholder="e.g., Vranesh, Eileen"
-              />
-              {isFieldImported('repContacts') && <span className="import-indicator">📋 Imported</span>}
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="dueDate">Due Date <span className="timezone-indicator">({getUserTimezone().abbreviation})</span></label>
-              <input
-                type="datetime-local"
-                id="dueDate"
-                name="dueDate"
-                value={formData.dueDate || ''}
-                onChange={handleInputChange}
-              />
-              <small className="field-hint">Due date in your local timezone ({getUserTimezone().abbreviation})</small>
             </div>
           </div>
         </div>
