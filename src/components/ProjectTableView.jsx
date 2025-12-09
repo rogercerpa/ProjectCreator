@@ -6,7 +6,6 @@ function ProjectTableView({
   projects, 
   onProjectSelect, 
   onProjectDelete,
-  density = 'standard',
   sortBy,
   sortOrder,
   onSort
@@ -195,7 +194,7 @@ function ProjectTableView({
   const visibleColumnsData = orderedColumns.filter(col => visibleColumns.includes(col.key));
 
   return (
-    <div className={`bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden ${density === 'compact' ? 'text-sm' : density === 'comfortable' ? 'text-base' : 'text-sm'}`}>
+    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden text-sm">
       <div className="flex justify-end items-center px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
         <ColumnVisibilityControl
           columns={allColumns}

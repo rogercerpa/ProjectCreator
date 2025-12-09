@@ -3,26 +3,16 @@ import React from 'react';
 function ViewToolbar({ 
   viewMode, 
   onViewModeChange, 
-  density, 
-  onDensityChange, 
   groupBy, 
   onGroupByChange,
   sortBy,
   sortOrder,
   onSortChange,
-  onSortOrderToggle,
-  projectCount,
-  filteredCount
+  onSortOrderToggle
 }) {
   const viewModes = [
     { value: 'card', icon: '🎴', label: 'Card View' },
     { value: 'table', icon: '📋', label: 'Table View' }
-  ];
-
-  const densityOptions = [
-    { value: 'compact', icon: '⚪', label: 'Compact' },
-    { value: 'standard', icon: '⚫', label: 'Standard' },
-    { value: 'comfortable', icon: '⭕', label: 'Comfortable' }
   ];
 
   const groupOptions = [
@@ -44,19 +34,8 @@ function ViewToolbar({
 
   return (
     <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 mb-6 shadow-sm lg:p-4 md:p-3 md:mb-4">
-      {/* Top Row - Main Controls */}
-      <div className="flex items-center gap-6 flex-wrap justify-between mb-4 md:gap-4">
-        {/* Project Count */}
-        <div className="flex-shrink-0">
-          <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
-            {filteredCount === projectCount 
-              ? `${projectCount} projects`
-              : `${filteredCount} of ${projectCount} projects`
-            }
-          </span>
-        </div>
-
-
+      {/* Controls Row */}
+      <div className="flex items-center gap-6 flex-wrap justify-start md:gap-4">
         {/* View Mode Toggle */}
         <div className="flex items-center gap-3 flex-shrink-0">
           <span className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">View:</span>
@@ -74,30 +53,6 @@ function ViewToolbar({
               >
                 <span className="text-base">{mode.icon}</span>
                 <span className="font-medium">{mode.label.split(' ')[0]}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom Row - Secondary Controls */}
-      <div className="flex items-center gap-6 flex-wrap justify-start pt-4 border-t border-gray-100 dark:border-gray-700 md:gap-4 md:pt-3">
-        {/* Density Controls */}
-        <div className="flex items-center gap-3">
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Density:</span>
-          <div className="flex border-2 border-gray-200 dark:border-gray-600 rounded-md overflow-hidden bg-gray-50 dark:bg-gray-900">
-            {densityOptions.map((option) => (
-              <button
-                key={option.value}
-                onClick={() => onDensityChange(option.value)}
-                className={`flex items-center justify-center w-10 h-10 border-none bg-transparent cursor-pointer transition-all text-base border-r border-gray-200 dark:border-gray-600 last:border-r-0 ${
-                  density === option.value 
-                    ? 'bg-primary-600 dark:bg-primary-700 hover:bg-primary-700 dark:hover:bg-primary-600' 
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-800'
-                }`}
-                title={option.label}
-              >
-                <span>{option.icon}</span>
               </button>
             ))}
           </div>

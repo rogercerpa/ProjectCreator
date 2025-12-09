@@ -17,10 +17,6 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onRefresh }) 
     const saved = localStorage.getItem('projectListViewMode');
     return saved || 'table';
   });
-  const [density, setDensity] = useState(() => {
-    const saved = localStorage.getItem('projectListDensity');
-    return saved || 'standard';
-  });
   const [groupBy, setGroupBy] = useState(() => {
     const saved = localStorage.getItem('projectListGroupBy');
     return saved || 'none';
@@ -119,11 +115,6 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onRefresh }) 
     localStorage.setItem('projectListViewMode', newViewMode);
   };
 
-  const handleDensityChange = (newDensity) => {
-    setDensity(newDensity);
-    localStorage.setItem('projectListDensity', newDensity);
-  };
-
   const handleGroupByChange = (newGroupBy) => {
     setGroupBy(newGroupBy);
     localStorage.setItem('projectListGroupBy', newGroupBy);
@@ -156,16 +147,10 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onRefresh }) 
       return 'border-l-success-500';
     };
 
-    const getCardPadding = () => {
-      if (density === 'compact') return 'p-3';
-      if (density === 'comfortable') return 'p-6';
-      return 'p-4';
-    };
-
     return projectsToRender.map((project) => (
       <div
         key={project.id}
-        className={`${getCardPadding()} bg-white dark:bg-gray-800 border-2 ${getCardBorderColor(project)} border-l-4 rounded-lg shadow hover:shadow-lg transition-all cursor-pointer group`}
+        className={`p-4 bg-white dark:bg-gray-800 border-2 ${getCardBorderColor(project)} border-l-4 rounded-lg shadow hover:shadow-lg transition-all cursor-pointer group`}
         onClick={() => onProjectSelect(project)}
       >
         {/* Card Header with Title and Actions */}
@@ -243,7 +228,6 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onRefresh }) 
         projects={projectsToRender}
         onProjectSelect={onProjectSelect}
         onProjectDelete={onProjectDelete}
-        density={density}
         sortBy={sortBy}
         sortOrder={sortOrder}
         onSort={handleSort}
@@ -335,8 +319,6 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onRefresh }) 
         <ViewToolbar
           viewMode={viewMode}
           onViewModeChange={handleViewModeChange}
-          density={density}
-          onDensityChange={handleDensityChange}
           groupBy={groupBy}
           onGroupByChange={handleGroupByChange}
           sortBy={sortBy}
@@ -346,8 +328,6 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onRefresh }) 
             localStorage.setItem('projectListSortBy', field);
           }}
           onSortOrderToggle={handleSortOrderToggle}
-          projectCount={safeProjects.length}
-          filteredCount={filteredProjects.length}
         />
       </div>
 
@@ -365,7 +345,6 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onRefresh }) 
             projects={sortedProjects}
             groupBy={groupBy}
             viewMode={viewMode}
-            density={density}
             onProjectSelect={onProjectSelect}
             sortBy={sortBy}
             sortOrder={sortOrder}

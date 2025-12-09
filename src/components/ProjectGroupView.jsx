@@ -4,7 +4,6 @@ function ProjectGroupView({
   projects, 
   groupBy, 
   viewMode,
-  density,
   onProjectSelect,
   sortBy,
   sortOrder,
@@ -101,37 +100,16 @@ function ProjectGroupView({
     return a.localeCompare(b);
   });
 
-  // Get density-based padding classes
-  const getDensityPadding = () => {
-    if (density === 'compact') return {
-      header: 'px-4 py-3',
-      content: 'p-4',
-      title: 'text-base',
-      iconSize: 'w-7 h-7 text-base'
-    };
-    if (density === 'comfortable') return {
-      header: 'px-8 py-6',
-      content: 'p-8',
-      title: 'text-xl',
-      iconSize: 'w-9 h-9 text-2xl'
-    };
-    return {
-      header: 'px-6 py-4',
-      content: 'p-6',
-      title: 'text-lg',
-      iconSize: 'w-8 h-8 text-xl'
-    };
+  // Standard padding classes
+  const paddingClasses = {
+    header: 'px-6 py-4',
+    content: 'p-6',
+    title: 'text-lg',
+    iconSize: 'w-8 h-8 text-xl'
   };
 
-  // Get grid columns based on density
-  const getGridCols = () => {
-    if (density === 'compact') return 'grid-cols-[repeat(auto-fill,minmax(300px,1fr))] lg:grid-cols-[repeat(auto-fill,minmax(250px,1fr))]';
-    if (density === 'comfortable') return 'grid-cols-[repeat(auto-fill,minmax(380px,1fr))] lg:grid-cols-[repeat(auto-fill,minmax(320px,1fr))]';
-    return 'grid-cols-[repeat(auto-fill,minmax(350px,1fr))] lg:grid-cols-[repeat(auto-fill,minmax(280px,1fr))]';
-  };
-
-  const densityClasses = getDensityPadding();
-  const gridCols = getGridCols();
+  // Standard grid columns
+  const gridCols = 'grid-cols-[repeat(auto-fill,minmax(350px,1fr))] lg:grid-cols-[repeat(auto-fill,minmax(280px,1fr))]';
 
   if (projects.length === 0) {
     return (
@@ -146,7 +124,7 @@ function ProjectGroupView({
   }
 
   return (
-    <div className={`flex flex-col ${density === 'compact' ? 'gap-4' : density === 'comfortable' ? 'gap-8' : 'gap-8'} lg:gap-6 md:gap-4`}>
+    <div className="flex flex-col gap-8 lg:gap-6 md:gap-4">
       {sortedGroupKeys.map(groupKey => {
         const groupProjects = groupedProjects[groupKey];
         const groupIcon = getGroupIcon(groupBy, groupKey);
@@ -157,15 +135,15 @@ function ProjectGroupView({
             key={groupKey} 
             className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm transition-all hover:shadow-lg animate-slideUp focus-within:outline-2 focus-within:outline-primary-600 focus-within:outline-offset-2"
           >
-            <div className={`${densityClasses.header} bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 relative overflow-hidden`}>
+            <div className={`${paddingClasses.header} bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 relative overflow-hidden`}>
               {/* Top gradient accent */}
               <div className={`absolute top-0 left-0 right-0 h-0.5 ${groupColorClass}`} />
               
               <div className="flex items-center gap-3">
-                <span className={`${densityClasses.iconSize} flex items-center justify-center bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700`}>
+                <span className={`${paddingClasses.iconSize} flex items-center justify-center bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700`}>
                   {groupIcon}
                 </span>
-                <h3 className={`${densityClasses.title} font-semibold text-gray-800 dark:text-gray-200 m-0 flex-1`}>
+                <h3 className={`${paddingClasses.title} font-semibold text-gray-800 dark:text-gray-200 m-0 flex-1`}>
                   {groupKey}
                 </h3>
                 <span className="text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 px-3 py-1 rounded-xl border border-gray-200 dark:border-gray-700 font-medium">
@@ -174,11 +152,11 @@ function ProjectGroupView({
               </div>
             </div>
             
-            <div className={viewMode === 'table' ? 'p-0' : densityClasses.content}>
+            <div className={viewMode === 'table' ? 'p-0' : paddingClasses.content}>
               {viewMode === 'table' ? (
                 renderTableView(groupProjects)
               ) : (
-                <div className={`grid ${gridCols} ${density === 'compact' ? 'gap-4' : density === 'comfortable' ? 'gap-8' : 'gap-6'} lg:gap-5 md:gap-4 md:grid-cols-1`}>
+                <div className={`grid ${gridCols} gap-6 lg:gap-5 md:gap-4 md:grid-cols-1`}>
                   {renderCardView(groupProjects)}
                 </div>
               )}
