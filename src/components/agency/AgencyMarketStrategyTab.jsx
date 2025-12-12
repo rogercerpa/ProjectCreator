@@ -39,15 +39,25 @@ function AgencyMarketStrategyTab({ agency }) {
   };
 
   const handleSave = async () => {
+    if (!agency?.id) {
+      alert('Agency ID is required to save data.');
+      return;
+    }
+
     setSaving(true);
     try {
-      // TODO: Save to extended agency data
-      console.log('Saving market strategy:', marketStrategy);
-      await new Promise(resolve => setTimeout(resolve, 500));
-      alert('Market strategy saved successfully!');
+      const result = await window.electronAPI.agenciesUpdate(agency.id, {
+        marketStrategy
+      });
+
+      if (result.success) {
+        alert('Market strategy saved successfully!');
+      } else {
+        throw new Error(result.error || 'Failed to save market strategy');
+      }
     } catch (error) {
       console.error('Error saving market strategy:', error);
-      alert('Failed to save market strategy');
+      alert('Failed to save market strategy: ' + error.message);
     } finally {
       setSaving(false);
     }

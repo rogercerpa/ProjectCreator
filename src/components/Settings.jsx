@@ -120,6 +120,8 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
     phoneNumber: '',
     role: '',
     region: '',
+    city: '',
+    state: '',
     mainContact: '',
     sae: 'No'
   });
@@ -478,6 +480,8 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
           phoneNumber: '',
           role: '',
           region: '',
+          city: '',
+          state: '',
           mainContact: '',
           sae: 'No'
         });
@@ -2794,6 +2798,26 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
                               <option key={region} value={region}>{region}</option>
                             ))}
                           </select>
+                        </div>
+                        
+                        <div className="form-group">
+                          <label>City</label>
+                          <input
+                            type="text"
+                            value={agencyFormData.city}
+                            onChange={(e) => setAgencyFormData({...agencyFormData, city: e.target.value})}
+                            placeholder="Enter city"
+                          />
+                        </div>
+                        
+                        <div className="form-group">
+                          <label>State</label>
+                          <input
+                            type="text"
+                            value={agencyFormData.state}
+                            onChange={(e) => setAgencyFormData({...agencyFormData, state: e.target.value})}
+                            placeholder="Enter state"
+                          />
                         </div>
                         
                         <div className="form-group">

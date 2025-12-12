@@ -20,6 +20,7 @@ function ViewToolbar({
     { value: 'status', label: 'By Status' },
     { value: 'regionalTeam', label: 'By Team' },
     { value: 'rfaType', label: 'By RFA Type' },
+    { value: 'rfaStatus', label: 'By RFA Status' },
     { value: 'triageLevel', label: 'By Triage Level' }
   ];
 

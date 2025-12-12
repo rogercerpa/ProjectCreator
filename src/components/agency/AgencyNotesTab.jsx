@@ -36,6 +36,10 @@ function AgencyNotesTab({ agency }) {
 
   const handleAddNote = async () => {
     if (!newNote.trim()) return;
+    if (!agency?.id) {
+      alert('Agency ID is required to save data.');
+      return;
+    }
 
     const note = {
       id: `note-${Date.now()}`,
@@ -44,14 +48,35 @@ function AgencyNotesTab({ agency }) {
       createdBy: 'Current User' // TODO: Get from user context
     };
 
-    // TODO: Save to extended agency data
-    setNotes([note, ...notes]);
+    const updatedNotes = [note, ...notes];
+    setNotes(updatedNotes);
+
+    try {
+      const result = await window.electronAPI.agenciesUpdate(agency.id, {
+        notes: updatedNotes
+      });
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to save note');
+      }
+    } catch (error) {
+      console.error('Error saving note:', error);
+      alert('Failed to save note: ' + error.message);
+      // Revert on error
+      setNotes(notes);
+      return;
+    }
+
     setNewNote('');
     setShowAddNote(false);
   };
 
   const handleAddCommunication = async () => {
     if (!newCommunication.summary.trim()) return;
+    if (!agency?.id) {
+      alert('Agency ID is required to save data.');
+      return;
+    }
 
     const communication = {
       id: `comm-${Date.now()}`,
@@ -60,8 +85,25 @@ function AgencyNotesTab({ agency }) {
       createdBy: 'Current User' // TODO: Get from user context
     };
 
-    // TODO: Save to extended agency data
-    setCommunicationHistory([communication, ...communicationHistory]);
+    const updatedHistory = [communication, ...communicationHistory];
+    setCommunicationHistory(updatedHistory);
+
+    try {
+      const result = await window.electronAPI.agenciesUpdate(agency.id, {
+        communicationHistory: updatedHistory
+      });
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to save communication');
+      }
+    } catch (error) {
+      console.error('Error saving communication:', error);
+      alert('Failed to save communication: ' + error.message);
+      // Revert on error
+      setCommunicationHistory(communicationHistory);
+      return;
+    }
+
     setNewCommunication({
       type: 'email',
       date: new Date().toISOString().split('T')[0],

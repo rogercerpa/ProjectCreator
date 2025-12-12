@@ -4,12 +4,13 @@ const BASE_NEW_RATE = 350;
 const BASE_REVISION_RATE = 265;
 const EMAIL_REGEX = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
 
-const STATUS_OPTIONS = ['Waiting on Order', 'Paid', 'Cancelled'];
+const STATUS_OPTIONS = ['Waiting on Order', 'Paid', 'Cancelled', 'Fee Waived'];
 const COST_OPTIONS = [
   { value: 'new', label: 'New ($350)' },
   { value: 'revision', label: 'Revision ($265)' },
   { value: 'discount50', label: 'Discount Option 1 (50% off New)' },
   { value: 'discount75', label: 'Discount Option 2 (75% off New)' },
+  { value: 'waive', label: 'Waive Fee' },
   { value: 'other', label: 'Other' }
 ];
 
@@ -240,6 +241,11 @@ const DASPaidServicesSection = ({
       return;
     }
 
+    // Don't auto-update if fee is waived
+    if (resolvedCostOption === 'waive' || dasStatus === 'Fee Waived') {
+      return;
+    }
+
     if (!dasCostPerPageManual || resolvedCostOption !== 'other') {
       const nextRate = getRateForOption(resolvedCostOption);
       const updates = {};
@@ -269,14 +275,20 @@ const DASPaidServicesSection = ({
     resolvedCostOption,
     dasCostOption,
     dasCostPerPage,
+    dasStatus,
     readOnly,
     onChange,
     formData
   ]);
 
-  // Auto-calculate fee unless overridden
+  // Auto-calculate fee unless overridden or waived
   useEffect(() => {
     if (!dasPaidServiceEnabled || readOnly || dasFeeManual || !onChange) {
+      return;
+    }
+
+    // Don't auto-calculate if fee is waived
+    if (resolvedCostOption === 'waive' || dasStatus === 'Fee Waived') {
       return;
     }
 
@@ -293,6 +305,8 @@ const DASPaidServicesSection = ({
     dasLightingPages,
     dasFeeManual,
     dasFee,
+    dasStatus,
+    resolvedCostOption,
     readOnly,
     onChange,
     formData
@@ -314,6 +328,20 @@ const DASPaidServicesSection = ({
   };
 
   const handleCostOptionChange = (value) => {
+    if (value === 'waive') {
+      // Waive fee: set all values to zero and status to "Fee Waived"
+      handleUpdate({
+        dasCostOption: value,
+        dasCostPerPage: 0,
+        dasCostPerPageManual: false,
+        dasLightingPages: 0,
+        dasFee: 0,
+        dasFeeManual: false,
+        dasStatus: 'Fee Waived'
+      });
+      return;
+    }
+
     if (value === 'other') {
       handleUpdate({
         dasCostOption: value,

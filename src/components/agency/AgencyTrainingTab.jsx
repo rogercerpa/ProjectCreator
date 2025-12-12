@@ -43,6 +43,10 @@ function AgencyTrainingTab({ agency }) {
 
   const handleAddTrainingNeed = async () => {
     if (!newTrainingNeed.topic.trim()) return;
+    if (!agency?.id) {
+      alert('Agency ID is required to save data.');
+      return;
+    }
 
     const need = {
       id: `need-${Date.now()}`,
@@ -51,8 +55,24 @@ function AgencyTrainingTab({ agency }) {
       createdAt: new Date().toISOString()
     };
 
-    // TODO: Save to extended agency data
-    setTrainingNeeds([...trainingNeeds, need]);
+    const updatedNeeds = [...trainingNeeds, need];
+    setTrainingNeeds(updatedNeeds);
+
+    try {
+      const result = await window.electronAPI.agenciesUpdate(agency.id, {
+        trainingNeeds: updatedNeeds
+      });
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to save training need');
+      }
+    } catch (error) {
+      console.error('Error saving training need:', error);
+      alert('Failed to save training need: ' + error.message);
+      setTrainingNeeds(trainingNeeds);
+      return;
+    }
+
     setNewTrainingNeed({
       topic: '',
       priority: 'medium',
@@ -64,6 +84,10 @@ function AgencyTrainingTab({ agency }) {
 
   const handleAddSession = async () => {
     if (!newSession.topic.trim() || !newSession.date) return;
+    if (!agency?.id) {
+      alert('Agency ID is required to save data.');
+      return;
+    }
 
     const session = {
       id: `session-${Date.now()}`,
@@ -72,8 +96,29 @@ function AgencyTrainingTab({ agency }) {
       createdAt: new Date().toISOString()
     };
 
-    // TODO: Save to extended agency data
-    setUpcomingSessions([...upcomingSessions, session]);
+    const allSessions = [...upcomingSessions, session];
+    const updatedSessions = allSessions.filter(s => new Date(s.date) >= new Date());
+    setUpcomingSessions(updatedSessions);
+
+    // Also update the full schedule in agency data
+    const currentSchedule = agency?.trainingSchedule || [];
+    const updatedSchedule = [...currentSchedule, session];
+
+    try {
+      const result = await window.electronAPI.agenciesUpdate(agency.id, {
+        trainingSchedule: updatedSchedule
+      });
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to save training session');
+      }
+    } catch (error) {
+      console.error('Error saving training session:', error);
+      alert('Failed to save training session: ' + error.message);
+      setUpcomingSessions(upcomingSessions);
+      return;
+    }
+
     setNewSession({
       topic: '',
       date: '',
@@ -85,7 +130,12 @@ function AgencyTrainingTab({ agency }) {
     setShowAddSession(false);
   };
 
-  const handleCompleteTraining = (trainingId) => {
+  const handleCompleteTraining = async (trainingId) => {
+    if (!agency?.id) {
+      alert('Agency ID is required to save data.');
+      return;
+    }
+
     const training = trainingNeeds.find(t => t.id === trainingId);
     if (!training) return;
 
@@ -96,8 +146,27 @@ function AgencyTrainingTab({ agency }) {
       notes: training.notes
     };
 
-    setTrainingHistory([completed, ...trainingHistory]);
-    setTrainingNeeds(trainingNeeds.filter(t => t.id !== trainingId));
+    const updatedHistory = [completed, ...trainingHistory];
+    const updatedNeeds = trainingNeeds.filter(t => t.id !== trainingId);
+
+    setTrainingHistory(updatedHistory);
+    setTrainingNeeds(updatedNeeds);
+
+    try {
+      const result = await window.electronAPI.agenciesUpdate(agency.id, {
+        trainingHistory: updatedHistory,
+        trainingNeeds: updatedNeeds
+      });
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to update training');
+      }
+    } catch (error) {
+      console.error('Error updating training:', error);
+      alert('Failed to update training: ' + error.message);
+      setTrainingHistory(trainingHistory);
+      setTrainingNeeds(trainingNeeds);
+    }
   };
 
   const formatDate = (dateString) => {

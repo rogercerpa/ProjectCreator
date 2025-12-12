@@ -286,6 +286,8 @@ class AgencyService {
     mapper.phoneNumber = findColumn(['Contact Number', 'Phone Number', 'Phone_Number', 'PhoneNumber', 'Phone']);
     mapper.role = findColumn(['Role']);
     mapper.region = findColumn(['Region']);
+    mapper.city = findColumn(['City']);
+    mapper.state = findColumn(['State']);
     mapper.mainContact = findColumn(['Main Contact', 'Main_Contact', 'MainContact']);
     mapper.sae = findColumn(['SAE']);
     // These fields don't exist in your Excel but we'll keep them for compatibility
@@ -597,38 +599,291 @@ class AgencyService {
     }
   }
 
-  // Export agencies to Excel (create new file)
+  // Helper function to format complex data for Excel
+  formatComplexDataForExcel(data) {
+    if (!data) return '';
+    if (Array.isArray(data)) {
+      if (data.length === 0) return '';
+      // For arrays of objects, create a summary
+      if (typeof data[0] === 'object') {
+        return data.map(item => {
+          if (item.name || item.title || item.topic) {
+            return item.name || item.title || item.topic;
+          }
+          return JSON.stringify(item);
+        }).join('; ');
+      }
+      return data.join('; ');
+    }
+    if (typeof data === 'object') {
+      // For objects, create a readable string
+      return JSON.stringify(data).replace(/[{}"]/g, '').replace(/:/g, ': ').replace(/,/g, ', ');
+    }
+    return String(data);
+  }
+
+  // Export agencies to Excel (create new file with multiple sheets)
   async exportToExcel(outputPath) {
     try {
+      // Validate output path
+      if (!outputPath || typeof outputPath !== 'string' || outputPath.trim() === '') {
+        throw new Error('Invalid output path provided for Excel export');
+      }
+
       const agencies = await this.loadAgencies();
 
       // Create workbook
       const workbook = XLSX.utils.book_new();
       
-      // Prepare data for export
-      const exportData = agencies.map(agency => ({
-        'Agency Number': agency.agencyNumber,
-        'Agency Name': agency.agencyName,
-        'Contact Name': agency.contactName,
-        'Contact Email': agency.contactEmail,
-        'Contact Number': agency.phoneNumber,
-        'Role': agency.role,
-        'Region': agency.region,
-        'Main Contact': agency.mainContact,
-        'SAE': agency.sae
-      }));
+      // ===== SHEET 1: Agency Overview (Basic Info + Extended Summary) =====
+      const overviewData = agencies.map(agency => {
+        const baseData = {
+          'Agency Number': agency.agencyNumber || '',
+          'Agency Name': agency.agencyName || '',
+          'Contact Name': agency.contactName || '',
+          'Contact Email': agency.contactEmail || '',
+          'Contact Number': agency.phoneNumber || '',
+          'Role': agency.role || '',
+          'Region': agency.region || '',
+          'City': agency.city || '',
+          'State': agency.state || '',
+          'Main Contact': agency.mainContact || '',
+          'SAE': agency.sae || ''
+        };
 
-      // Create worksheet
-      const worksheet = XLSX.utils.json_to_sheet(exportData);
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Agencies');
+        // Add extended fields summary
+        const extendedData = {
+          // Design Requirements (full text)
+          'Design Specs': agency.designRequirements?.specifications || '',
+          'Preferred Standards': agency.designRequirements?.preferredStandards || '',
+          'Templates': agency.designRequirements?.templates || '',
+          'Custom Preferences': agency.designRequirements?.customPreferences || '',
+          'Best Practices': agency.designRequirements?.bestPractices || '',
+          
+          // Product Focus Summary
+          'Products': agency.productFocus ? 
+            this.formatComplexDataForExcel(agency.productFocus.map(p => p.name)) : '',
+          
+          // Communication Preferences
+          'Comm Method': agency.preferences?.communication?.preferredMethod || '',
+          'Comm Frequency': agency.preferences?.communication?.updateFrequency || '',
+          'Comm Preferred Time': agency.preferences?.communication?.preferredTime || '',
+          'Comm Notes': agency.preferences?.communication?.notes || '',
+          
+          // Training Summary
+          'Training Needs Count': agency.trainingNeeds?.length || 0,
+          'Upcoming Sessions Count': agency.trainingSchedule?.filter(s => 
+            s.date && new Date(s.date) >= new Date()).length || 0,
+          'Training History Count': agency.trainingHistory?.length || 0,
+          
+          // Market Strategy (full text)
+          'Regional Strategies': agency.marketStrategy?.regionalStrategies || '',
+          'Competitive Positioning': agency.marketStrategy?.competitivePositioning || '',
+          'Growth Opportunities': agency.marketStrategy?.growthOpportunities || '',
+          'Market Analysis': agency.marketStrategy?.marketAnalysis || '',
+          'Targets': agency.marketStrategy?.targets || '',
+          'Insights': agency.marketStrategy?.insights || '',
+          
+          // Notes & Communication Summary
+          'Notes Count': agency.notes?.length || 0,
+          'Comm History Count': agency.communicationHistory?.length || 0,
+          
+          // Tasks Summary
+          'Tasks Count': agency.tasks?.length || 0,
+          'Pending Tasks': agency.tasks?.filter(t => t.status === 'pending' || t.status === 'in-progress').length || 0,
+          'Completed Tasks': agency.tasks?.filter(t => t.status === 'completed').length || 0,
+          
+          // Custom Fields & Tags
+          'Tags': agency.tags ? this.formatComplexDataForExcel(agency.tags) : '',
+          'Custom Fields': agency.customFields ? 
+            Object.entries(agency.customFields).map(([k, v]) => `${k}: ${v}`).join('; ') : ''
+        };
+
+        return { ...baseData, ...extendedData };
+      });
+
+      const overviewWorksheet = XLSX.utils.json_to_sheet(overviewData);
+      XLSX.utils.book_append_sheet(workbook, overviewWorksheet, 'Agency Overview');
+
+      // ===== SHEET 2: Notes =====
+      const notesData = [];
+      agencies.forEach(agency => {
+        if (agency.notes && agency.notes.length > 0) {
+          agency.notes.forEach(note => {
+            notesData.push({
+              'Agency Number': agency.agencyNumber || '',
+              'Agency Name': agency.agencyName || '',
+              'Note ID': note.id || '',
+              'Content': note.content || '',
+              'Created At': note.createdAt ? new Date(note.createdAt).toLocaleString() : '',
+              'Created By': note.createdBy || ''
+            });
+          });
+        }
+      });
+
+      // Always create the sheet, even if empty (with headers)
+      const notesHeaders = ['Agency Number', 'Agency Name', 'Note ID', 'Content', 'Created At', 'Created By'];
+      const notesWorksheet = notesData.length > 0 
+        ? XLSX.utils.json_to_sheet(notesData)
+        : XLSX.utils.json_to_sheet([Object.fromEntries(notesHeaders.map(h => [h, '']))]);
+      XLSX.utils.book_append_sheet(workbook, notesWorksheet, 'Notes');
+
+      // ===== SHEET 3: Communication History =====
+      const commData = [];
+      agencies.forEach(agency => {
+        if (agency.communicationHistory && agency.communicationHistory.length > 0) {
+          agency.communicationHistory.forEach(comm => {
+            commData.push({
+              'Agency Number': agency.agencyNumber || '',
+              'Agency Name': agency.agencyName || '',
+              'Comm ID': comm.id || '',
+              'Type': comm.type || '',
+              'Date': comm.date || comm.createdAt ? new Date(comm.date || comm.createdAt).toLocaleDateString() : '',
+              'Summary': comm.summary || '',
+              'Notes': comm.notes || '',
+              'Created At': comm.createdAt ? new Date(comm.createdAt).toLocaleString() : '',
+              'Created By': comm.createdBy || ''
+            });
+          });
+        }
+      });
+
+      // Always create the sheet, even if empty (with headers)
+      const commHeaders = ['Agency Number', 'Agency Name', 'Comm ID', 'Type', 'Date', 'Summary', 'Notes', 'Created At', 'Created By'];
+      const commWorksheet = commData.length > 0
+        ? XLSX.utils.json_to_sheet(commData)
+        : XLSX.utils.json_to_sheet([Object.fromEntries(commHeaders.map(h => [h, '']))]);
+      XLSX.utils.book_append_sheet(workbook, commWorksheet, 'Communication History');
+
+      // ===== SHEET 4: Tasks =====
+      const tasksData = [];
+      agencies.forEach(agency => {
+        if (agency.tasks && agency.tasks.length > 0) {
+          agency.tasks.forEach(task => {
+            tasksData.push({
+              'Agency Number': agency.agencyNumber || '',
+              'Agency Name': agency.agencyName || '',
+              'Task ID': task.id || '',
+              'Title': task.title || '',
+              'Description': task.description || '',
+              'Priority': task.priority || '',
+              'Status': task.status || '',
+              'Due Date': task.dueDate ? new Date(task.dueDate).toLocaleDateString() : '',
+              'Assigned To': task.assignedTo || '',
+              'Created At': task.createdAt ? new Date(task.createdAt).toLocaleString() : '',
+              'Created By': task.createdBy || ''
+            });
+          });
+        }
+      });
+
+      // Always create the sheet, even if empty (with headers)
+      const tasksHeaders = ['Agency Number', 'Agency Name', 'Task ID', 'Title', 'Description', 'Priority', 'Status', 'Due Date', 'Assigned To', 'Created At', 'Created By'];
+      const tasksWorksheet = tasksData.length > 0
+        ? XLSX.utils.json_to_sheet(tasksData)
+        : XLSX.utils.json_to_sheet([Object.fromEntries(tasksHeaders.map(h => [h, '']))]);
+      XLSX.utils.book_append_sheet(workbook, tasksWorksheet, 'Tasks');
+
+      // ===== SHEET 5: Training =====
+      const trainingData = [];
+      agencies.forEach(agency => {
+        // Training Needs
+        if (agency.trainingNeeds && agency.trainingNeeds.length > 0) {
+          agency.trainingNeeds.forEach(need => {
+            trainingData.push({
+              'Agency Number': agency.agencyNumber || '',
+              'Agency Name': agency.agencyName || '',
+              'Type': 'Training Need',
+              'ID': need.id || '',
+              'Topic': need.topic || '',
+              'Priority': need.priority || '',
+              'Status': need.status || '',
+              'Requested Date': need.requestedDate ? new Date(need.requestedDate).toLocaleDateString() : '',
+              'Notes': need.notes || '',
+              'Created At': need.createdAt ? new Date(need.createdAt).toLocaleString() : ''
+            });
+          });
+        }
+
+        // Training Sessions
+        if (agency.trainingSchedule && agency.trainingSchedule.length > 0) {
+          agency.trainingSchedule.forEach(session => {
+            trainingData.push({
+              'Agency Number': agency.agencyNumber || '',
+              'Agency Name': agency.agencyName || '',
+              'Type': 'Training Session',
+              'ID': session.id || '',
+              'Topic': session.topic || '',
+              'Date': session.date ? new Date(session.date).toLocaleDateString() : '',
+              'Time': session.time || '',
+              'Duration': session.duration || '',
+              'Location': session.location || '',
+              'Status': session.status || '',
+              'Notes': session.notes || '',
+              'Created At': session.createdAt ? new Date(session.createdAt).toLocaleString() : ''
+            });
+          });
+        }
+
+        // Training History
+        if (agency.trainingHistory && agency.trainingHistory.length > 0) {
+          agency.trainingHistory.forEach(history => {
+            trainingData.push({
+              'Agency Number': agency.agencyNumber || '',
+              'Agency Name': agency.agencyName || '',
+              'Type': 'Training History',
+              'ID': history.id || '',
+              'Topic': history.topic || '',
+              'Completed Date': history.completedDate ? new Date(history.completedDate).toLocaleDateString() : '',
+              'Notes': history.notes || ''
+            });
+          });
+        }
+      });
+
+      // Always create the sheet, even if empty (with headers)
+      // Note: Training sheet has different columns depending on type, so we include all possible columns
+      const trainingHeaders = ['Agency Number', 'Agency Name', 'Type', 'ID', 'Topic', 'Priority', 'Status', 'Requested Date', 'Date', 'Time', 'Duration', 'Location', 'Completed Date', 'Notes', 'Created At'];
+      const trainingWorksheet = trainingData.length > 0
+        ? XLSX.utils.json_to_sheet(trainingData)
+        : XLSX.utils.json_to_sheet([Object.fromEntries(trainingHeaders.map(h => [h, '']))]);
+      XLSX.utils.book_append_sheet(workbook, trainingWorksheet, 'Training');
+
+      // ===== SHEET 6: Products =====
+      const productsData = [];
+      agencies.forEach(agency => {
+        if (agency.productFocus && agency.productFocus.length > 0) {
+          agency.productFocus.forEach(product => {
+            productsData.push({
+              'Agency Number': agency.agencyNumber || '',
+              'Agency Name': agency.agencyName || '',
+              'Product ID': product.id || '',
+              'Product Name': product.name || '',
+              'Category': product.category || '',
+              'Notes': product.notes || '',
+              'Created At': product.createdAt ? new Date(product.createdAt).toLocaleString() : ''
+            });
+          });
+        }
+      });
+
+      // Always create the sheet, even if empty (with headers)
+      const productsHeaders = ['Agency Number', 'Agency Name', 'Product ID', 'Product Name', 'Category', 'Notes', 'Created At'];
+      const productsWorksheet = productsData.length > 0
+        ? XLSX.utils.json_to_sheet(productsData)
+        : XLSX.utils.json_to_sheet([Object.fromEntries(productsHeaders.map(h => [h, '']))]);
+      XLSX.utils.book_append_sheet(workbook, productsWorksheet, 'Products');
 
       // Write file
       XLSX.writeFile(workbook, outputPath);
 
+      const sheetCount = workbook.SheetNames.length;
       return {
         success: true,
-        message: `Exported ${agencies.length} agencies to ${outputPath}`,
-        exportedCount: agencies.length
+        message: `Exported ${agencies.length} agencies to ${outputPath} with ${sheetCount} sheets`,
+        exportedCount: agencies.length,
+        sheetCount: sheetCount
       };
     } catch (error) {
       console.error('Error exporting to Excel:', error);

@@ -45,7 +45,10 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onRefresh }) 
         project.rfaValue,
         project.projectType,
         productsText,
-        project.projectContainer
+        project.projectContainer,
+        project.dasStatus,
+        project.dasPaidServiceEnabled ? 'DAS Paid Services' : '',
+        project.dasStatus === 'Fee Waived' ? 'Fee Waived' : ''
       ];
       
       return searchableFields.some(field => 
@@ -60,6 +63,21 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onRefresh }) 
   const sortedProjects = [...filteredProjects].sort((a, b) => {
     let aValue = a[sortBy];
     let bValue = b[sortBy];
+
+    // Handle DAS Paid Services column sorting
+    if (sortBy === 'dasPaidServices') {
+      const aEnabled = a.dasPaidServiceEnabled ? 1 : 0;
+      const bEnabled = b.dasPaidServiceEnabled ? 1 : 0;
+      if (aEnabled !== bEnabled) {
+        return sortOrder === 'asc' ? aEnabled - bEnabled : bEnabled - aEnabled;
+      }
+      // If both enabled, sort by status
+      const aStatus = a.dasStatus || 'Waiting on Order';
+      const bStatus = b.dasStatus || 'Waiting on Order';
+      return sortOrder === 'asc' 
+        ? aStatus.localeCompare(bStatus)
+        : bStatus.localeCompare(aStatus);
+    }
 
     // Handle date sorting
     if (sortBy === 'createdAt' || sortBy === 'updatedAt') {
@@ -280,18 +298,22 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onRefresh }) 
       {/* Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 px-6 py-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="text-center p-4 bg-gradient-to-br from-primary-50 to-primary-100 dark:from-primary-900/30 dark:to-primary-800/30 rounded-lg border border-primary-200 dark:border-primary-700">
-          <span className="block text-3xl font-bold text-primary-700 dark:text-primary-300">{safeProjects.length}</span>
-          <span className="block text-sm text-primary-600 dark:text-primary-400 mt-1">Total Projects</span>
+          <span className="block text-3xl font-bold text-primary-700 dark:text-primary-300">
+            {safeProjects.filter(p => p && p.rfaStatus === 'In Progress').length}
+          </span>
+          <span className="block text-sm text-primary-600 dark:text-primary-400 mt-1">Active Projects</span>
         </div>
         <div className="text-center p-4 bg-gradient-to-br from-info-50 to-info-100 dark:from-info-900/30 dark:to-info-800/30 rounded-lg border border-info-200 dark:border-info-700">
-          <span className="block text-3xl font-bold text-info-700 dark:text-info-300">{filteredProjects.length}</span>
-          <span className="block text-sm text-info-600 dark:text-info-400 mt-1">Filtered Results</span>
+          <span className="block text-3xl font-bold text-info-700 dark:text-info-300">
+            {safeProjects.filter(p => p && p.rfaStatus === 'Completed').length}
+          </span>
+          <span className="block text-sm text-info-600 dark:text-info-400 mt-1">Completed Projects</span>
         </div>
         <div className="text-center p-4 bg-gradient-to-br from-warning-50 to-warning-100 dark:from-warning-900/30 dark:to-warning-800/30 rounded-lg border border-warning-200 dark:border-warning-700">
           <span className="block text-3xl font-bold text-warning-700 dark:text-warning-300">
-            {safeProjects.filter(p => p && p.triageResults && p.triageResults.totalTriage > 100).length}
+            {safeProjects.filter(p => p && p.dasPaidServiceEnabled === true).length}
           </span>
-          <span className="block text-sm text-warning-600 dark:text-warning-400 mt-1">High Priority</span>
+          <span className="block text-sm text-warning-600 dark:text-warning-400 mt-1">DAS Paid Services</span>
         </div>
       </div>
 
@@ -300,7 +322,7 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onRefresh }) 
         <div className="relative mb-4">
           <input
             type="text"
-            placeholder="Search by name, RFA, agent, container, RFA type, project type, or product..."
+            placeholder="Search by name, RFA, agent, container, RFA type, project type, product, or DAS Paid Services..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
             className="w-full px-4 py-2 pr-10 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"

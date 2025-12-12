@@ -50,6 +50,10 @@ function AgencyProductFocusTab({ agency }) {
 
   const handleAddProduct = async () => {
     if (!newProduct.name.trim()) return;
+    if (!agency?.id) {
+      alert('Agency ID is required to save data.');
+      return;
+    }
 
     const product = {
       id: `product-${Date.now()}`,
@@ -57,28 +61,76 @@ function AgencyProductFocusTab({ agency }) {
       createdAt: new Date().toISOString()
     };
 
-    // TODO: Save to extended agency data
-    setProductFocus([...productFocus, product]);
+    const updatedProducts = [...productFocus, product];
+    setProductFocus(updatedProducts);
+
+    try {
+      const result = await window.electronAPI.agenciesUpdate(agency.id, {
+        productFocus: updatedProducts
+      });
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to save product');
+      }
+    } catch (error) {
+      console.error('Error saving product:', error);
+      alert('Failed to save product: ' + error.message);
+      setProductFocus(productFocus);
+      return;
+    }
+
     setNewProduct({ name: '', category: '', notes: '' });
     setShowAddProduct(false);
   };
 
-  const handleDeleteProduct = (productId) => {
-    if (window.confirm('Are you sure you want to remove this product?')) {
-      setProductFocus(productFocus.filter(p => p.id !== productId));
+  const handleDeleteProduct = async (productId) => {
+    if (!window.confirm('Are you sure you want to remove this product?')) return;
+    if (!agency?.id) {
+      alert('Agency ID is required to save data.');
+      return;
+    }
+
+    const updatedProducts = productFocus.filter(p => p.id !== productId);
+    setProductFocus(updatedProducts);
+
+    try {
+      const result = await window.electronAPI.agenciesUpdate(agency.id, {
+        productFocus: updatedProducts
+      });
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to delete product');
+      }
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      alert('Failed to delete product: ' + error.message);
+      setProductFocus(productFocus);
     }
   };
 
   const handleSavePreferences = async () => {
+    if (!agency?.id) {
+      alert('Agency ID is required to save data.');
+      return;
+    }
+
     setSaving(true);
     try {
-      // TODO: Save to extended agency data
-      console.log('Saving communication preferences:', communicationPreferences);
-      await new Promise(resolve => setTimeout(resolve, 500));
-      alert('Communication preferences saved successfully!');
+      const result = await window.electronAPI.agenciesUpdate(agency.id, {
+        preferences: {
+          ...agency.preferences,
+          communication: communicationPreferences
+        }
+      });
+
+      if (result.success) {
+        alert('Communication preferences saved successfully!');
+      } else {
+        throw new Error(result.error || 'Failed to save preferences');
+      }
     } catch (error) {
       console.error('Error saving preferences:', error);
-      alert('Failed to save preferences');
+      alert('Failed to save preferences: ' + error.message);
     } finally {
       setSaving(false);
     }

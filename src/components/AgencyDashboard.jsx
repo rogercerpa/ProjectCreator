@@ -15,6 +15,7 @@ import AgencySettingsTab from './agency/AgencySettingsTab';
 function AgencyDashboard({ agency, onBack, onProjectSelect }) {
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   // Get all agents for this agency (grouped by agency name)
   const [allAgents, setAllAgents] = useState([]);
@@ -37,6 +38,13 @@ function AgencyDashboard({ agency, onBack, onProjectSelect }) {
           a.agencyName && a.agencyName.toLowerCase() === agency.agencyName.toLowerCase()
         );
         setAllAgents(agencyAgents);
+        
+        // If the current agency doesn't have an id, use the first agent's id
+        if (!agency.id && agencyAgents.length > 0 && agencyAgents[0].id) {
+          // Update the agency object with the id from the first agent
+          // This ensures all tabs can save data properly
+          Object.assign(agency, { id: agencyAgents[0].id });
+        }
       }
     } catch (error) {
       console.error('Error loading agents:', error);
@@ -164,12 +172,28 @@ function AgencyDashboard({ agency, onBack, onProjectSelect }) {
       {/* Tabs */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="px-6">
-          <div className="flex gap-1 overflow-x-auto custom-scrollbar">
+          {/* Mobile Dropdown Menu */}
+          <div className="lg:hidden mb-2">
+            <select
+              value={activeTab}
+              onChange={(e) => setActiveTab(e.target.value)}
+              className="w-full p-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              {tabs.map(tab => (
+                <option key={tab.id} value={tab.id}>
+                  {tab.icon} {tab.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          {/* Desktop Tab Bar */}
+          <div className="hidden lg:flex gap-1 overflow-x-auto custom-scrollbar scrollbar-hide">
             {tabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-3 py-3 font-medium text-sm transition-all border-b-2 whitespace-nowrap ${
+                className={`px-3 py-3 font-medium text-sm transition-all border-b-2 whitespace-nowrap flex-shrink-0 ${
                   activeTab === tab.id
                     ? 'border-primary-600 text-primary-600 dark:border-primary-400 dark:text-primary-400'
                     : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'

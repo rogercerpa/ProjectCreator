@@ -9,6 +9,8 @@ const AgencyEditModal = ({ isOpen, onClose, agency, onSave, regionalTeams = [], 
     phoneNumber: '',
     role: '',
     region: '',
+    city: '',
+    state: '',
     mainContact: '',
     sae: 'No'
   });
@@ -26,6 +28,8 @@ const AgencyEditModal = ({ isOpen, onClose, agency, onSave, regionalTeams = [], 
         phoneNumber: agency.phoneNumber || '',
         role: agency.role || '',
         region: agency.region || '',
+        city: agency.city || '',
+        state: agency.state || '',
         mainContact: agency.mainContact || '',
         sae: agency.sae || 'No'
       });
@@ -102,6 +106,8 @@ const AgencyEditModal = ({ isOpen, onClose, agency, onSave, regionalTeams = [], 
       phoneNumber: '',
       role: '',
       region: '',
+      city: '',
+      state: '',
       mainContact: '',
       sae: 'No'
     });
@@ -271,6 +277,38 @@ const AgencyEditModal = ({ isOpen, onClose, agency, onSave, regionalTeams = [], 
                   <option key={region} value={region}>{region}</option>
                 ))}
               </select>
+            </div>
+            
+            {/* City */}
+            <div>
+              <label htmlFor="city" className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                City
+              </label>
+              <input
+                type="text"
+                id="city"
+                name="city"
+                value={formData.city}
+                onChange={handleInputChange}
+                placeholder="Enter city"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 transition-all focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              />
+            </div>
+            
+            {/* State */}
+            <div>
+              <label htmlFor="state" className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                State
+              </label>
+              <input
+                type="text"
+                id="state"
+                name="state"
+                value={formData.state}
+                onChange={handleInputChange}
+                placeholder="Enter state"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 transition-all focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              />
             </div>
             
             {/* Main Contact */}

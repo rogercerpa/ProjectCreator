@@ -27,6 +27,10 @@ function AgencyTasksTab({ agency }) {
 
   const handleAddTask = async () => {
     if (!newTask.title.trim()) return;
+    if (!agency?.id) {
+      alert('Agency ID is required to save data.');
+      return;
+    }
 
     const task = {
       id: `task-${Date.now()}`,
@@ -35,8 +39,24 @@ function AgencyTasksTab({ agency }) {
       createdBy: 'Current User' // TODO: Get from user context
     };
 
-    // TODO: Save to extended agency data
-    setTasks([task, ...tasks]);
+    const updatedTasks = [task, ...tasks];
+    setTasks(updatedTasks);
+
+    try {
+      const result = await window.electronAPI.agenciesUpdate(agency.id, {
+        tasks: updatedTasks
+      });
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to save task');
+      }
+    } catch (error) {
+      console.error('Error saving task:', error);
+      alert('Failed to save task: ' + error.message);
+      setTasks(tasks);
+      return;
+    }
+
     setNewTask({
       title: '',
       description: '',
@@ -48,15 +68,54 @@ function AgencyTasksTab({ agency }) {
     setShowAddTask(false);
   };
 
-  const handleUpdateTaskStatus = (taskId, newStatus) => {
-    setTasks(tasks.map(task => 
+  const handleUpdateTaskStatus = async (taskId, newStatus) => {
+    if (!agency?.id) {
+      alert('Agency ID is required to save data.');
+      return;
+    }
+
+    const updatedTasks = tasks.map(task => 
       task.id === taskId ? { ...task, status: newStatus } : task
-    ));
+    );
+    setTasks(updatedTasks);
+
+    try {
+      const result = await window.electronAPI.agenciesUpdate(agency.id, {
+        tasks: updatedTasks
+      });
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to update task');
+      }
+    } catch (error) {
+      console.error('Error updating task:', error);
+      alert('Failed to update task: ' + error.message);
+      setTasks(tasks);
+    }
   };
 
-  const handleDeleteTask = (taskId) => {
-    if (window.confirm('Are you sure you want to delete this task?')) {
-      setTasks(tasks.filter(task => task.id !== taskId));
+  const handleDeleteTask = async (taskId) => {
+    if (!window.confirm('Are you sure you want to delete this task?')) return;
+    if (!agency?.id) {
+      alert('Agency ID is required to save data.');
+      return;
+    }
+
+    const updatedTasks = tasks.filter(task => task.id !== taskId);
+    setTasks(updatedTasks);
+
+    try {
+      const result = await window.electronAPI.agenciesUpdate(agency.id, {
+        tasks: updatedTasks
+      });
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to delete task');
+      }
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      alert('Failed to delete task: ' + error.message);
+      setTasks(tasks);
     }
   };
 

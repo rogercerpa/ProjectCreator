@@ -37,17 +37,25 @@ function AgencyDesignRequirementsTab({ agency }) {
   };
 
   const handleSave = async () => {
+    if (!agency?.id) {
+      alert('Agency ID is required to save data.');
+      return;
+    }
+
     setSaving(true);
     try {
-      // TODO: Save to extended agency data
-      // For now, just update local state
-      console.log('Saving design requirements:', designRequirements);
-      // Simulate save
-      await new Promise(resolve => setTimeout(resolve, 500));
-      alert('Design requirements saved successfully!');
+      const result = await window.electronAPI.agenciesUpdate(agency.id, {
+        designRequirements
+      });
+
+      if (result.success) {
+        alert('Design requirements saved successfully!');
+      } else {
+        throw new Error(result.error || 'Failed to save design requirements');
+      }
     } catch (error) {
       console.error('Error saving design requirements:', error);
-      alert('Failed to save design requirements');
+      alert('Failed to save design requirements: ' + error.message);
     } finally {
       setSaving(false);
     }

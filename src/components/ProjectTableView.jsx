@@ -10,6 +10,48 @@ function ProjectTableView({
   sortOrder,
   onSort
 }) {
+  const tableScrollRef = React.useRef(null);
+  const stickyScrollRef = React.useRef(null);
+  const [showStickyScroll, setShowStickyScroll] = React.useState(false);
+
+  // Sync scroll positions between table and sticky scrollbar
+  React.useEffect(() => {
+    const tableScroll = tableScrollRef.current;
+    const stickyScroll = stickyScrollRef.current;
+    
+    if (!tableScroll || !stickyScroll) return;
+
+    // Check if horizontal scroll is needed
+    const checkScroll = () => {
+      setShowStickyScroll(tableScroll.scrollWidth > tableScroll.clientWidth);
+    };
+
+    checkScroll();
+    window.addEventListener('resize', checkScroll);
+
+    // Sync table scroll to sticky scroll
+    const handleTableScroll = () => {
+      if (stickyScroll.scrollLeft !== tableScroll.scrollLeft) {
+        stickyScroll.scrollLeft = tableScroll.scrollLeft;
+      }
+    };
+
+    // Sync sticky scroll to table scroll
+    const handleStickyScroll = () => {
+      if (tableScroll.scrollLeft !== stickyScroll.scrollLeft) {
+        tableScroll.scrollLeft = stickyScroll.scrollLeft;
+      }
+    };
+
+    tableScroll.addEventListener('scroll', handleTableScroll);
+    stickyScroll.addEventListener('scroll', handleStickyScroll);
+
+    return () => {
+      window.removeEventListener('resize', checkScroll);
+      tableScroll?.removeEventListener('scroll', handleTableScroll);
+      stickyScroll?.removeEventListener('scroll', handleStickyScroll);
+    };
+  }, [projects]);
   // Define all available columns
   const allColumns = [
     { key: 'projectName', label: 'Project Name', sortable: true, width: '20%', minWidth: '180px' },
@@ -19,6 +61,7 @@ function ProjectTableView({
     { key: 'projectType', label: 'Project Type', sortable: true, width: '12%', minWidth: '130px' },
     { key: 'agentNumber', label: 'Agent Number', sortable: true, width: '10%', minWidth: '110px' },
     { key: 'projectContainer', label: 'Project Container', sortable: true, width: '12%', minWidth: '130px' },
+    { key: 'dasPaidServices', label: 'DAS Paid Services', sortable: true, width: '12%', minWidth: '140px' },
     { key: 'ecd', label: 'ECD', sortable: true, width: '12%', minWidth: '120px' },
     { key: 'requestedDate', label: 'Requested Date', sortable: true, width: '12%', minWidth: '140px' },
     { key: 'actions', label: 'Actions', sortable: false, width: '5%', minWidth: '80px' }
@@ -194,20 +237,21 @@ function ProjectTableView({
   const visibleColumnsData = orderedColumns.filter(col => visibleColumns.includes(col.key));
 
   return (
-    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden text-sm">
-      <div className="flex justify-end items-center px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-        <ColumnVisibilityControl
-          columns={allColumns}
-          visibleColumns={visibleColumns}
-          columnOrder={columnOrder}
-          onColumnToggle={handleColumnToggle}
-          onColumnReorder={handleColumnReorder}
-          onResetColumns={handleResetColumns}
-        />
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
-          <thead>
+    <>
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden text-sm">
+        <div className="flex justify-end items-center px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+          <ColumnVisibilityControl
+            columns={allColumns}
+            visibleColumns={visibleColumns}
+            columnOrder={columnOrder}
+            onColumnToggle={handleColumnToggle}
+            onColumnReorder={handleColumnReorder}
+            onResetColumns={handleResetColumns}
+          />
+        </div>
+        <div className="overflow-x-auto" ref={tableScrollRef}>
+          <table className="w-full border-collapse">
+            <thead className="sticky top-0 z-10 bg-gray-100 dark:bg-gray-700">
             <tr>
               {visibleColumnsData.map((column) => (
                 <th
@@ -288,6 +332,28 @@ function ProjectTableView({
                           <span className="project-container">{project.projectContainer || 'N/A'}</span>
                         </td>
                       );
+                    case 'dasPaidServices':
+                      return (
+                        <td key={column.key} className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+                          {project.dasPaidServiceEnabled ? (
+                            <div className="flex flex-col gap-1">
+                              <span className="font-medium text-primary-600 dark:text-primary-400">
+                                {project.dasStatus || 'Waiting on Order'}
+                              </span>
+                              {project.dasFee > 0 && (
+                                <span className="text-xs text-gray-500 dark:text-gray-400">
+                                  {formatCurrency(project.dasFee)}
+                                </span>
+                              )}
+                              {project.dasStatus === 'Fee Waived' && (
+                                <span className="text-xs text-gray-500 dark:text-gray-400">Fee Waived</span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400 dark:text-gray-500">Not Enabled</span>
+                          )}
+                        </td>
+                      );
                     case 'ecd':
                       return (
                         <td key={column.key} className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
@@ -329,6 +395,23 @@ function ProjectTableView({
         </table>
       </div>
     </div>
+    
+    {/* Sticky horizontal scrollbar at bottom of viewport */}
+    {showStickyScroll && (
+      <div 
+        className="sticky bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 border-t-2 border-gray-300 dark:border-gray-600 shadow-lg"
+        style={{ marginTop: '-1px' }}
+      >
+        <div 
+          ref={stickyScrollRef}
+          className="overflow-x-auto overflow-y-hidden"
+          style={{ height: '20px' }}
+        >
+          <div style={{ width: tableScrollRef.current?.scrollWidth || '100%', height: '1px' }} />
+        </div>
+      </div>
+    )}
+  </>
   );
 }
 

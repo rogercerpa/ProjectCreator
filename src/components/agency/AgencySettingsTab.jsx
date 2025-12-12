@@ -6,6 +6,7 @@ function AgencySettingsTab({ agency }) {
   const [newField, setNewField] = useState({ name: '', value: '', type: 'text' });
   const [newTag, setNewTag] = useState('');
   const [showAddField, setShowAddField] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     if (agency) {
@@ -64,8 +65,12 @@ function AgencySettingsTab({ agency }) {
   };
 
   const handleSave = async () => {
+    if (!agency?.id) {
+      alert('Agency ID is required to save data.');
+      return;
+    }
+
     try {
-      // TODO: Save to extended agency data
       const customFieldsObj = {};
       customFields.forEach(field => {
         let value = field.value;
@@ -77,12 +82,52 @@ function AgencySettingsTab({ agency }) {
         customFieldsObj[field.name] = value;
       });
 
-      console.log('Saving settings:', { customFields: customFieldsObj, tags });
-      await new Promise(resolve => setTimeout(resolve, 500));
-      alert('Settings saved successfully!');
+      const result = await window.electronAPI.agenciesUpdate(agency.id, {
+        customFields: customFieldsObj,
+        tags
+      });
+
+      if (result.success) {
+        alert('Settings saved successfully!');
+      } else {
+        throw new Error(result.error || 'Failed to save settings');
+      }
     } catch (error) {
       console.error('Error saving settings:', error);
-      alert('Failed to save settings');
+      alert('Failed to save settings: ' + error.message);
+    }
+  };
+
+  const handleExportToExcel = async () => {
+    setExporting(true);
+    try {
+      // Use the save file dialog to get the output path
+      const result = await window.electronAPI.saveFile({
+        title: 'Export Agency Data to Excel',
+        defaultPath: 'agencies_export.xlsx',
+        filters: [
+          { name: 'Excel Files', extensions: ['xlsx'] },
+          { name: 'All Files', extensions: ['*'] }
+        ]
+      });
+
+      if (result.canceled) {
+        return;
+      }
+
+      // Export all agencies (includes extended data)
+      const exportResult = await window.electronAPI.agenciesExportExcel(result.filePath);
+
+      if (exportResult.success) {
+        alert(`Successfully exported ${exportResult.exportedCount || 0} agencies to:\n${result.filePath}`);
+      } else {
+        throw new Error(exportResult.error || 'Failed to export to Excel');
+      }
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      alert('Failed to export to Excel: ' + error.message);
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -295,6 +340,32 @@ function AgencySettingsTab({ agency }) {
         )}
       </div>
 
+      {/* Excel Export Section */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Data Export</h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          Export all agency data to Excel format. This will include all basic agency information as well as 
+          extended data (design requirements, product focus, training, market strategy, notes, tasks, etc.).
+        </p>
+        <button
+          onClick={handleExportToExcel}
+          disabled={exporting}
+          className="px-4 py-2 bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+        >
+          {exporting ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <span>Exporting...</span>
+            </>
+          ) : (
+            <>
+              <span>📊</span>
+              <span>Export to Excel</span>
+            </>
+          )}
+        </button>
+      </div>
+
       {/* Info Section */}
       <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
         <p className="text-sm text-blue-700 dark:text-blue-300">
@@ -304,6 +375,11 @@ function AgencySettingsTab({ agency }) {
         <p className="text-sm text-blue-700 dark:text-blue-300 mt-2">
           💡 <strong>Tags:</strong> Use tags to categorize and filter agencies. Tags can be used for 
           custom filtering and organization.
+        </p>
+        <p className="text-sm text-blue-700 dark:text-blue-300 mt-2">
+          💡 <strong>Data Storage:</strong> All agency data is automatically saved to JSON format in 
+          <code className="bg-blue-100 dark:bg-blue-900/30 px-1 rounded">~/.project-creator/agencies.json</code>. 
+          Use Excel export for backup or sharing purposes.
         </p>
       </div>
     </div>

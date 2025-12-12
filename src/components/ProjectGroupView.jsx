@@ -19,6 +19,27 @@ function ProjectGroupView({
         return project.regionalTeam || 'Unassigned';
       case 'rfaType':
         return project.rfaType || 'Unknown Type';
+      case 'rfaStatus':
+        // Normalize RFA Status values to the standard set
+        const rfaStatus = project.rfaStatus;
+        if (!rfaStatus) return 'None';
+        // Map common variations to standard values
+        const normalizedStatus = rfaStatus.trim();
+        const validStatuses = ['In Progress', 'Pending', 'On Hold', 'Completed', 'Cancelled', 'None'];
+        // Check if it's an exact match (case-sensitive)
+        if (validStatuses.includes(normalizedStatus)) {
+          return normalizedStatus;
+        }
+        // Case-insensitive matching for common variations
+        const lowerStatus = normalizedStatus.toLowerCase();
+        if (lowerStatus === 'in progress' || lowerStatus === 'in-progress') return 'In Progress';
+        if (lowerStatus === 'pending') return 'Pending';
+        if (lowerStatus === 'on hold' || lowerStatus === 'on-hold') return 'On Hold';
+        if (lowerStatus === 'completed' || lowerStatus === 'complete') return 'Completed';
+        if (lowerStatus === 'cancelled' || lowerStatus === 'canceled') return 'Cancelled';
+        if (lowerStatus === 'none' || lowerStatus === 'not specified' || lowerStatus === '') return 'None';
+        // If it doesn't match any standard value, return as-is but group it
+        return normalizedStatus;
       case 'triageLevel':
         if (!project.triageResults?.totalTriage) return 'Low';
         if (project.triageResults.totalTriage > 100) return 'High';
@@ -43,6 +64,8 @@ function ProjectGroupView({
         return '👥';
       case 'rfaType':
         return '📋';
+      case 'rfaStatus':
+        return '🏷️';
       case 'triageLevel':
         switch (groupValue.toLowerCase()) {
           case 'high': return '🔴';
@@ -92,6 +115,24 @@ function ProjectGroupView({
     if (groupBy === 'status') {
       if (a === 'Active') return -1;
       if (b === 'Active') return 1;
+    }
+    if (groupBy === 'rfaStatus') {
+      // Define the desired order for RFA Status groups
+      const rfaStatusOrder = {
+        'In Progress': 0,
+        'Pending': 1,
+        'On Hold': 2,
+        'Completed': 3,
+        'Cancelled': 4,
+        'None': 5
+      };
+      const aOrder = rfaStatusOrder[a] !== undefined ? rfaStatusOrder[a] : 99;
+      const bOrder = rfaStatusOrder[b] !== undefined ? rfaStatusOrder[b] : 99;
+      if (aOrder !== bOrder) {
+        return aOrder - bOrder;
+      }
+      // If both are not in the standard list, sort alphabetically
+      return a.localeCompare(b);
     }
     if (groupBy === 'triageLevel') {
       const order = { 'High': 0, 'Medium': 1, 'Low': 2 };
