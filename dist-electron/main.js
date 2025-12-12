@@ -57,6 +57,9 @@ const agencySyncService = new AgencySyncService(agencyService, settingsService);
 const emailTemplateService = new EmailTemplateService();
 const zipService = new ZipService();
 const oneDriveSyncService = new OneDriveSyncService();
+const ReadyForQCService = require("./main-process/services/ReadyForQCService");
+const readyForQCService = new ReadyForQCService();
+readyForQCService.setProjectPersistenceService(projectPersistenceService);
 const workloadPersistenceService = new WorkloadPersistenceService();
 let fileWatcherService = null;
 const webSocketService = new WebSocketService();
@@ -389,6 +392,54 @@ ipcMain.handle("projects-load-all", async () => {
       error: error.message,
       projects: []
     };
+  }
+});
+ipcMain.handle("qc-scan-folder", async () => {
+  try {
+    const projects = await projectPersistenceService.loadProjects();
+    const result = await readyForQCService.scanAndUpdateProjects(projects);
+    return result;
+  } catch (error) {
+    console.error("Error scanning Ready for QC folder:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("qc-check-project", async (event, projectId) => {
+  try {
+    const project = await projectPersistenceService.loadProjectById(projectId);
+    if (!project.success || !project.project) {
+      return { success: false, error: "Project not found", zipFiles: [] };
+    }
+    const zipFiles = await readyForQCService.getMatchingZipFiles(project.project);
+    return {
+      success: true,
+      hasZip: zipFiles.length > 0,
+      zipFiles
+    };
+  } catch (error) {
+    console.error("Error checking project for QC zip:", error);
+    return { success: false, error: error.message, zipFiles: [] };
+  }
+});
+ipcMain.handle("qc-get-matching-zips", async (event, project) => {
+  try {
+    const zipFiles = await readyForQCService.getMatchingZipFiles(project);
+    return {
+      success: true,
+      zipFiles
+    };
+  } catch (error) {
+    console.error("Error getting matching zip files:", error);
+    return { success: false, error: error.message, zipFiles: [] };
+  }
+});
+ipcMain.handle("qc-download-zip", async (event, zipFilePath, project) => {
+  try {
+    const result = await readyForQCService.downloadAndExtractZip(zipFilePath, project);
+    return result;
+  } catch (error) {
+    console.error("Error downloading and extracting zip:", error);
+    return { success: false, error: error.message };
   }
 });
 ipcMain.handle("triage-calculate", async (event, triageData) => {

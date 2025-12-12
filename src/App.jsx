@@ -194,6 +194,29 @@ function App() {
           if (projectsResult && projectsResult.success && Array.isArray(projectsResult.projects)) {
             setProjects(projectsResult.projects);
             console.log(`✅ Loaded ${projectsResult.projects.length} existing projects from storage`);
+            
+            // Auto-scan Ready for QC folder and update project statuses
+            try {
+              const scanResult = await window.electronAPI.qcScanFolder();
+              if (scanResult.success) {
+                if (scanResult.updatedProjects && scanResult.updatedProjects.length > 0) {
+                  // Update projects list with updated statuses
+                  const updatedProjectsMap = new Map(scanResult.updatedProjects.map(p => [p.id, p]));
+                  setProjects(prevProjects => 
+                    prevProjects.map(p => {
+                      const updated = updatedProjectsMap.get(p.id);
+                      return updated || p;
+                    })
+                  );
+                  console.log(`✅ Auto-scanned Ready for QC: Updated ${scanResult.updateCount} project(s) to "Ready for QC"`);
+                } else if (scanResult.totalMatches > 0) {
+                  console.log(`✅ Auto-scanned Ready for QC: Found ${scanResult.totalMatches} match(es), but no status updates needed`);
+                }
+              }
+            } catch (scanError) {
+              console.warn('⚠️ Auto-scan Ready for QC failed:', scanError);
+              // Don't block app startup if scan fails
+            }
           } else {
             console.warn('Failed to load projects:', projectsResult?.error || 'Unknown error');
             setProjects([]); // Ensure projects is always an array
@@ -861,6 +884,24 @@ function App() {
                   if (projectsResult && projectsResult.success && Array.isArray(projectsResult.projects)) {
                     setProjects(projectsResult.projects);
                     console.log(`✅ Manual refresh completed, found ${projectsResult.projects.length} projects`);
+                    
+                    // Also scan Ready for QC folder during refresh
+                    try {
+                      const scanResult = await window.electronAPI.qcScanFolder();
+                      if (scanResult.success && scanResult.updatedProjects && scanResult.updatedProjects.length > 0) {
+                        // Update projects list with updated statuses
+                        const updatedProjectsMap = new Map(scanResult.updatedProjects.map(p => [p.id, p]));
+                        setProjects(prevProjects => 
+                          prevProjects.map(p => {
+                            const updated = updatedProjectsMap.get(p.id);
+                            return updated || p;
+                          })
+                        );
+                        console.log(`✅ Refresh scan: Updated ${scanResult.updateCount} project(s) to "Ready for QC"`);
+                      }
+                    } catch (scanError) {
+                      console.warn('⚠️ Refresh scan failed:', scanError);
+                    }
                   }
                 } catch (error) {
                   console.warn('⚠️ Manual refresh failed:', error);

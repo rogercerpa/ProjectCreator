@@ -39,7 +39,7 @@ class DropdownOptionsService {
       photoSoftware: ['VL', 'AGI', 'M3', 'M3+VL'],
       projectStages: ['None', 'Postponed', 'Prospecting', 'Engagement', 'Solution', 'Commitment', 'Order Won', 'Order Lost', 'Dormant'],
       designProcessPhases: ['None', 'Schematic Design', 'Design Development', 'Construction Documents', 'Bid & Negotiation', 'Construction Phase'],
-      rfaStatuses: ['None', 'Pending', 'In Progress', 'Completed', 'On Hold', 'Cancelled'],
+      rfaStatuses: ['None', 'Pending', 'In Progress', 'Ready for QC', 'Completed', 'On Hold', 'Cancelled'],
       rfaComplexityLevels: ['Level 1', 'Level 2', 'Level 3', 'Level 4']
     };
     

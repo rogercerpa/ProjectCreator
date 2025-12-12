@@ -168,6 +168,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onOneDriveSyncProgress: (callback) => ipcRenderer.on('oneDriveSyncProgress', (event, data) => callback(data)),
   removeOneDriveSyncProgressListener: (callback) => ipcRenderer.removeListener('oneDriveSyncProgress', callback),
   
+  // Ready for QC operations
+  qcScanFolder: () => ipcRenderer.invoke('qc-scan-folder'),
+  qcCheckProject: (projectId) => ipcRenderer.invoke('qc-check-project', projectId),
+  qcGetMatchingZips: (project) => ipcRenderer.invoke('qc-get-matching-zips', project),
+  qcDownloadZip: (zipFilePath, project) => ipcRenderer.invoke('qc-download-zip', zipFilePath, project),
+  
   // Remove listeners
   removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel),
   

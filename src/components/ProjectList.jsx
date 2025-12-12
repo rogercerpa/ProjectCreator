@@ -5,6 +5,8 @@ import ProjectGroupView from './ProjectGroupView';
 
 function ProjectList({ projects, onProjectSelect, onProjectDelete, onRefresh }) {
   const [searchTerm, setSearchTerm] = useState('');
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanNotification, setScanNotification] = useState(null);
   const [sortBy, setSortBy] = useState(() => {
     const saved = localStorage.getItem('projectListSortBy');
     return saved || 'createdAt';
@@ -24,6 +26,42 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onRefresh }) 
 
   // Ensure projects is an array
   const safeProjects = Array.isArray(projects) ? projects : [];
+
+  // Handle manual scan of Ready for QC folder
+  const handleScanReadyForQC = async () => {
+    setIsScanning(true);
+    setScanNotification(null);
+    
+    try {
+      const result = await window.electronAPI.qcScanFolder();
+      
+      if (result.success) {
+        const message = result.updateCount > 0
+          ? `Found ${result.totalMatches} match(es), updated ${result.updateCount} project(s) to "Ready for QC"`
+          : result.totalMatches > 0
+            ? `Found ${result.totalMatches} match(es), but no projects needed status updates`
+            : 'No matching zip files found in Ready for QC folder';
+        
+        setScanNotification({ type: 'success', message });
+        
+        // Refresh projects list if updates were made
+        if (result.updateCount > 0 && onRefresh) {
+          setTimeout(() => {
+            onRefresh();
+          }, 500);
+        }
+      } else {
+        setScanNotification({ type: 'error', message: `Scan failed: ${result.error}` });
+      }
+    } catch (error) {
+      console.error('Error scanning Ready for QC folder:', error);
+      setScanNotification({ type: 'error', message: 'Failed to scan Ready for QC folder' });
+    } finally {
+      setIsScanning(false);
+      // Clear notification after 5 seconds
+      setTimeout(() => setScanNotification(null), 5000);
+    }
+  };
 
   const filteredProjects = safeProjects.filter(project => {
     try {
@@ -286,6 +324,24 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onRefresh }) 
                   <span>🔄</span>
                   <span>Refresh</span>
                 </button>
+              )}
+              <button 
+                onClick={handleScanReadyForQC}
+                disabled={isScanning}
+                className="flex items-center gap-2 px-4 py-2 bg-success-600 hover:bg-success-700 disabled:bg-gray-400 text-white text-sm font-medium rounded shadow transition-colors"
+                title="Scan Ready for QC folder and update project statuses"
+              >
+                <span>{isScanning ? '⏳' : '🔍'}</span>
+                <span>{isScanning ? 'Scanning...' : 'Scan Ready for QC'}</span>
+              </button>
+              {scanNotification && (
+                <div className={`px-3 py-2 rounded text-xs ${
+                  scanNotification.type === 'success' 
+                    ? 'bg-success-100 text-success-700 dark:bg-success-900/30 dark:text-success-300'
+                    : 'bg-error-100 text-error-700 dark:bg-error-900/30 dark:text-error-300'
+                }`}>
+                  {scanNotification.message}
+                </div>
               )}
               <p className="text-xs text-gray-600 dark:text-gray-400 bg-info-50 dark:bg-info-900/20 px-3 py-2 rounded">
                 💡 Create new projects using the <strong>Project Wizard</strong>

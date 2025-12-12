@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import TriageCalculatorModal from './TriageCalculatorModal';
 import NotificationToast from './NotificationToast';
+import ZipSelectionDialog from './ZipSelectionDialog';
 import { openPaidServicesEmail } from '../utils/emailTemplates';
 
 /**
@@ -11,6 +12,10 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [notification, setNotification] = useState(null);
   const [showTriageModal, setShowTriageModal] = useState(false);
+  const [hasReadyForQCZip, setHasReadyForQCZip] = useState(false);
+  const [matchingZipFiles, setMatchingZipFiles] = useState([]);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [showZipSelectionDialog, setShowZipSelectionDialog] = useState(false);
   const hasPaidServices = !!project?.dasPaidServiceEnabled;
   const canSendPaidServiceEmail = hasPaidServices &&
     project?.dasRepEmail &&
@@ -25,6 +30,25 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
     console.log('🔍 ProjectDetails: Project ECD:', project?.ecd);
     console.log('🔍 ProjectDetails: Project updatedAt:', project?.updatedAt);
   }, [project]);
+
+  // Check for matching zip files when project loads
+  useEffect(() => {
+    const checkForZipFiles = async () => {
+      if (!project?.id) return;
+      
+      try {
+        const result = await window.electronAPI.qcCheckProject(project.id);
+        if (result.success) {
+          setHasReadyForQCZip(result.hasZip);
+          setMatchingZipFiles(result.zipFiles || []);
+        }
+      } catch (error) {
+        console.error('Error checking for QC zip files:', error);
+      }
+    };
+
+    checkForZipFiles();
+  }, [project?.id]);
 
   // Show toast notification
   const showToast = (message, type = 'success') => {
@@ -250,6 +274,49 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
     }
   };
 
+  // Handle download folder button click
+  const handleDownloadFolder = async () => {
+    if (matchingZipFiles.length === 0) {
+      showToast('No zip files found for this project.', 'error');
+      return;
+    }
+
+    // If multiple zip files, show selection dialog
+    if (matchingZipFiles.length > 1) {
+      setShowZipSelectionDialog(true);
+      return;
+    }
+
+    // Single zip file - download directly
+    await downloadZipFile(matchingZipFiles[0]);
+  };
+
+  // Download and extract zip file
+  const downloadZipFile = async (zipFile) => {
+    setIsDownloading(true);
+    setShowZipSelectionDialog(false);
+
+    try {
+      const result = await window.electronAPI.qcDownloadZip(zipFile.path, project);
+      
+      if (result.success) {
+        showToast(`✓ Folder downloaded to ${result.extractedPath}`, 'success');
+      } else {
+        showToast(`Failed to download folder: ${result.error}`, 'error');
+      }
+    } catch (error) {
+      console.error('Error downloading zip file:', error);
+      showToast('Failed to download folder. Please try again.', 'error');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  // Handle zip selection from dialog
+  const handleZipSelect = async (zipFile) => {
+    await downloadZipFile(zipFile);
+  };
+
   return (
     <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 h-full overflow-y-auto custom-scrollbar">
       {/* Toast Notification */}
@@ -291,6 +358,16 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
             >
               📈 Copy to Agile
             </button>
+            {hasReadyForQCZip && (
+              <button 
+                onClick={handleDownloadFolder}
+                disabled={isDownloading}
+                className="btn-outline-primary btn-sm"
+                title="Download project folder from Ready for QC"
+              >
+                {isDownloading ? '⏳ Downloading...' : '📥 Download Folder'}
+              </button>
+            )}
           </div>
         </div>
         <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1">
@@ -773,6 +850,14 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
         project={project}
         onSave={handleTriageSave}
         onCancel={() => setShowTriageModal(false)}
+      />
+
+      {/* Zip Selection Dialog */}
+      <ZipSelectionDialog
+        isOpen={showZipSelectionDialog}
+        zipFiles={matchingZipFiles}
+        onSelect={handleZipSelect}
+        onCancel={() => setShowZipSelectionDialog(false)}
       />
     </div>
   );

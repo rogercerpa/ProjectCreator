@@ -25,7 +25,7 @@ function ProjectGroupView({
         if (!rfaStatus) return 'None';
         // Map common variations to standard values
         const normalizedStatus = rfaStatus.trim();
-        const validStatuses = ['In Progress', 'Pending', 'On Hold', 'Completed', 'Cancelled', 'None'];
+        const validStatuses = ['In Progress', 'Ready for QC', 'Pending', 'On Hold', 'Completed', 'Cancelled', 'None'];
         // Check if it's an exact match (case-sensitive)
         if (validStatuses.includes(normalizedStatus)) {
           return normalizedStatus;
@@ -33,6 +33,7 @@ function ProjectGroupView({
         // Case-insensitive matching for common variations
         const lowerStatus = normalizedStatus.toLowerCase();
         if (lowerStatus === 'in progress' || lowerStatus === 'in-progress') return 'In Progress';
+        if (lowerStatus === 'ready for qc' || lowerStatus === 'ready-for-qc' || lowerStatus === 'readyforqc') return 'Ready for QC';
         if (lowerStatus === 'pending') return 'Pending';
         if (lowerStatus === 'on hold' || lowerStatus === 'on-hold') return 'On Hold';
         if (lowerStatus === 'completed' || lowerStatus === 'complete') return 'Completed';
@@ -118,13 +119,15 @@ function ProjectGroupView({
     }
     if (groupBy === 'rfaStatus') {
       // Define the desired order for RFA Status groups
+      // "Ready for QC" appears right after "In Progress"
       const rfaStatusOrder = {
         'In Progress': 0,
-        'Pending': 1,
-        'On Hold': 2,
-        'Completed': 3,
-        'Cancelled': 4,
-        'None': 5
+        'Ready for QC': 1,
+        'Pending': 2,
+        'On Hold': 3,
+        'Completed': 4,
+        'Cancelled': 5,
+        'None': 6
       };
       const aOrder = rfaStatusOrder[a] !== undefined ? rfaStatusOrder[a] : 99;
       const bOrder = rfaStatusOrder[b] !== undefined ? rfaStatusOrder[b] : 99;
