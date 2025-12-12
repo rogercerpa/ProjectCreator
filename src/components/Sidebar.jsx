@@ -85,7 +85,7 @@ function Sidebar({ currentView, onViewChange, projectCount }) {
               <span className={`
                 text-sm font-medium leading-tight
                 ${currentView === item.id 
-                  ? 'text-primary-600 dark:text-primary-400 font-semibold' 
+                  ? 'text-active font-semibold' 
                   : 'text-gray-800 dark:text-gray-200'
                 }
               `}>

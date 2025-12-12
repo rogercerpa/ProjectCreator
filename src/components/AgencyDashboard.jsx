@@ -195,7 +195,7 @@ function AgencyDashboard({ agency, onBack, onProjectSelect }) {
                 onClick={() => setActiveTab(tab.id)}
                 className={`px-3 py-3 font-medium text-sm transition-all border-b-2 whitespace-nowrap flex-shrink-0 ${
                   activeTab === tab.id
-                    ? 'border-primary-600 text-primary-600 dark:border-primary-400 dark:text-primary-400'
+                    ? 'border-primary-600 text-active dark:border-primary-500'
                     : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                 }`}
               >

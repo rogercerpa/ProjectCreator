@@ -3708,7 +3708,7 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
             key={tab.id}
             className={`flex items-center gap-1.5 px-1 pb-3 font-medium text-xs whitespace-nowrap transition-all relative ${
               activeTab === tab.id 
-                ? 'text-primary-600 dark:text-primary-400' 
+                ? 'text-active' 
                 : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
             }`}
             onClick={() => setActiveTab(tab.id)}
@@ -3717,7 +3717,7 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
             <span className="text-base">{tab.icon}</span>
             <span>{tab.label}</span>
             {activeTab === tab.id && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600 dark:bg-primary-400"></span>
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600 dark:bg-primary-500"></span>
             )}
           </button>
         ))}
