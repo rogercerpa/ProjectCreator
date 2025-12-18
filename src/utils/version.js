@@ -11,7 +11,7 @@ export const APP_DESCRIPTION = packageJson.description;
 
 // Version display helpers
 export const getVersionDisplay = () => `v${APP_VERSION}`;
-export const getFullVersionInfo = () => `Version ${APP_VERSION} - Built with Electron & React`;
+export const getFullVersionInfo = () => `Version ${APP_VERSION}`;
 
 // Build information
 export const BUILD_INFO = {
