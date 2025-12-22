@@ -226,7 +226,206 @@ See the companion guide: **[MS365-POWER-AUTOMATE-FLOWS.md](./MS365-POWER-AUTOMAT
 
 1. In MS Lists, find an assignment
 2. Update the **Status** and **HoursWorked** fields
-3. W
+3. Wait a few minutes for Power Automate to sync (or trigger manually if using scheduled flow)
+4. Check the Excel file - verify the changes appear in the Assignments sheet
+5. In Project Creator, click **Sync Now** in the Workload Dashboard
+6. Verify the changes appear in the app
+
+#### Test 3: Bidirectional Sync
+
+1. Make a change in the app (e.g., update project status)
+2. Click **Export to Excel**
+3. Verify change appears in Excel
+4. Verify change syncs to MS Lists (via Power Automate)
+5. Make a change in MS Lists
+6. Verify change syncs to Excel (via Power Automate)
+7. Click **Sync Now** in the app
+8. Verify change appears in the app
+
+---
+
+## Troubleshooting
+
+### Excel File Not Found
+
+**Problem:** App can't find or access the Excel file
+
+**Solutions:**
+1. ✅ Verify the file path is correct
+2. ✅ Check file permissions (read/write access)
+3. ✅ Ensure file is not open in Excel
+4. ✅ For OneDrive files, ensure OneDrive is synced
+5. ✅ Try using the full absolute path
+
+### Data Not Syncing to MS Lists
+
+**Problem:** Changes in Excel don't appear in MS Lists
+
+**Solutions:**
+1. ✅ Verify Power Automate flows are enabled
+2. ✅ Check flow run history for errors
+3. ✅ Ensure Excel file is in OneDrive/SharePoint (not local)
+4. ✅ Verify Excel sheets are formatted as tables
+5. ✅ Check table names match exactly
+6. ✅ Verify field names match between Excel and MS Lists
+
+### Data Not Syncing from MS Lists
+
+**Problem:** Changes in MS Lists don't appear in Excel or app
+
+**Solutions:**
+1. ✅ Verify Power Automate flows are enabled
+2. ✅ Check flow run history for errors
+3. ✅ Ensure Excel file is accessible to Power Automate
+4. ✅ Verify field names match between MS Lists and Excel
+5. ✅ Check data types match (text, number, date)
+6. ✅ Try manual sync: Click "Sync Now" in the app
+
+### Circular Updates
+
+**Problem:** Changes trigger infinite update loops
+
+**Solutions:**
+1. ✅ Add LastUpdated timestamp comparison in flows
+2. ✅ Use a flag field to indicate update source
+3. ✅ Add delay between updates in Power Automate
+4. ✅ Implement conflict resolution logic
+
+### Field Mapping Issues
+
+**Problem:** Data appears in wrong columns or is missing
+
+**Solutions:**
+1. ✅ Verify field mapping configuration matches Excel columns
+2. ✅ Check Excel column headers match exactly (case-sensitive)
+3. ✅ Ensure required fields are mapped
+4. ✅ Verify data types match (string, number, date)
+5. ✅ Check for special characters in field names
+
+---
+
+## Best Practices
+
+### Excel File Management
+
+1. **Single Source of Truth**: Use one Excel file per team/project
+2. **Regular Backups**: Keep backups of Excel file before major changes
+3. **Table Format**: Always format sheets as Excel tables
+4. **Column Headers**: Use consistent, clear column names
+5. **Data Validation**: Add data validation rules in Excel where possible
+
+### Power Automate Flows
+
+1. **Error Handling**: Always include error handling in flows
+2. **Monitoring**: Regularly check flow run history
+3. **Alerts**: Set up alerts for flow failures
+4. **Testing**: Test flows with sample data before production use
+5. **Documentation**: Document any customizations to flows
+
+### MS Lists Configuration
+
+1. **Permissions**: Set appropriate permissions for team members
+2. **Views**: Create custom views for different user roles
+3. **Validation**: Use column validation rules where possible
+4. **Formulas**: Use calculated columns for derived values (e.g., HoursRemaining)
+5. **Notifications**: Configure notifications for important changes
+
+### Sync Strategy
+
+1. **Manual Sync**: Use manual sync for critical updates
+2. **Automatic Sync**: Enable automatic sync for convenience
+3. **Sync Frequency**: Balance sync frequency with performance
+4. **Conflict Resolution**: Establish process for handling conflicts
+5. **Data Integrity**: Regularly verify data consistency
+
+---
+
+## Workflow Examples
+
+### Project Manager Workflow
+
+1. Create new project in Project Creator app
+2. Assign project to team members
+3. Click **Export to Excel** to push to Excel/MS Lists
+4. Engineers see assignments in MS Lists
+5. Periodically click **Sync Now** to pull updates from engineers
+
+### Engineer Workflow
+
+1. Open MS Lists to view assigned work
+2. Update assignment status and hours worked
+3. Add notes and comments
+4. Changes automatically sync to Excel (via Power Automate)
+5. Project manager syncs app to see updates
+
+### Team Lead Workflow
+
+1. Monitor workload in MS Lists
+2. Reassign work as needed
+3. Track progress and capacity
+4. Use Excel for reporting and analysis
+5. Coordinate with project managers via app
+
+---
+
+## Maintenance
+
+### Regular Tasks
+
+- **Weekly**: Review flow run history for errors
+- **Monthly**: Verify data consistency between app, Excel, and MS Lists
+- **Quarterly**: Review and update field mappings if needed
+- **As Needed**: Update Power Automate flows for new requirements
+
+### Monitoring
+
+- **Flow Runs**: Check Power Automate flow run history regularly
+- **Data Sync**: Verify sync is working by checking timestamps
+- **Error Logs**: Review error logs in app and Power Automate
+- **User Feedback**: Collect feedback from team members
+
+---
+
+## Support and Resources
+
+### Documentation
+
+- [MS365-POWER-AUTOMATE-FLOWS.md](./MS365-POWER-AUTOMATE-FLOWS.md) - Detailed flow templates
+- [MS365-WORKLOAD-IMPLEMENTATION-SUMMARY.md](./MS365-WORKLOAD-IMPLEMENTATION-SUMMARY.md) - Implementation details
+- [POWER-AUTOMATE-QUICK-REFERENCE.md](./POWER-AUTOMATE-QUICK-REFERENCE.md) - Expression reference
+- [POWER-AUTOMATE-STEP-BY-STEP.md](./POWER-AUTOMATE-STEP-BY-STEP.md) - Step-by-step flow creation
+
+### External Resources
+
+- [Microsoft Power Automate Docs](https://docs.microsoft.com/power-automate/)
+- [MS Lists Documentation](https://support.microsoft.com/en-us/office/get-started-with-microsoft-lists-10b12560-fb20-471e-9258-773aec6a4a2)
+- [Excel Online API](https://docs.microsoft.com/connectors/excelonlinebusiness/)
+
+### Getting Help
+
+1. Check troubleshooting section above
+2. Review Power Automate flow run history
+3. Test Excel file path and permissions
+4. Verify MS Lists configuration
+5. Check application logs for errors
+6. Contact IT support if issues persist
+
+---
+
+## Next Steps
+
+After completing setup:
+
+1. ✅ Test all workflows with sample data
+2. ✅ Train team members on MS Lists usage
+3. ✅ Set up monitoring and alerts
+4. ✅ Document any customizations
+5. ✅ Establish maintenance schedule
+
+---
+
+**Last Updated**: December 2024  
+**Version**: 1.0.0
 
 
 

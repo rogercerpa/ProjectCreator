@@ -230,7 +230,209 @@ When an engineer logs time in the TimeTracking MS List, add the entry to the Exc
   - Category: `triggerBody()?['Category']`
 
 #### 3. Update Assignment HoursWorked (Optional)
-- **Pur
+- **Purpose:** Automatically update the assignment's HoursWorked when time is logged
+- Action: **Get items** (SharePoint)
+  - Site Address: Your SharePoint site
+  - List Name: Project Workload - Assignments
+  - Filter Query: `AssignmentID eq '` + `triggerBody()?['AssignmentID']` + `'`
+- Action: **Update item** (SharePoint)
+  - Site Address: Your SharePoint site
+  - List Name: Project Workload - Assignments
+  - Id: `first(body('Get_items')?['value'])?['Id']`
+  - HoursWorked: `add(first(body('Get_items')?['value'])?['HoursWorked'], triggerBody()?['HoursWorked'])`
+  - HoursRemaining: `sub(first(body('Get_items')?['value'])?['HoursAllocated'], add(first(body('Get_items')?['value'])?['HoursWorked'], triggerBody()?['HoursWorked']))`
+
+### Error Handling
+- Add **Scope** around all actions
+- Add **Configure run after** for error cases
+- Log errors to a separate error list or send email notification
+
+---
+
+## Flow 5: Update Assignment Hours from TimeTracking (Alternative)
+
+### Purpose
+When time is logged in TimeTracking, automatically aggregate and update the assignment's total HoursWorked.
+
+### Trigger
+- **When an item is created** (SharePoint)
+  - Site Address: Your SharePoint site
+  - List Name: Project Workload - TimeTracking
+
+### Actions
+
+#### 1. Get items (SharePoint) - Get all time entries for this assignment
+- Site Address: Your SharePoint site
+- List Name: Project Workload - TimeTracking
+- Filter Query: `AssignmentID eq '` + `triggerBody()?['AssignmentID']` + `'`
+
+#### 2. Calculate total hours
+- Action: **Compose** (Data operation)
+  - Inputs: Use **Apply to each** to sum all HoursWorked values
+  - Expression: `sum(body('Get_items')?['value'], item()?['HoursWorked'])`
+
+#### 3. Get assignment details
+- Action: **Get items** (SharePoint)
+  - Site Address: Your SharePoint site
+  - List Name: Project Workload - Assignments
+  - Filter Query: `AssignmentID eq '` + `triggerBody()?['AssignmentID']` + `'`
+
+#### 4. Update assignment
+- Action: **Update item** (SharePoint)
+  - Site Address: Your SharePoint site
+  - List Name: Project Workload - Assignments
+  - Id: `first(body('Get_assignment_details')?['value'])?['Id']`
+  - HoursWorked: Use the calculated total from step 2
+  - HoursRemaining: `sub(first(body('Get_assignment_details')?['value'])?['HoursAllocated'], <calculated_total>)`
+  - LastUpdated: `utcNow()`
+
+---
+
+## Common Expressions and Formulas
+
+### Getting Trigger Data
+```
+@{triggerBody()?['FieldName']}
+```
+
+### Getting Action Output
+```
+@{body('ActionName')?['FieldName']}
+```
+
+### First Item from Array
+```
+first(body('Get_items')?['value'])?['Id']
+```
+
+### Check if Array Has Items
+```
+length(body('Get_items')?['value'])
+```
+
+### Date Formatting
+```
+@{formatDateTime(utcNow(), 'yyyy-MM-ddTHH:mm:ssZ')}
+```
+
+### Math Operations
+- Add: `@{add(field1, field2)}`
+- Subtract: `@{sub(field1, field2)}`
+- Multiply: `@{mul(field1, field2)}`
+- Divide: `@{div(field1, field2)}`
+
+### Conditional Logic
+```
+@{if(equals(triggerBody()?['Status'], 'Completed'), utcNow(), '')}
+```
+
+For more expressions, see [POWER-AUTOMATE-QUICK-REFERENCE.md](./POWER-AUTOMATE-QUICK-REFERENCE.md).
+
+---
+
+## Testing Your Flows
+
+### Test Checklist
+
+1. **Excel → Lists (Projects)**
+   - [ ] Add a new project row in Excel
+   - [ ] Verify it appears in MS Lists Projects
+   - [ ] Update a project row in Excel
+   - [ ] Verify the update appears in MS Lists
+
+2. **Excel → Lists (Assignments)**
+   - [ ] Add a new assignment row in Excel
+   - [ ] Verify it appears in MS Lists Assignments
+   - [ ] Update an assignment row in Excel
+   - [ ] Verify the update appears in MS Lists
+
+3. **Lists → Excel (Assignments)**
+   - [ ] Update Status in MS Lists
+   - [ ] Verify Excel row updates
+   - [ ] Update HoursWorked in MS Lists
+   - [ ] Verify Excel row updates
+
+4. **Lists → Excel (TimeTracking)**
+   - [ ] Add a time entry in MS Lists
+   - [ ] Verify it appears in Excel TimeTracking sheet
+
+5. **TimeTracking → Assignment Hours (if Flow 5 implemented)**
+   - [ ] Add multiple time entries for same assignment
+   - [ ] Verify assignment HoursWorked is updated correctly
+
+---
+
+## Troubleshooting
+
+### Flow Not Triggering
+- Ensure Excel sheets are formatted as tables
+- Check file is in OneDrive/SharePoint (not local)
+- Verify table names match exactly
+- Check flow is enabled (toggle ON)
+
+### Data Not Syncing
+- Check flow run history for errors
+- Verify field names match between Excel and MS Lists
+- Check data types match (text, number, date)
+- Verify filter queries are correct
+
+### Circular Updates
+- Add condition to check LastUpdated timestamp
+- Use a flag field to indicate update source
+- Add delay between updates if needed
+
+### Date Format Errors
+- Use `formatDateTime()` function
+- Check timezone settings
+- Verify date field types match
+
+---
+
+## Performance Tips
+
+1. **Use filters** in "Get items" to reduce data
+2. **Limit batch sizes** for large datasets
+3. **Add delays** if needed to prevent throttling
+4. **Use parallel branches** for independent actions
+5. **Monitor flow run history** for slow operations
+
+---
+
+## Security Best Practices
+
+1. **Use secure connections** - Ensure SharePoint site uses HTTPS
+2. **Limit permissions** - Flows should have minimum required permissions
+3. **Validate data** - Add validation steps before updating
+4. **Error handling** - Always include error handling and logging
+5. **Audit logs** - Monitor flow runs for suspicious activity
+
+---
+
+## Next Steps
+
+After setting up flows:
+
+1. ✅ Test all flows with sample data
+2. ✅ Monitor flow runs for 24-48 hours
+3. ✅ Set up alerts for flow failures
+4. ✅ Document any customizations
+5. ✅ Train team on MS Lists usage
+
+---
+
+## Additional Resources
+
+- [Power Automate Documentation](https://docs.microsoft.com/power-automate/)
+- [MS Lists Documentation](https://support.microsoft.com/en-us/office/get-started-with-microsoft-lists-10b12560-fb20-471e-9258-773aec6a4a2)
+- [Excel Online API](https://docs.microsoft.com/connectors/excelonlinebusiness/)
+- [POWER-AUTOMATE-QUICK-REFERENCE.md](./POWER-AUTOMATE-QUICK-REFERENCE.md) - Quick reference for expressions
+- [POWER-AUTOMATE-STEP-BY-STEP.md](./POWER-AUTOMATE-STEP-BY-STEP.md) - Detailed step-by-step guide
+- [POWER-AUTOMATE-EXCEL-ALTERNATIVE.md](./POWER-AUTOMATE-EXCEL-ALTERNATIVE.md) - Alternative approach if Excel trigger unavailable
+
+---
+
+**Last Updated**: December 2024  
+**Version**: 1.0.0
 
 
 

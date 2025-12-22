@@ -11,33 +11,34 @@ ProjectCreator/
 ├── 📁 src/                          # Source code
 │   ├── 📁 components/               # React components
 │   │   ├── Header.jsx              # Application header
-│   │   ├── Header.css              # Header styles
 │   │   ├── ProjectForm.jsx         # Project creation form
-│   │   ├── ProjectForm.css         # Form styles
 │   │   ├── ProjectList.jsx         # Project listing component
-│   │   ├── ProjectList.css         # List styles
 │   │   ├── Settings.jsx            # Settings component
-│   │   ├── Settings.css            # Settings styles
+│   │   ├── WorkloadDashboard.jsx   # MS Lists integration dashboard
 │   │   ├── Sidebar.jsx             # Navigation sidebar
-│   │   └── Sidebar.css             # Sidebar styles
-│   ├── 📁 services/                # Business logic services
+│   │   └── 📁 settings/           # Settings components
+│   │       └── WorkloadTab.jsx     # MS 365 workload settings
+│   ├── 📁 services/                # Business logic services (renderer)
 │   │   ├── FileService.js          # File system operations
 │   │   ├── ProjectService.js       # Project management
 │   │   ├── WordService.js          # Word document operations
 │   │   ├── ProjectPersistenceService.js  # Data persistence
-│   │   ├── ProjectCreationService.js     # Project creation
-│   │   └── SecurityLoggingService.js     # Security logging
+│   │   └── WebSocketService.js      # WebSocket client (if used in renderer)
 │   ├── 📁 utils/                   # Utility functions
 │   │   ├── security.js             # Security utilities
 │   │   └── version.js              # Version information
-│   ├── 📁 config/                  # Configuration files
-│   │   ├── security.js             # Security configuration
-│   │   ├── environment.js          # Environment settings
-│   │   └── build.js                # Build configuration
 │   ├── 📁 hooks/                   # React custom hooks
 │   ├── App.jsx                     # Main application component
 │   ├── App.css                     # Application styles
 │   └── index.js                    # Application entry point
+├── 📁 main-process/                 # Electron main process code
+│   ├── 📁 services/                # Backend services
+│   │   ├── WorkloadExcelService.js      # Excel read/write operations
+│   │   ├── WorkloadExcelSyncService.js  # Excel file sync and monitoring
+│   │   ├── FieldMappingService.js       # Field mapping between app and Excel
+│   │   └── WebSocketService.js          # WebSocket client for notifications
+│   └── 📁 config/                  # Configuration files
+│       └── defaultFieldMapping.json     # Default Excel field mappings
 ├── 📁 assets/                      # Static assets
 │   ├── 📁 images/                  # Image files
 │   │   └── logo.png                # Application logo
@@ -46,23 +47,29 @@ ProjectCreator/
 │   └── 📁 templates/               # Template files
 ├── 📁 docs/                        # Documentation
 │   ├── README.md                   # Project overview
-│   └── SECURITY-AUDIT-REPORT.md    # Security documentation
+│   ├── PROJECT-STRUCTURE.md        # This file
+│   ├── SECURITY-AUDIT-REPORT.md    # Security documentation
+│   ├── MS365-WORKLOAD-SETUP.md     # MS 365 setup guide
+│   ├── MS365-POWER-AUTOMATE-FLOWS.md # Power Automate guide
+│   ├── MS365-WORKLOAD-IMPLEMENTATION-SUMMARY.md # Implementation details
+│   ├── POWER-AUTOMATE-QUICK-REFERENCE.md # Power Automate reference
+│   ├── POWER-AUTOMATE-STEP-BY-STEP.md # Power Automate setup
+│   ├── POWER-AUTOMATE-EXCEL-ALTERNATIVE.md # Alternative approach
+│   └── WEBSOCKET-USER-GUIDE.md     # WebSocket notifications guide
 ├── 📁 scripts/                     # Build and utility scripts
 │   ├── build.sh                    # Build script
 │   ├── dev.sh                      # Development script
 │   └── test.sh                     # Testing script
 ├── 📁 tests/                       # Test files
-├── 📁 config/                      # Build configuration
-├── 📁 build/                       # Build outputs
+├── 📁 dist/                        # Build outputs (Vite)
 ├── 📄 main.js                      # Electron main process
 ├── 📄 preload.js                   # Secure IPC preload script
-├── 📄 webpack.config.js            # Webpack configuration
+├── 📄 vite.config.js               # Vite configuration
 ├── 📄 package.json                 # Project dependencies
 ├── 📄 .gitignore                   # Git ignore rules
 ├── 📄 .eslintrc.js                 # ESLint configuration
 ├── 📄 .prettierrc                  # Prettier configuration
-├── 📄 cleanup.js                   # Project cleanup script
-└── 📄 PROJECT-STRUCTURE.md         # This file
+└── 📄 cleanup.js                   # Project cleanup script
 ```
 
 ## 🔒 Security Architecture
@@ -164,11 +171,12 @@ npm test
 
 ## 🔧 Configuration Files
 
-### Webpack Configuration
+### Vite Configuration
 - **Entry**: `src/index.js`
-- **Output**: `dist/bundle.js`
+- **Output**: `dist/`
 - **Target**: `electron-renderer`
 - **Security**: CSP headers, asset optimization
+- **Build Tool**: Vite (replaced Webpack)
 
 ### ESLint Configuration
 - **Environment**: Browser, ES2021, Node.js
@@ -252,11 +260,12 @@ npm test
 
 ## 📈 Performance Optimization
 
-### Webpack Optimizations
+### Vite Optimizations
 - **Code Splitting**: Automatic chunk splitting
 - **Tree Shaking**: Unused code elimination
 - **Minification**: Production builds
 - **Asset Optimization**: Image and font optimization
+- **Fast HMR**: Hot module replacement for development
 
 ### Electron Optimizations
 - **Process Management**: Efficient main/renderer communication
@@ -289,6 +298,28 @@ npm test
 
 ---
 
-*Last Updated: ${new Date().toISOString()}*
-*Project Creator v5.0.8*
+## 🔄 MS 365 Integration Architecture
+
+### Excel/MS Lists Integration
+- **WorkloadExcelService**: Handles Excel file operations (read/write)
+- **WorkloadExcelSyncService**: Monitors Excel file changes and syncs bidirectionally
+- **FieldMappingService**: Manages field mappings between app data and Excel columns
+- **Default Field Mapping**: Configured in `main-process/config/defaultFieldMapping.json`
+
+### Data Flow
+```
+App → Excel File ↔ Power Automate ↔ MS Lists
+  ↑                                    ↓
+  └─────────── Sync Now ─────────────┘
+```
+
+### WebSocket Notifications
+- **WebSocketService**: Provides real-time notifications (supplementary)
+- **Purpose**: Alerts and presence, not primary workload management
+- **Server**: Cloud-hosted on Fly.io
+
+---
+
+*Last Updated: December 2024*
+*Project Creator v5.0.163*
 *Security Level: Industry Standard*

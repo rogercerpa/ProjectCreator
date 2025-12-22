@@ -5,7 +5,13 @@ A modern Electron-based desktop application for creating and managing projects, 
 ## Features
 
 - **Project Management**: Create, edit, and organize projects with ease
+- **MS 365 Integration**: Seamless integration with Microsoft Excel and MS Lists for workload management
+  - Export projects and assignments to Excel
+  - Sync with MS Lists via Power Automate
+  - Bidirectional data synchronization
+- **Workload Dashboard**: Summary dashboard with MS Lists integration for team collaboration
 - **Document Generation**: Generate Word documents and other file formats
+- **Real-time Notifications**: WebSocket-based notifications for project updates and team presence
 - **Modern UI**: Built with React and modern CSS for a professional look
 - **Cross-Platform**: Works on Windows, macOS, and Linux
 - **File Operations**: Comprehensive file handling and management capabilities
@@ -52,24 +58,40 @@ A modern Electron-based desktop application for creating and managing projects, 
 
 ```
 ProjectCreator/
-├── src/                    # Source code
-│   ├── components/        # React components
-│   ├── services/          # Business logic services
-│   ├── hooks/             # Custom React hooks
-│   └── utils/             # Utility functions
-├── main.js                # Electron main process
-├── index.html             # Main HTML file
-├── webpack.config.js      # Webpack configuration
-└── package.json           # Project dependencies and scripts
+├── src/                           # Source code
+│   ├── components/               # React components
+│   │   ├── WorkloadDashboard.jsx # MS Lists integration dashboard
+│   │   └── settings/             # Settings components
+│   ├── services/                 # Business logic services
+│   ├── hooks/                    # Custom React hooks
+│   └── utils/                    # Utility functions
+├── main-process/                 # Electron main process code
+│   ├── services/                 # Backend services
+│   │   ├── WorkloadExcelService.js      # Excel operations
+│   │   ├── WorkloadExcelSyncService.js  # Excel sync
+│   │   ├── FieldMappingService.js       # Field mapping
+│   │   └── WebSocketService.js          # Real-time notifications
+│   └── config/                   # Configuration files
+│       └── defaultFieldMapping.json     # Excel field mappings
+├── docs/                         # Documentation
+│   ├── MS365-WORKLOAD-SETUP.md   # MS 365 setup guide
+│   ├── MS365-POWER-AUTOMATE-FLOWS.md # Power Automate guide
+│   └── WEBSOCKET-USER-GUIDE.md   # WebSocket notifications guide
+├── main.js                       # Electron main process
+├── preload.js                    # Secure IPC preload script
+├── index.html                    # Main HTML file
+└── package.json                  # Project dependencies and scripts
 ```
 
 ## Development
 
 This application is built with:
 - **Electron** - Desktop application framework
-- **React** - User interface library
-- **Webpack** - Module bundler
-- **Babel** - JavaScript compiler
+- **React 19** - User interface library
+- **Vite** - Build tool and dev server
+- **Tailwind CSS** - Utility-first CSS framework
+- **XLSX (SheetJS)** - Excel file operations for MS 365 integration
+- **WebSocket (ws)** - Real-time notifications
 
 ## Building for Distribution
 
@@ -104,8 +126,24 @@ This project is licensed under the ISC License - see the [LICENSE](LICENSE) file
 
 ## Version History
 
-- **v5.0.0** - Current version with modern Electron and React
+- **v5.0.163** - Current version with MS 365 Excel/MS Lists integration
+- **v5.0.130+** - MS 365 Workload Integration implementation
+- **v5.0.0** - Modern Electron and React version
 - **v4.2.3** - Previous HTA version
+
+## MS 365 Integration
+
+The application integrates with Microsoft 365 for workload management:
+
+- **Excel Integration**: Export/import projects and assignments to Excel files
+- **MS Lists Integration**: Sync with Microsoft Lists via Power Automate flows
+- **Bidirectional Sync**: Changes in MS Lists sync back to Excel and the app
+- **Real-time Notifications**: WebSocket server provides instant alerts
+
+For setup instructions, see:
+- [MS 365 Workload Setup Guide](./docs/MS365-WORKLOAD-SETUP.md)
+- [Power Automate Flows Guide](./docs/MS365-POWER-AUTOMATE-FLOWS.md)
+- [WebSocket Notifications Guide](./docs/WEBSOCKET-USER-GUIDE.md)
 
 ## Support
 

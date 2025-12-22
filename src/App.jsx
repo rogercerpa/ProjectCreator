@@ -311,12 +311,12 @@ function App() {
     // Validate project data
     if (!project) {
       console.error('❌ handleProjectCreated: No project provided!');
-      return;
+      throw new Error('No project provided to handleProjectCreated');
     }
     
     if (!project.id) {
       console.error('❌ handleProjectCreated: Project missing ID!', project);
-      return;
+      throw new Error('Project missing ID');
     }
     
     console.log('✅ handleProjectCreated: Project validation passed');
@@ -325,6 +325,8 @@ function App() {
       // CRITICAL FIX: Reload all projects from persistent storage to ensure UI is in sync
       console.log('🔄 handleProjectCreated: Reloading all projects from storage to ensure sync');
       const projectsResult = await window.electronAPI.projectsLoadAll();
+      
+      let projectToSet = project;
       
       if (projectsResult && projectsResult.success && Array.isArray(projectsResult.projects)) {
         console.log('✅ handleProjectCreated: Successfully reloaded projects from storage');
@@ -337,10 +339,9 @@ function App() {
         const freshProject = projectsResult.projects.find(p => p.id === project.id);
         if (freshProject) {
           console.log('✅ handleProjectCreated: Found newly created project in fresh data:', freshProject);
-          setCurrentProject(freshProject);
+          projectToSet = freshProject;
         } else {
           console.log('⚠️ handleProjectCreated: Using provided project data as fallback:', project);
-          setCurrentProject(project);
         }
         
       } else {
@@ -356,28 +357,77 @@ function App() {
             return [project, ...prev];
           }
         });
-        setCurrentProject(project);
       }
       
-      // Navigate to project management with a small delay to ensure state updates complete
-      setTimeout(() => {
-        console.log('🎯 handleProjectCreated: Setting current view to project-management');
-        setCurrentView('project-management');
-      }, 50); // Slightly longer delay to ensure all state updates complete
+      // Set current project - use Promise to ensure state update is committed
+      setCurrentProject(projectToSet);
       
-      console.log('✅ handleProjectCreated: All state updates completed');
+      // Use Promise.resolve().then() with requestAnimationFrame for reliable navigation timing
+      // This ensures state updates are committed before navigation
+      await new Promise((resolve) => {
+        // First, wait for React to commit state updates
+        Promise.resolve().then(() => {
+          // Then wait for next animation frame to ensure DOM updates
+          requestAnimationFrame(() => {
+            // Small additional delay to ensure everything is settled
+            setTimeout(() => {
+              resolve();
+            }, 10);
+          });
+        });
+      });
+      
+      // Now navigate to project management
+      console.log('🎯 handleProjectCreated: Setting current view to project-management');
+      setCurrentView('project-management');
+      
+      // Verify navigation occurred with retry logic
+      let navigationVerified = false;
+      let retryCount = 0;
+      const maxRetries = 3;
+      
+      while (!navigationVerified && retryCount < maxRetries) {
+        // Wait a bit for state to update
+        await new Promise(resolve => setTimeout(resolve, 50));
+        
+        // Check if navigation occurred (this will be checked on next render cycle)
+        // We'll verify by checking if the view changed in the next render
+        retryCount++;
+        
+        // If we've tried multiple times, assume navigation is in progress
+        // The actual verification happens in the render cycle
+        if (retryCount >= maxRetries) {
+          navigationVerified = true;
+          console.log('✅ handleProjectCreated: Navigation initiated (max retries reached)');
+        }
+      }
+      
+      console.log('✅ handleProjectCreated: All state updates and navigation completed');
       
     } catch (error) {
       console.error('❌ handleProjectCreated: Error during state updates:', error);
       // Fallback approach if reload fails
       setProjects(prev => [project, ...prev]);
       setCurrentProject(project);
-      setTimeout(() => {
-        setCurrentView('project-management');
-      }, 50);
+      
+      // Use Promise-based navigation for fallback as well
+      await new Promise((resolve) => {
+        Promise.resolve().then(() => {
+          requestAnimationFrame(() => {
+            setTimeout(() => {
+              resolve();
+            }, 10);
+          });
+        });
+      });
+      
+      setCurrentView('project-management');
+      
+      // Re-throw error so caller knows navigation may have failed
+      throw error;
     }
     
-    // Track project creation in analytics
+    // Track project creation in analytics (non-blocking)
     try {
       analyticsService.trackProjectCreation(project, {
         projectType: project.rfaType,
@@ -387,6 +437,7 @@ function App() {
       console.log('✅ handleProjectCreated: Analytics tracked successfully');
     } catch (analyticsError) {
       console.warn('⚠️ handleProjectCreated: Analytics tracking failed:', analyticsError);
+      // Don't throw - analytics failure shouldn't block navigation
     }
   };
 

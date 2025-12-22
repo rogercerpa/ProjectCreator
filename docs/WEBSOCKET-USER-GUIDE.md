@@ -1,16 +1,20 @@
 # WebSocket Server Configuration Guide
 
-This guide explains how to configure the Project Creator app to connect to the cloud-hosted WebSocket server for real-time workload updates.
+This guide explains how to configure the Project Creator app to connect to the cloud-hosted WebSocket server for real-time notifications.
+
+> **⚠️ Important Note:** The WebSocket server is **supplementary** and provides real-time notifications only. The primary workload management system uses **Microsoft 365 Excel and MS Lists** integration. For workload management setup, see [MS365-WORKLOAD-SETUP.md](./MS365-WORKLOAD-SETUP.md).
 
 ---
 
 ## 🔌 What is the WebSocket Server?
 
-The WebSocket server enables real-time features in the Workload Dashboard:
-- **Live updates** when projects are assigned
+The WebSocket server provides **real-time notifications** and supplementary features:
+- **Instant notifications** when projects are assigned or updated
 - **User presence** - see who's online
-- **Instant notifications** for workload changes
+- **Real-time alerts** for workload changes
 - **Conflict detection** when multiple users work on same project
+
+**Note:** Workload data management (assignments, hours, status) is handled through the MS 365 Excel/MS Lists integration, not through WebSocket. WebSocket only provides notifications about changes.
 
 ---
 
@@ -80,10 +84,12 @@ If you see an error, double-check the URL and try again.
 
 After configuring:
 
-1. Open the **Workload Dashboard**
-2. Look for connection indicator (usually top-right)
+1. Open the **Workload Dashboard** (or any view in the app)
+2. Look for connection indicator in the app (if available)
 3. **Green dot (🟢)** = Connected ✅
 4. **Red dot (🔴)** = Not connected ❌
+
+**Note:** The Workload Dashboard now primarily shows a summary view and redirects to MS Lists for detailed workload management. WebSocket notifications will appear as toast notifications in the app.
 
 ---
 
@@ -164,19 +170,20 @@ Contact your IT administrator with:
 
 ### What Data is Shared?
 
-The WebSocket server only transmits:
+The WebSocket server only transmits **notifications and presence information**:
 - User presence (who's online)
 - Project assignment notifications
 - Workload update alerts
-- Status changes
+- Status change notifications
 
 **The server does NOT store:**
 - ❌ Project details
 - ❌ Confidential information
 - ❌ Your personal data
 - ❌ Any sensitive information
+- ❌ Workload data (this is managed via Excel/MS Lists)
 
-The server is just a **message relay** - it passes messages between team members in real-time.
+The server is just a **message relay** - it passes notification messages between team members in real-time. All actual workload data is managed through the MS 365 Excel/MS Lists integration.
 
 ---
 
@@ -222,7 +229,7 @@ Subject: WebSocket Server Configuration - Project Creator
 
 Hello team,
 
-To enable real-time workload updates in Project Creator:
+To enable real-time notifications in Project Creator:
 
 1. Open Project Creator app
 2. Go to Settings → Workload Settings
@@ -233,9 +240,11 @@ To enable real-time workload updates in Project Creator:
 
 This enables:
 - Live project assignment notifications
-- Real-time workload updates
+- Real-time change alerts
 - User presence indicators
-- Conflict detection
+- Conflict detection notifications
+
+**Note:** For actual workload management (creating assignments, updating hours, etc.), use the MS 365 Excel/MS Lists integration. WebSocket only provides notifications about these changes.
 
 Questions? Contact IT support.
 
@@ -248,13 +257,13 @@ Thanks!
 
 After connecting to the cloud server, you get:
 
-✅ **Real-time Updates**
-- See changes instantly when projects are assigned
-- No need to refresh manually
+✅ **Real-time Notifications**
+- Get instant alerts when projects are assigned or updated
+- No need to manually check for changes
 
 ✅ **Team Collaboration**
 - See who's online and working
-- Get notified when teammates make changes
+- Get notified when teammates make changes in MS Lists
 
 ✅ **Conflict Prevention**
 - Get alerts if multiple people work on same project
@@ -263,6 +272,8 @@ After connecting to the cloud server, you get:
 ✅ **Always Available**
 - Server runs 24/7
 - Connect from office, home, or anywhere
+
+**Important:** These are **notifications only**. To actually manage workload (assign projects, update hours, change status), use the MS 365 Excel/MS Lists integration. See [MS365-WORKLOAD-SETUP.md](./MS365-WORKLOAD-SETUP.md) for setup instructions.
 
 ---
 
@@ -301,9 +312,14 @@ Contact your IT department - they can:
 - Green indicator in Workload Dashboard 🟢
 
 **What you get:**
-- Real-time project updates
-- Team collaboration features
-- Instant notifications
+- Real-time notifications about project changes
+- Team collaboration features (presence, alerts)
+- Instant alerts when assignments are created or updated
+
+**What you don't get:**
+- Workload data management (use MS Lists for this)
+- Assignment creation/editing (use MS Lists for this)
+- Hours tracking (use MS Lists for this)
 
 ---
 
@@ -330,11 +346,13 @@ Contact your IT department - they can:
 - [ ] Saw success message ✅
 - [ ] Clicked "Save Settings"
 - [ ] Restarted application
-- [ ] Verified green connection indicator in Workload Dashboard
+- [ ] Verified connection status (if indicator available)
 
 ---
 
-**All set?** You're now connected to real-time workload updates! 🎉
+**All set?** You're now connected to real-time notifications! 🎉
+
+**Note:** For workload management, make sure you've also set up the MS 365 Excel/MS Lists integration. See [MS365-WORKLOAD-SETUP.md](./MS365-WORKLOAD-SETUP.md) for details.
 
 **Need help?** Contact your IT administrator with this guide.
 

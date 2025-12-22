@@ -49,6 +49,8 @@ const ProjectWizard = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [notification, setNotification] = useState(null);
+  // Use ref for navigation state to ensure synchronous access in finally block
+  const isNavigatingAwayRef = useRef(false);
   
   // Smart assignment state
   const [selectedAssignee, setSelectedAssignee] = useState(null);
@@ -965,12 +967,23 @@ const ProjectWizard = ({
           console.log('ProjectWizard: onProjectCreated =', typeof onProjectCreated);
           console.log('ProjectWizard: savedProject =', savedProject);
 
-          if (mode === 'create' && typeof onProjectCreated === 'function') {
+          // Set flag to indicate navigation is in progress - prevents loading state reset
+          isNavigatingAwayRef.current = true;
+
+          let navigationSuccess = false;
+          let navigationError = null;
+
+          // Determine which handler to use - prefer 'create' mode but fallback to 'edit' if needed
+          const shouldUseCreateHandler = mode === 'create' && typeof onProjectCreated === 'function';
+          const shouldUseUpdateHandler = !shouldUseCreateHandler && typeof onProjectUpdated === 'function';
+
+          if (shouldUseCreateHandler) {
             console.log('ProjectWizard: Calling onProjectCreated with saved project:', savedProject);
             try {
               // Call the navigation function and wait for completion
               await onProjectCreated(savedProject);
               console.log('ProjectWizard: ✅ onProjectCreated completed successfully');
+              navigationSuccess = true;
               
               setNotification({
                 type: 'success',
@@ -979,17 +992,21 @@ const ProjectWizard = ({
               
             } catch (navError) {
               console.error('ProjectWizard: ❌ Error in onProjectCreated:', navError);
+              navigationError = navError;
               setNotification({
                 type: 'warning',
                 message: '✅ Project saved successfully, but navigation failed. Please check the Projects list.'
               });
-              // Don't throw the error, project is saved successfully
+              // Reset navigation flag on error so loading state can be reset
+              isNavigatingAwayRef.current = false;
+              setIsLoading(false);
             }
-          } else if (typeof onProjectUpdated === 'function') {
+          } else if (shouldUseUpdateHandler) {
             console.log('ProjectWizard: Calling onProjectUpdated with saved project:', savedProject);
             try {
               await onProjectUpdated(savedProject);
               console.log('ProjectWizard: ✅ onProjectUpdated completed successfully');
+              navigationSuccess = true;
               
               setNotification({
                 type: 'success',
@@ -998,11 +1015,14 @@ const ProjectWizard = ({
               
             } catch (navError) {
               console.error('ProjectWizard: ❌ Error in onProjectUpdated:', navError);
+              navigationError = navError;
               setNotification({
                 type: 'warning',
                 message: '✅ Project updated successfully, but navigation failed. Please check the Projects list.'
               });
-              // Don't throw the error, project is saved successfully
+              // Reset navigation flag on error so loading state can be reset
+              isNavigatingAwayRef.current = false;
+              setIsLoading(false);
             }
           } else {
             console.error('ProjectWizard: ❌ No valid navigation function available!');
@@ -1010,27 +1030,65 @@ const ProjectWizard = ({
             console.error('ProjectWizard: onProjectCreated =', onProjectCreated);
             console.error('ProjectWizard: onProjectUpdated =', onProjectUpdated);
             
+            // No navigation handler available - reset flags
+            isNavigatingAwayRef.current = false;
+            setIsLoading(false);
+            
             setNotification({
               type: 'warning',
               message: '✅ Project saved successfully! Please navigate to the Projects list to view it.'
             });
           }
 
-          // Wait a moment to ensure all UI updates are complete
-          setTimeout(() => {
-            console.log('ProjectWizard: All navigation and UI updates should be complete');
-          }, 200);
+          // If navigation succeeded, don't reset loading state - we're navigating away
+          // The component will unmount, so state reset is not needed
+          if (navigationSuccess) {
+            console.log('ProjectWizard: Navigation successful, keeping loading state until unmount');
+            return;
+          }
 
-          // Don't proceed to next step since we're navigating away
+          // If we get here, navigation failed - already reset flags above
           return;
 
         } catch (step2Error) {
           console.error('Step 2 completion failed:', step2Error);
-          setError('Failed to complete project creation. Please try again.');
-          setNotification({
-            type: 'error',
-            message: 'Unable to complete project creation. Please verify your data and try again.'
-          });
+          
+          // Reset navigation flag on error
+          isNavigatingAwayRef.current = false;
+          
+          // Distinguish between save errors and navigation errors
+          const isSaveError = step2Error.message && (
+            step2Error.message.includes('Failed to save project') ||
+            step2Error.message.includes('database') ||
+            step2Error.message.includes('storage')
+          );
+          
+          const isNavigationError = step2Error.message && (
+            step2Error.message.includes('navigation') ||
+            step2Error.message.includes('No project provided') ||
+            step2Error.message.includes('Project missing ID')
+          );
+          
+          if (isSaveError) {
+            setError('Failed to save project. Please check your connection and try again.');
+            setNotification({
+              type: 'error',
+              message: 'Unable to save project to database. Please verify your connection and try again.'
+            });
+          } else if (isNavigationError) {
+            setError('Project saved successfully, but navigation failed.');
+            setNotification({
+              type: 'warning',
+              message: '✅ Project saved successfully, but navigation failed. Please navigate to the Projects list manually.'
+            });
+          } else {
+            setError('Failed to complete project creation. Please try again.');
+            setNotification({
+              type: 'error',
+              message: 'Unable to complete project creation. Please verify your data and try again.'
+            });
+          }
+          
           return; // Don't proceed if step 2 fails
         }
       }
@@ -1131,7 +1189,12 @@ const ProjectWizard = ({
       }
       
     } finally {
-      setIsLoading(false);
+      // Only reset loading state if we're not navigating away
+      // When navigating away, the component will unmount and state reset is not needed
+      // This prevents the button from blinking before navigation completes
+      if (!isNavigatingAwayRef.current) {
+        setIsLoading(false);
+      }
       // End performance timer
       performanceMonitoringService.endTimer(timerId);
     }
