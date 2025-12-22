@@ -225,10 +225,10 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onRefresh }) 
                 e.stopPropagation();
                 onProjectDelete(project.id, project.projectName);
               }}
-              className="flex-shrink-0 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-error-600 dark:hover:text-error-400 hover:bg-error-50 dark:hover:bg-error-900/20 rounded transition-all text-lg font-bold"
+              className="flex-shrink-0 w-8 h-8 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-error-600 dark:hover:text-error-400 hover:bg-error-50 dark:hover:bg-error-900/20 rounded-md transition-all duration-200"
               title="Delete Project"
             >
-              ×
+              🗑️
             </button>
           )}
         </div>
