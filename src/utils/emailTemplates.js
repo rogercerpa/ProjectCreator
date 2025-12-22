@@ -1,11 +1,40 @@
 const EMAIL_REGEX = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
 
+const STORAGE_KEY_TEMPLATE = 'das-paid-services-email-template';
+const STORAGE_KEY_SIGNATURE = 'das-paid-services-email-signature';
+
+const DEFAULT_TEMPLATE = `Hello {{repName}},
+
+Thank you for submittal this request to the Design Solutions team. This request falls under the Paid services package, please proceed on submitting your order and once received we will proceed with your project.
+
+Lighting Pages: {{lightingPages}}
+Charge per page: {{costPerPage}}
+Total cost for the service: {{totalFee}}
+
+Thank you`;
+
 const formatUSD = (value) => {
   const amount = Number(value || 0);
   return amount.toLocaleString('en-US', {
     style: 'currency',
     currency: 'USD'
   });
+};
+
+// Get saved template from localStorage
+const getSavedTemplate = () => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem(STORAGE_KEY_TEMPLATE) || DEFAULT_TEMPLATE;
+  }
+  return DEFAULT_TEMPLATE;
+};
+
+// Get saved signature from localStorage
+const getSavedSignature = () => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem(STORAGE_KEY_SIGNATURE) || '';
+  }
+  return '';
 };
 
 const sanitizeSubjectPart = (value) => {
@@ -109,22 +138,23 @@ export const buildPaidServicesEmail = (project = {}, options = {}) => {
 
   const subject = subjectParts.join(' - ');
   const repName = extractRepName(project.repContacts);
-  const signature = options.signature ? `\n${options.signature}` : '';
+  
+  // Get saved template and signature
+  const savedTemplate = getSavedTemplate();
+  const savedSignature = getSavedSignature();
+  const signature = options.signature || savedSignature;
 
-  const bodyLines = [
-    `Hello ${repName},`,
-    '',
-    'Thank you for submittal this request to the Design Solutions team. This request falls under the Paid services package, please proceed on submitting your order and once received we will proceed with your project.',
-    '',
-    `Lighting Pages: ${lightingPages}`,
-    `Charge per page: ${formatUSD(costPerPage)}`,
-    `Total cost for the service: ${formatUSD(totalFee)}`,
-    '',
-    'Thank you',
-    signature.trim()
-  ].filter(Boolean);
+  // Replace placeholders in template
+  let body = savedTemplate
+    .replace(/\{\{repName\}\}/g, repName)
+    .replace(/\{\{lightingPages\}\}/g, lightingPages.toString())
+    .replace(/\{\{costPerPage\}\}/g, formatUSD(costPerPage))
+    .replace(/\{\{totalFee\}\}/g, formatUSD(totalFee));
 
-  const body = bodyLines.join('\n');
+  // Append signature if available
+  if (signature && signature.trim()) {
+    body += `\n\n${signature.trim()}`;
+  }
   const mailto = `mailto:${encodeURIComponent(toEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
   return {

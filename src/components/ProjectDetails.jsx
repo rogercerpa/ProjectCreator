@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import TriageCalculatorModal from './TriageCalculatorModal';
 import NotificationToast from './NotificationToast';
 import ZipSelectionDialog from './ZipSelectionDialog';
+import EmailTemplateEditor from './shared/EmailTemplateEditor';
 import { openPaidServicesEmail } from '../utils/emailTemplates';
 
 /**
@@ -16,6 +17,7 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
   const [matchingZipFiles, setMatchingZipFiles] = useState([]);
   const [isDownloading, setIsDownloading] = useState(false);
   const [showZipSelectionDialog, setShowZipSelectionDialog] = useState(false);
+  const [showEmailEditor, setShowEmailEditor] = useState(false);
   const hasPaidServices = !!project?.dasPaidServiceEnabled;
   const canSendPaidServiceEmail = hasPaidServices &&
     project?.dasRepEmail &&
@@ -577,6 +579,14 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
               </button>
               <button
                 type="button"
+                className="btn btn-outline btn-sm"
+                onClick={() => setShowEmailEditor(true)}
+                title="Edit email template and signature"
+              >
+                ✏️ Edit Template
+              </button>
+              <button
+                type="button"
                 className="btn btn-outline"
                 onClick={onEdit}
               >
@@ -858,6 +868,13 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
         zipFiles={matchingZipFiles}
         onSelect={handleZipSelect}
         onCancel={() => setShowZipSelectionDialog(false)}
+      />
+
+      {/* Email Template Editor Modal */}
+      <EmailTemplateEditor
+        isOpen={showEmailEditor}
+        onClose={() => setShowEmailEditor(false)}
+        project={project}
       />
     </div>
   );

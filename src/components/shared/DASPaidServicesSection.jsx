@@ -1,10 +1,18 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
+import EmailTemplateEditor from './EmailTemplateEditor';
 
 const BASE_NEW_RATE = 350;
 const BASE_REVISION_RATE = 265;
 const EMAIL_REGEX = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
 
 const STATUS_OPTIONS = ['Waiting on Order', 'Paid', 'Cancelled', 'Fee Waived'];
+
+const SERVICE_TYPE_OPTIONS = [
+  'DESIGN APPLICATION LAYOUT',
+  'DESIGN APPLICATION REVISED LAYOUT',
+  'DESIGN APPLICATION REVISED SUBMITTAL',
+  'DESIGN APPLICATION SUBMITTAL'
+];
 const COST_OPTIONS = [
   { value: 'new', label: 'New ($350)' },
   { value: 'revision', label: 'Revision ($265)' },
@@ -392,6 +400,31 @@ const DASPaidServicesSection = ({
     return true;
   }, [dasPaidServiceEnabled, dasRepEmail, resolvedRepEmailList, dasLightingPages, dasCostPerPage, dasFee]);
 
+  const [selectedServiceType, setSelectedServiceType] = useState('');
+  const [copySuccess, setCopySuccess] = useState({ bom: false, serviceType: false });
+  const [showEmailEditor, setShowEmailEditor] = useState(false);
+
+  const handleCopyBOM = async () => {
+    try {
+      await navigator.clipboard.writeText('Design Services');
+      setCopySuccess({ ...copySuccess, bom: true });
+      setTimeout(() => setCopySuccess({ ...copySuccess, bom: false }), 2000);
+    } catch (error) {
+      console.error('Failed to copy to clipboard:', error);
+    }
+  };
+
+  const handleCopyServiceType = async () => {
+    if (!selectedServiceType) return;
+    try {
+      await navigator.clipboard.writeText(selectedServiceType);
+      setCopySuccess({ ...copySuccess, serviceType: true });
+      setTimeout(() => setCopySuccess({ ...copySuccess, serviceType: false }), 2000);
+    } catch (error) {
+      console.error('Failed to copy to clipboard:', error);
+    }
+  };
+
   return (
     <section className={sectionClasses}>
       <div className="flex flex-col gap-2">
@@ -430,6 +463,64 @@ const DASPaidServicesSection = ({
 
       {dasPaidServiceEnabled && (
         <div className="space-y-5">
+          {/* Agile Website Clipboard Copy Section */}
+          <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+            <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">📋 Copy to Agile Website</h4>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 flex-shrink-0 min-w-[120px]">
+                  Version Label:
+                </label>
+                <div className="flex items-center gap-2 flex-1">
+                  <input
+                    type="text"
+                    readOnly
+                    value="Design Services"
+                    className="input flex-1 bg-white dark:bg-gray-800"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCopyBOM}
+                    className="btn btn-outline btn-sm whitespace-nowrap"
+                    disabled={readOnly}
+                    title="Copy 'Design Services' to clipboard"
+                  >
+                    {copySuccess.bom ? '✓ Copied!' : '📋 Copy'}
+                  </button>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 flex-shrink-0 min-w-[120px]">
+                  Service Type:
+                </label>
+                <div className="flex items-center gap-2 flex-1">
+                  <select
+                    value={selectedServiceType}
+                    onChange={(e) => setSelectedServiceType(e.target.value)}
+                    disabled={readOnly}
+                    className="input flex-1"
+                  >
+                    <option value="">Select Service Type</option>
+                    {SERVICE_TYPE_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={handleCopyServiceType}
+                    disabled={readOnly || !selectedServiceType}
+                    className="btn btn-outline btn-sm whitespace-nowrap"
+                    title="Copy selected service type to clipboard"
+                  >
+                    {copySuccess.serviceType ? '✓ Copied!' : '📋 Copy'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div>
             <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">RFA Type Cost per Page</p>
             <div className="grid grid-cols-2 md:grid-cols-1 gap-3">
@@ -602,21 +693,38 @@ const DASPaidServicesSection = ({
                 <span className="text-xs text-error-600 mt-1">{fieldError(errors, 'dasRepEmail')}</span>
               )}
             </div>
-            <div className="flex flex-col justify-end">
+            <div className="flex flex-col justify-end gap-2">
               {showEmailButton && (
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  disabled={readOnly || emailButtonDisabled || !canSendEmail}
-                  onClick={onRequestEmail}
-                >
-                  {emailButtonLabel}
-                </button>
+                <>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    disabled={readOnly || emailButtonDisabled || !canSendEmail}
+                    onClick={onRequestEmail}
+                  >
+                    {emailButtonLabel}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm"
+                    onClick={() => setShowEmailEditor(true)}
+                    title="Edit email template and signature"
+                  >
+                    ✏️ Edit Template
+                  </button>
+                </>
               )}
             </div>
           </div>
         </div>
       )}
+
+      {/* Email Template Editor Modal */}
+      <EmailTemplateEditor
+        isOpen={showEmailEditor}
+        onClose={() => setShowEmailEditor(false)}
+        project={formData}
+      />
     </section>
   );
 };
