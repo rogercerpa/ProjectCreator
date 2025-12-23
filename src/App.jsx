@@ -953,6 +953,7 @@ function App() {
                 setCurrentView('project-management');
               }}
               onProjectDelete={handleProjectDelete}
+              onNewProject={() => handleSmartViewChange('wizard')}
               onRefresh={async () => {
                 console.log('🔄 Manual refresh triggered');
                 try {

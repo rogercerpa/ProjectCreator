@@ -238,8 +238,12 @@ function ProjectTableView({
 
   return (
     <>
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden text-sm">
-        <div className="flex justify-end items-center px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+      <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-3xl shadow-xl overflow-hidden text-sm">
+        <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50">
+          <div className="flex items-center gap-2">
+            <span className="flex h-2 w-2 rounded-full bg-primary-500 animate-pulse"></span>
+            <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Database Explorer</span>
+          </div>
           <ColumnVisibilityControl
             columns={allColumns}
             visibleColumns={visibleColumns}
@@ -249,152 +253,178 @@ function ProjectTableView({
             onResetColumns={handleResetColumns}
           />
         </div>
-        <div className="overflow-x-auto" ref={tableScrollRef}>
+        <div className="overflow-x-auto custom-scrollbar" ref={tableScrollRef}>
           <table className="w-full border-collapse">
-            <thead className="sticky top-0 z-10 bg-gray-100 dark:bg-gray-700">
-            <tr>
-              {visibleColumnsData.map((column) => (
-                <th
-                  key={column.key}
-                  draggable={true}
-                  onDragStart={(e) => handleDragStart(e, column.key)}
-                  onDragOver={handleDragOver}
-                  onDrop={(e) => handleDrop(e, column.key)}
-                  onDragEnd={handleDragEnd}
-                  className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 ${column.sortable ? 'cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600' : ''} ${sortBy === column.key ? 'text-primary-600 dark:text-primary-400' : ''} ${draggedColumn === column.key ? 'opacity-50' : ''} transition-opacity`}
-                  style={{ width: column.width, minWidth: column.minWidth, cursor: 'move' }}
-                  onClick={column.sortable ? () => handleHeaderClick(column.key) : undefined}
-                  title="Drag to reorder columns"
+            <thead>
+              <tr className="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
+                {visibleColumnsData.map((column) => (
+                  <th
+                    key={column.key}
+                    draggable={true}
+                    onDragStart={(e) => handleDragStart(e, column.key)}
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDrop(e, column.key)}
+                    onDragEnd={handleDragEnd}
+                    className={`px-6 py-4 text-left text-[10px] font-black uppercase tracking-[0.1em] text-gray-400 dark:text-gray-500 border-b border-gray-100 dark:border-gray-700 ${column.sortable ? 'cursor-pointer hover:text-primary-600 transition-colors' : ''} ${sortBy === column.key ? 'text-primary-600 dark:text-primary-400 bg-primary-50/30 dark:bg-primary-900/10' : ''} ${draggedColumn === column.key ? 'opacity-50' : ''}`}
+                    style={{ width: column.width, minWidth: column.minWidth, cursor: 'move' }}
+                    onClick={column.sortable ? () => handleHeaderClick(column.key) : undefined}
+                    title="Drag to reorder columns"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span>{column.label}</span>
+                      {column.sortable && (
+                        <span className={`transition-transform duration-300 ${sortBy === column.key && sortOrder === 'desc' ? 'rotate-180' : ''}`}>
+                          {sortBy === column.key ? (
+                            <svg className="w-3 h-3 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M5 15l7-7 7 7"/></svg>
+                          ) : (
+                            <svg className="w-3 h-3 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M12 5v14M5 12l7-7 7 7"/></svg>
+                          )}
+                        </span>
+                      )}
+                    </div>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
+              {projects.map((project) => (
+                <tr
+                  key={project.id}
+                  className="group hover:bg-primary-50/30 dark:hover:bg-primary-900/10 transition-all cursor-pointer"
+                  onClick={(e) => handleRowClick(project, e)}
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="text-gray-400 dark:text-gray-500">⋮⋮</span>
-                    <span>{column.label}</span>
-                    {column.sortable && (
-                      <span className="sort-icon">{getSortIcon(column.key)}</span>
-                    )}
-                  </div>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {projects.map((project) => (
-              <tr
-                key={project.id}
-                className={`border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer ${getStatusColor(project)}`}
-                onClick={(e) => handleRowClick(project, e)}
-              >
-                {visibleColumnsData.map((column) => {
-                  switch (column.key) {
-                    case 'projectName':
-                      return (
-                        <td key={column.key} className="px-4 py-3 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                          <div className="name-container">
-                            <span className="project-name" title={project.projectName}>
-                              {project.projectName || 'Untitled Project'}
-                            </span>
-                          </div>
-                        </td>
-                      );
-                    case 'rfaNumber':
-                      return (
-                        <td key={column.key} className="px-4 py-3 text-sm text-primary-600 dark:text-primary-400 font-medium">
-                          <span className="rfa-number">{project.rfaNumber || 'N/A'}</span>
-                        </td>
-                      );
-                    case 'rfaValue':
-                      return (
-                        <td key={column.key} className="px-4 py-3 text-sm text-green-600 dark:text-green-400 font-medium">
-                          <span className="rfa-value">{formatCurrency(project.rfaValue)}</span>
-                        </td>
-                      );
-                    case 'rfaType':
-                      return (
-                        <td key={column.key} className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
-                          <span className="rfa-type">{project.rfaType || 'N/A'}</span>
-                        </td>
-                      );
-                    case 'projectType':
-                      return (
-                        <td key={column.key} className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
-                          <span className="project-type">{project.projectType || project.customProjectType || 'N/A'}</span>
-                        </td>
-                      );
-                    case 'agentNumber':
-                      return (
-                        <td key={column.key} className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
-                          <span className="agent-number">{project.agentNumber || 'N/A'}</span>
-                        </td>
-                      );
-                    case 'projectContainer':
-                      return (
-                        <td key={column.key} className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
-                          <span className="project-container">{project.projectContainer || 'N/A'}</span>
-                        </td>
-                      );
-                    case 'dasPaidServices':
-                      return (
-                        <td key={column.key} className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
-                          {project.dasPaidServiceEnabled ? (
-                            <div className="flex flex-col gap-1">
-                              <span className="font-medium text-primary-600 dark:text-primary-400">
-                                {project.dasStatus || 'Waiting on Order'}
+                  {visibleColumnsData.map((column) => {
+                    switch (column.key) {
+                      case 'projectName':
+                        return (
+                          <td key={column.key} className="px-6 py-4">
+                            <div className="flex flex-col">
+                              <span className="text-sm font-bold text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors" title={project.projectName}>
+                                {project.projectName || 'Untitled Project'}
                               </span>
-                              {project.dasFee > 0 && (
-                                <span className="text-xs text-gray-500 dark:text-gray-400">
-                                  {formatCurrency(project.dasFee)}
+                              <span className="text-[10px] text-gray-400 uppercase tracking-wider mt-0.5">
+                                {project.projectType || 'Standard'}
+                              </span>
+                            </div>
+                          </td>
+                        );
+                      case 'rfaNumber':
+                        return (
+                          <td key={column.key} className="px-6 py-4">
+                            <span className="px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-mono text-[11px] font-bold">
+                              {project.rfaNumber || 'N/A'}
+                            </span>
+                          </td>
+                        );
+                      case 'rfaValue':
+                        return (
+                          <td key={column.key} className="px-6 py-4">
+                            <span className="text-sm font-bold text-success-600 dark:text-success-400">
+                              {formatCurrency(project.rfaValue)}
+                            </span>
+                          </td>
+                        );
+                      case 'rfaType':
+                        return (
+                          <td key={column.key} className="px-6 py-4">
+                            <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
+                              {project.rfaType || 'N/A'}
+                            </span>
+                          </td>
+                        );
+                      case 'projectType':
+                        return (
+                          <td key={column.key} className="px-6 py-4">
+                            <span className="text-xs text-gray-600 dark:text-gray-300">
+                              {project.projectType || project.customProjectType || 'N/A'}
+                            </span>
+                          </td>
+                        );
+                      case 'agentNumber':
+                        return (
+                          <td key={column.key} className="px-6 py-4 text-xs font-medium text-gray-500">
+                            {project.agentNumber || 'N/A'}
+                          </td>
+                        );
+                      case 'projectContainer':
+                        return (
+                          <td key={column.key} className="px-6 py-4 text-xs font-mono text-gray-400">
+                            {project.projectContainer || 'N/A'}
+                          </td>
+                        );
+                      case 'dasPaidServices':
+                        return (
+                          <td key={column.key} className="px-6 py-4">
+                            {project.dasPaidServiceEnabled ? (
+                              <div className="flex flex-col gap-1">
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest ${
+                                  project.dasStatus === 'Paid' ? 'bg-success-100 text-success-700 dark:bg-success-900/30' :
+                                  project.dasStatus === 'Fee Waived' ? 'bg-info-100 text-info-700 dark:bg-info-900/30' :
+                                  'bg-warning-100 text-warning-700 dark:bg-warning-900/30'
+                                }`}>
+                                  {project.dasStatus || 'Pending'}
                                 </span>
-                              )}
-                              {project.dasStatus === 'Fee Waived' && (
-                                <span className="text-xs text-gray-500 dark:text-gray-400">Fee Waived</span>
+                                {project.dasFee > 0 && (
+                                  <span className="text-[10px] font-bold text-gray-400 ml-1">
+                                    {formatCurrency(project.dasFee)}
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-[10px] font-bold text-gray-300 dark:text-gray-600 uppercase tracking-widest">Inactive</span>
+                            )}
+                          </td>
+                        );
+                      case 'ecd':
+                        return (
+                          <td key={column.key} className="px-6 py-4">
+                            <div className="flex flex-col">
+                              <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                                {project.ecd ? formatDate(project.ecd).split(',')[0] : 'N/A'}
+                              </span>
+                              <span className="text-[9px] text-gray-400">
+                                {project.ecd ? formatDate(project.ecd).split(',')[1] : ''}
+                              </span>
+                            </div>
+                          </td>
+                        );
+                      case 'requestedDate':
+                        return (
+                          <td key={column.key} className="px-6 py-4">
+                            <span className="text-xs text-gray-500">
+                              {project.requestedDate ? formatDate(project.requestedDate).split(',')[0] : 'N/A'}
+                            </span>
+                          </td>
+                        );
+                      case 'actions':
+                        return (
+                          <td key={column.key} className="px-6 py-4 text-right">
+                            <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              {onProjectDelete && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onProjectDelete(project.id, project.projectName);
+                                  }}
+                                  className="p-2 rounded-lg text-gray-400 hover:text-error-600 hover:bg-error-50 dark:hover:bg-error-900/20 transition-all"
+                                  title="Delete Project"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                </button>
                               )}
                             </div>
-                          ) : (
-                            <span className="text-gray-400 dark:text-gray-500">Not Enabled</span>
-                          )}
-                        </td>
-                      );
-                    case 'ecd':
-                      return (
-                        <td key={column.key} className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
-                          <span className="date-value">{project.ecd ? formatDate(project.ecd) : 'N/A'}</span>
-                        </td>
-                      );
-                    case 'requestedDate':
-                      return (
-                        <td key={column.key} className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
-                          <span className="date-value">{project.requestedDate ? formatDate(project.requestedDate) : 'N/A'}</span>
-                        </td>
-                      );
-                    case 'actions':
-                      return (
-                        <td key={column.key} className="px-4 py-3 text-sm">
-                          <div className="flex gap-2">
-                            {onProjectDelete && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onProjectDelete(project.id, project.projectName);
-                                }}
-                                className="flex items-center justify-center w-8 h-8 rounded-md text-gray-500 dark:text-gray-400 hover:text-error-600 dark:hover:text-error-400 hover:bg-error-50 dark:hover:bg-error-900/20 transition-all duration-200"
-                                title="Delete Project"
-                              >
-                                🗑️
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      );
-                    default:
-                      return null;
-                  }
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                          </td>
+                        );
+                      default:
+                        return null;
+                    }
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
     
     {/* Sticky horizontal scrollbar at bottom of viewport */}
     {showStickyScroll && (

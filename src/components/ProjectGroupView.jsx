@@ -11,6 +11,28 @@ function ProjectGroupView({
   renderCardView,
   renderTableView
 }) {
+  const [collapsedGroups, setCollapsedGroups] = React.useState(() => {
+    const saved = localStorage.getItem(`projectGroupCollapsed_${groupBy}`);
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  // Keep collapsed state in sync when groupBy changes
+  React.useEffect(() => {
+    const saved = localStorage.getItem(`projectGroupCollapsed_${groupBy}`);
+    setCollapsedGroups(saved ? JSON.parse(saved) : {});
+  }, [groupBy]);
+
+  const toggleGroup = (groupKey) => {
+    setCollapsedGroups(prev => {
+      const newState = {
+        ...prev,
+        [groupKey]: !prev[groupKey]
+      };
+      localStorage.setItem(`projectGroupCollapsed_${groupBy}`, JSON.stringify(newState));
+      return newState;
+    });
+  };
+
   const getGroupValue = (project, groupField) => {
     switch (groupField) {
       case 'status':
@@ -168,43 +190,58 @@ function ProjectGroupView({
   }
 
   return (
-    <div className="flex flex-col gap-8 lg:gap-6 md:gap-4">
+    <div className="flex flex-col gap-10">
       {sortedGroupKeys.map(groupKey => {
         const groupProjects = groupedProjects[groupKey];
         const groupIcon = getGroupIcon(groupBy, groupKey);
         const groupColorClass = getGroupColorClass(groupBy, groupKey);
+        const isCollapsed = collapsedGroups[groupKey];
         
         return (
           <div 
             key={groupKey} 
-            className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm transition-all hover:shadow-lg animate-slideUp focus-within:outline-2 focus-within:outline-primary-600 focus-within:outline-offset-2"
+            className="group/item animate-slideUp"
           >
-            <div className={`${paddingClasses.header} bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 relative overflow-hidden`}>
-              {/* Top gradient accent */}
-              <div className={`absolute top-0 left-0 right-0 h-0.5 ${groupColorClass}`} />
+            <div 
+              onClick={() => toggleGroup(groupKey)}
+              className="flex items-center justify-between mb-6 cursor-pointer select-none"
+            >
+              <div className="flex items-center gap-4">
+                <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${groupColorClass} text-white shadow-lg shadow-primary-500/20 group-hover/item:scale-110 transition-transform duration-300`}>
+                  <span className="text-2xl">{groupIcon}</span>
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight leading-none mb-1">
+                    {groupKey}
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary-500 animate-pulse"></span>
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">
+                      {groupProjects.length} Verified Entries
+                    </span>
+                  </div>
+                </div>
+              </div>
               
-              <div className="flex items-center gap-3">
-                <span className={`${paddingClasses.iconSize} flex items-center justify-center bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700`}>
-                  {groupIcon}
-                </span>
-                <h3 className={`${paddingClasses.title} font-semibold text-gray-800 dark:text-gray-200 m-0 flex-1`}>
-                  {groupKey}
-                </h3>
-                <span className="text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 px-3 py-1 rounded-xl border border-gray-200 dark:border-gray-700 font-medium">
-                  {groupProjects.length} project{groupProjects.length !== 1 ? 's' : ''}
-                </span>
+              <div className="flex items-center gap-4">
+                <div className={`h-px w-24 sm:w-48 lg:w-64 bg-gray-100 dark:bg-gray-800 group-hover/item:w-full transition-all duration-700`} />
+                <div className={`p-2 rounded-xl border-2 border-gray-100 dark:border-gray-800 text-gray-400 group-hover/item:text-primary-500 group-hover/item:border-primary-500/20 transition-all ${isCollapsed ? 'rotate-180' : ''}`}>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7"/></svg>
+                </div>
               </div>
             </div>
             
-            <div className={viewMode === 'table' ? 'p-0' : paddingClasses.content}>
-              {viewMode === 'table' ? (
-                renderTableView(groupProjects)
-              ) : (
-                <div className={`grid ${gridCols} gap-6 lg:gap-5 md:gap-4 md:grid-cols-1`}>
-                  {renderCardView(groupProjects)}
-                </div>
-              )}
-            </div>
+            {!isCollapsed && (
+              <div className={`animate-fadeIn ${viewMode === 'table' ? 'bg-white dark:bg-gray-800 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden' : ''}`}>
+                {viewMode === 'table' ? (
+                  renderTableView(groupProjects)
+                ) : (
+                  <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6`}>
+                    {renderCardView(groupProjects)}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         );
       })}

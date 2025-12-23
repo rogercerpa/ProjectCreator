@@ -3,7 +3,7 @@ import ViewToolbar from './ViewToolbar';
 import ProjectTableView from './ProjectTableView';
 import ProjectGroupView from './ProjectGroupView';
 
-function ProjectList({ projects, onProjectSelect, onProjectDelete, onRefresh }) {
+function ProjectList({ projects, onProjectSelect, onProjectDelete, onNewProject, onRefresh }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [isScanning, setIsScanning] = useState(false);
   const [scanNotification, setScanNotification] = useState(null);
@@ -196,83 +196,66 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onRefresh }) 
   };
 
   const renderCardView = (projectsToRender = sortedProjects) => {
-    const getCardBorderColor = (project) => {
-      const triage = project.triageResults?.totalTriage || 0;
-      if (triage > 100) return 'border-l-error-500';
-      if (triage > 50) return 'border-l-warning-500';
-      return 'border-l-success-500';
-    };
-
     return projectsToRender.map((project) => (
-      <div
+      <div 
         key={project.id}
-        className={`p-4 bg-white dark:bg-gray-800 border-2 ${getCardBorderColor(project)} border-l-4 rounded-lg shadow hover:shadow-lg transition-all cursor-pointer group`}
         onClick={() => onProjectSelect(project)}
+        className="group relative p-6 rounded-3xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer overflow-hidden"
       >
-        {/* Card Header with Title and Actions */}
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex-1 min-w-0 mr-3">
-            <h3 
-              className="text-base font-semibold text-gray-900 dark:text-gray-100 truncate group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors" 
-              title={project.projectName}
-            >
-              {project.projectName || 'Untitled Project'}
-            </h3>
-          </div>
-          {onProjectDelete && (
-            <button 
-              onClick={(e) => {
-                e.stopPropagation();
-                onProjectDelete(project.id, project.projectName);
-              }}
-              className="flex-shrink-0 w-8 h-8 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-error-600 dark:hover:text-error-400 hover:bg-error-50 dark:hover:bg-error-900/20 rounded-md transition-all duration-200"
-              title="Delete Project"
-            >
-              🗑️
-            </button>
-          )}
-        </div>
-
-        {/* Card Body with Project Details */}
-        <div className="space-y-2">
-          <div className="flex justify-between items-center text-sm">
-            <span className="text-gray-500 dark:text-gray-400 font-medium">RFA Number</span>
-            <span className="text-gray-900 dark:text-gray-100 font-semibold">{project.rfaNumber || 'N/A'}</span>
-          </div>
-          <div className="flex justify-between items-center text-sm">
-            <span className="text-gray-500 dark:text-gray-400 font-medium">Agent Number</span>
-            <span className="text-gray-900 dark:text-gray-100">{project.agentNumber || 'N/A'}</span>
-          </div>
-          <div className="flex justify-between items-center text-sm">
-            <span className="text-gray-500 dark:text-gray-400 font-medium">Container</span>
-            <span className="text-gray-900 dark:text-gray-100 truncate max-w-[60%]" title={project.projectContainer || 'N/A'}>
-              {project.projectContainer || 'N/A'}
-            </span>
-          </div>
-          {project.ecd && (
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-gray-500 dark:text-gray-400 font-medium">ECD</span>
-              <span className="text-gray-900 dark:text-gray-100">{formatDate(project.ecd)}</span>
-            </div>
-          )}
-          {project.requestedDate && (
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-gray-500 dark:text-gray-400 font-medium">Requested</span>
-              <span className="text-gray-900 dark:text-gray-100">{formatDate(project.requestedDate)}</span>
-            </div>
-          )}
-          {project.triageResults?.totalTriage && (
-            <div className="flex justify-between items-center text-sm pt-2 mt-2 border-t border-gray-200 dark:border-gray-700">
-              <span className="text-gray-500 dark:text-gray-400 font-medium">Triage Hours</span>
-              <span className={`font-bold ${
-                project.triageResults.totalTriage > 100 ? 'text-error-600 dark:text-error-400' :
-                project.triageResults.totalTriage > 50 ? 'text-warning-600 dark:text-warning-400' :
-                'text-success-600 dark:text-success-400'
-              }`}>
-                {project.triageResults.totalTriage}h
+        <div className="relative z-10 h-full flex flex-col">
+          <div className="flex flex-col gap-1 mb-4">
+            <div className="flex items-start justify-between gap-4">
+              <h4 className="font-bold text-gray-900 dark:text-white text-lg group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors leading-tight line-clamp-2" title={project.projectName}>
+                {project.projectName || 'Untitled Project'}
+              </h4>
+              <span className="shrink-0 px-2 py-1 rounded-md bg-gray-100 dark:bg-gray-700/50 text-[10px] font-bold text-gray-500 dark:text-gray-400 border border-gray-200/50 dark:border-gray-600/50 whitespace-nowrap tabular-nums tracking-tighter">
+                {project.rfaNumber || 'N/A'}
               </span>
             </div>
-          )}
+            <span className="text-[10px] font-bold text-primary-600/60 dark:text-primary-400/60 uppercase tracking-widest">
+              {project.projectType || 'Standard Project'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 mt-2 mb-6">
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Agent</span>
+              <span className="text-sm font-bold text-gray-700 dark:text-gray-200 truncate">{project.agentNumber || 'N/A'}</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Team</span>
+              <span className="text-sm font-bold text-gray-700 dark:text-gray-200 truncate">{project.regionalTeam || 'N/A'}</span>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-100/50 dark:border-gray-700/50">
+            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+              (project.rfaStatus?.trim().toLowerCase() === 'completed' || project.rfaStatus?.trim().toLowerCase() === 'complete')
+                ? 'bg-success-500/10 text-success-600 dark:text-success-400' 
+                : (project.rfaStatus?.trim().toLowerCase() === 'in progress' || project.rfaStatus?.trim().toLowerCase() === 'in-progress')
+                  ? 'bg-primary-500/10 text-primary-600 dark:text-primary-400'
+                  : 'bg-gray-500/10 text-gray-500 dark:text-gray-400'
+            }`}>
+              {project.rfaStatus || project.status || 'Active'}
+            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-medium text-gray-400 tabular-nums">
+                {new Date(project.createdAt).toLocaleDateString(undefined, { month: '2-digit', day: '2-digit', year: 'numeric' })}
+              </span>
+              {onProjectDelete && (
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onProjectDelete(project.id, project.projectName);
+                  }}
+                  className="p-1.5 rounded-lg text-gray-300 hover:text-error-600 hover:bg-error-50 dark:hover:bg-error-900/20 transition-all opacity-0 group-hover:opacity-100"
+                  title="Delete Project"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     ));
@@ -304,157 +287,182 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onRefresh }) 
   }
 
   return (
-    <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
-      {/* Header */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
-        <div className="px-6 py-4">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+    <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900 animate-fadeIn">
+      {/* Modern Hero Section */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-primary-600 via-primary-500 to-secondary-500 px-8 py-10 text-white shadow-lg">
+        {/* Background decorative elements */}
+        <div className="absolute top-0 right-0 -mr-20 -mt-20 h-64 w-64 rounded-full bg-white/10 blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 h-64 w-64 rounded-full bg-secondary-400/20 blur-3xl animate-float"></div>
+        
+        <div className="relative z-10">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 mb-8">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">Project List</h1>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Manage and organize your projects</p>
+              <h1 className="text-4xl font-extrabold tracking-tight mb-2">Project Repository</h1>
+              <p className="text-lg text-primary-50 opacity-90 font-light">
+                Manage and organize your projects with precision.
+              </p>
             </div>
             
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <div className="flex flex-row items-center gap-3 flex-nowrap shrink-0">
               {onRefresh && (
                 <button 
                   onClick={onRefresh}
-                  className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded shadow transition-colors"
+                  className="flex items-center gap-2 px-5 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white text-sm font-bold rounded-xl shadow-lg transition-all hover:-translate-y-0.5 active:translate-y-0 whitespace-nowrap"
                   title="Refresh Project List"
                 >
-                  <span>🔄</span>
+                  <span className="text-lg">🔄</span>
                   <span>Refresh</span>
                 </button>
               )}
               <button 
                 onClick={handleScanReadyForQC}
                 disabled={isScanning}
-                className="flex items-center gap-2 px-4 py-2 bg-success-600 hover:bg-success-700 disabled:bg-gray-400 text-white text-sm font-medium rounded shadow transition-colors"
-                title="Scan Ready for QC folder and update project statuses"
+                className="flex items-center gap-2 px-5 py-2.5 bg-success-500/90 hover:bg-success-500 backdrop-blur-md text-white text-sm font-bold rounded-xl shadow-lg transition-all hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                title="Scan Ready for QC folder"
               >
-                <span>{isScanning ? '⏳' : '🔍'}</span>
+                <span className="text-lg">{isScanning ? '⏳' : '🔍'}</span>
                 <span>{isScanning ? 'Scanning...' : 'Scan Ready for QC'}</span>
               </button>
-              {scanNotification && (
-                <div className={`px-3 py-2 rounded text-xs ${
-                  scanNotification.type === 'success' 
-                    ? 'bg-success-100 text-success-700 dark:bg-success-900/30 dark:text-success-300'
-                    : 'bg-error-100 text-error-700 dark:bg-error-900/30 dark:text-error-300'
-                }`}>
-                  {scanNotification.message}
-                </div>
-              )}
-              <p className="text-xs text-gray-600 dark:text-gray-400 bg-info-50 dark:bg-info-900/20 px-3 py-2 rounded">
-                💡 Create new projects using the <strong>Project Wizard</strong>
-              </p>
+              <button
+                onClick={onNewProject}
+                className="flex items-center gap-2 px-5 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white text-sm font-bold rounded-xl shadow-lg transition-all hover:-translate-y-0.5 active:translate-y-0 whitespace-nowrap"
+                title="Create New Project"
+              >
+                <span className="text-lg">🧙‍♂️</span>
+                <span>New Project</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Integrated Glass Stats Bar */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl">
+            <div className="flex flex-col items-center justify-center rounded-2xl bg-white/10 p-4 backdrop-blur-lg border border-white/10 hover:bg-white/15 transition-colors group">
+              <span className="text-3xl font-bold group-hover:scale-110 transition-transform">
+                {safeProjects.filter(p => p && (p.rfaStatus?.trim().toLowerCase() === 'in progress' || p.rfaStatus?.trim().toLowerCase() === 'in-progress')).length}
+              </span>
+              <span className="text-xs uppercase tracking-wider opacity-70 mt-1 font-bold">Active Projects</span>
+            </div>
+            <div className="flex flex-col items-center justify-center rounded-2xl bg-white/10 p-4 backdrop-blur-lg border border-white/10 hover:bg-white/15 transition-colors group">
+              <span className="text-3xl font-bold group-hover:scale-110 transition-transform">
+                {safeProjects.filter(p => p && (p.rfaStatus?.trim().toLowerCase() === 'completed' || p.rfaStatus?.trim().toLowerCase() === 'complete')).length}
+              </span>
+              <span className="text-xs uppercase tracking-wider opacity-70 mt-1 font-bold">Completed Projects</span>
+            </div>
+            <div className="flex flex-col items-center justify-center rounded-2xl bg-white/10 p-4 backdrop-blur-lg border border-white/10 hover:bg-white/15 transition-colors group">
+              <span className="text-3xl font-bold group-hover:scale-110 transition-transform">
+                {safeProjects.filter(p => p && p.dasPaidServiceEnabled === true).length}
+              </span>
+              <span className="text-xs uppercase tracking-wider opacity-70 mt-1 font-bold">Paid Services</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 px-6 py-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <div className="text-center p-4 bg-gradient-to-br from-primary-50 to-primary-100 dark:from-primary-900/30 dark:to-primary-800/30 rounded-lg border border-primary-200 dark:border-primary-700">
-          <span className="block text-3xl font-bold text-primary-700 dark:text-primary-300">
-            {safeProjects.filter(p => p && p.rfaStatus === 'In Progress').length}
-          </span>
-          <span className="block text-sm text-primary-600 dark:text-primary-400 mt-1">Active Projects</span>
+      {scanNotification && (
+        <div className="mx-8 mt-4 animate-slideIn">
+          <div className={`px-4 py-3 rounded-xl flex items-center gap-3 shadow-lg border-2 ${
+            scanNotification.type === 'success' 
+              ? 'bg-success-50 text-success-700 border-success-200 dark:bg-success-900/20 dark:text-success-300 dark:border-success-800'
+              : 'bg-error-50 text-error-700 border-error-200 dark:bg-error-900/20 dark:text-error-300 dark:border-error-800'
+          }`}>
+            <span className="text-xl">{scanNotification.type === 'success' ? '✅' : '❌'}</span>
+            <span className="text-sm font-bold">{scanNotification.message}</span>
+          </div>
         </div>
-        <div className="text-center p-4 bg-gradient-to-br from-info-50 to-info-100 dark:from-info-900/30 dark:to-info-800/30 rounded-lg border border-info-200 dark:border-info-700">
-          <span className="block text-3xl font-bold text-info-700 dark:text-info-300">
-            {safeProjects.filter(p => p && p.rfaStatus === 'Completed').length}
-          </span>
-          <span className="block text-sm text-info-600 dark:text-info-400 mt-1">Completed Projects</span>
-        </div>
-        <div className="text-center p-4 bg-gradient-to-br from-warning-50 to-warning-100 dark:from-warning-900/30 dark:to-warning-800/30 rounded-lg border border-warning-200 dark:border-warning-700">
-          <span className="block text-3xl font-bold text-warning-700 dark:text-warning-300">
-            {safeProjects.filter(p => p && p.dasPaidServiceEnabled === true).length}
-          </span>
-          <span className="block text-sm text-warning-600 dark:text-warning-400 mt-1">DAS Paid Services</span>
-        </div>
-      </div>
+      )}
 
-      {/* Search and Filters */}
-      <div className="px-6 py-4 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
-        <div className="relative mb-4">
-          <input
-            type="text"
-            placeholder="Search by name, RFA, agent, container, RFA type, project type, product, or DAS Paid Services..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="w-full px-4 py-2 pr-10 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
-          />
-          {searchTerm && (
-            <button 
-              className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-              onClick={() => setSearchTerm('')}
-              title="Clear search"
-            >
-              ✕
-            </button>
-          )}
-        </div>
-
-        <ViewToolbar
-          viewMode={viewMode}
-          onViewModeChange={handleViewModeChange}
-          groupBy={groupBy}
-          onGroupByChange={handleGroupByChange}
-          sortBy={sortBy}
-          sortOrder={sortOrder}
-          onSortChange={(field) => {
-            setSortBy(field);
-            localStorage.setItem('projectListSortBy', field);
-          }}
-          onSortOrderToggle={handleSortOrderToggle}
-        />
-      </div>
-
-      {/* Results */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="px-6 py-3 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            {filteredProjects.length} {filteredProjects.length === 1 ? 'project' : 'projects'} found
-          </span>
-        </div>
-
-        {/* Render based on grouping and view mode */}
-        {groupBy !== 'none' ? (
-          <ProjectGroupView
-            projects={sortedProjects}
-            groupBy={groupBy}
-            viewMode={viewMode}
-            onProjectSelect={onProjectSelect}
-            sortBy={sortBy}
-            sortOrder={sortOrder}
-            onSort={handleSort}
-            renderCardView={renderCardView}
-            renderTableView={renderTableView}
-          />
-        ) : (
-          <div className={`${viewMode === 'table' ? '' : 'p-6'}`}>
-            {viewMode === 'table' ? (
-              renderTableView()
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {renderCardView()}
-              </div>
+      {/* Search and Filters Hub */}
+      <div className="px-8 py-6 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm relative z-20">
+        <div className="max-w-7xl mx-auto space-y-6">
+          <div className="relative group">
+            <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+              <span className="text-xl grayscale group-focus-within:grayscale-0 transition-all">🔍</span>
+            </div>
+            <input
+              type="text"
+              placeholder="Search by name, RFA, agent, container, RFA type, project type..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="w-full pl-14 pr-12 py-4 bg-gray-50 dark:bg-gray-900/50 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/5 transition-all shadow-inner"
+            />
+            {searchTerm && (
+              <button 
+                className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-all"
+                onClick={() => setSearchTerm('')}
+                title="Clear search"
+              >
+                ✕
+              </button>
             )}
           </div>
-        )}
 
-        {filteredProjects.length === 0 && searchTerm && (
-          <div className="flex flex-col items-center justify-center p-12 text-center">
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
-              No projects found matching "{searchTerm}"
-            </p>
-            <button
-              onClick={() => setSearchTerm('')}
-              className="btn-secondary"
-            >
-              Clear Search
-            </button>
+          <ViewToolbar
+            viewMode={viewMode}
+            onViewModeChange={handleViewModeChange}
+            groupBy={groupBy}
+            onGroupByChange={handleGroupByChange}
+            sortBy={sortBy}
+            sortOrder={sortOrder}
+            onSortChange={(field) => {
+              setSortBy(field);
+              localStorage.setItem('projectListSortBy', field);
+            }}
+            onSortOrderToggle={handleSortOrderToggle}
+          />
+        </div>
+      </div>
+
+      {/* Results Container */}
+      <div className="flex-1 overflow-y-auto bg-gray-50/50 dark:bg-gray-900/20">
+        <div className="max-w-7xl mx-auto p-8 pt-4">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="h-2 w-2 rounded-full bg-primary-500 animate-pulse"></div>
+            <span className="text-sm font-bold text-gray-500 dark:text-gray-400 tracking-wider uppercase">
+              {filteredProjects.length} {filteredProjects.length === 1 ? 'project' : 'projects'} discovered
+            </span>
           </div>
-        )}
+
+          {/* Render based on grouping and view mode */}
+          {groupBy !== 'none' ? (
+            <ProjectGroupView
+              projects={sortedProjects}
+              groupBy={groupBy}
+              viewMode={viewMode}
+              onProjectSelect={onProjectSelect}
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              onSort={handleSort}
+              renderCardView={renderCardView}
+              renderTableView={renderTableView}
+            />
+          ) : (
+            <div className={`animate-slideUp ${viewMode === 'table' ? 'bg-white dark:bg-gray-800 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden' : ''}`}>
+              {viewMode === 'table' ? (
+                renderTableView()
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {renderCardView()}
+                </div>
+              )}
+            </div>
+          )}
+
+          {filteredProjects.length === 0 && searchTerm && (
+            <div className="flex flex-col items-center justify-center p-20 text-center bg-white dark:bg-gray-800 rounded-3xl border-2 border-dashed border-gray-200 dark:border-gray-700 animate-fadeIn">
+              <span className="text-6xl mb-6">📭</span>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">No projects found</h3>
+              <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-sm">
+                We couldn't find any results matching "{searchTerm}". Try adjusting your filters or search terms.
+              </p>
+              <button
+                onClick={() => setSearchTerm('')}
+                className="btn-secondary px-8 py-3 rounded-xl font-bold"
+              >
+                Clear All Filters
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
