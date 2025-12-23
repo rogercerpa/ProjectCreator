@@ -410,18 +410,32 @@
 
   /* Glass morphism effect */
   .glass {
-    @apply bg-white bg-opacity-10 backdrop-blur-lg;
-    @apply dark:bg-gray-800 dark:bg-opacity-10;
+    @apply bg-white/10 backdrop-blur-lg border border-white/20 shadow-xl;
   }
 
-  /* No scrollbar */
-  .no-scrollbar::-webkit-scrollbar {
-    display: none;
+  .glass-dark {
+    @apply bg-gray-900/40 backdrop-blur-xl border border-white/10 shadow-2xl;
   }
 
-  .no-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+  /* Floating animation */
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+    100% { transform: translateY(0px); }
+  }
+
+  /* Subtle card hover */
+  .hover-lift {
+    @apply hover:-translate-y-1 hover:shadow-xl transition-all duration-300;
+  }
+
+  /* Text balance for headlines */
+  .text-balance {
+    text-wrap: balance;
   }
 }
 

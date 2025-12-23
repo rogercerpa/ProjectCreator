@@ -1893,101 +1893,42 @@ const ProjectWizardStep1 = ({
       />
     )}
     
-    <div className="max-w-6xl mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
-      {/* Gradient Hero Header */}
-      <div className="relative isolate overflow-hidden bg-gradient-to-br from-primary-600 via-primary-700 to-secondary-700 dark:from-primary-800 dark:via-primary-900 dark:to-secondary-900 px-6 py-8 sm:px-8 sm:py-12">
-        {/* Subtle gradient overlays */}
-        <div
-          aria-hidden="true"
-          className="absolute -top-24 right-0 -z-10 transform-gpu blur-3xl"
-        >
-          <div
-            style={{
-              clipPath:
-                'polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)',
-            }}
-            className="aspect-[1155/678] w-[72.1875rem] bg-gradient-to-tr from-white to-primary-200 opacity-20"
-          />
-        </div>
-        <div
-          aria-hidden="true"
-          className="absolute -bottom-24 left-0 -z-10 transform-gpu blur-3xl"
-        >
-          <div
-            style={{
-              clipPath:
-                'polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)',
-            }}
-            className="aspect-[1155/678] w-[72.1875rem] bg-gradient-to-tr from-secondary-300 to-primary-300 opacity-20"
-          />
-        </div>
+    <WizardLayout
+      title="Project Setup"
+      subtitle="Import from Agile or fill in the basic project details - folders will be created automatically"
+      step={1}
+      totalSteps={2}
+      actions={
+        <>
+          {/* Start Fresh Button */}
+          <button
+            type="button"
+            onClick={handleStartFresh}
+            disabled={isPasting}
+            className="px-3 py-1.5 text-sm font-medium bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            🗑️ Start Fresh
+          </button>
 
-        <div className="relative z-10">
-          {/* Top Row: Step Badge, Progress, and Actions */}
-          <div className="flex items-start justify-between mb-4 flex-wrap gap-3">
-            <div className="flex items-center gap-4">
-              {/* Step Badge */}
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/20 backdrop-blur-sm rounded-full border border-white/30">
-                <span className="text-white font-bold text-sm">Step 1</span>
-                <span className="text-white/70 text-xs">of</span>
-                <span className="text-white/90 font-semibold text-sm">2</span>
-              </div>
-              
-              {/* Mini Progress Bar */}
-              <div className="hidden sm:flex items-center gap-2">
-                <div className="w-24 h-1.5 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
-                  <div 
-                    className="h-full bg-white rounded-full transition-all duration-500"
-                    style={{ width: '50%' }}
-                  />
-                </div>
-                <span className="text-xs text-white/80 font-medium">50%</span>
-              </div>
-            </div>
-
-            {/* Start Fresh Button */}
-            <button
-              type="button"
-              onClick={handleStartFresh}
-              disabled={isPasting}
-              className="px-3 py-1.5 text-sm font-medium bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 text-white rounded transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              🗑️ Start Fresh
-            </button>
-          </div>
-
-          {/* Title and Subtitle */}
-          <div className="max-w-3xl mb-4">
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white mb-2">
-              Project Setup
-            </h2>
-            <p className="text-sm sm:text-base text-white/90 leading-relaxed">
-              Import from Agile or fill in the basic project details - folders will be created automatically
-            </p>
-          </div>
-
-          {/* Action Buttons Row */}
-          <div className="flex flex-wrap items-center gap-3">
-          
           {/* Revision Configuration Button */}
           {formData.isRevision && !revisionConfigured && (
             <button
               type="button"
               onClick={handleOpenRevisionDialog}
-              className="px-4 py-2 text-sm font-semibold bg-warning-500 hover:bg-warning-600 text-white rounded shadow-lg transition-all"
+              className="px-4 py-1.5 text-sm font-semibold bg-warning-500 hover:bg-warning-600 text-white rounded-lg shadow-lg transition-all animate-pulse"
               title="Configure revision settings to proceed"
             >
               🔄 Configure Revision
             </button>
           )}
-          
+
           {/* Import from Agile Button */}
           <div className="relative group">
             <button
               type="button"
               onClick={handlePasteRFAInfo}
               disabled={isPasting}
-              className="min-w-[220px] px-4 py-2 text-sm font-semibold bg-white/90 hover:bg-white text-primary-700 rounded shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="min-w-[180px] px-4 py-1.5 text-sm font-semibold bg-white text-primary-700 rounded-lg shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               onMouseEnter={() => setShowTooltip(true)}
               onMouseLeave={() => setShowTooltip(false)}
               onFocus={() => setShowTooltip(true)}
@@ -1996,7 +1937,7 @@ const ProjectWizardStep1 = ({
               {isPasting ? (
                 <>
                   <span className="spinner w-4 h-4 border-2 border-primary-600 border-t-transparent"></span>
-                  Processing Agile Data...
+                  Processing...
                 </>
               ) : (
                 <>
@@ -2007,18 +1948,17 @@ const ProjectWizardStep1 = ({
             
             {/* Tooltip */}
             {showTooltip && (
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded shadow-lg z-50 max-w-xs text-center">
+              <div className="absolute top-full right-0 mt-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-xl z-50 w-48 text-center animate-fadeIn border border-white/10">
                 💡 Copy RFA details from Agile and click import to auto-fill fields
-                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900"></div>
               </div>
             )}
           </div>
-        </div>
-        </div>
-      </div>
-
-      {/* CLEAN: Simplified Duplicate Check Section */}
-      {duplicateCheckState.showButton && (
+        </>
+      }
+    >
+      <div className="space-y-6">
+        {/* CLEAN: Simplified Duplicate Check Section */}
+        {duplicateCheckState.showButton && (
         <div className="duplicate-check-section" style={{
           background: 'linear-gradient(135deg, #f8f9fa, #e9ecef)',
           borderBottom: '1px solid #dee2e6',
@@ -2159,11 +2099,8 @@ const ProjectWizardStep1 = ({
         </div>
       )}
 
-      <div className="wizard-content">
-        <div className="wizard-step-content">
-
-        {/* Project Info Section */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-6 shadow-md">
+      {/* Project Info Section */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-6 shadow-md">
           <h3 className="form-section-header">📋 Project Info</h3>
           <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1">
             <div className={`form-group ${getFieldClasses('projectName')}`}>
@@ -2953,9 +2890,8 @@ const ProjectWizardStep1 = ({
             )}
           </div>
         </div>
-        </div>
       </div>
-    </div>
+    </WizardLayout>
     
     {/* Revision Configuration Dialog */}
     <RevisionConfigurationDialog

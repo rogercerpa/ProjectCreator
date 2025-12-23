@@ -116,6 +116,7 @@ function App() {
   const [currentProject, setCurrentProject] = useState(null);
   const [currentAgency, setCurrentAgency] = useState(null);
   const [projects, setProjects] = useState([]);
+  const [settings, setSettings] = useState(null);
   const [settingsTab, setSettingsTab] = useState('app-info');
   
   // Draft recovery state
@@ -187,6 +188,19 @@ function App() {
         // Load user interface preference
         const savedPreference = localStorage.getItem('interface-preference');
         setUserInterfacePreference(savedPreference);
+        
+        // Load application settings
+        try {
+          if (window.electronAPI?.settingsLoad) {
+            const settingsResult = await window.electronAPI.settingsLoad();
+            if (settingsResult?.success) {
+              setSettings(settingsResult.data);
+              console.log('✅ Settings loaded successfully');
+            }
+          }
+        } catch (settingsError) {
+          console.warn('⚠️ Failed to load settings:', settingsError);
+        }
         
         // CRITICAL FIX: Load existing projects from persistent storage
         try {
@@ -868,6 +882,17 @@ function App() {
     return 'form'; // Fallback to classic
   };
 
+  // Helper for personalized greeting
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    const userName = settings?.workloadSettings?.userName || '';
+    const nameStr = userName ? `, ${userName.split(' ')[0]}` : '';
+
+    if (hour < 12) return `Good morning${nameStr}`;
+    if (hour < 18) return `Good afternoon${nameStr}`;
+    return `Good evening${nameStr}`;
+  };
+
   // Render main content based on current view
   const renderMainContent = () => {
     console.log('🎯 App: renderMainContent called with currentView =', currentView);
@@ -1015,254 +1040,266 @@ function App() {
         case 'welcome':
         default:
           return (
-            <div className="text-center px-6 py-4 max-w-7xl mx-auto">
-              <div className="mb-8">
-                <h1 className="text-5xl text-gray-800 dark:text-gray-100 mb-4 font-light gradient-text">
-                  Welcome to Project Creator
-                </h1>
-                <p className="text-2xl text-gray-600 dark:text-gray-400 mb-2 font-medium">
-                  Professional Project Management & Document Automation Tool
-                </p>
-                <p className="text-base text-gray-500 dark:text-gray-500 italic">
-                  {getFullVersionInfo()}
-                </p>
-              </div>
-
-              <div className="my-8">
-                <h2 className="text-3xl text-gray-800 dark:text-gray-100 my-6 font-normal">
-                  🚀 Key Features
-                </h2>
-                <div className="grid grid-cols-3 gap-5 my-6">
-                  <div className="card p-5 text-left h-full flex flex-col hover:-translate-y-0.5 hover:border-info-500 dark:hover:border-info-400">
-                    <div className="text-3xl mb-3 block">📁</div>
-                    <h3 className="text-gray-800 dark:text-gray-100 mb-2 text-lg font-semibold">Project Management</h3>
-                    <p className="text-gray-600 dark:text-gray-400 text-sm m-0 leading-snug flex-1">
-                      Create, edit, and organize projects with comprehensive metadata including RFA numbers, regional teams, and project complexity ratings.
-                    </p>
-                  </div>
-                  
-                  <div className="card p-5 text-left h-full flex flex-col hover:-translate-y-0.5 hover:border-info-500 dark:hover:border-info-400">
-                    <div className="text-3xl mb-3 block">📊</div>
-                    <h3 className="text-gray-800 dark:text-gray-100 mb-2 text-lg font-semibold">Triage Calculations</h3>
-                    <p className="text-gray-600 dark:text-gray-400 text-sm m-0 leading-snug flex-1">
-                      Advanced time estimation for LMPs, ARPs, room counts, and project complexity with automatic calculations and overrides.
-                    </p>
-                  </div>
-                  
-                  <div className="card p-5 text-left h-full flex flex-col hover:-translate-y-0.5 hover:border-info-500 dark:hover:border-info-400">
-                    <div className="text-3xl mb-3 block">📝</div>
-                    <h3 className="text-gray-800 dark:text-gray-100 mb-2 text-lg font-semibold">Document Automation</h3>
-                    <p className="text-gray-600 dark:text-gray-400 text-sm m-0 leading-snug flex-1">
-                      Generate Word documents, process design notes, and create project documentation with automated templates.
-                    </p>
-                  </div>
-                  
-                  <div className="card p-5 text-left h-full flex flex-col hover:-translate-y-0.5 hover:border-info-500 dark:hover:border-info-400">
-                    <div className="text-3xl mb-3 block">🗂️</div>
-                    <h3 className="text-gray-800 dark:text-gray-100 mb-2 text-lg font-semibold">File Organization</h3>
-                    <p className="text-gray-600 dark:text-gray-400 text-sm m-0 leading-snug flex-1">
-                      Automated folder structure creation, template management, and project file organization for server and desktop locations.
-                    </p>
-                  </div>
-                  
-                  <div className="card p-5 text-left h-full flex flex-col hover:-translate-y-0.5 hover:border-info-500 dark:hover:border-info-400">
-                    <div className="text-3xl mb-3 block">📈</div>
-                    <h3 className="text-gray-800 dark:text-gray-100 mb-2 text-lg font-semibold">Export & Integration</h3>
-                    <p className="text-gray-600 dark:text-gray-400 text-sm m-0 leading-snug flex-1">
-                      Export project data to DAS Board format, Agile triage reports, and multiple file formats for seamless workflow integration.
-                    </p>
-                  </div>
-                  
-                  <div className="card p-5 text-left h-full flex flex-col hover:-translate-y-0.5 hover:border-info-500 dark:hover:border-info-400">
-                    <div className="text-3xl mb-3 block">⚙️</div>
-                    <h3 className="text-gray-800 dark:text-gray-100 mb-2 text-lg font-semibold">Advanced Settings</h3>
-                    <p className="text-gray-600 dark:text-gray-400 text-sm m-0 leading-snug flex-1">
-                      Customizable project defaults, template management, and user preferences for personalized project creation workflows.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="my-8">
-                <h2 className="text-3xl text-gray-800 dark:text-gray-100 my-6 font-normal">
-                  🎯 Supported Project Types
-                </h2>
-                <div className="flex justify-center my-6">
-                  <div className="flex flex-wrap gap-3 justify-center">
-                    <span className="badge bg-gradient-to-r from-info-500 to-info-600 text-white px-4 py-2 rounded-full text-sm font-medium shadow-md hover:-translate-y-0.5 transition-transform">
-                      Reloc
-                    </span>
-                    <span className="badge bg-gradient-to-r from-info-500 to-info-600 text-white px-4 py-2 rounded-full text-sm font-medium shadow-md hover:-translate-y-0.5 transition-transform">
-                      Photometrics
-                    </span>
-                    <span className="badge bg-gradient-to-r from-info-500 to-info-600 text-white px-4 py-2 rounded-full text-sm font-medium shadow-md hover:-translate-y-0.5 transition-transform">
-                      Standard Controls
-                    </span>
-                    <span className="badge bg-gradient-to-r from-info-500 to-info-600 text-white px-4 py-2 rounded-full text-sm font-medium shadow-md hover:-translate-y-0.5 transition-transform">
-                      DC2DC
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="my-8">
-                <h2 className="text-3xl text-gray-800 dark:text-gray-100 my-6 font-normal">
-                  🚀 Get Started
-                </h2>
+            <div className="flex flex-col gap-12 py-8 max-w-7xl mx-auto animate-fadeIn">
+              {/* Modern Hero Section */}
+              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary-600 via-primary-500 to-secondary-500 p-12 text-white shadow-2xl animate-fadeIn">
+                {/* Background decorative elements */}
+                <div className="absolute top-0 right-0 -mr-20 -mt-20 h-64 w-64 rounded-full bg-white/10 blur-3xl animate-pulse"></div>
+                <div className="absolute bottom-0 left-0 -ml-20 -mb-20 h-64 w-64 rounded-full bg-secondary-400/20 blur-3xl animate-float"></div>
                 
-                {/* Draft Recovery Section */}
-                {hasDrafts && (
-                  <div className="my-8 p-0">
-                    <div className="bg-gradient-to-r from-warning-50 to-warning-100 dark:from-warning-900/20 dark:to-warning-800/20 border-2 border-warning-500 rounded-xl p-5 flex items-center justify-between shadow-lg animate-slideIn">
-                      <div className="flex items-center gap-4 flex-1">
-                        <span className="text-3xl bg-white dark:bg-gray-700 rounded-full p-3 shadow-md">
-                          📋
-                        </span>
-                        <div>
-                          <h3 className="m-0 mb-1 text-warning-700 dark:text-warning-300 text-lg font-semibold">
-                            Continue Your Work
-                          </h3>
-                          <p className="m-0 text-warning-800 dark:text-warning-400 text-sm">
-                            You have unfinished projects that can be resumed
-                          </p>
-                        </div>
-                      </div>
-                      <button 
-                        onClick={() => setShowDraftRecovery(true)}
-                        className="btn-primary px-5 py-3 rounded-lg font-semibold shadow-md hover:-translate-y-0.5"
-                      >
-                        📖 Resume Projects
-                      </button>
+                <div className="relative z-10 flex flex-col items-center text-center">
+                  <div className="mb-6 inline-flex items-center rounded-full bg-white/10 px-4 py-1.5 backdrop-blur-md border border-white/20">
+                    <span className="flex h-2 w-2 rounded-full bg-success-400 animate-pulse mr-2"></span>
+                    <span className="text-sm font-medium tracking-wide uppercase">{getVersionDisplay()}</span>
+                  </div>
+                  
+                  <h1 className="mb-4 text-6xl font-extrabold tracking-tight text-balance">
+                    {getGreeting()}
+                  </h1>
+                  
+                  <p className="mx-auto max-w-2xl text-xl text-primary-50 opacity-90 font-light leading-relaxed text-balance">
+                    Streamline your workflow with Project Creator. Professional project management and document automation at your fingertips.
+                  </p>
+
+                  {/* Quick Stats Bar */}
+                  <div className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-4xl">
+                    <div className="flex flex-col items-center rounded-2xl bg-white/10 p-4 backdrop-blur-lg border border-white/10 hover:bg-white/20 transition-colors">
+                      <span className="text-3xl font-bold">{projects.length}</span>
+                      <span className="text-xs uppercase tracking-wider opacity-70 mt-1 font-semibold">Active Projects</span>
+                    </div>
+                    <div className="flex flex-col items-center rounded-2xl bg-white/10 p-4 backdrop-blur-lg border border-white/10 hover:bg-white/20 transition-colors">
+                      <span className="text-3xl font-bold">{hasDrafts ? 'Active' : 'None'}</span>
+                      <span className="text-xs uppercase tracking-wider opacity-70 mt-1 font-semibold">Pending Drafts</span>
+                    </div>
+                    <div className="flex flex-col items-center rounded-2xl bg-white/10 p-4 backdrop-blur-lg border border-white/10 hover:bg-white/20 transition-colors">
+                      <span className="text-3xl font-bold">5.0</span>
+                      <span className="text-xs uppercase tracking-wider opacity-70 mt-1 font-semibold">System Stability</span>
                     </div>
                   </div>
-                )}
-                
-                <div className="grid grid-cols-2 gap-5 my-6 max-w-3xl mx-auto">
-                  <button 
-                    onClick={() => handleSmartViewChange(getRecommendedInterface())}
-                    className={`
-                      px-6 py-4 text-base min-w-[160px] flex flex-col items-stretch text-left h-auto
-                      ${getRecommendedInterface() === 'wizard' 
-                        ? 'btn-primary relative shadow-primary hover:shadow-lg animate-pulse-soft' 
-                        : 'btn-secondary'
-                      }
-                    `}
-                  >
-                    {getRecommendedInterface() === 'wizard' ? '🧙‍♂️ Start Project Wizard' : '📝 Start Project Form'}
-                    <span className="text-sm font-normal opacity-80 mt-2 block leading-tight">
-                      {getRecommendedInterface() === 'wizard' 
-                        ? 'Recommended: Guided step-by-step setup' 
-                        : 'Quick project creation'
-                      }
-                    </span>
-                    {getRecommendedInterface() === 'wizard' && (
-                      <span className="absolute -top-2 -right-2 bg-warning-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded shadow-md">
-                        ✨ NEW
-                      </span>
-                    )}
-                  </button>
-                  
-                  {featureFlagService.isWizardEnabled() && getRecommendedInterface() !== 'wizard' && (
-                    <button 
-                      onClick={() => handleSmartViewChange('wizard')}
-                      className="btn-secondary px-6 py-4 text-base min-w-[160px] flex flex-col items-stretch text-left h-auto"
-                    >
-                      🧙‍♂️ Try Project Wizard
-                      <span className="text-sm font-normal opacity-80 mt-2 block leading-tight">
-                        Enhanced guided experience
-                      </span>
-                    </button>
-                  )}
-                  
-                  {getRecommendedInterface() !== 'form' && !featureFlagService.isWizardForced() && (
-                    <button 
-                      onClick={() => setCurrentView('agencies')}
-                      className="btn-secondary px-6 py-4 text-base min-w-[160px] flex flex-col items-stretch text-left h-auto"
-                    >
-                      📇 Agency Directory
-                      <span className="text-sm font-normal opacity-80 mt-2 block leading-tight">
-                        Manage agency contacts
-                      </span>
-                    </button>
-                  )}
-                  
-                  <button 
-                    onClick={() => setCurrentView('list')}
-                    className="btn-secondary px-6 py-4 text-base min-w-[160px] flex flex-col items-stretch text-left h-auto"
-                  >
-                    📋 View Projects ({projects.length})
-                    <span className="text-sm font-normal opacity-80 mt-2 block leading-tight">
-                      Manage existing projects
-                    </span>
-                  </button>
-                  
-                  <button 
-                    onClick={() => setCurrentView('settings')}
-                    className="btn-secondary px-6 py-4 text-base min-w-[160px] flex flex-col items-stretch text-left h-auto"
-                  >
-                    ⚙️ Application Settings
-                    <span className="text-sm font-normal opacity-80 mt-2 block leading-tight">
-                      Configure preferences
-                    </span>
-                  </button>
                 </div>
               </div>
 
-              {projects.length > 0 && (
-                <div className="my-8">
-                  <h2 className="text-3xl text-gray-800 dark:text-gray-100 mb-4 font-normal">
-                    📋 Recent Projects
+              <div className="my-4">
+                <div className="flex items-center justify-between mb-8">
+                  <h2 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
+                    Platform Capabilities
                   </h2>
-                  <div className="grid grid-cols-3 gap-5 my-4">
-                    {[...projects]
-                      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-                      .slice(0, 3)
-                      .map(project => (
-                      <div key={project.id} className="card p-5 text-left h-full flex flex-col hover:-translate-y-0.5">
-                        <h4 className="text-gray-800 dark:text-gray-100 mb-3 text-lg font-semibold">
-                          {project.projectName}
-                        </h4>
-                        <p className="text-gray-600 dark:text-gray-400 text-sm mb-2 leading-tight flex-1">
-                          <strong>RFA:</strong> {project.rfaNumber}
-                        </p>
-                        <p className="text-gray-600 dark:text-gray-400 text-sm mb-2 leading-tight flex-1">
-                          <strong>Team:</strong> {project.regionalTeam}
-                        </p>
-                        <p className="text-gray-600 dark:text-gray-400 text-sm mb-2 leading-tight flex-1">
-                          <strong>Status:</strong> {project.status || 'In Progress'}
-                        </p>
-                        <button 
-                          onClick={() => {
-                            setCurrentProject(project);
-                            setCurrentView('project-management');
-                          }}
-                          className="btn-secondary px-4 py-2 text-sm min-w-[100px] mt-4"
-                        >
-                          Open Project
-                        </button>
+                  <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700 ml-6"></div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-4 h-auto md:h-[500px]">
+                  {/* Feature 1: Large Card */}
+                  <div className="md:col-span-2 md:row-span-2 group relative overflow-hidden rounded-3xl bg-white dark:bg-gray-800 p-8 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                    <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 group-hover:opacity-20 transition-all duration-500">
+                      <svg className="w-32 h-32" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14h-4v-4h4v4zm0-6h-4V7h4v4z"/></svg>
+                    </div>
+                    <div className="relative z-10 flex flex-col h-full">
+                      <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 group-hover:scale-110 transition-transform">
+                        <span className="text-3xl">📁</span>
                       </div>
-                    ))}
+                      <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Project Management</h3>
+                      <p className="text-gray-600 dark:text-gray-400 leading-relaxed text-lg mb-8">
+                        Centralize your entire workflow. Create, edit, and organize projects with comprehensive metadata including RFA numbers and regional team tracking.
+                      </p>
+                      <div className="mt-auto flex flex-wrap gap-2">
+                        <span className="px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-xs font-semibold text-gray-600 dark:text-gray-300">RFA Tracking</span>
+                        <span className="px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-xs font-semibold text-gray-600 dark:text-gray-300">Team Assignment</span>
+                        <span className="px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-xs font-semibold text-gray-600 dark:text-gray-300">Metadata</span>
+                      </div>
+                    </div>
                   </div>
-                  {projects.length > 3 && (
-                    <div className="text-center mt-6">
+
+                  {/* Feature 2: Medium Card */}
+                  <div className="md:col-span-2 group relative overflow-hidden rounded-3xl bg-white dark:bg-gray-800 p-6 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                    <div className="flex items-start gap-5">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-secondary-50 dark:bg-secondary-900/30 text-secondary-600 dark:text-secondary-400 group-hover:rotate-12 transition-transform">
+                        <span className="text-2xl">📊</span>
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Triage Calculations</h3>
+                        <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
+                          Advanced time estimation for LMPs, ARPs, and room counts with automatic complexity scaling.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Feature 3: Small Card */}
+                  <div className="group relative overflow-hidden rounded-3xl bg-white dark:bg-gray-800 p-6 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                    <div className="flex flex-col items-center text-center">
+                      <span className="text-3xl mb-3 group-hover:scale-125 transition-transform">📝</span>
+                      <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-1">Automation</h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Word & Template Sync</p>
+                    </div>
+                  </div>
+
+                  {/* Feature 4: Small Card */}
+                  <div className="group relative overflow-hidden rounded-3xl bg-white dark:bg-gray-800 p-6 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                    <div className="flex flex-col items-center text-center">
+                      <span className="text-3xl mb-3 group-hover:scale-125 transition-transform">🗂️</span>
+                      <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-1">Structure</h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Auto-Folder Creation</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 my-8">
+                {/* Primary Actions */}
+                <div className="lg:col-span-2">
+                  <div className="flex items-center justify-between mb-8">
+                    <h2 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
+                      Action Center
+                    </h2>
+                    <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700 ml-6"></div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <button 
+                      onClick={() => handleSmartViewChange(getRecommendedInterface())}
+                      className="group relative flex flex-col items-start p-8 rounded-3xl bg-primary-600 text-white shadow-lg hover:shadow-primary/30 transition-all duration-300 hover:-translate-y-1"
+                    >
+                      <div className="mb-4 rounded-2xl bg-white/20 p-3">
+                        <span className="text-3xl">🧙‍♂️</span>
+                      </div>
+                      <h3 className="text-2xl font-bold mb-2">New Project</h3>
+                      <p className="text-primary-100 text-left leading-relaxed">
+                        Start the guided wizard to create a new project with automated documentation.
+                      </p>
+                      <div className="mt-6 flex items-center text-sm font-bold uppercase tracking-widest">
+                        Launch Wizard
+                        <svg className="ml-2 w-5 h-5 group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+                      </div>
+                    </button>
+
+                    <div className="grid grid-rows-2 gap-6">
                       <button 
                         onClick={() => setCurrentView('list')}
-                        className="btn-secondary"
+                        className="group flex items-center gap-6 p-6 rounded-3xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
                       >
-                        View All Projects ({projects.length})
+                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-secondary-50 dark:bg-secondary-900/30 text-secondary-600 dark:text-secondary-400 group-hover:scale-110 transition-transform">
+                          <span className="text-2xl">📋</span>
+                        </div>
+                        <div className="text-left">
+                          <h3 className="font-bold text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">All Projects</h3>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">{projects.length} saved projects</p>
+                        </div>
+                      </button>
+
+                      <button 
+                        onClick={() => setCurrentView('settings')}
+                        className="group flex items-center gap-6 p-6 rounded-3xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+                      >
+                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 group-hover:rotate-12 transition-transform">
+                          <span className="text-2xl">⚙️</span>
+                        </div>
+                        <div className="text-left">
+                          <h3 className="font-bold text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">Settings</h3>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">App preferences</p>
+                        </div>
                       </button>
                     </div>
-                  )}
-                </div>
-              )}
+                  </div>
 
-              <div className="mt-12 p-8 bg-gradient-to-r from-success-50 to-info-50 dark:from-success-900/20 dark:to-info-900/20 rounded-xl border border-success-200 dark:border-success-700 relative overflow-hidden">
-                <p className="mb-3 text-success-800 dark:text-success-200 text-base relative z-10">
-                  💡 <strong>Pro Tip:</strong> Use the sidebar navigation to quickly switch between different views and manage your projects efficiently.
-                </p>
-                <p className="mb-0 text-success-800 dark:text-success-200 text-base relative z-10">
-                  🔧 <strong>Need Help?</strong> Check the settings panel for application information and configuration options.
-                </p>
+                  {/* Quick Tips Section */}
+                  <div className="mt-12 p-8 rounded-3xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-4 opacity-5">
+                      <span className="text-8xl italic font-serif">i</span>
+                    </div>
+                    <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                      <span className="text-primary-500">💡</span> Professional Tips
+                    </h4>
+                    <ul className="space-y-4">
+                      <li className="flex items-start gap-3 text-gray-600 dark:text-gray-400 text-sm">
+                        <span className="h-1.5 w-1.5 rounded-full bg-primary-500 mt-1.5 shrink-0"></span>
+                        Use the <strong>Sidebar</strong> to quickly toggle between active project views and settings.
+                      </li>
+                      <li className="flex items-start gap-3 text-gray-600 dark:text-gray-400 text-sm">
+                        <span className="h-1.5 w-1.5 rounded-full bg-primary-500 mt-1.5 shrink-0"></span>
+                        Enable <strong>Dark Mode</strong> in Header for better visibility in low-light environments.
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+
+                {/* Recent Activity Sidebar */}
+                <div className="lg:col-span-1">
+                  <div className="flex items-center justify-between mb-8">
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
+                      Recent Activity
+                    </h2>
+                  </div>
+
+                  <div className="space-y-4">
+                    {hasDrafts && (
+                      <div 
+                        onClick={() => setShowDraftRecovery(true)}
+                        className="p-6 rounded-3xl bg-warning-50 dark:bg-warning-900/10 border-2 border-dashed border-warning-200 dark:border-warning-800 cursor-pointer hover:bg-warning-100 dark:hover:bg-warning-900/20 transition-colors group"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white dark:bg-gray-800 text-warning-600 shadow-sm">
+                            <span className="text-xl">📋</span>
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-warning-900 dark:text-warning-300">Resume Work</h4>
+                            <p className="text-xs text-warning-700 dark:text-warning-400">Unfinished drafts found</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {projects.length > 0 ? (
+                      [...projects]
+                        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                        .slice(0, 4)
+                        .map(project => (
+                          <div 
+                            key={project.id}
+                            onClick={() => {
+                              setCurrentProject(project);
+                              setCurrentView('project-management');
+                            }}
+                            className="group p-5 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-all cursor-pointer"
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <h4 className="font-bold text-gray-900 dark:text-white truncate pr-4 text-sm group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                                {project.projectName}
+                              </h4>
+                              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                                {project.rfaNumber}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between mt-4">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                                project.status === 'Completed' 
+                                  ? 'bg-success-50 text-success-700' 
+                                  : 'bg-primary-50 text-primary-700'
+                              }`}>
+                                {project.status || 'In Progress'}
+                              </span>
+                              <span className="text-[10px] text-gray-400">
+                                {new Date(project.createdAt).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </div>
+                        ))
+                    ) : (
+                      <div className="text-center py-12 px-6 rounded-3xl bg-gray-50 dark:bg-gray-800/50 border border-dashed border-gray-200 dark:border-gray-700">
+                        <span className="text-4xl block mb-4">📭</span>
+                        <p className="text-sm text-gray-500">No recent activity found. Start a new project to get started.</p>
+                      </div>
+                    )}
+                    
+                    {projects.length > 4 && (
+                      <button 
+                        onClick={() => setCurrentView('list')}
+                        className="w-full py-3 text-sm font-semibold text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-xl transition-colors"
+                      >
+                        View All Projects →
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           );
