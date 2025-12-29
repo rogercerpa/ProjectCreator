@@ -14,6 +14,7 @@ import ProjectEditor from './ProjectEditor';
 const ProjectManagement = ({ 
   project, 
   onProjectUpdated, 
+  onProjectDelete,
   onBack,
   mode = 'view' // 'view' or 'edit'
 }) => {
@@ -444,6 +445,17 @@ const ProjectManagement = ({
                   title="Edit project"
                 >
                   ✏️ Edit
+                </button>
+              )}
+              
+              {/* Delete Button - Visible in view mode */}
+              {currentMode === 'view' && onProjectDelete && (
+                <button 
+                  onClick={() => onProjectDelete(projectData.id, projectData.projectName)}
+                  className="btn btn-outline btn-small text-error-600 hover:text-error-700 hover:bg-error-50 dark:text-error-400 dark:hover:text-error-300 dark:hover:bg-error-900/20 border-error-300 dark:border-error-700"
+                  title="Delete project"
+                >
+                  🗑️ Delete
                 </button>
               )}
               

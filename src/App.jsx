@@ -995,6 +995,7 @@ function App() {
             <ProjectManagement
               project={currentProject}
               onProjectUpdated={handleProjectUpdated}
+              onProjectDelete={handleProjectDelete}
               onBack={() => setCurrentView('list')}
               mode="view"
             />

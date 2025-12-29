@@ -229,19 +229,19 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onNewProject,
           </div>
 
           <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-100/50 dark:border-gray-700/50">
-            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-              (project.rfaStatus?.trim().toLowerCase() === 'completed' || project.rfaStatus?.trim().toLowerCase() === 'complete')
-                ? 'bg-success-500/10 text-success-600 dark:text-success-400' 
-                : (project.rfaStatus?.trim().toLowerCase() === 'in progress' || project.rfaStatus?.trim().toLowerCase() === 'in-progress')
-                  ? 'bg-primary-500/10 text-primary-600 dark:text-primary-400'
-                  : 'bg-gray-500/10 text-gray-500 dark:text-gray-400'
-            }`}>
-              {project.rfaStatus || project.status || 'Active'}
-            </span>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-medium text-gray-400 tabular-nums">
-                {new Date(project.createdAt).toLocaleDateString(undefined, { month: '2-digit', day: '2-digit', year: 'numeric' })}
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Requested</span>
+              <span className="text-xs font-bold text-gray-700 dark:text-gray-200 tabular-nums">
+                {project.requestedDate ? new Date(project.requestedDate).toLocaleDateString(undefined, { month: '2-digit', day: '2-digit', year: 'numeric' }) : 'N/A'}
               </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex flex-col text-right">
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">ECD</span>
+                <span className="text-xs font-bold text-primary-600 dark:text-primary-400 tabular-nums">
+                  {project.ecd ? new Date(project.ecd).toLocaleDateString(undefined, { month: '2-digit', day: '2-digit', year: 'numeric' }) : 'N/A'}
+                </span>
+              </div>
               {onProjectDelete && (
                 <button 
                   onClick={(e) => {
