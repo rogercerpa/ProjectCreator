@@ -246,19 +246,24 @@ const ProjectEditor = ({
     });
 
     if (formData.dasPaidServiceEnabled) {
-      if (!formData.dasCostPerPage || Number(formData.dasCostPerPage) <= 0) {
-        newErrors.dasCostPerPage = 'Cost per page must be greater than 0';
-      }
-      if (!formData.dasLightingPages || Number(formData.dasLightingPages) <= 0) {
-        newErrors.dasLightingPages = 'Lighting pages is required';
-      }
-      if (!formData.dasFee || Number(formData.dasFee) <= 0) {
-        newErrors.dasFee = 'Fee must be greater than 0';
-      }
-      if (!formData.dasRepEmail || formData.dasRepEmail.trim() === '') {
-        newErrors.dasRepEmail = 'Rep email is required';
-      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.dasRepEmail.trim())) {
-        newErrors.dasRepEmail = 'Rep email is invalid';
+      // Skip validation if fee is waived
+      const isFeeWaived = formData.dasCostOption === 'waive' || formData.dasStatus === 'Fee Waived';
+      
+      if (!isFeeWaived) {
+        if (!formData.dasCostPerPage || Number(formData.dasCostPerPage) <= 0) {
+          newErrors.dasCostPerPage = 'Cost per page must be greater than 0';
+        }
+        if (!formData.dasLightingPages || Number(formData.dasLightingPages) <= 0) {
+          newErrors.dasLightingPages = 'Lighting pages is required';
+        }
+        if (!formData.dasFee || Number(formData.dasFee) <= 0) {
+          newErrors.dasFee = 'Fee must be greater than 0';
+        }
+        if (!formData.dasRepEmail || formData.dasRepEmail.trim() === '') {
+          newErrors.dasRepEmail = 'Rep email is required';
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.dasRepEmail.trim())) {
+          newErrors.dasRepEmail = 'Rep email is invalid';
+        }
       }
     }
     

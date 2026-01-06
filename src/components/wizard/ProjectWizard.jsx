@@ -12,10 +12,18 @@ import DuplicateProjectDialog from './components/DuplicateProjectDialog';
 import DuplicateProjectDetectionClient from '../../services/DuplicateProjectDetectionClient';
 import performanceMonitoringService from '../../services/SimplePerformanceMonitoringService';
 
-// Import draft service for server-side partial saves
-const ProjectDraftService = window.electron ? 
-  window.electron.require('./src/services/ProjectDraftService') : 
-  null;
+// Lazy load draft service to prevent blocking initial render
+let ProjectDraftService = null;
+const getProjectDraftService = () => {
+  if (ProjectDraftService === null && window.electron) {
+    try {
+      ProjectDraftService = window.electron.require('./src/services/ProjectDraftService');
+    } catch (err) {
+      console.warn('Failed to load ProjectDraftService:', err);
+    }
+  }
+  return ProjectDraftService;
+};
 
 /**
  * Main Project Creation Wizard Container
@@ -55,8 +63,27 @@ const ProjectWizard = ({
   // Smart assignment state
   const [selectedAssignee, setSelectedAssignee] = useState(null);
   
-  // Draft service state
-  const [draftService] = useState(() => ProjectDraftService ? new ProjectDraftService() : null);
+  // Draft service state - lazy initialization to prevent blocking initial render
+  const [draftService, setDraftService] = useState(null);
+  const draftServiceInitialized = useRef(false);
+  
+  // Initialize draft service lazily after first render
+  useEffect(() => {
+    if (!draftServiceInitialized.current) {
+      draftServiceInitialized.current = true;
+      // Defer initialization to next tick to not block render
+      setTimeout(() => {
+        const DraftServiceClass = getProjectDraftService();
+        if (DraftServiceClass) {
+          try {
+            setDraftService(new DraftServiceClass());
+          } catch (err) {
+            console.warn('Failed to initialize ProjectDraftService:', err);
+          }
+        }
+      }, 0);
+    }
+  }, []);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [lastDraftSave, setLastDraftSave] = useState(null);
   const [currentDraftId, setCurrentDraftId] = useState(null);

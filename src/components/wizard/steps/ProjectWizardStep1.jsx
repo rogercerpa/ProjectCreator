@@ -1738,15 +1738,23 @@ const ProjectWizardStep1 = ({
         return value && value !== '';
       case 'dasCostPerPage':
         if (!allFormData.dasPaidServiceEnabled) return true;
+        // Skip validation if fee is waived
+        if (allFormData.dasCostOption === 'waive' || allFormData.dasStatus === 'Fee Waived') return true;
         return Number(value) > 0;
       case 'dasLightingPages':
         if (!allFormData.dasPaidServiceEnabled) return true;
+        // Skip validation if fee is waived
+        if (allFormData.dasCostOption === 'waive' || allFormData.dasStatus === 'Fee Waived') return true;
         return Number(value) > 0;
       case 'dasFee':
         if (!allFormData.dasPaidServiceEnabled) return true;
+        // Skip validation if fee is waived
+        if (allFormData.dasCostOption === 'waive' || allFormData.dasStatus === 'Fee Waived') return true;
         return Number(value) > 0;
       case 'dasRepEmail':
         if (!allFormData.dasPaidServiceEnabled) return true;
+        // Skip validation if fee is waived
+        if (allFormData.dasCostOption === 'waive' || allFormData.dasStatus === 'Fee Waived') return true;
         return value && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
       default:
         return true; // Non-required fields are always valid

@@ -40,6 +40,8 @@ const useStepValidation = () => {
         },
         dasCostPerPage: (value, formData) => {
           if (!formData.dasPaidServiceEnabled) return null;
+          // Skip validation if fee is waived
+          if (formData.dasCostOption === 'waive' || formData.dasStatus === 'Fee Waived') return null;
           if (!value || Number(value) <= 0) {
             return 'Cost per page must be greater than 0';
           }
@@ -47,6 +49,8 @@ const useStepValidation = () => {
         },
         dasLightingPages: (value, formData) => {
           if (!formData.dasPaidServiceEnabled) return null;
+          // Skip validation if fee is waived
+          if (formData.dasCostOption === 'waive' || formData.dasStatus === 'Fee Waived') return null;
           if (!value || Number(value) <= 0) {
             return 'Lighting pages is required';
           }
@@ -54,6 +58,8 @@ const useStepValidation = () => {
         },
         dasFee: (value, formData) => {
           if (!formData.dasPaidServiceEnabled) return null;
+          // Skip validation if fee is waived
+          if (formData.dasCostOption === 'waive' || formData.dasStatus === 'Fee Waived') return null;
           if (!value || Number(value) <= 0) {
             return 'Fee must be greater than 0';
           }
@@ -61,6 +67,8 @@ const useStepValidation = () => {
         },
         dasRepEmail: (value, formData) => {
           if (!formData.dasPaidServiceEnabled) return null;
+          // Skip validation if fee is waived
+          if (formData.dasCostOption === 'waive' || formData.dasStatus === 'Fee Waived') return null;
           if (!value || value.trim() === '') {
             return 'Rep email is required';
           }
@@ -135,7 +143,11 @@ const useStepValidation = () => {
     const requiredSet = new Set(stepRules.required || []);
 
     if (stepNumber === 1 && allFormData.dasPaidServiceEnabled) {
-      ['dasCostPerPage', 'dasLightingPages', 'dasFee', 'dasRepEmail'].forEach(field => requiredSet.add(field));
+      // Skip adding DAS fields to required if fee is waived
+      const isFeeWaived = allFormData.dasCostOption === 'waive' || allFormData.dasStatus === 'Fee Waived';
+      if (!isFeeWaived) {
+        ['dasCostPerPage', 'dasLightingPages', 'dasFee', 'dasRepEmail'].forEach(field => requiredSet.add(field));
+      }
     }
 
     // Required field validation
@@ -172,7 +184,11 @@ const useStepValidation = () => {
     // Validate required fields (including dynamic DAS paid service fields)
     let requiredFields = stepRules.required || [];
     if (stepNumber === 1 && formData?.dasPaidServiceEnabled) {
-      requiredFields = [...new Set([...requiredFields, 'dasCostPerPage', 'dasLightingPages', 'dasFee', 'dasRepEmail'])];
+      // Skip adding DAS fields to required if fee is waived
+      const isFeeWaived = formData.dasCostOption === 'waive' || formData.dasStatus === 'Fee Waived';
+      if (!isFeeWaived) {
+        requiredFields = [...new Set([...requiredFields, 'dasCostPerPage', 'dasLightingPages', 'dasFee', 'dasRepEmail'])];
+      }
     }
 
     if (requiredFields.length > 0) {
