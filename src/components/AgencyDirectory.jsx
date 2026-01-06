@@ -804,17 +804,6 @@ function AgencyDirectory({ onAgencySelect }) {
               ))}
             </select>
 
-            <select
-              value={filters.role}
-              onChange={e => handleFilterChange('role', e.target.value)}
-              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-            >
-              <option value="all">All Roles</option>
-              {filterOptions.roles.map(role => (
-                <option key={role} value={role}>{role}</option>
-              ))}
-            </select>
-
             <button 
               className="px-5 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-semibold rounded-lg transition-all"
               onClick={clearFilters}
