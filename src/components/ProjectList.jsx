@@ -380,15 +380,12 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onNewProject,
       <div className="px-8 py-6 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm relative z-20">
         <div className="max-w-7xl mx-auto space-y-6">
           <div className="relative group">
-            <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-              <span className="text-xl grayscale group-focus-within:grayscale-0 transition-all">🔍</span>
-            </div>
             <input
               type="text"
               placeholder="Search by name, RFA, agent, container, RFA type, project type..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="w-full pl-14 pr-12 py-4 bg-gray-50 dark:bg-gray-900/50 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/5 transition-all shadow-inner"
+              className="w-full pl-5 pr-12 py-4 bg-gray-50 dark:bg-gray-900/50 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/5 transition-all shadow-inner"
             />
             {searchTerm && (
               <button 
