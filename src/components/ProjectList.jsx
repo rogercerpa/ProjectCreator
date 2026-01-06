@@ -338,7 +338,12 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onNewProject,
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl">
             <div className="flex flex-col items-center justify-center rounded-2xl bg-white/10 p-4 backdrop-blur-lg border border-white/10 hover:bg-white/15 transition-colors group">
               <span className="text-3xl font-bold group-hover:scale-110 transition-transform">
-                {safeProjects.filter(p => p && (p.rfaStatus?.trim().toLowerCase() === 'in progress' || p.rfaStatus?.trim().toLowerCase() === 'in-progress')).length}
+                {safeProjects.filter(p => {
+                  if (!p) return false;
+                  const status = p.rfaStatus?.trim().toLowerCase();
+                  return status === 'in progress' || status === 'in-progress' || 
+                         status === 'ready for qc' || status === 'pending' || status === 'on hold';
+                }).length}
               </span>
               <span className="text-xs uppercase tracking-wider opacity-70 mt-1 font-bold">Active Projects</span>
             </div>
