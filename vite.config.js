@@ -38,11 +38,11 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
     rollupOptions: {
-      external: ['electron', 'fs-extra', 'path', 'os', 'chokidar', 'archiver', 'xlsx', 'officegen', 'docx', 'mammoth', 'ws'],
+      external: ['electron', 'fs-extra', 'path', 'os', 'chokidar', 'archiver', 'xlsx', 'officegen', 'mammoth', 'ws'],
     },
   },
   optimizeDeps: {
-    exclude: ['fs-extra', 'path', 'os', 'chokidar', 'archiver', 'xlsx', 'officegen', 'docx', 'mammoth', 'ws']
+    exclude: ['fs-extra', 'path', 'os', 'chokidar', 'archiver', 'xlsx', 'officegen', 'mammoth', 'ws']
   },
   server: {
     port: 5173,

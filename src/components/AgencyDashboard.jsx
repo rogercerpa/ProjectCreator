@@ -2,12 +2,8 @@ import React, { useState, useEffect } from 'react';
 import AgencyOverviewTab from './agency/AgencyOverviewTab';
 import AgencyProjectsTab from './agency/AgencyProjectsTab';
 import AgencyContactTab from './agency/AgencyContactTab';
-import AgencyNotesTab from './agency/AgencyNotesTab';
-import AgencyDesignRequirementsTab from './agency/AgencyDesignRequirementsTab';
-import AgencyProductFocusTab from './agency/AgencyProductFocusTab';
-import AgencyTrainingTab from './agency/AgencyTrainingTab';
+import AgencyPlaybookTab from './agency/AgencyPlaybookTab';
 import AgencyEmailTemplatesTab from './agency/AgencyEmailTemplatesTab';
-import AgencyMarketStrategyTab from './agency/AgencyMarketStrategyTab';
 import AgencyAnalyticsTab from './agency/AgencyAnalyticsTab';
 import AgencyTasksTab from './agency/AgencyTasksTab';
 import AgencySettingsTab from './agency/AgencySettingsTab';
@@ -57,12 +53,8 @@ function AgencyDashboard({ agency, onBack, onProjectSelect }) {
     { id: 'overview', label: 'Overview', icon: '📊' },
     { id: 'projects', label: 'Projects', icon: '📁' },
     { id: 'contacts', label: 'Contacts', icon: '👥' },
-    { id: 'notes', label: 'Notes', icon: '📝' },
-    { id: 'design', label: 'Design Requirements', icon: '🎨' },
-    { id: 'products', label: 'Product Focus', icon: '📦' },
-    { id: 'training', label: 'Training', icon: '🎓' },
+    { id: 'playbook', label: 'Playbook', icon: '📋' },
     { id: 'templates', label: 'Email Templates', icon: '📧' },
-    { id: 'strategy', label: 'Market Strategy', icon: '📈' },
     { id: 'analytics', label: 'Analytics', icon: '📊' },
     { id: 'tasks', label: 'Tasks', icon: '✅' },
     { id: 'settings', label: 'Settings', icon: '⚙️' },
@@ -230,23 +222,11 @@ function AgencyDashboard({ agency, onBack, onProjectSelect }) {
             {activeTab === 'contacts' && (
               <AgencyContactTab agency={agency} allAgents={allAgents} />
             )}
-            {activeTab === 'notes' && (
-              <AgencyNotesTab agency={agency} />
-            )}
-            {activeTab === 'design' && (
-              <AgencyDesignRequirementsTab agency={agency} />
-            )}
-            {activeTab === 'products' && (
-              <AgencyProductFocusTab agency={agency} />
-            )}
-            {activeTab === 'training' && (
-              <AgencyTrainingTab agency={agency} />
+            {activeTab === 'playbook' && (
+              <AgencyPlaybookTab agency={agency} />
             )}
             {activeTab === 'templates' && (
               <AgencyEmailTemplatesTab agency={agency} />
-            )}
-            {activeTab === 'strategy' && (
-              <AgencyMarketStrategyTab agency={agency} />
             )}
             {activeTab === 'analytics' && (
               <AgencyAnalyticsTab agency={agency} />
