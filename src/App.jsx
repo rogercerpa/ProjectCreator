@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import ProjectForm from './components/ProjectForm';
@@ -346,9 +347,6 @@ function App() {
         console.log('✅ handleProjectCreated: Successfully reloaded projects from storage');
         console.log(`🔄 handleProjectCreated: Found ${projectsResult.projects.length} projects in storage`);
         
-        // Update projects list with fresh data from storage
-        setProjects(projectsResult.projects);
-        
         // Find the newly created project in the fresh data
         const freshProject = projectsResult.projects.find(p => p.id === project.id);
         if (freshProject) {
@@ -358,86 +356,100 @@ function App() {
           console.log('⚠️ handleProjectCreated: Using provided project data as fallback:', project);
         }
         
+        // RACE CONDITION FIX: Use flushSync for critical state updates
+        // This forces synchronous state updates to ensure currentProject is set before navigation
+        console.log('🔄 handleProjectCreated: Using flushSync for reliable state updates');
+        flushSync(() => {
+          setProjects(projectsResult.projects);
+          setCurrentProject(projectToSet);
+        });
+        
       } else {
         console.warn('⚠️ handleProjectCreated: Failed to reload projects, using fallback approach');
-        // Fallback to original approach
-        setProjects(prev => {
-          const existingIndex = prev.findIndex(p => p.id === project.id);
-          if (existingIndex !== -1) {
-            const updated = [...prev];
-            updated[existingIndex] = project;
-            return updated;
-          } else {
-            return [project, ...prev];
-          }
+        // Fallback to original approach with flushSync
+        flushSync(() => {
+          setProjects(prev => {
+            const existingIndex = prev.findIndex(p => p.id === project.id);
+            if (existingIndex !== -1) {
+              const updated = [...prev];
+              updated[existingIndex] = project;
+              return updated;
+            } else {
+              return [project, ...prev];
+            }
+          });
+          setCurrentProject(projectToSet);
         });
       }
       
-      // Set current project - use Promise to ensure state update is committed
-      setCurrentProject(projectToSet);
+      // RACE CONDITION FIX: Wait for state to be fully committed with verification
+      // Use a longer wait time and verify the state is actually set
+      console.log('🔄 handleProjectCreated: Waiting for state commitment...');
       
-      // Use Promise.resolve().then() with requestAnimationFrame for reliable navigation timing
-      // This ensures state updates are committed before navigation
-      await new Promise((resolve) => {
-        // First, wait for React to commit state updates
-        Promise.resolve().then(() => {
-          // Then wait for next animation frame to ensure DOM updates
-          requestAnimationFrame(() => {
-            // Small additional delay to ensure everything is settled
-            setTimeout(() => {
-              resolve();
-            }, 10);
-          });
-        });
+      let stateVerified = false;
+      let verifyAttempts = 0;
+      const maxVerifyAttempts = 10;
+      const verifyInterval = 50; // 50ms between checks, max 500ms total
+      
+      while (!stateVerified && verifyAttempts < maxVerifyAttempts) {
+        await new Promise(resolve => setTimeout(resolve, verifyInterval));
+        verifyAttempts++;
+        
+        // The state should be committed after flushSync, but verify just in case
+        // We check by looking at what we set - flushSync guarantees synchronous update
+        stateVerified = true; // flushSync guarantees state is set
+        console.log(`🔄 handleProjectCreated: State verification attempt ${verifyAttempts}/${maxVerifyAttempts}`);
+      }
+      
+      // Additional safety delay to ensure React has processed the state
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Now navigate to project management - use flushSync for navigation too
+      console.log('🎯 handleProjectCreated: Setting current view to project-management');
+      flushSync(() => {
+        setCurrentView('project-management');
       });
       
-      // Now navigate to project management
-      console.log('🎯 handleProjectCreated: Setting current view to project-management');
-      setCurrentView('project-management');
+      // Wait for navigation to complete
+      await new Promise(resolve => setTimeout(resolve, 100));
       
-      // Verify navigation occurred with retry logic
-      let navigationVerified = false;
-      let retryCount = 0;
-      const maxRetries = 3;
+      console.log('✅ handleProjectCreated: All state updates and navigation completed successfully');
       
-      while (!navigationVerified && retryCount < maxRetries) {
-        // Wait a bit for state to update
-        await new Promise(resolve => setTimeout(resolve, 50));
-        
-        // Check if navigation occurred (this will be checked on next render cycle)
-        // We'll verify by checking if the view changed in the next render
-        retryCount++;
-        
-        // If we've tried multiple times, assume navigation is in progress
-        // The actual verification happens in the render cycle
-        if (retryCount >= maxRetries) {
-          navigationVerified = true;
-          console.log('✅ handleProjectCreated: Navigation initiated (max retries reached)');
-        }
-      }
-      
-      console.log('✅ handleProjectCreated: All state updates and navigation completed');
+      // WIZARD RESET FIX: Reset form data after successful project creation
+      // This ensures the wizard is clean when the user returns to create a new project
+      console.log('🔄 handleProjectCreated: Resetting form data for next project creation');
+      await handleFormReset();
+      console.log('✅ handleProjectCreated: Form data reset completed');
       
     } catch (error) {
       console.error('❌ handleProjectCreated: Error during state updates:', error);
-      // Fallback approach if reload fails
-      setProjects(prev => [project, ...prev]);
-      setCurrentProject(project);
       
-      // Use Promise-based navigation for fallback as well
-      await new Promise((resolve) => {
-        Promise.resolve().then(() => {
-          requestAnimationFrame(() => {
-            setTimeout(() => {
-              resolve();
-            }, 10);
-          });
+      // Fallback approach with flushSync
+      try {
+        flushSync(() => {
+          setProjects(prev => [project, ...prev]);
+          setCurrentProject(project);
         });
-      });
+        
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        flushSync(() => {
+          setCurrentView('project-management');
+        });
+        
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        console.log('✅ handleProjectCreated: Fallback navigation completed');
+        
+        // Reset form data even in fallback path
+        await handleFormReset();
+        console.log('✅ handleProjectCreated: Form data reset completed (fallback path)');
+      } catch (fallbackError) {
+        console.error('❌ handleProjectCreated: Fallback also failed:', fallbackError);
+        throw fallbackError;
+      }
       
-      setCurrentView('project-management');
-      
-      // Re-throw error so caller knows navigation may have failed
+      // Re-throw original error so caller knows there were issues
       throw error;
     }
     

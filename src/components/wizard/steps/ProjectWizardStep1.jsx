@@ -1965,60 +1965,46 @@ const ProjectWizardStep1 = ({
       }
     >
       <div className="space-y-6">
-        {/* CLEAN: Simplified Duplicate Check Section */}
+        {/* CLEAN: Simplified Duplicate Check Section with proper Tailwind styling */}
         {duplicateCheckState.showButton && (
-        <div className="duplicate-check-section" style={{
-          background: 'linear-gradient(135deg, #f8f9fa, #e9ecef)',
-          borderBottom: '1px solid #dee2e6',
-          padding: '15px 20px',
-          display: 'flex',
-          justifyContent: 'center',
-        }}>
-          <div className="duplicate-check-container" style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '15px',
-            maxWidth: '800px',
-            width: '100%',
-          }}>
+        <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-750 border-b border-gray-200 dark:border-gray-700 px-5 py-4 flex justify-center rounded-lg shadow-sm">
+          <div className="flex flex-wrap items-center gap-4 max-w-4xl w-full">
+            {/* Main Check Button */}
             <button
               type="button"
               onClick={handleManualDuplicateCheck}
               disabled={duplicateCheckState.status === 'checking' || isDuplicateDetectionRunning}
-              className={`btn duplicate-check-btn ${
-                duplicateCheckState.status === 'success' ? 'btn-success' :
-                duplicateCheckState.status === 'duplicate' ? 'btn-warning' :
-                duplicateCheckState.status === 'error' ? 'btn-danger' :
-                duplicateCheckState.status === 'outdated' ? 'btn-warning' :
-                'btn-outline'
-              }`}
+              className={`
+                px-4 py-2.5 text-sm font-semibold rounded-lg shadow-sm transition-all duration-200
+                flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed
+                ${duplicateCheckState.status === 'success' 
+                  ? 'bg-success-500 hover:bg-success-600 text-white dark:bg-success-600 dark:hover:bg-success-500' 
+                  : duplicateCheckState.status === 'duplicate' 
+                    ? 'bg-warning-500 hover:bg-warning-600 text-white dark:bg-warning-600 dark:hover:bg-warning-500' 
+                    : duplicateCheckState.status === 'error' 
+                      ? 'bg-error-500 hover:bg-error-600 text-white dark:bg-error-600 dark:hover:bg-error-500' 
+                      : duplicateCheckState.status === 'outdated' 
+                        ? 'bg-warning-500 hover:bg-warning-600 text-white dark:bg-warning-600 dark:hover:bg-warning-500' 
+                        : 'bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 hover:border-primary-400 dark:hover:border-primary-500'
+                }
+              `}
               title="Check if this project already exists in the system"
             >
               {duplicateCheckState.status === 'checking' ? (
                 <>
-                  <span className="spinner"></span>
-                  Checking for duplicates...
+                  <span className="spinner w-4 h-4 border-2"></span>
+                  <span>Checking for duplicates...</span>
                 </>
               ) : duplicateCheckState.status === 'success' ? (
-                <>
-                  ✅ No Duplicates Found
-                </>
+                <span>✅ No Duplicates Found</span>
               ) : duplicateCheckState.status === 'duplicate' ? (
-                <>
-                  ⚠️ Duplicates Found - Click for Details
-                </>
+                <span>⚠️ Duplicates Found - Click for Details</span>
               ) : duplicateCheckState.status === 'error' ? (
-                <>
-                  ❌ Check Failed - Try Again
-                </>
+                <span>❌ Check Failed - Try Again</span>
               ) : duplicateCheckState.status === 'outdated' ? (
-                <>
-                  ⚠️ Outdated - Check Again
-                </>
+                <span>⚠️ Outdated - Check Again</span>
               ) : (
-                <>
-                  🔍 Check for Existing Projects
-                </>
+                <span>🔍 Check for Existing Projects</span>
               )}
             </button>
 
@@ -2027,7 +2013,7 @@ const ProjectWizardStep1 = ({
               <button
                 type="button"
                 onClick={handleManualOverride}
-                className="btn btn-secondary"
+                className="px-4 py-2.5 text-sm font-medium bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm transition-all"
                 title="Continue despite check failure"
               >
                 Continue Anyway
@@ -2036,9 +2022,9 @@ const ProjectWizardStep1 = ({
             
             {/* Success Message */}
             {duplicateCheckState.status === 'success' && (
-              <div className="duplicate-check-success">
-                <span className="success-icon">✅</span>
-                <span className="success-text">
+              <div className="flex items-center gap-2 px-3 py-2 bg-success-50 dark:bg-success-900/20 text-success-700 dark:text-success-300 text-sm font-medium rounded-lg border border-success-200 dark:border-success-800">
+                <span>✅</span>
+                <span>
                   {duplicateCheckState.result?.overridden 
                     ? 'Proceeding with manual override' 
                     : 'Safe to proceed - no existing projects found'}
@@ -2048,54 +2034,27 @@ const ProjectWizardStep1 = ({
 
             {/* Outdated Warning */}
             {duplicateCheckState.status === 'outdated' && (
-              <div className="duplicate-check-warning" style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                color: '#856404',
-                fontSize: '14px',
-                fontWeight: '500',
-                padding: '8px 12px',
-                backgroundColor: '#fff3cd',
-                borderRadius: '4px',
-                border: '1px solid #ffeaa7'
-              }}>
+              <div className="flex items-center gap-2 px-3 py-2 bg-warning-50 dark:bg-warning-900/20 text-warning-700 dark:text-warning-300 text-sm font-medium rounded-lg border border-warning-200 dark:border-warning-800">
                 <span>⚠️ Project details changed - check for duplicates again</span>
               </div>
             )}
 
             {/* Project Container Format Validation */}
             {formData.projectContainer && !isValidProjectContainer(formData.projectContainer) && (
-              <div className="format-validation-warning" style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                color: '#721c24',
-                fontSize: '14px',
-                fontWeight: '500',
-                padding: '8px 12px',
-                backgroundColor: '#f8d7da',
-                borderRadius: '4px',
-                border: '1px solid #f5c6cb'
-              }}>
+              <div className="flex items-center gap-2 px-3 py-2 bg-error-50 dark:bg-error-900/20 text-error-700 dark:text-error-300 text-sm font-medium rounded-lg border border-error-200 dark:border-error-800">
                 <span>❌ Invalid project container format. Expected: ##-##### (e.g., "24-61726")</span>
               </div>
             )}
 
             {/* RFA Version Information */}
             {formData.rfaNumber && (
-              <div className="rfa-version-info" style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                color: extractRFAVersion(formData.rfaNumber) === "0" ? '#0c5460' : '#856404',
-                fontSize: '14px',
-                fontWeight: '500',
-                padding: '8px 12px',
-                backgroundColor: extractRFAVersion(formData.rfaNumber) === "0" ? '#d1ecf1' : '#fff3cd',
-                borderRadius: '4px',
-                border: extractRFAVersion(formData.rfaNumber) === "0" ? '1px solid #b8daff' : '1px solid #ffeaa7'
-              }}>
+              <div className={`
+                flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border
+                ${extractRFAVersion(formData.rfaNumber) === "0" 
+                  ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800' 
+                  : 'bg-warning-50 dark:bg-warning-900/20 text-warning-700 dark:text-warning-300 border-warning-200 dark:border-warning-800'
+                }
+              `}>
                 {extractRFAVersion(formData.rfaNumber) === "0" ? (
                   <span>🆕 Initial RFA version (-0) - will check for existing project</span>
                 ) : (

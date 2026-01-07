@@ -61,6 +61,16 @@ const useWizardState = (initialData = {}, totalSteps = 2) => {
     return completedSteps.includes(stepNumber);
   }, [completedSteps]);
 
+  // Mark a step as completed externally (used for restoring wizard state)
+  const markStepCompleted = useCallback((stepNumber) => {
+    setCompletedSteps(prev => {
+      if (prev.includes(stepNumber)) {
+        return prev; // Already completed, no change needed
+      }
+      return [...new Set([...prev, stepNumber])];
+    });
+  }, []);
+
   const isStepAccessible = useCallback((stepNumber) => {
     // Step 1 is always accessible
     if (stepNumber === 1) return true;
@@ -137,6 +147,7 @@ const useWizardState = (initialData = {}, totalSteps = 2) => {
 
     // Utility functions
     isStepCompleted,
+    markStepCompleted,
     isStepAccessible,
     canProceedToNext,
     canGoToPrevious,

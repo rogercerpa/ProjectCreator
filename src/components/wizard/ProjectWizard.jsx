@@ -120,6 +120,9 @@ const ProjectWizard = ({
   // Debounced validation to prevent excessive validation calls
   const [validationTimeout, setValidationTimeout] = useState(null);
   
+  // Track if we've restored wizard state (to prevent duplicate restoration)
+  const hasRestoredStateRef = useRef(false);
+  
   // Auto-dismiss notification after 3 seconds
   useEffect(() => {
     if (notification) {
@@ -130,6 +133,44 @@ const ProjectWizard = ({
       return () => clearTimeout(timer);
     }
   }, [notification]);
+
+  // WIZARD STATE RESTORATION: Restore to Step 2 if Step 1 was already completed
+  // This handles the case where user navigates away from Step 2 and returns
+  useEffect(() => {
+    // Only restore state once on mount
+    if (hasRestoredStateRef.current) return;
+    
+    // Check if Step 1 was already completed (folders were created)
+    // Indicators: projectPath, rfaPath, and agentFilesPath exist in formData
+    const step1WasCompleted = formData.projectPath && formData.rfaPath && formData.agentFilesPath;
+    
+    if (step1WasCompleted && wizard.currentStep === 1) {
+      console.log('🔄 ProjectWizard: Detected completed Step 1 (folders exist), restoring to Step 2');
+      console.log('  - projectPath:', formData.projectPath);
+      console.log('  - rfaPath:', formData.rfaPath);
+      console.log('  - agentFilesPath:', formData.agentFilesPath);
+      
+      // Mark Step 1 as completed
+      wizard.markStepCompleted(1);
+      
+      // Set Step 1 as valid
+      wizard.setStepValidation(1, true, {});
+      
+      // Navigate directly to Step 2
+      wizard.goToStep(2);
+      
+      // Mark as restored to prevent duplicate restoration
+      hasRestoredStateRef.current = true;
+      
+      // Show notification to user
+      setNotification({
+        type: 'info',
+        message: '📂 Resuming where you left off - project folders already created.'
+      });
+      
+      console.log('✅ ProjectWizard: Wizard state restored to Step 2');
+    }
+  }, []); // Only run on mount - formData and wizard are stable references
 
   // Handle form data changes with debounced validation
   const handleFormDataChange = useCallback((newFormData) => {
@@ -1000,54 +1041,103 @@ const ProjectWizard = ({
           let navigationSuccess = false;
           let navigationError = null;
 
+          // TIMEOUT FIX: Wrap navigation call with timeout to prevent infinite waits
+          const NAVIGATION_TIMEOUT_MS = 8000; // 8 seconds timeout for navigation
+          
+          // Helper function to create a timeout promise
+          const createTimeoutPromise = (ms) => {
+            return new Promise((_, reject) => {
+              setTimeout(() => {
+                reject(new Error(`Navigation timed out after ${ms / 1000} seconds`));
+              }, ms);
+            });
+          };
+
+          // Helper function to call navigation with timeout
+          const callNavigationWithTimeout = async (navigationFn, project, handlerName) => {
+            console.log(`ProjectWizard: Calling ${handlerName} with timeout protection`);
+            
+            try {
+              // Race between navigation and timeout
+              await Promise.race([
+                navigationFn(project),
+                createTimeoutPromise(NAVIGATION_TIMEOUT_MS)
+              ]);
+              
+              console.log(`ProjectWizard: ✅ ${handlerName} completed successfully`);
+              return { success: true };
+            } catch (error) {
+              const isTimeout = error.message && error.message.includes('timed out');
+              console.error(`ProjectWizard: ❌ ${handlerName} failed:`, error);
+              return { 
+                success: false, 
+                error, 
+                isTimeout 
+              };
+            }
+          };
+
           // Determine which handler to use - prefer 'create' mode but fallback to 'edit' if needed
           const shouldUseCreateHandler = mode === 'create' && typeof onProjectCreated === 'function';
           const shouldUseUpdateHandler = !shouldUseCreateHandler && typeof onProjectUpdated === 'function';
 
           if (shouldUseCreateHandler) {
-            console.log('ProjectWizard: Calling onProjectCreated with saved project:', savedProject);
-            try {
-              // Call the navigation function and wait for completion
-              await onProjectCreated(savedProject);
-              console.log('ProjectWizard: ✅ onProjectCreated completed successfully');
+            const result = await callNavigationWithTimeout(onProjectCreated, savedProject, 'onProjectCreated');
+            
+            if (result.success) {
               navigationSuccess = true;
-              
               setNotification({
                 type: 'success',
                 message: '🎉 Project saved and creation completed! Welcome to project management.'
               });
+            } else {
+              navigationError = result.error;
               
-            } catch (navError) {
-              console.error('ProjectWizard: ❌ Error in onProjectCreated:', navError);
-              navigationError = navError;
-              setNotification({
-                type: 'warning',
-                message: '✅ Project saved successfully, but navigation failed. Please check the Projects list.'
-              });
-              // Reset navigation flag on error so loading state can be reset
+              if (result.isTimeout) {
+                // TIMEOUT RECOVERY: Project was saved but navigation timed out
+                console.warn('ProjectWizard: Navigation timed out - project was saved successfully');
+                setNotification({
+                  type: 'warning',
+                  message: '✅ Project saved successfully! Navigation took too long. Please click "Projects" in the sidebar to view your project.'
+                });
+              } else {
+                setNotification({
+                  type: 'warning',
+                  message: '✅ Project saved successfully, but navigation failed. Please check the Projects list.'
+                });
+              }
+              
+              // ALWAYS reset loading state on navigation failure
               isNavigatingAwayRef.current = false;
               setIsLoading(false);
             }
           } else if (shouldUseUpdateHandler) {
-            console.log('ProjectWizard: Calling onProjectUpdated with saved project:', savedProject);
-            try {
-              await onProjectUpdated(savedProject);
-              console.log('ProjectWizard: ✅ onProjectUpdated completed successfully');
+            const result = await callNavigationWithTimeout(onProjectUpdated, savedProject, 'onProjectUpdated');
+            
+            if (result.success) {
               navigationSuccess = true;
-              
               setNotification({
                 type: 'success',
                 message: '🎉 Project updated and saved successfully! Welcome to project management.'
               });
+            } else {
+              navigationError = result.error;
               
-            } catch (navError) {
-              console.error('ProjectWizard: ❌ Error in onProjectUpdated:', navError);
-              navigationError = navError;
-              setNotification({
-                type: 'warning',
-                message: '✅ Project updated successfully, but navigation failed. Please check the Projects list.'
-              });
-              // Reset navigation flag on error so loading state can be reset
+              if (result.isTimeout) {
+                // TIMEOUT RECOVERY: Project was saved but navigation timed out
+                console.warn('ProjectWizard: Navigation timed out - project was updated successfully');
+                setNotification({
+                  type: 'warning',
+                  message: '✅ Project updated successfully! Navigation took too long. Please click "Projects" in the sidebar to view your project.'
+                });
+              } else {
+                setNotification({
+                  type: 'warning',
+                  message: '✅ Project updated successfully, but navigation failed. Please check the Projects list.'
+                });
+              }
+              
+              // ALWAYS reset loading state on navigation failure
               isNavigatingAwayRef.current = false;
               setIsLoading(false);
             }
@@ -1074,27 +1164,32 @@ const ProjectWizard = ({
             return;
           }
 
-          // If we get here, navigation failed - already reset flags above
+          // If we get here, navigation failed - flags already reset above
+          // Log for debugging purposes
+          console.log('ProjectWizard: Navigation did not succeed, button should now be clickable again');
           return;
 
         } catch (step2Error) {
           console.error('Step 2 completion failed:', step2Error);
           
-          // Reset navigation flag on error
+          // CRITICAL FIX: ALWAYS reset navigation flag and loading state on ANY error
           isNavigatingAwayRef.current = false;
+          setIsLoading(false);
           
-          // Distinguish between save errors and navigation errors
-          const isSaveError = step2Error.message && (
-            step2Error.message.includes('Failed to save project') ||
-            step2Error.message.includes('database') ||
-            step2Error.message.includes('storage')
-          );
+          // Distinguish between save errors, navigation errors, and timeout errors
+          const errorMessage = step2Error.message || '';
           
-          const isNavigationError = step2Error.message && (
-            step2Error.message.includes('navigation') ||
-            step2Error.message.includes('No project provided') ||
-            step2Error.message.includes('Project missing ID')
-          );
+          const isSaveError = 
+            errorMessage.includes('Failed to save project') ||
+            errorMessage.includes('database') ||
+            errorMessage.includes('storage');
+          
+          const isTimeoutError = errorMessage.includes('timed out');
+          
+          const isNavigationError = 
+            errorMessage.includes('navigation') ||
+            errorMessage.includes('No project provided') ||
+            errorMessage.includes('Project missing ID');
           
           if (isSaveError) {
             setError('Failed to save project. Please check your connection and try again.');
@@ -1102,8 +1197,15 @@ const ProjectWizard = ({
               type: 'error',
               message: 'Unable to save project to database. Please verify your connection and try again.'
             });
+          } else if (isTimeoutError) {
+            // Timeout errors mean project likely saved but navigation hung
+            setError(null); // Clear error since project was likely saved
+            setNotification({
+              type: 'warning',
+              message: '✅ Project may have been saved. Navigation timed out. Please check the Projects list.'
+            });
           } else if (isNavigationError) {
-            setError('Project saved successfully, but navigation failed.');
+            setError(null); // Clear error since project was saved
             setNotification({
               type: 'warning',
               message: '✅ Project saved successfully, but navigation failed. Please navigate to the Projects list manually.'
@@ -1116,6 +1218,7 @@ const ProjectWizard = ({
             });
           }
           
+          console.log('ProjectWizard: Step 2 error handled, loading state reset, button should be clickable');
           return; // Don't proceed if step 2 fails
         }
       }
