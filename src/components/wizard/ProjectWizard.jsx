@@ -218,10 +218,15 @@ const ProjectWizard = ({
 
   // Reset wizard to clean state
   const resetWizardState = useCallback(() => {
+    console.log('🔄 Wizard: Resetting wizard state to Step 1');
+    
     // Clear notifications and errors first
     setError(null);
     setNotification(null);
     setIsLoading(false);
+    
+    // Reset the state restoration ref to allow future restorations
+    hasRestoredStateRef.current = false;
     
     // Reset draft states
     if (projectDraft) {
@@ -241,7 +246,7 @@ const ProjectWizard = ({
     // This ensures wizard state resets with clean formData
     setTimeout(() => {
       wizard.resetWizard();
-      console.log('Wizard reset completed - ready for new project');
+      console.log('✅ Wizard: Reset completed - ready for new project at Step 1');
     }, 50); // Small delay to ensure formData reset completes first
     
   }, [wizard, projectDraft, onWizardReset]);
@@ -1569,11 +1574,16 @@ const ProjectWizard = ({
             )}
             
             <button
-              onClick={onCancel}
+              onClick={() => {
+                // Reset wizard to Step 1 and clear form data instead of navigating away
+                resetWizardState();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
               disabled={isLoading}
               className="px-4 py-2 text-sm font-medium border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Clear form and start over from Step 1"
             >
-              Cancel
+              Start Over
             </button>
           </div>
 

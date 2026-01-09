@@ -69,6 +69,11 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
       cleanupStrategy: 'manual', // 'auto-delete', 'keep-recent', 'manual' - DEFAULT TO MANUAL FOR SAFETY
       keepRecentCount: 10
     },
+    dasGeneralSettings: {
+      filePath: 'Z:\\DAS References\\ProjectCreatorV5\\DASGeneral.xlsx',
+      autoRefresh: false,
+      refreshInterval: 30000
+    },
     workloadSettings: {
       enableRealTimeSync: true,
       dataDirectory: '',

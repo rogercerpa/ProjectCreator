@@ -651,6 +651,125 @@ const AdvancedSettingsTab = ({ settings, setSettings }) => {
           </div>
         </div>
       </div>
+
+      {/* DAS General Data Settings Section */}
+      <div className="p-6 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+        <div className="mb-6">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="text-3xl">📖</span>
+            <div>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">DAS General Data Settings</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Configure the Excel file path for DAS General team and product data</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="space-y-6">
+          {/* DAS General File Path */}
+          <div className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div className="flex items-start gap-3 mb-4">
+              <span className="text-2xl">📁</span>
+              <div className="flex-1">
+                <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1">DAS General Excel File Path</h3>
+                <p className="text-xs text-gray-600 dark:text-gray-400">The Excel file that stores team members, training materials, and product information</p>
+              </div>
+            </div>
+            
+            <div className="space-y-3">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">File Path</label>
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  value={settings.dasGeneralSettings?.filePath || 'Z:\\DAS References\\ProjectCreatorV5\\DASGeneral.xlsx'}
+                  onChange={(e) => setSettings(prev => ({
+                    ...prev,
+                    dasGeneralSettings: {
+                      ...prev.dasGeneralSettings,
+                      filePath: e.target.value
+                    }
+                  }))}
+                  placeholder="Z:\DAS References\ProjectCreatorV5\DASGeneral.xlsx"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 transition-all focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    className="px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg transition-all"
+                    onClick={async () => {
+                      if (electronAPI && electronAPI.dasGeneralSelectFile) {
+                        const result = await electronAPI.dasGeneralSelectFile();
+                        if (result.success && result.filePath) {
+                          setSettings(prev => ({
+                            ...prev,
+                            dasGeneralSettings: {
+                              ...prev.dasGeneralSettings,
+                              filePath: result.filePath
+                            }
+                          }));
+                        }
+                      }
+                    }}
+                  >
+                    📂 Browse
+                  </button>
+                  <button
+                    type="button"
+                    className="px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg transition-all"
+                    onClick={async () => {
+                      const filePath = settings.dasGeneralSettings?.filePath || 'Z:\\DAS References\\ProjectCreatorV5\\DASGeneral.xlsx';
+                      if (electronAPI && electronAPI.dasGeneralCheckAccess) {
+                        const result = await electronAPI.dasGeneralCheckAccess(filePath);
+                        if (result.success) {
+                          alert(`✅ File is accessible!\n\nPath: ${filePath}\nSheets: ${result.sheetNames?.join(', ') || 'Unknown'}`);
+                        } else {
+                          alert(`❌ ${result.message || 'File is not accessible'}\n\nPath: ${filePath}`);
+                        }
+                      }
+                    }}
+                  >
+                    ✓ Test
+                  </button>
+                  <button
+                    type="button"
+                    className="px-3 py-1.5 text-sm bg-primary-100 dark:bg-primary-900/30 hover:bg-primary-200 dark:hover:bg-primary-900/50 border border-primary-300 dark:border-primary-700 text-primary-700 dark:text-primary-300 rounded-lg transition-all"
+                    onClick={async () => {
+                      const filePath = settings.dasGeneralSettings?.filePath || 'Z:\\DAS References\\ProjectCreatorV5\\DASGeneral.xlsx';
+                      if (window.confirm(`Create a new DAS General file at:\n\n${filePath}\n\nThis will create a new file with default structure. Continue?`)) {
+                        if (electronAPI && electronAPI.dasGeneralCreateFile) {
+                          const result = await electronAPI.dasGeneralCreateFile(filePath);
+                          if (result.success) {
+                            alert(`✅ File created successfully!\n\nPath: ${result.filePath}`);
+                          } else {
+                            alert(`❌ Failed to create file\n\n${result.error || result.message}`);
+                          }
+                        }
+                      }
+                    }}
+                  >
+                    ➕ Create New
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Info box */}
+          <div className="p-4 bg-info-50 dark:bg-info-900/20 rounded-lg border border-info-200 dark:border-info-800">
+            <div className="flex items-start gap-3">
+              <span className="text-xl">ℹ️</span>
+              <div className="text-sm text-gray-700 dark:text-gray-300">
+                <p className="font-semibold mb-2">About DAS General Data</p>
+                <ul className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
+                  <li>• The Excel file contains team member information, training materials, and product details</li>
+                  <li>• All users share the same file - changes are immediately visible to everyone</li>
+                  <li>• Changes must be saved to the Excel file - if the save fails, changes are not persisted</li>
+                  <li>• The default path is on the Z: drive for shared access across the team</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

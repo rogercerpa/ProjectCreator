@@ -12,6 +12,7 @@ import WorkloadDashboard from './components/WorkloadDashboard';
 import DraftRecoveryModal from './components/wizard/components/DraftRecoveryModal';
 import MigrationAssistant from './components/wizard/components/MigrationAssistant';
 import Settings from './components/Settings';
+import DASGeneralPage from './components/DASGeneralPage';
 import logoUrl from '/assets/images/logo.png';
 // Use simple services that work in both main and renderer processes
 import featureFlagService from './services/FeatureFlagService';
@@ -404,6 +405,11 @@ function App() {
       // Additional safety delay to ensure React has processed the state
       await new Promise(resolve => setTimeout(resolve, 100));
       
+      // Reset form data BEFORE navigation so wizard shows clean Step 1 when user returns
+      console.log('🔄 handleProjectCreated: Resetting form data before navigation');
+      await handleFormReset();
+      console.log('✅ handleProjectCreated: Form data reset for clean wizard on return');
+      
       // Now navigate to project management - use flushSync for navigation too
       console.log('🎯 handleProjectCreated: Setting current view to project-management');
       flushSync(() => {
@@ -414,12 +420,6 @@ function App() {
       await new Promise(resolve => setTimeout(resolve, 100));
       
       console.log('✅ handleProjectCreated: All state updates and navigation completed successfully');
-      
-      // WIZARD RESET FIX: Reset form data after successful project creation
-      // This ensures the wizard is clean when the user returns to create a new project
-      console.log('🔄 handleProjectCreated: Resetting form data for next project creation');
-      await handleFormReset();
-      console.log('✅ handleProjectCreated: Form data reset completed');
       
     } catch (error) {
       console.error('❌ handleProjectCreated: Error during state updates:', error);
@@ -433,6 +433,9 @@ function App() {
         
         await new Promise(resolve => setTimeout(resolve, 100));
         
+        // Reset form data BEFORE navigation in fallback path too
+        await handleFormReset();
+        
         flushSync(() => {
           setCurrentView('project-management');
         });
@@ -440,10 +443,6 @@ function App() {
         await new Promise(resolve => setTimeout(resolve, 100));
         
         console.log('✅ handleProjectCreated: Fallback navigation completed');
-        
-        // Reset form data even in fallback path
-        await handleFormReset();
-        console.log('✅ handleProjectCreated: Form data reset completed (fallback path)');
       } catch (fallbackError) {
         console.error('❌ handleProjectCreated: Fallback also failed:', fallbackError);
         throw fallbackError;
@@ -1046,6 +1045,8 @@ function App() {
               setCurrentView('settings');
             }}
           />;
+        case 'das-general':
+          return <DASGeneralPage />;
         case 'settings':
           return <Settings 
             initialTab={settingsTab} 

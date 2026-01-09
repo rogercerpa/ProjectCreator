@@ -33,6 +33,12 @@ function Sidebar({ currentView, onViewChange, projectCount }) {
       description: 'Search agencies'
     },
     {
+      id: 'das-general',
+      label: 'DAS General',
+      icon: '📖',
+      description: 'Team & product info'
+    },
+    {
       id: 'settings',
       label: 'Settings',
       icon: '⚙️',

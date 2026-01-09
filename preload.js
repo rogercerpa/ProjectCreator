@@ -330,7 +330,35 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onWebSocketConflictDetected: (callback) => {
     ipcRenderer.on('websocket:conflict-detected', (event, data) => callback(data));
     return () => ipcRenderer.removeAllListeners('websocket:conflict-detected');
-  }
+  },
+  
+  // ===== DAS GENERAL APIs =====
+  
+  // DAS General data operations
+  dasGeneralLoadAll: (filePath) => ipcRenderer.invoke('das-general:load-all', filePath),
+  dasGeneralSaveAll: (data, filePath) => ipcRenderer.invoke('das-general:save-all', data, filePath),
+  dasGeneralCheckAccess: (filePath) => ipcRenderer.invoke('das-general:check-access', filePath),
+  dasGeneralCreateFile: (filePath) => ipcRenderer.invoke('das-general:create-file', filePath),
+  
+  // Team Members operations
+  dasGeneralSaveTeamMembers: (teamMembers, filePath) => ipcRenderer.invoke('das-general:save-team-members', teamMembers, filePath),
+  
+  // Training Material operations
+  dasGeneralSaveTrainingMaterial: (trainingMaterial, filePath) => ipcRenderer.invoke('das-general:save-training-material', trainingMaterial, filePath),
+  
+  // Products Info operations
+  dasGeneralSaveProductsInfo: (productsInfo, filePath) => ipcRenderer.invoke('das-general:save-products-info', productsInfo, filePath),
+  
+  // Product management
+  dasGeneralAddProduct: (productName, filePath) => ipcRenderer.invoke('das-general:add-product', productName, filePath),
+  dasGeneralRemoveProduct: (productName, filePath) => ipcRenderer.invoke('das-general:remove-product', productName, filePath),
+  
+  // Settings operations
+  dasGeneralGetSettings: () => ipcRenderer.invoke('das-general:get-settings'),
+  dasGeneralUpdateSettings: (settings) => ipcRenderer.invoke('das-general:update-settings', settings),
+  
+  // File selection
+  dasGeneralSelectFile: () => ipcRenderer.invoke('das-general:select-file')
 });
 
 // SECURITY: Prevent access to Node.js APIs
