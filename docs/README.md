@@ -11,7 +11,6 @@ A modern Electron-based desktop application for creating and managing projects, 
   - Bidirectional data synchronization
 - **Workload Dashboard**: Summary dashboard with MS Lists integration for team collaboration
 - **Document Generation**: Generate Word documents and other file formats
-- **Real-time Notifications**: WebSocket-based notifications for project updates and team presence
 - **Modern UI**: Built with React and modern CSS for a professional look
 - **Cross-Platform**: Works on Windows, macOS, and Linux
 - **File Operations**: Comprehensive file handling and management capabilities
@@ -69,14 +68,12 @@ ProjectCreator/
 │   ├── services/                 # Backend services
 │   │   ├── WorkloadExcelService.js      # Excel operations
 │   │   ├── WorkloadExcelSyncService.js  # Excel sync
-│   │   ├── FieldMappingService.js       # Field mapping
-│   │   └── WebSocketService.js          # Real-time notifications
+│   │   └── FieldMappingService.js       # Field mapping
 │   └── config/                   # Configuration files
 │       └── defaultFieldMapping.json     # Excel field mappings
 ├── docs/                         # Documentation
 │   ├── MS365-WORKLOAD-SETUP.md   # MS 365 setup guide
-│   ├── MS365-POWER-AUTOMATE-FLOWS.md # Power Automate guide
-│   └── WEBSOCKET-USER-GUIDE.md   # WebSocket notifications guide
+│   └── MS365-POWER-AUTOMATE-FLOWS.md # Power Automate guide
 ├── main.js                       # Electron main process
 ├── preload.js                    # Secure IPC preload script
 ├── index.html                    # Main HTML file
@@ -91,7 +88,6 @@ This application is built with:
 - **Vite** - Build tool and dev server
 - **Tailwind CSS** - Utility-first CSS framework
 - **XLSX (SheetJS)** - Excel file operations for MS 365 integration
-- **WebSocket (ws)** - Real-time notifications
 
 ## Building for Distribution
 
@@ -138,12 +134,10 @@ The application integrates with Microsoft 365 for workload management:
 - **Excel Integration**: Export/import projects and assignments to Excel files
 - **MS Lists Integration**: Sync with Microsoft Lists via Power Automate flows
 - **Bidirectional Sync**: Changes in MS Lists sync back to Excel and the app
-- **Real-time Notifications**: WebSocket server provides instant alerts
 
 For setup instructions, see:
 - [MS 365 Workload Setup Guide](./docs/MS365-WORKLOAD-SETUP.md)
 - [Power Automate Flows Guide](./docs/MS365-POWER-AUTOMATE-FLOWS.md)
-- [WebSocket Notifications Guide](./docs/WEBSOCKET-USER-GUIDE.md)
 
 ## Support
 

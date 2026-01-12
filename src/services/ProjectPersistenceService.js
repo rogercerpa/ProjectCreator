@@ -328,7 +328,6 @@ class ProjectPersistenceService {
           fluffPercentage: 10
         },
         workloadSettings: {
-          websocketServer: 'wss://projectcreatorv5.fly.dev',
           enableRealTimeSync: true,
           dataDirectory: '',
           userName: '',

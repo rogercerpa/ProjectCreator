@@ -22,8 +22,7 @@ ProjectCreator/
 │   │   ├── FileService.js          # File system operations
 │   │   ├── ProjectService.js       # Project management
 │   │   ├── WordService.js          # Word document operations
-│   │   ├── ProjectPersistenceService.js  # Data persistence
-│   │   └── WebSocketService.js      # WebSocket client (if used in renderer)
+│   │   └── ProjectPersistenceService.js  # Data persistence
 │   ├── 📁 utils/                   # Utility functions
 │   │   ├── security.js             # Security utilities
 │   │   └── version.js              # Version information
@@ -35,8 +34,7 @@ ProjectCreator/
 │   ├── 📁 services/                # Backend services
 │   │   ├── WorkloadExcelService.js      # Excel read/write operations
 │   │   ├── WorkloadExcelSyncService.js  # Excel file sync and monitoring
-│   │   ├── FieldMappingService.js       # Field mapping between app and Excel
-│   │   └── WebSocketService.js          # WebSocket client for notifications
+│   │   └── FieldMappingService.js       # Field mapping between app and Excel
 │   └── 📁 config/                  # Configuration files
 │       └── defaultFieldMapping.json     # Default Excel field mappings
 ├── 📁 assets/                      # Static assets
@@ -54,8 +52,7 @@ ProjectCreator/
 │   ├── MS365-WORKLOAD-IMPLEMENTATION-SUMMARY.md # Implementation details
 │   ├── POWER-AUTOMATE-QUICK-REFERENCE.md # Power Automate reference
 │   ├── POWER-AUTOMATE-STEP-BY-STEP.md # Power Automate setup
-│   ├── POWER-AUTOMATE-EXCEL-ALTERNATIVE.md # Alternative approach
-│   └── WEBSOCKET-USER-GUIDE.md     # WebSocket notifications guide
+│   └── POWER-AUTOMATE-EXCEL-ALTERNATIVE.md # Alternative approach
 ├── 📁 scripts/                     # Build and utility scripts
 │   ├── build.sh                    # Build script
 │   ├── dev.sh                      # Development script
@@ -312,11 +309,6 @@ App → Excel File ↔ Power Automate ↔ MS Lists
   ↑                                    ↓
   └─────────── Sync Now ─────────────┘
 ```
-
-### WebSocket Notifications
-- **WebSocketService**: Provides real-time notifications (supplementary)
-- **Purpose**: Alerts and presence, not primary workload management
-- **Server**: Cloud-hosted on Fly.io
 
 ---
 

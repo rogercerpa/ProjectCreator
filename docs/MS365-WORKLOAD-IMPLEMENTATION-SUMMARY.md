@@ -448,12 +448,11 @@ These components are no longer used (but not deleted for backward compatibility)
 ### Planned Features
 1. **Field Mapping UI** - Visual editor for field mappings in settings
 2. **MS Graph API Integration** - Direct MS Lists integration (bypass Excel)
-3. **Real-time Sync** - WebSocket-based instant updates
-4. **Conflict Resolution** - Smart merge for simultaneous edits
-5. **Bulk Operations** - Mass assign, update, delete
-6. **Excel Template Generator** - Dynamic template creation from field mapping
-7. **Sync History** - Log of all sync operations
-8. **Automated Testing** - Unit and integration tests
+3. **Conflict Resolution** - Smart merge for simultaneous edits
+4. **Bulk Operations** - Mass assign, update, delete
+5. **Excel Template Generator** - Dynamic template creation from field mapping
+6. **Sync History** - Log of all sync operations
+7. **Automated Testing** - Unit and integration tests
 
 ### Potential Improvements
 - Progress indicators for long operations
@@ -495,7 +494,6 @@ These components are no longer used (but not deleted for backward compatibility)
 #### What Stays the Same
 - Project creation in app
 - Local data persistence
-- WebSocket real-time updates
 - User management
 - Backup functionality
 

@@ -51,7 +51,6 @@ const OneDriveSyncService = require('./main-process/services/OneDriveSyncService
 // Import workload services
 const WorkloadPersistenceService = require('./main-process/services/WorkloadPersistenceService');
 const FileWatcherService = require('./main-process/services/FileWatcherService');
-const WebSocketService = require('./main-process/services/WebSocketService');
 const FieldMappingService = require('./main-process/services/FieldMappingService');
 const WorkloadExcelService = require('./main-process/services/WorkloadExcelService');
 const WorkloadExcelSyncService = require('./main-process/services/WorkloadExcelSyncService');
@@ -91,7 +90,6 @@ readyForQCService.setProjectPersistenceService(projectPersistenceService);
 // Initialize workload services
 const workloadPersistenceService = new WorkloadPersistenceService();
 let fileWatcherService = null; // Initialized when user configures shared folder
-const webSocketService = new WebSocketService();
 const fieldMappingService = new FieldMappingService();
 const workloadExcelService = new WorkloadExcelService(fieldMappingService);
 const workloadExcelSyncService = new WorkloadExcelSyncService(workloadExcelService, fieldMappingService, settingsService);
@@ -1888,12 +1886,6 @@ ipcMain.handle('workload:assignments-load-all', async () => {
 ipcMain.handle('workload:assignment-save', async (event, assignment) => {
   try {
     const result = await workloadPersistenceService.saveAssignment(assignment);
-    
-    // Broadcast assignment change via WebSocket if connected
-    if (webSocketService.isConnected) {
-      webSocketService.sendNotification('ASSIGNMENT_CREATED', assignment);
-    }
-    
     return result;
   } catch (error) {
     console.error('Error saving assignment:', error);
@@ -1904,12 +1896,6 @@ ipcMain.handle('workload:assignment-save', async (event, assignment) => {
 ipcMain.handle('workload:assignment-delete', async (event, assignmentId) => {
   try {
     const result = await workloadPersistenceService.deleteAssignment(assignmentId);
-    
-    // Broadcast assignment deletion via WebSocket if connected
-    if (webSocketService.isConnected) {
-      webSocketService.sendNotification('ASSIGNMENT_DELETED', { assignmentId });
-    }
-    
     return result;
   } catch (error) {
     console.error('Error deleting assignment:', error);
@@ -2449,128 +2435,6 @@ ipcMain.handle('workload-excel:sync-status', async () => {
   }
 });
 
-// WebSocket operations
-ipcMain.handle('websocket:connect', async (event, serverUrl, userId, userName) => {
-  try {
-    const result = webSocketService.connect(serverUrl, userId, userName);
-    
-    // Setup WebSocket event handlers
-    webSocketService.removeAllListeners(); // Remove any old listeners
-    
-    webSocketService.on('connected', (data) => {
-      if (mainWindow) {
-        mainWindow.webContents.send('websocket:connected', data);
-      }
-    });
-    
-    webSocketService.on('disconnected', (data) => {
-      if (mainWindow) {
-        mainWindow.webContents.send('websocket:disconnected', data);
-      }
-    });
-    
-    webSocketService.on('error', (data) => {
-      if (mainWindow) {
-        mainWindow.webContents.send('websocket:error', data);
-      }
-    });
-    
-    webSocketService.on('user:presence', (data) => {
-      if (mainWindow) {
-        mainWindow.webContents.send('websocket:user-presence', data);
-      }
-    });
-    
-    webSocketService.on('project:assigned', (data) => {
-      if (mainWindow) {
-        mainWindow.webContents.send('websocket:project-assigned', data);
-      }
-    });
-    
-    webSocketService.on('project:status', (data) => {
-      if (mainWindow) {
-        mainWindow.webContents.send('websocket:project-status', data);
-      }
-    });
-    
-    webSocketService.on('workload:updated', (data) => {
-      if (mainWindow) {
-        mainWindow.webContents.send('websocket:workload-updated', data);
-      }
-    });
-    
-    webSocketService.on('assignment:changed', (data) => {
-      if (mainWindow) {
-        mainWindow.webContents.send('websocket:assignment-changed', data);
-      }
-    });
-    
-    webSocketService.on('conflict:detected', (data) => {
-      if (mainWindow) {
-        mainWindow.webContents.send('websocket:conflict-detected', data);
-      }
-    });
-    
-    return result;
-  } catch (error) {
-    console.error('Error connecting to WebSocket:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-ipcMain.handle('websocket:disconnect', async () => {
-  try {
-    return webSocketService.disconnect();
-  } catch (error) {
-    console.error('Error disconnecting from WebSocket:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-ipcMain.handle('websocket:send', async (event, message) => {
-  try {
-    return webSocketService.send(message);
-  } catch (error) {
-    console.error('Error sending WebSocket message:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-ipcMain.handle('websocket:broadcast-assignment', async (event, assignment) => {
-  try {
-    return webSocketService.broadcastProjectAssignment(assignment);
-  } catch (error) {
-    console.error('Error broadcasting assignment:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-ipcMain.handle('websocket:broadcast-status', async (event, projectId, oldStatus, newStatus) => {
-  try {
-    return webSocketService.broadcastProjectStatus(projectId, oldStatus, newStatus);
-  } catch (error) {
-    console.error('Error broadcasting status:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-ipcMain.handle('websocket:update-presence', async (event, status) => {
-  try {
-    return webSocketService.updatePresence(status);
-  } catch (error) {
-    console.error('Error updating presence:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-ipcMain.handle('websocket:status', async () => {
-  try {
-    return { success: true, status: webSocketService.getStatus() };
-  } catch (error) {
-    console.error('Error getting WebSocket status:', error);
-    return { success: false, error: error.message };
-  }
-});
 
 // Backup operations
 ipcMain.handle('workload:backup-create', async () => {

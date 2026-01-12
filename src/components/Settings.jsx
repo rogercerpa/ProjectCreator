@@ -77,7 +77,6 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
     workloadSettings: {
       enableRealTimeSync: true,
       dataDirectory: '',
-      websocketServer: 'ws://localhost:8080',
       userName: '',
       userEmail: '',
       weeklyCapacity: 40,
@@ -317,7 +316,6 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
             workloadSettings: {
               enableRealTimeSync: true,
               dataDirectory: '',
-              websocketServer: 'wss://projectcreatorv5.fly.dev',
               userName: '',
               userEmail: '',
               position: '',
@@ -3273,7 +3271,7 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
                     Enable Real-Time Sync
                   </label>
                   <span className="setting-hint">
-                    Enables WebSocket connections for instant updates
+                    Enables file sync for instant updates
                   </span>
                 </div>
               </div>
@@ -3323,90 +3321,6 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
                   <p className="field-description-below">
                     Path to shared OneDrive folder for multi-user collaboration
                   </p>
-                </div>
-              </div>
-
-              <div className="setting-group" style={{marginTop: '20px'}}>
-                <h4>🔌 WebSocket Server</h4>
-                <div className="setting-row-vertical">
-                  <label>Server URL:</label>
-                  <input
-                    type="text"
-                    value={settings.workloadSettings?.websocketServer || 'wss://projectcreatorv5.fly.dev'}
-                    onChange={(e) => setSettings(prev => ({
-                      ...prev,
-                      workloadSettings: {
-                        ...prev.workloadSettings,
-                        websocketServer: e.target.value
-                      }
-                    }))}
-                    placeholder="wss://projectcreatorv5.fly.dev"
-                    className="workload-server-input"
-                  />
-                  <p className="field-description-below">
-                    WebSocket server URL for real-time notifications<br/>
-                    <strong>Important:</strong> Use <code>wss://</code> for Fly.io (not https://) or <code>ws://</code> for localhost<br/>
-                    Example: <code>wss://projectcreatorv5.fly.dev</code>
-                  </p>
-                </div>
-                <div className="setting-row">
-                  <button
-                    onClick={async () => {
-                      try {
-                        if (window.electronAPI && window.electronAPI.websocketConnect) {
-                          let serverUrl = settings.workloadSettings?.websocketServer || 'wss://projectcreatorv5.fly.dev';
-                          serverUrl = serverUrl.trim();
-                          
-                          // Auto-correct common URL mistakes
-                          let corrected = false;
-                          let correctionMsg = '';
-                          
-                          if (serverUrl.startsWith('https://')) {
-                            const oldUrl = serverUrl;
-                            serverUrl = serverUrl.replace('https://', 'wss://');
-                            corrected = true;
-                            correctionMsg = `Auto-corrected:\n${oldUrl}\n→ ${serverUrl}\n\n`;
-                          } else if (serverUrl.startsWith('http://') && !serverUrl.includes('localhost')) {
-                            const oldUrl = serverUrl;
-                            serverUrl = serverUrl.replace('http://', 'wss://');
-                            corrected = true;
-                            correctionMsg = `Auto-corrected:\n${oldUrl}\n→ ${serverUrl}\n\n`;
-                          }
-                          
-                          // Update settings with corrected URL
-                          if (corrected) {
-                            setSettings(prev => ({
-                              ...prev,
-                              workloadSettings: {
-                                ...prev.workloadSettings,
-                                websocketServer: serverUrl
-                              }
-                            }));
-                          }
-                          
-                          const currentUser = JSON.parse(localStorage.getItem('workload-current-user') || '{}');
-                          const result = await window.electronAPI.websocketConnect(
-                            serverUrl,
-                            currentUser.id || 'test-user',
-                            currentUser.name || 'Test User'
-                          );
-                          
-                          if (result.success) {
-                            alert(correctionMsg + '✅ Connection successful!\n\nServer: ' + serverUrl + '\n\nReal-time features are now active.');
-                          } else {
-                            alert(correctionMsg + '❌ Connection failed\n\nError: ' + (result.message || result.error || 'Unknown error') + '\n\nTroubleshooting:\n• Verify URL starts with wss:// (not https://)\n• Check server is running\n• Test internet connection');
-                          }
-                        } else {
-                          alert('⚠️ WebSocket API not available. Make sure the app is fully loaded.');
-                        }
-                      } catch (error) {
-                        alert('❌ Connection failed: ' + error.message);
-                      }
-                    }}
-                    className="btn-primary"
-                  >
-                    Test Connection
-                  </button>
                 </div>
               </div>
 

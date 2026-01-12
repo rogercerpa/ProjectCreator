@@ -209,14 +209,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   workloadFileWatcherStop: () => ipcRenderer.invoke('workload:file-watcher-stop'),
   workloadFileWatcherStatus: () => ipcRenderer.invoke('workload:file-watcher-status'),
   
-  // WebSocket operations
-  websocketConnect: (serverUrl, userId, userName) => ipcRenderer.invoke('websocket:connect', serverUrl, userId, userName),
-  websocketDisconnect: () => ipcRenderer.invoke('websocket:disconnect'),
-  websocketSend: (message) => ipcRenderer.invoke('websocket:send', message),
-  websocketBroadcastAssignment: (assignment) => ipcRenderer.invoke('websocket:broadcast-assignment', assignment),
-  websocketBroadcastStatus: (projectId, oldStatus, newStatus) => ipcRenderer.invoke('websocket:broadcast-status', projectId, oldStatus, newStatus),
-  websocketUpdatePresence: (status) => ipcRenderer.invoke('websocket:update-presence', status),
-  websocketStatus: () => ipcRenderer.invoke('websocket:status'),
   
   // Backup operations
   workloadBackupCreate: () => ipcRenderer.invoke('workload:backup-create'),
@@ -294,43 +286,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeAllListeners('workload-excel:settings-updated');
   },
   
-  // WebSocket event listeners
-  onWebSocketConnected: (callback) => {
-    ipcRenderer.on('websocket:connected', (event, data) => callback(data));
-    return () => ipcRenderer.removeAllListeners('websocket:connected');
-  },
-  onWebSocketDisconnected: (callback) => {
-    ipcRenderer.on('websocket:disconnected', (event, data) => callback(data));
-    return () => ipcRenderer.removeAllListeners('websocket:disconnected');
-  },
-  onWebSocketError: (callback) => {
-    ipcRenderer.on('websocket:error', (event, data) => callback(data));
-    return () => ipcRenderer.removeAllListeners('websocket:error');
-  },
-  onWebSocketUserPresence: (callback) => {
-    ipcRenderer.on('websocket:user-presence', (event, data) => callback(data));
-    return () => ipcRenderer.removeAllListeners('websocket:user-presence');
-  },
-  onWebSocketProjectAssigned: (callback) => {
-    ipcRenderer.on('websocket:project-assigned', (event, data) => callback(data));
-    return () => ipcRenderer.removeAllListeners('websocket:project-assigned');
-  },
-  onWebSocketProjectStatus: (callback) => {
-    ipcRenderer.on('websocket:project-status', (event, data) => callback(data));
-    return () => ipcRenderer.removeAllListeners('websocket:project-status');
-  },
-  onWebSocketWorkloadUpdated: (callback) => {
-    ipcRenderer.on('websocket:workload-updated', (event, data) => callback(data));
-    return () => ipcRenderer.removeAllListeners('websocket:workload-updated');
-  },
-  onWebSocketAssignmentChanged: (callback) => {
-    ipcRenderer.on('websocket:assignment-changed', (event, data) => callback(data));
-    return () => ipcRenderer.removeAllListeners('websocket:assignment-changed');
-  },
-  onWebSocketConflictDetected: (callback) => {
-    ipcRenderer.on('websocket:conflict-detected', (event, data) => callback(data));
-    return () => ipcRenderer.removeAllListeners('websocket:conflict-detected');
-  },
   
   // ===== DAS GENERAL APIs =====
   
