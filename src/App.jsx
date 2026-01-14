@@ -319,8 +319,6 @@ function App() {
     };
   }, []);
 
-
-
   const handleProjectCreated = async (project) => {
     console.log('🎯 handleProjectCreated called with:', project);
     
@@ -410,14 +408,11 @@ function App() {
       await handleFormReset();
       console.log('✅ handleProjectCreated: Form data reset for clean wizard on return');
       
-      // Now navigate to project management - use flushSync for navigation too
+      // Navigate to project management view using flushSync for synchronous update
       console.log('🎯 handleProjectCreated: Setting current view to project-management');
       flushSync(() => {
         setCurrentView('project-management');
       });
-      
-      // Wait for navigation to complete
-      await new Promise(resolve => setTimeout(resolve, 100));
       
       console.log('✅ handleProjectCreated: All state updates and navigation completed successfully');
       
@@ -436,11 +431,10 @@ function App() {
         // Reset form data BEFORE navigation in fallback path too
         await handleFormReset();
         
+        // Navigate to project management view using flushSync
         flushSync(() => {
           setCurrentView('project-management');
         });
-        
-        await new Promise(resolve => setTimeout(resolve, 100));
         
         console.log('✅ handleProjectCreated: Fallback navigation completed');
       } catch (fallbackError) {
