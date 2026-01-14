@@ -1,6 +1,7 @@
 const archiver = require('archiver');
 const fs = require('fs-extra');
 const path = require('path');
+const { INVALID_FILENAME_CHARS } = require('./FileUtils');
 
 /**
  * ZipService - Handles project folder compression
@@ -303,6 +304,7 @@ class ZipService {
 
   /**
    * Sanitize filename by removing invalid characters
+   * Uses centralized INVALID_FILENAME_CHARS pattern for consistency
    * @param {string} fileName - Original filename
    * @returns {string} - Sanitized filename
    */
@@ -310,7 +312,7 @@ class ZipService {
     if (!fileName) return 'Untitled';
     
     return fileName
-      .replace(/[<>:"/\\|?*]/g, '_') // Replace invalid characters
+      .replace(INVALID_FILENAME_CHARS, '_') // Replace invalid characters (including parentheses)
       .replace(/\s+/g, '_') // Replace spaces with underscores
       .replace(/_+/g, '_') // Remove duplicate underscores
       .replace(/^_+|_+$/g, '') // Remove leading/trailing underscores

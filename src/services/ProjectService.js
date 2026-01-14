@@ -4,6 +4,11 @@ const path = require('path');
 const officegen = require('officegen');
 const docx = require('docx');
 const mammoth = require('mammoth');
+const { 
+  sanitizeForFilename, 
+  sanitizeProjectName: sanitizeProjectNameUtil, 
+  sanitizeRfaType 
+} = require('../utils/fileUtils');
 
 class ProjectService {
   constructor() {
@@ -84,11 +89,9 @@ class ProjectService {
   }
 
   // Sanitize project name
+  // Uses centralized utility for consistent sanitization across the app
   sanitizeProjectName(projectName) {
-    return projectName
-      .replace(/[\\\/|:]/g, ' ') // Replace backslashes, forward slashes, pipes, colons
-      .replace(/_/g, ' ') // Replace underscores
-      .toUpperCase(); // Convert to uppercase
+    return sanitizeProjectNameUtil(projectName);
   }
 
   // Get project folder path
@@ -206,9 +209,13 @@ class ProjectService {
     try {
       const relocFolder = path.join(rfaPath, 'RELOC-RFA#_TYPE_MMDDYYYY');
       if (await fs.pathExists(relocFolder)) {
-        const newName = `RFA#${projectData.rfaNumber}_${projectData.rfaType === 'RelocControlsSUB' || projectData.rfaType === 'RelocControlsBOM' 
-          ? '(Reloc Portion) ' + projectData.rfaType 
-          : projectData.rfaType}_${systemInfo.currentDate}`;
+        // Sanitize rfaType to remove parentheses and other invalid characters
+        const sanitizedRfaTypeValue = sanitizeRfaType(projectData.rfaType);
+        // Use "Reloc Portion" without parentheses for Controls projects
+        const isRelocControls = projectData.rfaType === 'RelocControlsSUB' || projectData.rfaType === 'RelocControlsBOM';
+        const newName = `RFA#${sanitizeForFilename(projectData.rfaNumber)}_${isRelocControls 
+          ? 'Reloc Portion ' + sanitizedRfaTypeValue 
+          : sanitizedRfaTypeValue}_${systemInfo.currentDate}`;
         
         await fs.move(relocFolder, path.join(rfaPath, newName));
         
@@ -216,7 +223,7 @@ class ProjectService {
         const files = await fs.readdir(rfaPath);
         for (const file of files) {
           if (path.extname(file).toLowerCase() === '.vsl') {
-            const newFileName = `${projectData.rfaNumber} A1.vsl`;
+            const newFileName = `${sanitizeForFilename(projectData.rfaNumber)} A1.vsl`;
             await fs.move(path.join(rfaPath, file), path.join(rfaPath, newFileName));
             break;
           }
@@ -233,14 +240,16 @@ class ProjectService {
     try {
       const photometricsFolder = path.join(rfaPath, 'PHOTOMETRICS-RFA#_TYPE_MMDDYYYY');
       if (await fs.pathExists(photometricsFolder)) {
-        const newName = `RFA#${projectData.rfaNumber}_${projectData.rfaType}_${systemInfo.currentDate}`;
+        // Sanitize rfaType to remove parentheses and other invalid characters
+        const sanitizedRfaTypeValue = sanitizeRfaType(projectData.rfaType);
+        const newName = `RFA#${sanitizeForFilename(projectData.rfaNumber)}_${sanitizedRfaTypeValue}_${systemInfo.currentDate}`;
         await fs.move(photometricsFolder, path.join(rfaPath, newName));
         
         // Rename VSL files
         const files = await fs.readdir(rfaPath);
         for (const file of files) {
           if (path.extname(file).toLowerCase() === '.vsl') {
-            const newFileName = `${projectData.rfaNumber} A1.vsl`;
+            const newFileName = `${sanitizeForFilename(projectData.rfaNumber)} A1.vsl`;
             await fs.move(path.join(rfaPath, file), path.join(rfaPath, newFileName));
             break;
           }
@@ -257,14 +266,17 @@ class ProjectService {
     try {
       const standardFolder = path.join(rfaPath, 'RFA#_TYPE_MMDDYYYY');
       if (await fs.pathExists(standardFolder)) {
-        const newName = `RFA#${projectData.rfaNumber}_${projectData.rfaType}_${systemInfo.currentDate}`;
+        // Sanitize rfaType to remove parentheses and other invalid characters
+        const sanitizedRfaTypeValue = sanitizeRfaType(projectData.rfaType);
+        const newName = `RFA#${sanitizeForFilename(projectData.rfaNumber)}_${sanitizedRfaTypeValue}_${systemInfo.currentDate}`;
         await fs.move(standardFolder, path.join(rfaPath, newName));
         
         // Rename VSP files
         const files = await fs.readdir(rfaPath);
+        const sanitizedProjectName = this.sanitizeProjectName(projectData.projectName);
         for (const file of files) {
           if (path.extname(file).toLowerCase() === '.vsp') {
-            const newFileName = `ABC_${projectData.projectName}_${projectData.rfaType} ORIG_${systemInfo.currentDate}.vsp`;
+            const newFileName = `ABC_${sanitizedProjectName}_${sanitizedRfaTypeValue} ORIG_${systemInfo.currentDate}.vsp`;
             await fs.move(path.join(rfaPath, file), path.join(rfaPath, newFileName));
             break;
           }

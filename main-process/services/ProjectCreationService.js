@@ -7,6 +7,13 @@ const ValidationOrchestrator = require('./ValidationOrchestrator');
 const RFATypeMappingService = require('./RFATypeMappingService');
 const RevisionDetectionService = require('./RevisionDetectionService');
 const RevisionFileCopyService = require('./RevisionFileCopyService');
+const { 
+  sanitizeForFilename, 
+  sanitizeProjectName: sanitizeProjectNameUtil, 
+  sanitizeRfaType,
+  buildRfaFolderName,
+  buildVspFilename 
+} = require('./FileUtils');
 
 class ProjectCreationService {
   constructor() {
@@ -136,11 +143,13 @@ class ProjectCreationService {
       await this.pathResolver.ensureDirectoryExists(outputBasePath);
       
       // Create main project folder: {ProjectName}_{ProjectContainer}
-      const projectFolderName = `${sanitizedProjectName}_${projectData.projectContainer}`;
+      const projectFolderName = `${sanitizedProjectName}_${sanitizeForFilename(projectData.projectContainer)}`;
       const projectFolderPath = path.join(outputBasePath, projectFolderName);
       
       // Create RFA subfolder: RFA#{RFANumber}_{RFAType}_{MMDDYYYY}
-      const rfaFolderName = `RFA#${projectData.rfaNumber}_${projectData.rfaType}_${dateString}`;
+      // Sanitize rfaType to remove parentheses and other invalid characters
+      const sanitizedRfaTypeForFolder = sanitizeRfaType(projectData.rfaType);
+      const rfaFolderName = `RFA#${sanitizeForFilename(projectData.rfaNumber)}_${sanitizedRfaTypeForFolder}_${dateString}`;
       const rfaFolderPath = path.join(projectFolderPath, rfaFolderName);
       
       // Agent Files path for opening
@@ -204,13 +213,10 @@ class ProjectCreationService {
 
   /**
    * Sanitize project name (remove invalid characters, convert to uppercase)
+   * Uses centralized utility for consistent sanitization across the app
    */
   sanitizeProjectName(projectName) {
-    return projectName
-      .replace(/[\\\/:]/g, ' ')
-      .replace(/_/g, ' ')
-      .toUpperCase()
-      .trim();
+    return sanitizeProjectNameUtil(projectName);
   }
 
   /**
@@ -281,7 +287,7 @@ class ProjectCreationService {
    * Create the main project folder structure
    */
   async createProjectStructure(projectData, paths, projectName, firstLetter) {
-    const projectFolder = path.join(paths.baseSave, `${projectName}_${projectData.projectContainer}`);
+    const projectFolder = path.join(paths.baseSave, `${projectName}_${sanitizeForFilename(projectData.projectContainer)}`);
     
     // Create main project folder
     await fs.ensureDir(projectFolder);
@@ -289,7 +295,9 @@ class ProjectCreationService {
     // Create RFA subfolder with date
     const currentDate = new Date();
     const dateString = `${String(currentDate.getMonth() + 1).padStart(2, '0')}${String(currentDate.getDate()).padStart(2, '0')}${currentDate.getFullYear()}`;
-    const rfaFolder = path.join(projectFolder, `RFA#${projectData.rfaNumber}_${projectData.rfaType}_${dateString}`);
+    // Sanitize rfaType to remove parentheses and other invalid characters
+    const sanitizedRfaTypeForFolder = sanitizeRfaType(projectData.rfaType);
+    const rfaFolder = path.join(projectFolder, `RFA#${sanitizeForFilename(projectData.rfaNumber)}_${sanitizedRfaTypeForFolder}_${dateString}`);
     
     await fs.ensureDir(rfaFolder);
     await fs.ensureDir(path.join(rfaFolder, '!Agent Files'));
@@ -303,6 +311,8 @@ class ProjectCreationService {
    */
   async copyProjectTemplates(projectData, projectStructure, paths) {
     const { rfaFolder } = projectStructure;
+    // Sanitize rfaType to remove parentheses and other invalid characters
+    const sanitizedRfaTypeValue = sanitizeRfaType(projectData.rfaType);
     
     try {
       // Handle different RFA types
@@ -313,7 +323,8 @@ class ProjectCreationService {
           await fs.copy(relocTemplate, rfaFolder);
           // Rename the template folder
           const templateFolderName = path.basename(relocTemplate);
-          const newFolderName = `RFA#${projectData.rfaNumber}_${projectData.rfaType.includes('Controls') ? '(Reloc Portion) ' : ''}${projectData.rfaType}_${projectStructure.dateString}`;
+          // Use "Reloc Portion" without parentheses for Controls projects
+          const newFolderName = `RFA#${sanitizeForFilename(projectData.rfaNumber)}_${projectData.rfaType.includes('Controls') ? 'Reloc Portion ' : ''}${sanitizedRfaTypeValue}_${projectStructure.dateString}`;
           await fs.move(path.join(rfaFolder, templateFolderName), path.join(rfaFolder, newFolderName));
         }
       } else if (projectData.rfaType === 'PHOTOMETRICS') {
@@ -322,7 +333,7 @@ class ProjectCreationService {
         if (await fs.pathExists(photoTemplate)) {
           await fs.copy(photoTemplate, rfaFolder);
           const templateFolderName = path.basename(photoTemplate);
-          const newFolderName = `RFA#${projectData.rfaNumber}_${projectData.rfaType}_${projectStructure.dateString}`;
+          const newFolderName = `RFA#${sanitizeForFilename(projectData.rfaNumber)}_${sanitizedRfaTypeValue}_${projectStructure.dateString}`;
           await fs.move(path.join(rfaFolder, templateFolderName), path.join(rfaFolder, newFolderName));
         }
       } else {
@@ -331,7 +342,7 @@ class ProjectCreationService {
         if (await fs.pathExists(controlsTemplate)) {
           await fs.copy(controlsTemplate, rfaFolder);
           const templateFolderName = path.basename(controlsTemplate);
-          const newFolderName = `RFA#${projectData.rfaNumber}_${projectData.rfaType}_${projectStructure.dateString}`;
+          const newFolderName = `RFA#${sanitizeForFilename(projectData.rfaNumber)}_${sanitizedRfaTypeValue}_${projectStructure.dateString}`;
           await fs.move(path.join(rfaFolder, templateFolderName), path.join(rfaFolder, newFolderName));
         }
       }
@@ -362,6 +373,8 @@ class ProjectCreationService {
   async copyAndProcessTemplates(projectData, rfaFolderPath, dateString, sanitizedProjectName) {
     try {
       const rfaType = projectData.rfaType;
+      // Sanitize rfaType to remove parentheses and other invalid characters
+      const sanitizedRfaTypeValue = sanitizeRfaType(rfaType);
       let templatePath, templateFolderName, newFolderName;
 
       // Determine template based on RFA type (exactly like HTA)
@@ -370,20 +383,21 @@ class ProjectCreationService {
         templatePath = this.templatePaths.reloc;
         templateFolderName = 'RELOC-RFA#_TYPE_MMDDYYYY';
         if (rfaType.includes('Controls')) {
-          newFolderName = `RFA#${projectData.rfaNumber}_(Reloc Portion) ${rfaType}_${dateString}`;
+          // Use "Reloc Portion" without parentheses
+          newFolderName = `RFA#${sanitizeForFilename(projectData.rfaNumber)}_Reloc Portion ${sanitizedRfaTypeValue}_${dateString}`;
         } else {
-          newFolderName = `RFA#${projectData.rfaNumber}_${rfaType}_${dateString}`;
+          newFolderName = `RFA#${sanitizeForFilename(projectData.rfaNumber)}_${sanitizedRfaTypeValue}_${dateString}`;
         }
       } else if (rfaType === 'PHOTOMETRICS') {
         // Photometrics projects
         templatePath = this.templatePaths.photometrics;
         templateFolderName = 'PHOTOMETRICS-RFA#_TYPE_MMDDYYYY';
-        newFolderName = `RFA#${projectData.rfaNumber}_${rfaType}_${dateString}`;
+        newFolderName = `RFA#${sanitizeForFilename(projectData.rfaNumber)}_${sanitizedRfaTypeValue}_${dateString}`;
       } else {
         // Standard controls projects
         templatePath = this.templatePaths.controls;
         templateFolderName = 'RFA#_TYPE_MMDDYYYY';
-        newFolderName = `RFA#${projectData.rfaNumber}_${rfaType}_${dateString}`;
+        newFolderName = `RFA#${sanitizeForFilename(projectData.rfaNumber)}_${sanitizedRfaTypeValue}_${dateString}`;
       }
 
       // Check if template exists
@@ -410,6 +424,8 @@ class ProjectCreationService {
   async processTemplateFiles(templateFolder, projectData, dateString, sanitizedProjectName) {
     try {
       const files = await fs.readdir(templateFolder);
+      // Sanitize rfaType to remove parentheses and other invalid characters
+      const sanitizedRfaTypeValue = sanitizeRfaType(projectData.rfaType);
       
       for (const file of files) {
         const filePath = path.join(templateFolder, file);
@@ -420,13 +436,14 @@ class ProjectCreationService {
           
           if (ext === '.vsp') {
             // Rename .vsp files like HTA: ABC_{ProjectName}_{RFAType} ORIG_{DateString}.vsp
-            const newFileName = `ABC_${sanitizedProjectName}_${projectData.rfaType} ORIG_${dateString}.vsp`;
+            // Use sanitized rfaType to avoid parentheses in filename
+            const newFileName = `ABC_${sanitizedProjectName}_${sanitizedRfaTypeValue} ORIG_${dateString}.vsp`;
             const newFilePath = path.join(templateFolder, newFileName);
             await fs.move(filePath, newFilePath);
             break; // Only rename the first .vsp file found
           } else if (ext === '.vsl') {
             // Rename .vsl files like HTA: {RFANumber} A1.vsl
-            const newFileName = `${projectData.rfaNumber} A1.vsl`;
+            const newFileName = `${sanitizeForFilename(projectData.rfaNumber)} A1.vsl`;
             const newFilePath = path.join(templateFolder, newFileName);
             await fs.move(filePath, newFilePath);
             break; // Only rename the first .vsl file found
@@ -497,13 +514,16 @@ class ProjectCreationService {
   async copyAgentSpecificFiles(projectData, rfaFolder, dateString, sanitizedProjectName) {
     try {
       const agentNumber = projectData.agentNumber;
+      // Sanitize rfaType to remove parentheses and other invalid characters
+      const sanitizedRfaTypeValue = sanitizeRfaType(projectData.rfaType);
       
       // Copy metric template for specific agents
       const metricAgents = ['563', '584', '903', '904', '905', '906', '909', '912', '915', '926', '968'];
       if (metricAgents.includes(agentNumber)) {
         const metricTemplate = path.join(this.templatePaths.master, '(Metric).vsp');
         if (await fs.pathExists(metricTemplate)) {
-          const destPath = path.join(rfaFolder, `ABC_${sanitizedProjectName}_${projectData.rfaType} ORIG_${dateString} (Metric).vsp`);
+          // Use "Metric" without parentheses in the destination filename
+          const destPath = path.join(rfaFolder, `ABC_${sanitizedProjectName}_${sanitizedRfaTypeValue} ORIG_${dateString} Metric.vsp`);
           await fs.copy(metricTemplate, destPath);
         }
       }
@@ -512,15 +532,15 @@ class ProjectCreationService {
       if (agentNumber.length === 4) {
         const holophaneTemplate = path.join(this.templatePaths.agentRequirements, 'Holophane.vsp');
         if (await fs.pathExists(holophaneTemplate)) {
-          const destPath = path.join(rfaFolder, `ABC_${sanitizedProjectName}_${projectData.rfaType} ORIG_${dateString}.vsp`);
+          const destPath = path.join(rfaFolder, `ABC_${sanitizedProjectName}_${sanitizedRfaTypeValue} ORIG_${dateString}.vsp`);
           await fs.copy(holophaneTemplate, destPath);
         }
       }
 
       // Copy agent-specific template
-      const agentTemplate = path.join(this.templatePaths.agentRequirements, `${agentNumber}.vsp`);
+      const agentTemplate = path.join(this.templatePaths.agentRequirements, `${sanitizeForFilename(agentNumber)}.vsp`);
       if (await fs.pathExists(agentTemplate)) {
-        const destPath = path.join(rfaFolder, `ABC_${sanitizedProjectName}_${projectData.rfaType} ORIG_${dateString}.vsp`);
+        const destPath = path.join(rfaFolder, `ABC_${sanitizedProjectName}_${sanitizedRfaTypeValue} ORIG_${dateString}.vsp`);
         await fs.copy(agentTemplate, destPath);
       }
 
@@ -784,13 +804,16 @@ class ProjectCreationService {
 
       const agentNumber = projectData.agentNumber;
       const agentRequirementsPath = resolvedPaths.templates.agentRequirements.path;
+      // Sanitize rfaType to remove parentheses and other invalid characters
+      const sanitizedRfaTypeValue = sanitizeRfaType(projectData.rfaType);
       
       // Copy metric template for specific agents
       const metricAgents = ['563', '584', '903', '904', '905', '906', '909', '912', '915', '926', '968'];
       if (metricAgents.includes(agentNumber)) {
         const metricTemplate = path.join(resolvedPaths.templates.bestTemplatePath, '(Metric).vsp');
         if (await fs.pathExists(metricTemplate)) {
-          const destPath = path.join(agentFilesPath, `ABC_${sanitizedProjectName}_${projectData.rfaType} ORIG_${dateString} (Metric).vsp`);
+          // Use "Metric" without parentheses in the destination filename
+          const destPath = path.join(agentFilesPath, `ABC_${sanitizedProjectName}_${sanitizedRfaTypeValue} ORIG_${dateString} Metric.vsp`);
           await fs.copy(metricTemplate, destPath);
           console.log(`Metric template copied for agent ${agentNumber}`);
         }
@@ -800,16 +823,16 @@ class ProjectCreationService {
       if (agentNumber.length === 4) {
         const holophaneTemplate = path.join(agentRequirementsPath, 'Holophane.vsp');
         if (await fs.pathExists(holophaneTemplate)) {
-          const destPath = path.join(agentFilesPath, `ABC_${sanitizedProjectName}_${projectData.rfaType} ORIG_${dateString}.vsp`);
+          const destPath = path.join(agentFilesPath, `ABC_${sanitizedProjectName}_${sanitizedRfaTypeValue} ORIG_${dateString}.vsp`);
           await fs.copy(holophaneTemplate, destPath);
           console.log(`Holophane template copied for 4-digit agent ${agentNumber}`);
         }
       }
 
       // Copy agent-specific template
-      const agentTemplate = path.join(agentRequirementsPath, `${agentNumber}.vsp`);
+      const agentTemplate = path.join(agentRequirementsPath, `${sanitizeForFilename(agentNumber)}.vsp`);
       if (await fs.pathExists(agentTemplate)) {
-        const destPath = path.join(agentFilesPath, `ABC_${sanitizedProjectName}_${projectData.rfaType} ORIG_${dateString}.vsp`);
+        const destPath = path.join(agentFilesPath, `ABC_${sanitizedProjectName}_${sanitizedRfaTypeValue} ORIG_${dateString}.vsp`);
         await fs.copy(agentTemplate, destPath);
         console.log(`Agent-specific template copied: ${agentNumber}.vsp`);
       } else {
@@ -1065,9 +1088,12 @@ class ProjectCreationService {
       const outputBasePath = resolvedPaths.output.finalPath;
       await this.pathResolver.ensureDirectoryExists(outputBasePath);
 
-      const projectFolderName = `${sanitizedProjectName}_${projectData.projectContainer}`;
+      // Sanitize folder name components
+      const projectFolderName = `${sanitizedProjectName}_${sanitizeForFilename(projectData.projectContainer)}`;
       const projectFolderPath = path.join(outputBasePath, projectFolderName);
-      const rfaFolderName = `RFA#${projectData.rfaNumber}_${projectData.rfaType}_${dateString}`;
+      // Sanitize rfaType to remove parentheses and other invalid characters
+      const sanitizedRfaTypeValue = sanitizeRfaType(projectData.rfaType);
+      const rfaFolderName = `RFA#${sanitizeForFilename(projectData.rfaNumber)}_${sanitizedRfaTypeValue}_${dateString}`;
       const rfaFolderPath = path.join(projectFolderPath, rfaFolderName);
       const agentFilesPath = path.join(rfaFolderPath, '!Agent Files');
 

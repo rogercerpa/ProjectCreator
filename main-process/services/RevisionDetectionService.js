@@ -1,6 +1,7 @@
 const fs = require('fs-extra');
 const path = require('path');
 const RFATypeMatchingService = require('./RFATypeMatchingService');
+const { INVALID_FILENAME_CHARS } = require('./FileUtils');
 
 /**
  * RevisionDetectionService
@@ -784,6 +785,7 @@ class RevisionDetectionService {
 
   /**
    * Sanitize project name (implements HTA logic with enhanced Agile import handling)
+   * Uses centralized INVALID_FILENAME_CHARS pattern for consistency
    * @param {string} projectName - Raw project name
    * @returns {string} Sanitized project name
    */
@@ -804,8 +806,9 @@ class RevisionDetectionService {
     sanitized = sanitized.replace(/\d{1,2}\/\d{1,2}\/\d{4}.*$/g, ''); // Remove dates like "12/15/2024"
     sanitized = sanitized.replace(/\d{4}-\d{2}-\d{2}.*$/g, '');        // Remove dates like "2024-12-15"
     
-    // Replace invalid Windows path characters
-    sanitized = sanitized.replace(/[\\\/:*?"<>|]/g, ' ');  // Replace all invalid Windows chars
+    // Replace invalid Windows path characters (including parentheses)
+    // Uses centralized pattern: \ / : * ? " < > | ( )
+    sanitized = sanitized.replace(INVALID_FILENAME_CHARS, ' ');
     sanitized = sanitized.replace(/_/g, ' ');               // Replace underscores
     
     // Clean up multiple spaces and trim

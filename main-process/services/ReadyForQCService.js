@@ -2,6 +2,7 @@ const fs = require('fs-extra');
 const path = require('path');
 const os = require('os');
 const extract = require('extract-zip');
+const { sanitizeProjectName: sanitizeProjectNameUtil, sanitizeForFilename } = require('./FileUtils');
 
 /**
  * ReadyForQCService - Handles scanning, matching, and downloading zip files from Ready for QC folder
@@ -29,16 +30,12 @@ class ReadyForQCService {
   }
 
   /**
-   * Sanitize project name (matches ProjectService logic)
+   * Sanitize project name (uses centralized utility for consistency)
    * @param {string} projectName - Project name
    * @returns {string} Sanitized project name
    */
   sanitizeProjectName(projectName) {
-    if (!projectName) return '';
-    return projectName
-      .replace(/[\\\/|:]/g, ' ') // Replace backslashes, forward slashes, pipes, colons
-      .replace(/_/g, ' ') // Replace underscores
-      .toUpperCase(); // Convert to uppercase
+    return sanitizeProjectNameUtil(projectName);
   }
 
   /**
