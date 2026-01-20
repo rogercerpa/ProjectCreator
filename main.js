@@ -553,10 +553,11 @@ ipcMain.handle('das-upload-project', async (event, project, confirmed) => {
     
     const result = await dasUploadService.uploadProject(project, confirmed, progressCallback);
     
-    // If upload was successful, update the project with upload status
+    // If upload was successful, update the project with upload status and set RFA Status to Completed
     if (result.success && !result.needsConfirmation) {
       const updatedProject = {
         ...project,
+        rfaStatus: 'Completed', // Auto-set to Completed after successful upload
         dasUploadStatus: {
           uploadedAt: new Date().toISOString(),
           uploadedPath: result.uploadedPath,

@@ -1,6 +1,7 @@
 const fs = require('fs-extra');
 const path = require('path');
 const os = require('os');
+const { shell } = require('electron');
 const { sanitizeProjectName: sanitizeProjectNameUtil } = require('./FileUtils');
 
 /**
@@ -299,6 +300,36 @@ class DasUploadService {
   }
 
   /**
+   * Move a folder to the Recycle Bin (safer than permanent delete)
+   * @param {string} folderPath - Path to folder to move to trash
+   * @returns {Promise<Object>} Result with success status
+   */
+  async moveToTrash(folderPath) {
+    try {
+      if (!await fs.pathExists(folderPath)) {
+        console.log(`[DasUpload] Folder not found for cleanup: ${folderPath}`);
+        return { success: true, message: 'Folder already removed' };
+      }
+      
+      console.log(`[DasUpload] Moving folder to Recycle Bin: ${folderPath}`);
+      await shell.trashItem(folderPath);
+      console.log(`[DasUpload] Successfully moved to Recycle Bin: ${folderPath}`);
+      
+      return {
+        success: true,
+        message: `Moved to Recycle Bin: ${folderPath}`
+      };
+    } catch (error) {
+      console.error(`[DasUpload] Error moving to Recycle Bin:`, error);
+      // Don't fail the overall operation if cleanup fails
+      return {
+        success: false,
+        error: `Could not move to Recycle Bin: ${error.message}`
+      };
+    }
+  }
+
+  /**
    * Count total files in a directory recursively (for progress calculation)
    * @param {string} dirPath - Directory path
    * @returns {Promise<number>} Total file count
@@ -411,11 +442,41 @@ class DasUploadService {
       const sourcePath = sourceResult.path;
       
       // Step 3: Handle based on project type (new vs revision)
+      let uploadResult;
       if (project.isRevision) {
-        return await this.uploadRevision(project, sourcePath, progressCallback);
+        uploadResult = await this.uploadRevision(project, sourcePath, progressCallback);
       } else {
-        return await this.uploadNewProject(project, sourcePath, confirmed, progressCallback);
+        uploadResult = await this.uploadNewProject(project, sourcePath, confirmed, progressCallback);
       }
+      
+      // Step 4: Clean up source folder after successful upload (move to Recycle Bin)
+      if (uploadResult.success && !uploadResult.needsConfirmation) {
+        if (progressCallback) {
+          progressCallback({
+            phase: 'cleanup',
+            progress: 98,
+            message: 'Cleaning up Downloads folder...'
+          });
+        }
+        
+        const cleanupResult = await this.moveToTrash(sourcePath);
+        uploadResult.cleanedUp = cleanupResult.success;
+        if (cleanupResult.success) {
+          console.log(`[DasUpload] Cleaned up source folder: ${sourcePath}`);
+        } else {
+          console.warn(`[DasUpload] Cleanup warning: ${cleanupResult.error}`);
+        }
+        
+        if (progressCallback) {
+          progressCallback({
+            phase: 'complete',
+            progress: 100,
+            message: uploadResult.cleanedUp ? 'Upload complete! Downloads folder cleaned up.' : 'Upload complete!'
+          });
+        }
+      }
+      
+      return uploadResult;
       
     } catch (error) {
       console.error('[DasUpload] Upload failed:', error);
@@ -427,10 +488,10 @@ class DasUploadService {
   }
 
   /**
-   * Upload a new project (entire folder)
+   * Upload a new project (entire folder or just RFA subfolder if main folder exists)
    * @param {Object} project - Project data
    * @param {string} sourcePath - Source folder path in Downloads
-   * @param {boolean} confirmed - Whether user has confirmed overwrite
+   * @param {boolean} confirmed - Whether user has confirmed overwrite (not used anymore, kept for API compatibility)
    * @param {Function} progressCallback - Progress callback
    * @returns {Promise<Object>} Upload result
    */
@@ -449,29 +510,86 @@ class DasUploadService {
     
     // Check if target folder already exists
     if (await fs.pathExists(targetPath)) {
-      if (!confirmed) {
-        console.log(`[DasUpload] Target folder exists, needs confirmation: ${targetPath}`);
+      // Main project folder exists - merge by copying only the RFA subfolder
+      console.log(`[DasUpload] Target folder exists, will merge by copying RFA subfolder only: ${targetPath}`);
+      
+      if (progressCallback) {
+        progressCallback({
+          phase: 'checking',
+          progress: 15,
+          message: 'Project folder exists on DAS, merging...'
+        });
+      }
+      
+      // Find RFA subfolder in Downloads
+      const rfaFolder = await this.findRevisionSubfolder(sourcePath);
+      if (!rfaFolder.success) {
         return {
           success: false,
-          needsConfirmation: true,
-          targetPath: targetPath,
-          message: `Folder already exists on DAS: ${targetPath}. Do you want to overwrite it?`
+          error: 'Project folder exists on DAS but could not find RFA subfolder in Downloads to merge.'
         };
       }
       
-      // User confirmed, remove existing folder
-      console.log(`[DasUpload] User confirmed overwrite, removing existing folder`);
+      const rfaSourcePath = rfaFolder.path;
+      const rfaFolderName = rfaFolder.folderName;
+      const rfaTargetPath = path.join(targetPath, rfaFolderName);
+      
+      console.log(`[DasUpload] Merging RFA folder: ${rfaSourcePath} -> ${rfaTargetPath}`);
+      
+      // Check if this specific RFA folder already exists
+      if (await fs.pathExists(rfaTargetPath)) {
+        console.log(`[DasUpload] RFA folder already exists on DAS, will overwrite: ${rfaTargetPath}`);
+        if (progressCallback) {
+          progressCallback({
+            phase: 'preparing',
+            progress: 25,
+            message: 'Updating existing RFA folder...'
+          });
+        }
+        await fs.remove(rfaTargetPath);
+      }
+      
+      // Copy RFA folder to DAS
       if (progressCallback) {
         progressCallback({
-          phase: 'preparing',
-          progress: 20,
-          message: 'Removing existing folder on DAS...'
+          phase: 'copying',
+          progress: 30,
+          message: 'Copying RFA folder to DAS...'
         });
       }
-      await fs.remove(targetPath);
+      
+      await this.copyWithProgress(rfaSourcePath, rfaTargetPath, (progress) => {
+        if (progressCallback) {
+          // Scale progress from 30-95
+          const scaledProgress = 30 + Math.round(progress.progress * 0.65);
+          progressCallback({
+            ...progress,
+            progress: scaledProgress
+          });
+        }
+      });
+      
+      if (progressCallback) {
+        progressCallback({
+          phase: 'complete',
+          progress: 100,
+          message: 'Upload complete (merged with existing folder)!'
+        });
+      }
+      
+      console.log(`[DasUpload] Merge upload complete: ${rfaTargetPath}`);
+      
+      return {
+        success: true,
+        uploadedPath: rfaTargetPath,
+        message: `Successfully merged RFA folder to ${rfaTargetPath}`,
+        isRevision: false,
+        wasMerged: true,
+        rfaFolderName: rfaFolderName
+      };
     }
     
-    // Copy folder to DAS
+    // Target folder doesn't exist - copy entire folder
     if (progressCallback) {
       progressCallback({
         phase: 'copying',

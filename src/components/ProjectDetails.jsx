@@ -310,6 +310,16 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
       
       if (result.success) {
         showToast(`✓ Folder downloaded to ${result.extractedPath}`, 'success');
+        
+        // Update project with download timestamp so Upload button appears
+        if (onProjectUpdate) {
+          const updatedProject = {
+            ...project,
+            qcFolderDownloadedAt: new Date().toISOString(),
+            qcFolderDownloadedPath: result.extractedPath
+          };
+          await onProjectUpdate(updatedProject);
+        }
       } else {
         showToast(`Failed to download folder: ${result.error}`, 'error');
       }
@@ -383,11 +393,16 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
     await handleDasUpload(true);
   };
 
-  // Determine if upload button should be shown
-  const isRfaCompleted = project?.rfaStatus === 'Completed';
+  // Determine button visibility
+  const hasDownloadedFolder = !!project?.qcFolderDownloadedAt;
   const hasAlreadyUploaded = !!project?.dasUploadStatus?.uploadedAt;
-  const showUploadButton = isRfaCompleted;
-  const showDownloadButton = hasReadyForQCZip && !isRfaCompleted;
+  // Show Download button: has zip file available AND hasn't downloaded yet AND hasn't uploaded yet
+  const showDownloadButton = hasReadyForQCZip && !hasDownloadedFolder && !hasAlreadyUploaded;
+  // Show Upload button: has downloaded the folder (regardless of RFA status)
+  const showUploadButton = hasDownloadedFolder;
+  // Hide export buttons when RFA Status is Ready for QC, Completed, On Hold, or Cancelled
+  const hideExportStatuses = ['Ready for QC', 'Completed', 'On Hold', 'Cancelled'];
+  const showExportButtons = !hideExportStatuses.includes(project?.rfaStatus);
 
   return (
     <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 h-full overflow-y-auto custom-scrollbar">
@@ -407,29 +422,33 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
         <div className="flex justify-between items-center mb-6 pb-4 border-b-2 border-gray-100 dark:border-gray-700">
           <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">📋 Project Info</h2>
           <div className="flex gap-2">
-            <button 
-              onClick={handleCopyDates}
-              className="btn-outline-primary btn-sm"
-              title="Copy ECD and Requested Date to clipboard"
-            >
-              📅 Copy Dates
-            </button>
-            <button 
-              onClick={handleExportToDASBoard}
-              disabled={isExporting || !project.rfaNumber || !project.projectName}
-              className="btn-outline-primary btn-sm"
-              title="Export project data to DAS Board format"
-            >
-              📊 Copy to DAS Board
-            </button>
-            <button 
-              onClick={handleExportToAgile}
-              disabled={isExporting}
-              className="btn-outline-primary btn-sm"
-              title="Export triage breakdown to Agile format"
-            >
-              📈 Copy to Agile
-            </button>
+            {showExportButtons && (
+              <>
+                <button 
+                  onClick={handleCopyDates}
+                  className="btn-outline-primary btn-sm"
+                  title="Copy ECD and Requested Date to clipboard"
+                >
+                  📅 Copy Dates
+                </button>
+                <button 
+                  onClick={handleExportToDASBoard}
+                  disabled={isExporting || !project.rfaNumber || !project.projectName}
+                  className="btn-outline-primary btn-sm"
+                  title="Export project data to DAS Board format"
+                >
+                  📊 Copy to DAS Board
+                </button>
+                <button 
+                  onClick={handleExportToAgile}
+                  disabled={isExporting}
+                  className="btn-outline-primary btn-sm"
+                  title="Export triage breakdown to Agile format"
+                >
+                  📈 Copy to Agile
+                </button>
+              </>
+            )}
             {showDownloadButton && (
               <button 
                 onClick={handleDownloadFolder}
