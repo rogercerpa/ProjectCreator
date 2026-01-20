@@ -1,17 +1,2171 @@
-"use strict";const{app:p,BrowserWindow:L,Menu:I,ipcMain:a,dialog:k,shell:V}=require("electron"),D=require("path"),x=require("fs-extra"),_=require("os"),B=D.join(_.homedir(),"AppData","Local","project-creator");p.setPath("userData",B);p.setPath("sessionData",D.join(B,"Session Storage"));p.setPath("cache",D.join(B,"Cache"));p.commandLine.appendSwitch("disable-gpu-shader-disk-cache");p.commandLine.appendSwitch("disable-software-rasterizer");p.commandLine.appendSwitch("disable-gpu-process-crash-limit");p.commandLine.appendSwitch("enable-gpu-rasterization");p.commandLine.appendSwitch("enable-zero-copy");console.log("✅ Cache directories configured:");console.log("   User Data:",p.getPath("userData"));console.log("   Cache:",p.getPath("cache"));console.log("   Session Data:",p.getPath("sessionData"));const K=require("./main-process/services/VersionCheckService"),J=require("./main-process/services/ProjectService"),X=require("./main-process/services/WordService"),Y=require("./main-process/services/FileService"),ee=require("./main-process/services/ProjectPersistenceService"),re=require("./main-process/services/ProjectCreationService"),se=require("./main-process/services/DuplicateProjectDetectionService"),te=require("./main-process/services/FormSettingsService"),ae=require("./main-process/services/SecurityLoggingService"),ne=require("./main-process/services/AgencyService"),oe=require("./main-process/services/AgencyProjectService"),ce=require("./main-process/services/ExcelDiagnosticService"),le=require("./main-process/services/SettingsService"),ie=require("./main-process/services/AgencySyncService"),ue=require("./main-process/services/EmailTemplateService"),de=require("./main-process/services/ZipService"),ge=require("./main-process/services/OneDriveSyncService"),pe=require("./main-process/services/WorkloadPersistenceService"),G=require("./main-process/services/FileWatcherService"),he=require("./main-process/services/FieldMappingService"),ye=require("./main-process/services/WorkloadExcelService"),me=require("./main-process/services/WorkloadExcelSyncService"),fe=require("./main-process/services/DASGeneralService"),we=require("./package.json");let o;const R=new J,W=new X;new Y;const u=new ee,g=new re,ve=new se,T=new te,$=new ae,F=new ne,q=new oe,Ee=new ce,h=new le,P=new ie(F,h),f=new ue,Se=new de,z=new ge,xe=require("./main-process/services/ReadyForQCService"),U=new xe;U.setProjectPersistenceService(u);const ke=require("./main-process/services/DasUploadService"),H=new ke,i=new pe;let d=null;const y=new he,w=new ye(y),v=new me(w,y,h),b=new fe(h);v.on("syncStarted",r=>{o&&o.webContents.send("workload-excel:sync-started",r)});v.on("syncCompleted",r=>{o&&o.webContents.send("workload-excel:sync-completed",r)});v.on("autoSyncStarted",r=>{o&&o.webContents.send("workload-excel:auto-sync-started",r)});v.on("autoSyncStopped",()=>{o&&o.webContents.send("workload-excel:auto-sync-stopped")});v.on("settingsUpdated",r=>{o&&o.webContents.send("workload-excel:settings-updated",r)});function Z(){o=new L({width:1200,height:1300,minWidth:800,minHeight:600,webPreferences:{nodeIntegration:!1,contextIsolation:!0,enableRemoteModule:!1,webSecurity:!0,sandbox:!1,preload:D.join(__dirname,"preload.js")},icon:D.join(__dirname,"assets/icons/favicon.ico"),title:"Project Creator",show:!1}),o.loadFile("dist/index.html"),o.once("ready-to-show",()=>{o.show()}),o.webContents.on("did-fail-load",(r,s,e)=>{console.error("Failed to load:",s,e)}),o.webContents.on("dom-ready",()=>{console.log("DOM is ready")}),o.on("closed",()=>{o=null})}p.whenReady().then(async()=>{try{await K.handlePostInstall()}catch(e){console.error("Error during version check:",e)}try{await P.initialize(),console.log("✅ Agency sync service initialized")}catch(e){console.error("Error initializing sync service:",e)}try{const e=await v.initialize();e.success?console.log("✅ Workload Excel sync service initialized"):console.warn("⚠️ Workload Excel sync service initialization failed:",e.error)}catch(e){console.error("❌ Error initializing workload Excel sync service:",e)}Z();const r=[{label:"File",submenu:[{label:"New Project",accelerator:"CmdOrCtrl+N",click:()=>{o.webContents.send("new-project")}},{label:"Open Project",accelerator:"CmdOrCtrl+O",click:async()=>{const e=await k.showOpenDialog(o,{properties:["openDirectory"],title:"Open Project Directory"});e.canceled||o.webContents.send("open-project",e.filePaths[0])}},{type:"separator"},{label:"Exit",accelerator:process.platform==="darwin"?"Cmd+Q":"Ctrl+Q",click:()=>{p.quit()}}]},{label:"Edit",submenu:[{role:"undo"},{role:"redo"},{type:"separator"},{role:"cut"},{role:"copy"},{role:"paste"}]},{label:"View",submenu:[{role:"reload"},{role:"forceReload"},{role:"toggleDevTools"},{type:"separator"},{role:"resetZoom"},{role:"zoomIn"},{role:"zoomOut"},{type:"separator"},{role:"togglefullscreen"}]},{label:"Window",submenu:[{role:"minimize"},{role:"close"}]},{label:"Help",submenu:[{label:"About Project Creator",click:()=>{k.showMessageBox(o,{type:"info",title:"About Project Creator",message:"Project Creator",detail:`Version ${we.version}
+"use strict";
+const { app, BrowserWindow, Menu, ipcMain, dialog, shell } = require("electron");
+const path = require("path");
+const fs = require("fs-extra");
+const os = require("os");
+const localAppDataPath = path.join(os.homedir(), "AppData", "Local", "project-creator");
+app.setPath("userData", localAppDataPath);
+app.setPath("sessionData", path.join(localAppDataPath, "Session Storage"));
+app.setPath("cache", path.join(localAppDataPath, "Cache"));
+app.commandLine.appendSwitch("disable-gpu-shader-disk-cache");
+app.commandLine.appendSwitch("disable-software-rasterizer");
+app.commandLine.appendSwitch("disable-gpu-process-crash-limit");
+app.commandLine.appendSwitch("enable-gpu-rasterization");
+app.commandLine.appendSwitch("enable-zero-copy");
+console.log("✅ Cache directories configured:");
+console.log("   User Data:", app.getPath("userData"));
+console.log("   Cache:", app.getPath("cache"));
+console.log("   Session Data:", app.getPath("sessionData"));
+const versionCheckService = require("./main-process/services/VersionCheckService");
+const ProjectService = require("./main-process/services/ProjectService");
+const WordService = require("./main-process/services/WordService");
+const FileService = require("./main-process/services/FileService");
+const ProjectPersistenceService = require("./main-process/services/ProjectPersistenceService");
+const ProjectCreationService = require("./main-process/services/ProjectCreationService");
+const DuplicateProjectDetectionService = require("./main-process/services/DuplicateProjectDetectionService");
+const FormSettingsService = require("./main-process/services/FormSettingsService");
+const SecurityLoggingService = require("./main-process/services/SecurityLoggingService");
+const AgencyService = require("./main-process/services/AgencyService");
+const AgencyProjectService = require("./main-process/services/AgencyProjectService");
+const ExcelDiagnosticService = require("./main-process/services/ExcelDiagnosticService");
+const SettingsService = require("./main-process/services/SettingsService");
+const AgencySyncService = require("./main-process/services/AgencySyncService");
+const EmailTemplateService = require("./main-process/services/EmailTemplateService");
+const ZipService = require("./main-process/services/ZipService");
+const OneDriveSyncService = require("./main-process/services/OneDriveSyncService");
+const WorkloadPersistenceService = require("./main-process/services/WorkloadPersistenceService");
+const FileWatcherService = require("./main-process/services/FileWatcherService");
+const FieldMappingService = require("./main-process/services/FieldMappingService");
+const WorkloadExcelService = require("./main-process/services/WorkloadExcelService");
+const WorkloadExcelSyncService = require("./main-process/services/WorkloadExcelSyncService");
+const DASGeneralService = require("./main-process/services/DASGeneralService");
+const packageJson = require("./package.json");
+let mainWindow;
+const projectService = new ProjectService();
+const wordService = new WordService();
+new FileService();
+const projectPersistenceService = new ProjectPersistenceService();
+const projectCreationService = new ProjectCreationService();
+const duplicateProjectDetectionService = new DuplicateProjectDetectionService();
+const formSettingsService = new FormSettingsService();
+const securityLoggingService = new SecurityLoggingService();
+const agencyService = new AgencyService();
+const agencyProjectService = new AgencyProjectService();
+const excelDiagnosticService = new ExcelDiagnosticService();
+const settingsService = new SettingsService();
+const agencySyncService = new AgencySyncService(agencyService, settingsService);
+const emailTemplateService = new EmailTemplateService();
+const zipService = new ZipService();
+const oneDriveSyncService = new OneDriveSyncService();
+const ReadyForQCService = require("./main-process/services/ReadyForQCService");
+const readyForQCService = new ReadyForQCService();
+readyForQCService.setProjectPersistenceService(projectPersistenceService);
+const DasUploadService = require("./main-process/services/DasUploadService");
+const dasUploadService = new DasUploadService();
+const workloadPersistenceService = new WorkloadPersistenceService();
+let fileWatcherService = null;
+const fieldMappingService = new FieldMappingService();
+const workloadExcelService = new WorkloadExcelService(fieldMappingService);
+const workloadExcelSyncService = new WorkloadExcelSyncService(workloadExcelService, fieldMappingService, settingsService);
+const dasGeneralService = new DASGeneralService(settingsService);
+workloadExcelSyncService.on("syncStarted", (data) => {
+  if (mainWindow) {
+    mainWindow.webContents.send("workload-excel:sync-started", data);
+  }
+});
+workloadExcelSyncService.on("syncCompleted", (data) => {
+  if (mainWindow) {
+    mainWindow.webContents.send("workload-excel:sync-completed", data);
+  }
+});
+workloadExcelSyncService.on("autoSyncStarted", (data) => {
+  if (mainWindow) {
+    mainWindow.webContents.send("workload-excel:auto-sync-started", data);
+  }
+});
+workloadExcelSyncService.on("autoSyncStopped", () => {
+  if (mainWindow) {
+    mainWindow.webContents.send("workload-excel:auto-sync-stopped");
+  }
+});
+workloadExcelSyncService.on("settingsUpdated", (settings) => {
+  if (mainWindow) {
+    mainWindow.webContents.send("workload-excel:settings-updated", settings);
+  }
+});
+function createWindow() {
+  mainWindow = new BrowserWindow({
+    width: 1200,
+    height: 1300,
+    minWidth: 800,
+    minHeight: 600,
+    webPreferences: {
+      nodeIntegration: false,
+      // SECURITY: Disable Node.js integration
+      contextIsolation: true,
+      // SECURITY: Enable context isolation
+      enableRemoteModule: false,
+      // SECURITY: Disable deprecated remote module
+      webSecurity: true,
+      // SECURITY: Enable web security
+      sandbox: false,
+      // Required for file system access in Electron
+      preload: path.join(__dirname, "preload.js")
+      // SECURITY: Use preload script for secure IPC
+    },
+    icon: path.join(__dirname, "assets/icons/favicon.ico"),
+    title: "Project Creator",
+    show: false
+  });
+  mainWindow.loadFile("dist/index.html");
+  mainWindow.once("ready-to-show", () => {
+    mainWindow.show();
+  });
+  mainWindow.webContents.on("did-fail-load", (event, errorCode, errorDescription) => {
+    console.error("Failed to load:", errorCode, errorDescription);
+  });
+  mainWindow.webContents.on("dom-ready", () => {
+    console.log("DOM is ready");
+  });
+  mainWindow.on("closed", () => {
+    mainWindow = null;
+  });
+}
+app.whenReady().then(async () => {
+  try {
+    await versionCheckService.handlePostInstall();
+  } catch (error) {
+    console.error("Error during version check:", error);
+  }
+  try {
+    await agencySyncService.initialize();
+    console.log("✅ Agency sync service initialized");
+  } catch (error) {
+    console.error("Error initializing sync service:", error);
+  }
+  try {
+    const result = await workloadExcelSyncService.initialize();
+    if (result.success) {
+      console.log("✅ Workload Excel sync service initialized");
+    } else {
+      console.warn("⚠️ Workload Excel sync service initialization failed:", result.error);
+    }
+  } catch (error) {
+    console.error("❌ Error initializing workload Excel sync service:", error);
+  }
+  createWindow();
+  const template = [
+    {
+      label: "File",
+      submenu: [
+        {
+          label: "New Project",
+          accelerator: "CmdOrCtrl+N",
+          click: () => {
+            mainWindow.webContents.send("new-project");
+          }
+        },
+        {
+          label: "Open Project",
+          accelerator: "CmdOrCtrl+O",
+          click: async () => {
+            const result = await dialog.showOpenDialog(mainWindow, {
+              properties: ["openDirectory"],
+              title: "Open Project Directory"
+            });
+            if (!result.canceled) {
+              mainWindow.webContents.send("open-project", result.filePaths[0]);
+            }
+          }
+        },
+        { type: "separator" },
+        {
+          label: "Exit",
+          accelerator: process.platform === "darwin" ? "Cmd+Q" : "Ctrl+Q",
+          click: () => {
+            app.quit();
+          }
+        }
+      ]
+    },
+    {
+      label: "Edit",
+      submenu: [
+        { role: "undo" },
+        { role: "redo" },
+        { type: "separator" },
+        { role: "cut" },
+        { role: "copy" },
+        { role: "paste" }
+      ]
+    },
+    {
+      label: "View",
+      submenu: [
+        { role: "reload" },
+        { role: "forceReload" },
+        { role: "toggleDevTools" },
+        { type: "separator" },
+        { role: "resetZoom" },
+        { role: "zoomIn" },
+        { role: "zoomOut" },
+        { type: "separator" },
+        { role: "togglefullscreen" }
+      ]
+    },
+    {
+      label: "Window",
+      submenu: [
+        { role: "minimize" },
+        { role: "close" }
+      ]
+    },
+    {
+      label: "Help",
+      submenu: [
+        {
+          label: "About Project Creator",
+          click: () => {
+            dialog.showMessageBox(mainWindow, {
+              type: "info",
+              title: "About Project Creator",
+              message: "Project Creator",
+              detail: `Version ${packageJson.version}
 Built with Electron and React
-Acuity Brands, Inc.`})}}]}],s=I.buildFromTemplate(r);I.setApplicationMenu(s)});p.on("window-all-closed",()=>{process.platform!=="darwin"&&p.quit()});p.on("activate",()=>{L.getAllWindows().length===0&&Z()});a.handle("select-directory",async()=>{const r=await k.showOpenDialog(o,{properties:["openDirectory"],title:"Select Directory"});return r.canceled?null:r.filePaths[0]});a.handle("select-folder",async()=>await k.showOpenDialog(o,{properties:["openDirectory"],title:"Select Folder"}));a.handle("select-file",async(r,s={})=>{const e=await k.showOpenDialog(o,{properties:["openFile"],title:s.title||"Select File",filters:s.filters||[]});return e.canceled?null:e.filePaths[0]});a.handle("save-file",async(r,s={})=>{const e=await k.showSaveDialog(o,{title:s.title||"Save File",filters:s.filters||[]});return e.canceled?null:e.filePath});a.handle("fs-read-file",async(r,s)=>{try{return await $.logFileAccess(s,process.env.USERNAME||"unknown","READ"),await x.readFile(s,"utf8")}catch(e){throw await $.logSecurityEvent("FILE_ACCESS_FAILED",{filePath:s,error:e.message,user:process.env.USERNAME||"unknown"},"WARNING"),e}});a.handle("fs-write-file",async(r,s,e)=>{try{return await x.writeFile(s,e,"utf8"),!0}catch(t){throw t}});a.handle("fs-copy-file",async(r,s,e)=>{try{return await x.copy(s,e),!0}catch(t){throw t}});a.handle("fs-create-dir",async(r,s)=>{try{return await x.ensureDir(s),!0}catch(e){throw e}});a.handle("fs-exists",async(r,s)=>{try{return await x.pathExists(s)}catch{return!1}});a.handle("project-create",async(r,s)=>{try{const e=await R.createProjectFolder(s,s.saveLocation);return e.success&&await u.saveProject(s),e}catch(e){return{success:!1,error:e.message}}});a.handle("project-load",async(r,s)=>{try{return await u.loadProjectById(s)}catch(e){return{success:!1,error:e.message}}});a.handle("project-load-by-rfa",async(r,s,e)=>{try{return await u.loadProjectByRFA(s,e)}catch(t){return{success:!1,error:t.message}}});a.handle("project-save",async(r,s)=>{try{return await u.saveProject(s)}catch(e){return{success:!1,error:e.message}}});a.handle("project-delete",async(r,s)=>{try{return await u.deleteProject(s)}catch(e){return{success:!1,error:e.message}}});a.handle("project-search",async(r,s)=>{try{return await u.searchProjects(s)}catch(e){return{success:!1,error:e.message}}});a.handle("project-stats",async()=>{try{return await u.getProjectStats()}catch(r){return{success:!1,error:r.message}}});a.handle("projects-load-all",async()=>{try{const r=await u.loadProjects();return{success:!0,projects:r,count:r.length,message:`${r.length} projects loaded successfully`}}catch(r){return console.error("Error loading all projects:",r),{success:!1,error:r.message,projects:[]}}});a.handle("qc-scan-folder",async()=>{try{const r=await u.loadProjects();return await U.scanAndUpdateProjects(r)}catch(r){return console.error("Error scanning Ready for QC folder:",r),{success:!1,error:r.message}}});a.handle("qc-check-project",async(r,s)=>{try{const e=await u.loadProjectById(s);if(!e.success||!e.project)return{success:!1,error:"Project not found",zipFiles:[]};const t=await U.getMatchingZipFiles(e.project);return{success:!0,hasZip:t.length>0,zipFiles:t}}catch(e){return console.error("Error checking project for QC zip:",e),{success:!1,error:e.message,zipFiles:[]}}});a.handle("qc-get-matching-zips",async(r,s)=>{try{return{success:!0,zipFiles:await U.getMatchingZipFiles(s)}}catch(e){return console.error("Error getting matching zip files:",e),{success:!1,error:e.message,zipFiles:[]}}});a.handle("qc-download-zip",async(r,s,e)=>{try{return await U.downloadAndExtractZip(s,e)}catch(t){return console.error("Error downloading and extracting zip:",t),{success:!1,error:t.message}}});a.handle("das-check-drive-access",async()=>{try{return await H.checkDriveAccess()}catch(r){return console.error("Error checking DAS drive access:",r),{success:!1,error:r.message}}});a.handle("das-upload-project",async(r,s,e)=>{try{const t=c=>{o&&!o.isDestroyed()&&o.webContents.send("das-upload-progress",c)},n=await H.uploadProject(s,e,t);if(n.success&&!n.needsConfirmation){const c={...s,rfaStatus:"Completed",dasUploadStatus:{uploadedAt:new Date().toISOString(),uploadedPath:n.uploadedPath,isRevision:n.isRevision||!1}};return await u.saveProject(c),{...n,updatedProject:c}}return n}catch(t){return console.error("Error uploading project to DAS:",t),{success:!1,error:t.message}}});a.handle("triage-calculate",async(r,s)=>{try{return await R.calculateTriageTime(s)}catch(e){return{success:!1,error:e.message}}});a.handle("export-das-board",async(r,s,e)=>{try{return await R.exportToDASBoard(s,e)}catch(t){return{success:!1,error:t.message}}});a.handle("export-agile",async(r,s,e)=>{try{return await R.exportToAgile(s,e)}catch(t){return{success:!1,error:t.message}}});a.handle("word-create-document",async()=>{try{return await W.createDocument()}catch(r){return{success:!1,error:r.message}}});a.handle("word-open-document",async(r,s)=>{try{return await W.openDocument(s)}catch(e){return{success:!1,error:e.message}}});a.handle("word-save-document",async(r,s,e,t)=>{try{return await W.saveDocument(s,e,t)}catch(n){return{success:!1,error:n.message}}});a.handle("word-search-replace",async(r,s,e,t,n)=>{try{return await W.searchAndReplace(s,e,t,n)}catch(c){return{success:!1,error:c.message}}});a.handle("project-open-folder",async(r,s)=>{try{return await R.openProjectFolder(s)}catch(e){return{success:!1,error:e.message}}});a.handle("project-download-template",async(r,s)=>{try{return await R.downloadRegionTemplate(s)}catch(e){return{success:!1,error:e.message}}});a.handle("project-upload-triages",async(r,s)=>{try{return await R.uploadTriages(s)}catch(e){return{success:!1,error:e.message}}});a.handle("project-open-das-board",async(r,s)=>{try{return await R.openDASBoard(s)}catch(e){return{success:!1,error:e.message}}});a.handle("open-external",async(r,s)=>{try{const{shell:e}=require("electron");return await e.openExternal(s),{success:!0}}catch(e){return console.error("Error opening external URL:",e),{success:!1,error:e.message}}});a.handle("settings-load",async()=>{try{return await u.loadSettings()}catch(r){return{success:!1,error:r.message}}});a.handle("settings-save",async(r,s)=>{try{return await u.saveSettings(s)}catch(e){return{success:!1,error:e.message}}});a.handle("templates-load",async()=>{try{return await u.loadTemplates()}catch(r){return{success:!1,error:r.message}}});a.handle("templates-save",async(r,s)=>{try{return await u.saveTemplates(s)}catch(e){return{success:!1,error:e.message}}});a.handle("projects-export",async(r,s,e)=>{try{return await u.exportProjects(s,e)}catch(t){return{success:!1,error:t.message}}});a.handle("projects-import",async(r,s,e)=>{try{return await u.importProjects(s,e)}catch(t){return{success:!1,error:t.message}}});a.handle("project-create-folder",async(r,s)=>{try{return await g.createProject(s)}catch(e){return{success:!1,error:e.message}}});a.handle("project-create-with-folders",async(r,s)=>{try{return await g.createProjectWithFolders(s)}catch(e){return{success:!1,error:e.message}}});a.handle("revision-detect-existing",async(r,s)=>{try{return await g.detectExistingProject(s)}catch(e){return{success:!1,error:e.message}}});a.handle("revision-find-previous",async(r,s)=>{try{return await g.findPreviousRevision(s)}catch(e){return{success:!1,error:e.message}}});a.handle("duplicate-check-project",async(r,s)=>{try{return console.log("Duplicate detection request received for:",s.projectName),await ve.checkForExistingProject(s)}catch(e){return console.error("Duplicate detection error:",e),{isDuplicate:!1,canProceed:!0,error:e.message}}});a.handle("check-folder-exists",async(r,s)=>{try{console.log("Checking folder existence:",s);const e=await x.pathExists(s);return console.log(`Folder ${e?"EXISTS":"NOT FOUND"}:`,s),e}catch(e){return console.error("Error checking folder existence:",e),!1}});a.handle("revision-validate-folder",async(r,s)=>{try{return await g.validateRFAFolder(s)}catch(e){return{success:!1,error:e.message}}});a.handle("revision-create",async(r,s,e)=>{try{const n={...e,onProgress:(l,m,A)=>{r.sender.send("revision-progress-update",{step:l,progress:m,details:A,timestamp:Date.now()})}},c=await g.createRevisionProject(s,n);return c.success&&r.sender.send("revision-progress-complete",{message:c.message,timestamp:Date.now()}),c}catch(t){return r.sender.send("revision-progress-error",{error:t.message,timestamp:Date.now()}),{success:!1,error:t.message}}});a.handle("revision-analyze-contents",async(r,s)=>{try{return await g.analyzeRevisionContents(s)}catch(e){return{success:!1,error:e.message}}});a.handle("revision-analyze-ae-markups",async(r,s)=>{try{return await new(require("./main-process/services/RevisionFileCopyService"))().analyzeAEMarkupsFolder(s)}catch(e){return console.error("Error analyzing AE Markups folder:",e),{success:!1,error:e.message}}});a.handle("revision-get-copy-options",async(r,s)=>{try{return await g.getRecommendedCopyOptions(s)}catch(e){return{success:!1,error:e.message}}});a.handle("revision-handle-folder-mismatch",async(r,s,e)=>{try{return await g.handleFolderNameMismatch(s,e)}catch(t){return{success:!1,error:t.message}}});a.handle("revision-rename-folder",async(r,s,e)=>{try{return await g.renameProjectFolder(s,e)}catch(t){return{success:!1,error:t.message}}});a.handle("revision-select-folder",async(r,s)=>{try{console.log("revision-select-folder called with startingPath:",s);const t=s||"\\\\10.3.10.30\\DAS";try{const{exec:m}=require("child_process"),C=require("util").promisify(m);console.log("Using Windows Shell folder browser at:",t);let E=t;try{await x.pathExists(t)||(console.log("Network path not accessible, using My Computer as starting point"),E="")}catch{console.log("Cannot verify network path, using My Computer as starting point"),E=""}const N=`
+Acuity Brands, Inc.`
+            });
+          }
+        }
+      ]
+    }
+  ];
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
+});
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") {
+    app.quit();
+  }
+});
+app.on("activate", () => {
+  if (BrowserWindow.getAllWindows().length === 0) {
+    createWindow();
+  }
+});
+ipcMain.handle("select-directory", async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ["openDirectory"],
+    title: "Select Directory"
+  });
+  return result.canceled ? null : result.filePaths[0];
+});
+ipcMain.handle("select-folder", async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ["openDirectory"],
+    title: "Select Folder"
+  });
+  return result;
+});
+ipcMain.handle("select-file", async (event, options = {}) => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ["openFile"],
+    title: options.title || "Select File",
+    filters: options.filters || []
+  });
+  return result.canceled ? null : result.filePaths[0];
+});
+ipcMain.handle("save-file", async (event, options = {}) => {
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: options.title || "Save File",
+    filters: options.filters || []
+  });
+  return result.canceled ? null : result.filePath;
+});
+ipcMain.handle("fs-read-file", async (event, filePath) => {
+  try {
+    await securityLoggingService.logFileAccess(filePath, process.env.USERNAME || "unknown", "READ");
+    return await fs.readFile(filePath, "utf8");
+  } catch (error) {
+    await securityLoggingService.logSecurityEvent("FILE_ACCESS_FAILED", {
+      filePath,
+      error: error.message,
+      user: process.env.USERNAME || "unknown"
+    }, "WARNING");
+    throw error;
+  }
+});
+ipcMain.handle("fs-write-file", async (event, filePath, content) => {
+  try {
+    await fs.writeFile(filePath, content, "utf8");
+    return true;
+  } catch (error) {
+    throw error;
+  }
+});
+ipcMain.handle("fs-copy-file", async (event, src, dest) => {
+  try {
+    await fs.copy(src, dest);
+    return true;
+  } catch (error) {
+    throw error;
+  }
+});
+ipcMain.handle("fs-create-dir", async (event, dirPath) => {
+  try {
+    await fs.ensureDir(dirPath);
+    return true;
+  } catch (error) {
+    throw error;
+  }
+});
+ipcMain.handle("fs-exists", async (event, path2) => {
+  try {
+    return await fs.pathExists(path2);
+  } catch (error) {
+    return false;
+  }
+});
+ipcMain.handle("project-create", async (event, projectData) => {
+  try {
+    const result = await projectService.createProjectFolder(projectData, projectData.saveLocation);
+    if (result.success) {
+      await projectPersistenceService.saveProject(projectData);
+    }
+    return result;
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("project-load", async (event, projectId) => {
+  try {
+    return await projectPersistenceService.loadProjectById(projectId);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("project-load-by-rfa", async (event, rfaNumber, projectContainer) => {
+  try {
+    return await projectPersistenceService.loadProjectByRFA(rfaNumber, projectContainer);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("project-save", async (event, projectData) => {
+  try {
+    return await projectPersistenceService.saveProject(projectData);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("project-delete", async (event, projectId) => {
+  try {
+    return await projectPersistenceService.deleteProject(projectId);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("project-search", async (event, searchCriteria) => {
+  try {
+    return await projectPersistenceService.searchProjects(searchCriteria);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("project-stats", async () => {
+  try {
+    return await projectPersistenceService.getProjectStats();
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("projects-load-all", async () => {
+  try {
+    const projects = await projectPersistenceService.loadProjects();
+    return {
+      success: true,
+      projects,
+      count: projects.length,
+      message: `${projects.length} projects loaded successfully`
+    };
+  } catch (error) {
+    console.error("Error loading all projects:", error);
+    return {
+      success: false,
+      error: error.message,
+      projects: []
+    };
+  }
+});
+ipcMain.handle("qc-scan-folder", async () => {
+  try {
+    const projects = await projectPersistenceService.loadProjects();
+    const result = await readyForQCService.scanAndUpdateProjects(projects);
+    return result;
+  } catch (error) {
+    console.error("Error scanning Ready for QC folder:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("qc-check-project", async (event, projectId) => {
+  try {
+    const project = await projectPersistenceService.loadProjectById(projectId);
+    if (!project.success || !project.project) {
+      return { success: false, error: "Project not found", zipFiles: [] };
+    }
+    const zipFiles = await readyForQCService.getMatchingZipFiles(project.project);
+    return {
+      success: true,
+      hasZip: zipFiles.length > 0,
+      zipFiles
+    };
+  } catch (error) {
+    console.error("Error checking project for QC zip:", error);
+    return { success: false, error: error.message, zipFiles: [] };
+  }
+});
+ipcMain.handle("qc-get-matching-zips", async (event, project) => {
+  try {
+    const zipFiles = await readyForQCService.getMatchingZipFiles(project);
+    return {
+      success: true,
+      zipFiles
+    };
+  } catch (error) {
+    console.error("Error getting matching zip files:", error);
+    return { success: false, error: error.message, zipFiles: [] };
+  }
+});
+ipcMain.handle("qc-download-zip", async (event, zipFilePath, project) => {
+  try {
+    const result = await readyForQCService.downloadAndExtractZip(zipFilePath, project);
+    return result;
+  } catch (error) {
+    console.error("Error downloading and extracting zip:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("das-check-drive-access", async () => {
+  try {
+    return await dasUploadService.checkDriveAccess();
+  } catch (error) {
+    console.error("Error checking DAS drive access:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("das-upload-project", async (event, project, confirmed) => {
+  try {
+    const progressCallback = (progress) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send("das-upload-progress", progress);
+      }
+    };
+    const result = await dasUploadService.uploadProject(project, confirmed, progressCallback);
+    if (result.success && !result.needsConfirmation) {
+      const updatedProject = {
+        ...project,
+        rfaStatus: "Completed",
+        // Auto-set to Completed after successful upload
+        dasUploadStatus: {
+          uploadedAt: (/* @__PURE__ */ new Date()).toISOString(),
+          uploadedPath: result.uploadedPath,
+          isRevision: result.isRevision || false
+        }
+      };
+      await projectPersistenceService.saveProject(updatedProject);
+      return {
+        ...result,
+        updatedProject
+      };
+    }
+    return result;
+  } catch (error) {
+    console.error("Error uploading project to DAS:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("triage-calculate", async (event, triageData) => {
+  try {
+    return await projectService.calculateTriageTime(triageData);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("export-das-board", async (event, projectData, triageData) => {
+  try {
+    return await projectService.exportToDASBoard(projectData, triageData);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("export-agile", async (event, projectData, triageData) => {
+  try {
+    return await projectService.exportToAgile(projectData, triageData);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("word-create-document", async () => {
+  try {
+    return await wordService.createDocument();
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("word-open-document", async (event, filePath) => {
+  try {
+    return await wordService.openDocument(filePath);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("word-save-document", async (event, document, filePath, options) => {
+  try {
+    return await wordService.saveDocument(document, filePath, options);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("word-search-replace", async (event, document, searchTerm, replaceTerm, options) => {
+  try {
+    return await wordService.searchAndReplace(document, searchTerm, replaceTerm, options);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("project-open-folder", async (event, projectData) => {
+  try {
+    return await projectService.openProjectFolder(projectData);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("project-download-template", async (event, regionalTeam) => {
+  try {
+    return await projectService.downloadRegionTemplate(regionalTeam);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("project-upload-triages", async (event, regionalTeam) => {
+  try {
+    return await projectService.uploadTriages(regionalTeam);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("project-open-das-board", async (event, regionalTeam) => {
+  try {
+    return await projectService.openDASBoard(regionalTeam);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("open-external", async (event, url) => {
+  try {
+    const { shell: shell2 } = require("electron");
+    await shell2.openExternal(url);
+    return { success: true };
+  } catch (error) {
+    console.error("Error opening external URL:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("settings-load", async () => {
+  try {
+    return await projectPersistenceService.loadSettings();
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("settings-save", async (event, settings) => {
+  try {
+    return await projectPersistenceService.saveSettings(settings);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("templates-load", async () => {
+  try {
+    return await projectPersistenceService.loadTemplates();
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("templates-save", async (event, templates) => {
+  try {
+    return await projectPersistenceService.saveTemplates(templates);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("projects-export", async (event, exportPath, format) => {
+  try {
+    return await projectPersistenceService.exportProjects(exportPath, format);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("projects-import", async (event, importPath, format) => {
+  try {
+    return await projectPersistenceService.importProjects(importPath, format);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("project-create-folder", async (event, projectData) => {
+  try {
+    return await projectCreationService.createProject(projectData);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("project-create-with-folders", async (event, projectData) => {
+  try {
+    return await projectCreationService.createProjectWithFolders(projectData);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("revision-detect-existing", async (event, projectData) => {
+  try {
+    return await projectCreationService.detectExistingProject(projectData);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("revision-find-previous", async (event, projectData) => {
+  try {
+    return await projectCreationService.findPreviousRevision(projectData);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("duplicate-check-project", async (event, projectData) => {
+  try {
+    console.log("Duplicate detection request received for:", projectData.projectName);
+    return await duplicateProjectDetectionService.checkForExistingProject(projectData);
+  } catch (error) {
+    console.error("Duplicate detection error:", error);
+    return { isDuplicate: false, canProceed: true, error: error.message };
+  }
+});
+ipcMain.handle("check-folder-exists", async (event, folderPath) => {
+  try {
+    console.log("Checking folder existence:", folderPath);
+    const exists = await fs.pathExists(folderPath);
+    console.log(`Folder ${exists ? "EXISTS" : "NOT FOUND"}:`, folderPath);
+    return exists;
+  } catch (error) {
+    console.error("Error checking folder existence:", error);
+    return false;
+  }
+});
+ipcMain.handle("revision-validate-folder", async (event, folderPath) => {
+  try {
+    return await projectCreationService.validateRFAFolder(folderPath);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("revision-create", async (event, projectData, revisionOptions) => {
+  try {
+    const progressCallback = (step, progress, details) => {
+      event.sender.send("revision-progress-update", {
+        step,
+        progress,
+        details,
+        timestamp: Date.now()
+      });
+    };
+    const optionsWithProgress = {
+      ...revisionOptions,
+      onProgress: progressCallback
+    };
+    const result = await projectCreationService.createRevisionProject(projectData, optionsWithProgress);
+    if (result.success) {
+      event.sender.send("revision-progress-complete", {
+        message: result.message,
+        timestamp: Date.now()
+      });
+    }
+    return result;
+  } catch (error) {
+    event.sender.send("revision-progress-error", {
+      error: error.message,
+      timestamp: Date.now()
+    });
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("revision-analyze-contents", async (event, revisionPath) => {
+  try {
+    return await projectCreationService.analyzeRevisionContents(revisionPath);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("revision-analyze-ae-markups", async (event, revisionPath) => {
+  try {
+    const revisionFileCopyService = new (require("./main-process/services/RevisionFileCopyService"))();
+    return await revisionFileCopyService.analyzeAEMarkupsFolder(revisionPath);
+  } catch (error) {
+    console.error("Error analyzing AE Markups folder:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("revision-get-copy-options", async (event, revisionPath) => {
+  try {
+    return await projectCreationService.getRecommendedCopyOptions(revisionPath);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("revision-handle-folder-mismatch", async (event, selectedPath, expectedPath) => {
+  try {
+    return await projectCreationService.handleFolderNameMismatch(selectedPath, expectedPath);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("revision-rename-folder", async (event, oldPath, newPath) => {
+  try {
+    return await projectCreationService.renameProjectFolder(oldPath, newPath);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("revision-select-folder", async (event, startingPath) => {
+  try {
+    console.log("revision-select-folder called with startingPath:", startingPath);
+    const defaultNetworkPath = "\\\\10.3.10.30\\DAS";
+    const explorerPath = startingPath || defaultNetworkPath;
+    try {
+      const { exec } = require("child_process");
+      const util = require("util");
+      const execPromise = util.promisify(exec);
+      console.log("Using Windows Shell folder browser at:", explorerPath);
+      let startPath = explorerPath;
+      try {
+        if (!await fs.pathExists(explorerPath)) {
+          console.log("Network path not accessible, using My Computer as starting point");
+          startPath = "";
+        }
+      } catch (err) {
+        console.log("Cannot verify network path, using My Computer as starting point");
+        startPath = "";
+      }
+      const vbScript = `
         Set shell = CreateObject("Shell.Application")
-        Set folder = shell.BrowseForFolder(0, "Choose previous RFA Folder - Navigate to ${t}", &H0200 + &H0040, "${E}")
+        Set folder = shell.BrowseForFolder(0, "Choose previous RFA Folder - Navigate to ${explorerPath}", &H0200 + &H0040, "${startPath}")
         If Not folder Is Nothing Then
           WScript.Echo folder.Self.Path
         Else
           WScript.Echo "CANCELED"
         End If
-      `,O=D.join(_.tmpdir(),"folder_browser_"+Date.now()+".vbs");await x.writeFile(O,N),console.log("Executing VBScript folder browser...");const{stdout:M,stderr:j}=await C(`cscript.exe //NoLogo "${O}"`,{windowsHide:!1,timeout:12e4,encoding:"utf8"});try{await x.unlink(O)}catch(S){console.log("Could not clean up temp VBS file:",S.message)}if(console.log("VBScript browser stdout:",M),console.log("VBScript browser stderr:",j),!j&&M&&M.trim()){const S=M.trim();if(S==="CANCELED")return console.log("VBScript folder selection canceled"),{success:!1,canceled:!0};if(console.log("VBScript folder selected:",S),!x.existsSync(S))return{success:!1,error:`The specified path does not exist: ${S}`};const Q=await g.validateRFAFolder(S);return{success:!0,selectedPath:S,validation:Q}}else throw console.log("VBScript browser failed or returned empty result, using fallback"),new Error("VBScript browser returned empty result")}catch(m){console.log("Windows VBScript approach failed, using Electron fallback:",m.message)}console.log("Using Electron dialog fallback...");const n=await k.showOpenDialog(o,{properties:["openDirectory"],title:"Select Previous RFA Folder",defaultPath:t,buttonLabel:"Select RFA Folder"});if(console.log("Electron dialog result:",n),n.canceled)return{success:!1,canceled:!0};const c=n.filePaths[0];console.log("Electron dialog selected path:",c);const l=await g.validateRFAFolder(c);return console.log("Validation result:",l),{success:!0,selectedPath:c,validation:l}}catch(e){return console.error("revision-select-folder error:",e),{success:!1,error:e.message}}});a.handle("project-validate",async(r,s)=>{try{return await g.validateProject(s)}catch(e){return{success:!1,error:e.message}}});a.handle("project-validate-field",async(r,s,e,t)=>{try{return await g.validateField(s,e,t)}catch(n){return{success:!1,error:n.message}}});a.handle("form-settings-get-all",async r=>{try{return{success:!0,data:T.getAllSettings()}}catch(s){return{success:!1,error:s.message}}});a.handle("form-settings-get-rfa-types",async r=>{try{return{success:!0,data:T.getRFATypes()}}catch(s){return{success:!1,error:s.message}}});a.handle("form-settings-get-national-accounts",async r=>{try{return{success:!0,data:T.getNationalAccounts()}}catch(s){return{success:!1,error:s.message}}});a.handle("form-settings-add-custom-rfa-type",async(r,s,e)=>{try{return{success:!0,data:T.addCustomRFAType(s,e)}}catch(t){return{success:!1,error:t.message}}});a.handle("form-settings-add-custom-national-account",async(r,s,e)=>{try{return{success:!0,data:T.addCustomNationalAccount(s,e)}}catch(t){return{success:!1,error:t.message}}});a.handle("form-settings-validate-form-data",async(r,s)=>{try{return{success:!0,data:T.validateFormData(s)}}catch(e){return{success:!1,error:e.message}}});a.handle("project-validation-status",async r=>{try{return await g.getValidationStatus()}catch(s){return{success:!1,error:s.message}}});a.handle("project-clear-validation-caches",async r=>{try{return g.clearValidationCaches(),{success:!0}}catch(s){return{success:!1,error:s.message}}});a.handle("project-export-das-board",async(r,s)=>{try{return await g.exportToDASBoard(s)}catch(e){return{success:!1,error:e.message}}});a.handle("project-export-agile",async(r,s)=>{try{return await g.exportToAgile(s)}catch(e){return{success:!1,error:e.message}}});a.handle("agencies-import-excel",async(r,s)=>{try{return await F.importFromExcel(s)}catch(e){return{success:!1,error:e.message}}});a.handle("agencies-load-all",async()=>{try{const r=await F.loadAgencies();return{success:!0,agencies:r,count:r.length,message:`${r.length} agencies loaded successfully`}}catch(r){return{success:!1,error:r.message}}});a.handle("agencies-search",async(r,s,e)=>{try{const t=await F.searchAgencies(s,e);return{success:!0,agencies:t,count:t.length}}catch(t){return{success:!1,error:t.message}}});a.handle("agencies-get-filter-options",async()=>{try{return{success:!0,options:await F.getFilterOptions()}}catch(r){return{success:!1,error:r.message}}});a.handle("agencies-add",async(r,s)=>{try{return await F.addAgency(s)}catch(e){return{success:!1,error:e.message}}});a.handle("agencies-update",async(r,s,e)=>{try{return await F.updateAgency(s,e)}catch(t){return{success:!1,error:t.message}}});a.handle("agencies-delete",async(r,s)=>{try{return await F.deleteAgency(s)}catch(e){return{success:!1,error:e.message}}});a.handle("agencies-get-statistics",async()=>{try{return{success:!0,statistics:await F.getStatistics()}}catch(r){return{success:!1,error:r.message}}});a.handle("agencies-export-excel",async(r,s)=>{try{return await F.exportToExcel(s)}catch(e){return{success:!1,error:e.message}}});a.handle("agency-projects-get-all",async(r,s,e)=>{try{return await q.getProjectsByAgency(s,e)}catch(t){return{success:!1,error:t.message}}});a.handle("agency-projects-get-active",async(r,s,e)=>{try{return await q.getActiveProjectsByAgency(s,e)}catch(t){return{success:!1,error:t.message}}});a.handle("agency-projects-get-recently-completed",async(r,s,e,t)=>{try{return await q.getRecentlyCompletedProjects(s,e,t)}catch(n){return{success:!1,error:n.message}}});a.handle("agency-projects-get-statistics",async(r,s,e)=>{try{return await q.getAgencyProjectStatistics(s,e)}catch(t){return{success:!1,error:t.message}}});a.handle("agency-projects-get-performance-metrics",async(r,s,e)=>{try{return await q.getAgencyPerformanceMetrics(s,e)}catch(t){return{success:!1,error:t.message}}});a.handle("select-excel-file",async()=>{try{const r=await k.showOpenDialog(o,{properties:["openFile"],title:"Select Excel File",filters:[{name:"Excel Files",extensions:["xlsx","xls"]},{name:"All Files",extensions:["*"]}]});return r.canceled?{success:!1,message:"File selection cancelled"}:{success:!0,filePath:r.filePaths[0],message:"File selected successfully"}}catch(r){return{success:!1,error:r.message}}});a.handle("excel-diagnose",async(r,s)=>{try{return await Ee.diagnoseExcelFile(s)}catch(e){return{success:!1,error:e.message}}});a.handle("sync-get-settings",async()=>{try{return await P.getSyncSettings()}catch(r){return console.error("Error in sync-get-settings handler:",r),{success:!1,error:r.message}}});a.handle("sync-update-settings",async(r,s)=>{try{return await P.updateSyncSettings(s)}catch(e){return console.error("Error in sync-update-settings handler:",e),{success:!1,error:e.message}}});a.handle("sync-test-file-path",async(r,s)=>{try{return await P.testFilePath(s)}catch(e){return console.error("Error in sync-test-file-path handler:",e),{success:!1,error:e.message}}});a.handle("sync-start-auto",async(r,s)=>{try{return await P.startAutoSync(s)}catch(e){return console.error("Error in sync-start-auto handler:",e),{success:!1,error:e.message}}});a.handle("sync-stop-auto",async()=>{try{return await P.stopAutoSync()}catch(r){return console.error("Error in sync-stop-auto handler:",r),{success:!1,error:r.message}}});a.handle("sync-manual",async(r,s)=>{try{return await P.manualSync(s)}catch(e){return console.error("Error in sync-manual handler:",e),{success:!1,error:e.message}}});a.handle("sync-get-status",async()=>{try{return{success:!0,status:P.getSyncStatus()}}catch(r){return console.error("Error in sync-get-status handler:",r),{success:!1,error:r.message}}});a.handle("sync-export-to-excel",async(r,s,e={})=>{try{return await P.exportToExcel(s,e)}catch(t){return console.error("Error in sync-export-to-excel handler:",t),{success:!1,error:t.message}}});a.handle("email-templates-load-all",async()=>{try{const r=await f.loadTemplates();return{success:!0,templates:r,count:r.length,message:`${r.length} email templates loaded successfully`}}catch(r){return console.error("Error loading email templates:",r),{success:!1,error:r.message,templates:[]}}});a.handle("email-templates-create",async(r,s)=>{try{return await f.createTemplate(s)}catch(e){return console.error("Error creating email template:",e),{success:!1,error:e.message}}});a.handle("email-templates-update",async(r,s,e)=>{try{return await f.updateTemplate(s,e)}catch(t){return console.error("Error updating email template:",t),{success:!1,error:t.message}}});a.handle("email-templates-delete",async(r,s)=>{try{return await f.deleteTemplate(s)}catch(e){return console.error("Error deleting email template:",e),{success:!1,error:e.message}}});a.handle("email-templates-get",async(r,s)=>{try{return await f.getTemplate(s)}catch(e){return console.error("Error getting email template:",e),{success:!1,error:e.message}}});a.handle("email-templates-get-by-category",async(r,s)=>{try{return await f.getTemplatesByCategory(s)}catch(e){return console.error("Error getting templates by category:",e),{success:!1,error:e.message}}});a.handle("email-templates-get-categories",async()=>{try{return await f.getTemplateCategories()}catch(r){return console.error("Error getting template categories:",r),{success:!1,error:r.message}}});a.handle("email-templates-get-variables",async()=>{try{return{success:!0,variables:f.getAvailableVariables()}}catch(r){return console.error("Error getting template variables:",r),{success:!1,error:r.message}}});a.handle("email-templates-generate-personalized",async(r,s,e)=>{try{const t=await f.getTemplate(s);return t.success?f.generatePersonalizedEmail(t.template,e):t}catch(t){return console.error("Error generating personalized email:",t),{success:!1,error:t.message}}});a.handle("email-templates-increment-usage",async(r,s)=>{try{return await f.incrementUsageCount(s)}catch(e){return console.error("Error incrementing template usage:",e),{success:!1,error:e.message}}});a.handle("email-templates-get-statistics",async()=>{try{return await f.getTemplateStatistics()}catch(r){return console.error("Error getting template statistics:",r),{success:!1,error:r.message}}});a.handle("email-templates-export",async(r,s)=>{try{return await f.exportTemplates(s)}catch(e){return console.error("Error exporting email templates:",e),{success:!1,error:e.message}}});a.handle("email-templates-import",async(r,s,e={})=>{try{return await f.importTemplates(s,e)}catch(t){return console.error("Error importing email templates:",t),{success:!1,error:t.message}}});a.handle("email-convert-image-to-base64",async(r,s)=>{try{console.log("Converting image to base64:",s);const e=await x.readFile(s),t=D.extname(s).toLowerCase().substring(1),n=be(t);if(!n)throw new Error(`Unsupported image format: ${t}`);const c=e.toString("base64"),l=`data:${n};base64,${c}`;return console.log(`Image converted successfully: ${s} (${t}, ${Math.round(c.length/1024)}KB)`),{success:!0,dataUrl:l,mimeType:n,size:e.length,fileName:D.basename(s)}}catch(e){return console.error("Error converting image to base64:",e),{success:!1,error:e.message}}});function be(r){return{jpg:"image/jpeg",jpeg:"image/jpeg",png:"image/png",gif:"image/gif",bmp:"image/bmp",webp:"image/webp",svg:"image/svg+xml",ico:"image/x-icon"}[r.toLowerCase()]||null}a.handle("email-open-outlook-with-template",async(r,s)=>{try{const{subject:e,content:t,recipients:n}=s,c=t.replace(/\n/g,"<br>"),l=Array.isArray(n)?n.join(";"):n,m=encodeURIComponent(e),A=encodeURIComponent(t),C=`mailto:${l}?subject=${m}&body=${A}`;return await V.openExternal(C),{success:!0,message:"Email opened in Outlook",recipients:Array.isArray(n)?n:[n]}}catch(e){return console.error("Error opening Outlook with template:",e),{success:!1,error:e.message}}});a.handle("email-open-outlook-batch",async(r,s)=>{try{console.log("=== DEBUG: Batch email handler called ==="),console.log("Emails data received:",s),console.log("Number of emails to process:",s.length);const e=[];for(const c of s)try{console.log("Processing email data:",c);const{subject:l,content:m,recipient:A,agencyName:C}=c;if(!A){console.error("No recipient found for email:",c),e.push({success:!1,agencyName:C||"Unknown",recipient:"None",error:"No recipient email address"});continue}let E=m||"";const N=E.includes("<img");N?(E=E.replace(/<img[^>]*src="data:image\/[^"]*"[^>]*>/gi,"[IMAGE ATTACHMENT - Please attach images manually to this email]"),E=E.replace(/<br\s*\/?>/gi,`
-`).replace(/<\/p>/gi,`
-`).replace(/<p>/gi,"").replace(/<[^>]*>/g,""),E+=`
-
---- Note: This email template contained images that need to be attached manually ---`):E=E.replace(/<br\s*\/?>/gi,`
-`).replace(/<\/p>/gi,`
-`).replace(/<p>/gi,"").replace(/<[^>]*>/g,"");const O=encodeURIComponent(l||""),M=encodeURIComponent(E),j=`mailto:${A}?subject=${O}&body=${M}`;console.log("Generated mailto URL length:",j.length),console.log("Has images:",N),j.length>2e3&&console.warn("WARNING: mailto URL is very long ("+j.length+" chars), may cause issues"),j.length<500?console.log("Generated mailto URL:",j):console.log("Generated mailto URL (truncated):",j.substring(0,200)+"..."),await new Promise(S=>setTimeout(S,500)),await V.openExternal(j),e.push({success:!0,agencyName:C,recipient:A,message:`Email opened for ${C}`}),console.log("Email opened successfully for:",C)}catch(l){console.error("Error processing individual email:",l),e.push({success:!1,agencyName:c.agencyName||"Unknown",recipient:c.recipient||"None",error:l.message})}const t=e.filter(c=>c.success).length,n=e.length-t;return console.log("Batch email results:",{total:e.length,successful:t,failed:n,results:e}),{success:!0,results:e,summary:{total:e.length,successful:t,failed:n},message:`Opened ${t} emails successfully${n>0?`, ${n} failed`:""}`}}catch(e){return console.error("Error opening batch emails:",e),{success:!1,error:e.message}}});a.handle("oneDriveSyncUpload",async(r,{projectPath:s,projectData:e,settings:t})=>{try{console.log("Main process: Starting OneDrive sync upload"),z.initialize(t||{enabled:!0,syncFolderPath:"",cleanupStrategy:"auto-delete"});const n=m=>{console.log("Progress update:",m),r.sender.send("oneDriveSyncProgress",m)};n({phase:"zipping",progress:10,message:"Creating zip archive..."});const c=await Se.zipProjectFolder(s,e,n);console.log("ZIP file created at:",c),n({phase:"syncing",progress:40,message:"Copying to OneDrive sync folder..."});const l=await z.uploadToSync(c,t.syncFolderPath,{overwrite:!0,waitForSync:!0,syncTimeout:12e4,cleanupStrategy:t.cleanupStrategy||"auto-delete",progressCallback:n});return console.log("Main process: OneDrive sync upload completed"),console.log("Sync status:",l.syncStatus),console.log("Sync message:",l.syncMessage),l.synced?n({phase:"complete",progress:100,message:"File synced to SharePoint successfully!",syncStatus:"synced"}):n({phase:"complete",progress:95,message:l.syncMessage||"File copied to OneDrive - syncing in background",syncStatus:l.syncStatus||"pending"}),{success:!0,uploadResult:l,zipPath:c,syncStatus:l.syncStatus,synced:l.synced}}catch(n){return console.error("Main process: OneDrive sync upload failed:",n),{success:!1,error:n.message}}});a.handle("detectOneDriveSync",async()=>{try{console.log("Main process: Detecting OneDrive sync folders");const r=await z.findSharePointSyncFolders();return{success:!0,syncFolders:r,message:`Found ${r.length} potential SharePoint sync folders`}}catch(r){return console.error("Main process: OneDrive sync detection failed:",r),{success:!1,error:r.message,syncFolders:[]}}});a.handle("testSyncFolder",async(r,s)=>{try{console.log("Main process: Testing sync folder:",s);const e=await z.verifySyncFolder(s);return{success:e.valid,writable:e.writable,hasSyncIndicators:e.hasSyncIndicators,message:e.valid?"Sync folder is valid and ready for uploads":`Invalid sync folder: ${e.error}`}}catch(e){return console.error("Main process: Sync folder test failed:",e),{success:!1,error:e.message}}});a.handle("browseForSyncFolder",async()=>{try{const r=await k.showOpenDialog(o,{properties:["openDirectory"],title:"Select OneDrive SharePoint Sync Folder",message:"Choose the OneDrive folder that syncs with your SharePoint site"});if(r.canceled)return{success:!1,canceled:!0};const s=r.filePaths[0];console.log("User selected sync folder:",s);const e=await z.verifySyncFolder(s);return{success:!0,folderPath:s,verification:e}}catch(r){return console.error("Error browsing for sync folder:",r),{success:!1,error:r.message}}});a.handle("workload:load-all",async()=>{try{return await i.loadWorkloads()}catch(r){return console.error("Error loading workloads:",r),{success:!1,error:r.message}}});a.handle("workload:load-user",async(r,s)=>{try{return await i.loadUserWorkload(s)}catch(e){return console.error("Error loading user workload:",e),{success:!1,error:e.message}}});a.handle("workload:save",async(r,s,e)=>{try{return await i.saveUserWorkload(s,e)}catch(t){return console.error("Error saving workload:",t),{success:!1,error:t.message}}});a.handle("workload:users-load-all",async()=>{try{return await i.loadUsers()}catch(r){return console.error("Error loading users:",r),{success:!1,error:r.message}}});a.handle("workload:user-save",async(r,s)=>{try{return await i.saveUser(s)}catch(e){return console.error("Error saving user:",e),{success:!1,error:e.message}}});a.handle("workload:user-get",async(r,s)=>{try{return await i.getUser(s)}catch(e){return console.error("Error getting user:",e),{success:!1,error:e.message}}});a.handle("workload:user-delete",async(r,s)=>{try{return await i.deleteUser(s)}catch(e){return console.error("Error deleting user:",e),{success:!1,error:e.message}}});a.handle("workload:assignments-load-all",async()=>{try{return await i.loadAssignments()}catch(r){return console.error("Error loading assignments:",r),{success:!1,error:r.message}}});a.handle("workload:assignment-save",async(r,s)=>{try{return await i.saveAssignment(s)}catch(e){return console.error("Error saving assignment:",e),{success:!1,error:e.message}}});a.handle("workload:assignment-delete",async(r,s)=>{try{return await i.deleteAssignment(s)}catch(e){return console.error("Error deleting assignment:",e),{success:!1,error:e.message}}});a.handle("workload:assignments-by-date-range",async(r,s,e)=>{try{return await i.getAssignmentsByDateRange(s,e)}catch(t){return console.error("Error getting assignments by date range:",t),{success:!1,error:t.message}}});a.handle("workload:stats",async()=>{try{return await i.getStats()}catch(r){return console.error("Error getting workload stats:",r),{success:!1,error:r.message}}});a.handle("workload:config-save",async(r,s)=>{try{return await i.saveConfig(s)}catch(e){return console.error("Error saving workload config:",e),{success:!1,error:e.message}}});a.handle("workload:config-load",async()=>{try{return await i.loadConfig()}catch(r){return console.error("Error loading workload config:",r),{success:!1,error:r.message}}});a.handle("workload:set-data-directory",async(r,s)=>{try{return await i.setDataDirectory(s),d&&await d.stopWatching(),d=new G(s),await d.startWatching(),d.on("workload:changed",e=>{o&&o.webContents.send("workload:file-changed",e)}),d.on("users:changed",e=>{o&&o.webContents.send("workload:users-file-changed",e)}),d.on("assignments:changed",e=>{o&&o.webContents.send("workload:assignments-file-changed",e)}),{success:!0,message:"Data directory updated"}}catch(e){return console.error("Error setting data directory:",e),{success:!1,error:e.message}}});a.handle("workload:file-watcher-start",async(r,s)=>{try{d||(d=new G(s));const e=await d.startWatching();return e.success&&(d.removeAllListeners(),d.on("workload:changed",t=>{o&&o.webContents.send("workload:file-changed",t)}),d.on("users:changed",t=>{o&&o.webContents.send("workload:users-file-changed",t)}),d.on("assignments:changed",t=>{o&&o.webContents.send("workload:assignments-file-changed",t)})),e}catch(e){return console.error("Error starting file watcher:",e),{success:!1,error:e.message}}});a.handle("workload:file-watcher-stop",async()=>{try{return d?await d.stopWatching():{success:!0,message:"File watcher not running"}}catch(r){return console.error("Error stopping file watcher:",r),{success:!1,error:r.message}}});a.handle("workload:file-watcher-status",async()=>{try{return d?{success:!0,status:d.getStatus()}:{success:!0,status:{isWatching:!1}}}catch(r){return console.error("Error getting file watcher status:",r),{success:!1,error:r.message}}});a.handle("workload-excel:field-mapping-get",async()=>{try{return await y.getFieldMapping(h)}catch(r){return console.error("Error getting field mapping:",r),{success:!1,error:r.message}}});a.handle("workload-excel:field-mapping-save",async(r,s)=>{try{return await y.saveFieldMapping(h,s)}catch(e){return console.error("Error saving field mapping:",e),{success:!1,error:e.message}}});a.handle("workload-excel:field-mapping-reset",async()=>{try{return await y.resetToDefault(h)}catch(r){return console.error("Error resetting field mapping:",r),{success:!1,error:r.message}}});a.handle("workload-excel:field-mapping-validate",async(r,s)=>{try{return{success:!0,validation:y.validateMapping(s)}}catch(e){return console.error("Error validating field mapping:",e),{success:!1,error:e.message}}});a.handle("workload-excel:test-file-path",async(r,s)=>{try{return await w.testFilePath(s)}catch(e){return console.error("Error testing file path:",e),{success:!1,error:e.message}}});a.handle("workload-excel:browse-file",async()=>{try{const r=await k.showSaveDialog(o,{title:"Select or Create Excel Workload File",filters:[{name:"Excel Files",extensions:["xlsx"]},{name:"All Files",extensions:["*"]}],defaultPath:"ProjectWorkload.xlsx"});if(r.canceled||!r.filePath)return{success:!1,error:"No file selected",canceled:!0};let s=r.filePath;const e=require("path");s.toLowerCase().endsWith(".xlsx")||(s=s+".xlsx");const t=await w.validateFilePath(s);if(!t.isValid)return{success:!1,error:t.error};const n=t.path,c=require("fs-extra"),l=e.dirname(n);try{return await c.ensureDir(l),await c.access(l,c.constants.W_OK),{success:!0,filePath:n,isNew:!await c.pathExists(n)}}catch(m){return{success:!1,error:`Cannot access directory: ${m.message}`}}}catch(r){return console.error("Error browsing for Excel file:",r),{success:!1,error:r.message}}});a.handle("workload-excel:initialize-workbook",async(r,s)=>{try{const e=await y.getFieldMapping(h);return e.success?await w.initializeWorkbook(s,e.mapping):{success:!1,error:"Failed to load field mapping"}}catch(e){return console.error("Error initializing workbook:",e),{success:!1,error:e.message}}});a.handle("workload-excel:get-headers",async(r,s,e)=>{try{return await w.getExcelHeaders(s,e)}catch(t){return console.error("Error getting Excel headers:",t),{success:!1,error:t.message}}});a.handle("workload-excel:export-projects",async(r,s,e)=>{try{const t=await y.getFieldMapping(h);return t.success?await w.exportProjectsToExcel(s,e,t.mapping):{success:!1,error:"Failed to load field mapping"}}catch(t){return console.error("Error exporting projects:",t),{success:!1,error:t.message}}});a.handle("workload-excel:export-assignments",async(r,s,e)=>{try{const t=await y.getFieldMapping(h);return t.success?await w.exportAssignmentsToExcel(s,e,t.mapping):{success:!1,error:"Failed to load field mapping"}}catch(t){return console.error("Error exporting assignments:",t),{success:!1,error:t.message}}});a.handle("workload-excel:export-users",async(r,s,e)=>{try{const t=await y.getFieldMapping(h);return t.success?await w.exportUsersToExcel(s,e,t.mapping):{success:!1,error:"Failed to load field mapping"}}catch(t){return console.error("Error exporting users:",t),{success:!1,error:t.message}}});a.handle("workload-excel:export-all",async(r,s,e)=>{try{const t=await y.getFieldMapping(h);return t.success?await w.exportAllToExcel(s,e,t.mapping):{success:!1,error:"Failed to load field mapping"}}catch(t){return console.error("Error exporting all data:",t),{success:!1,error:t.message}}});a.handle("workload-excel:optimize-file",async(r,s)=>{try{return await w.optimizeExcelFile(s)}catch(e){return console.error("Error optimizing Excel file:",e),{success:!1,error:e.message}}});a.handle("workload-excel:import-projects",async(r,s)=>{try{const e=await y.getFieldMapping(h);if(!e.success)return{success:!1,error:"Failed to load field mapping"};const t=await w.importProjectsFromExcel(s,e.mapping);if(t.success&&t.projects)for(const n of t.projects)await u.saveProject(n);return t}catch(e){return console.error("Error importing projects:",e),{success:!1,error:e.message}}});a.handle("workload-excel:import-assignments",async(r,s)=>{try{const e=await y.getFieldMapping(h);if(!e.success)return{success:!1,error:"Failed to load field mapping"};const t=await w.importAssignmentsFromExcel(s,e.mapping);if(t.success&&t.assignments)for(const n of t.assignments)await i.saveAssignment(n);return t}catch(e){return console.error("Error importing assignments:",e),{success:!1,error:e.message}}});a.handle("workload-excel:import-users",async(r,s)=>{try{const e=await y.getFieldMapping(h);if(!e.success)return{success:!1,error:"Failed to load field mapping"};const t=await w.importUsersFromExcel(s,e.mapping);if(t.success&&t.users)for(const n of t.users)await i.saveUser(n);return t}catch(e){return console.error("Error importing users:",e),{success:!1,error:e.message}}});a.handle("workload-excel:import-all",async(r,s)=>{try{const e=await y.getFieldMapping(h);if(!e.success)return{success:!1,error:"Failed to load field mapping"};const t=await w.importAllFromExcel(s,e.mapping);if(t.success&&t.data){if(t.data.projects)for(const n of t.data.projects)await u.saveProject(n);if(t.data.assignments)for(const n of t.data.assignments)await i.saveAssignment(n);if(t.data.users)for(const n of t.data.users)await i.saveUser(n)}return t}catch(e){return console.error("Error importing all data:",e),{success:!1,error:e.message}}});a.handle("workload-excel:sync-settings-get",async()=>{try{return await v.getSyncSettings()}catch(r){return console.error("Error getting sync settings:",r),{success:!1,error:r.message}}});a.handle("workload-excel:sync-settings-update",async(r,s)=>{try{return await v.updateSyncSettings(s)}catch(e){return console.error("Error updating sync settings:",e),{success:!1,error:e.message}}});a.handle("workload-excel:sync-start-auto",async(r,s)=>{try{return await v.startAutoSync(s)}catch(e){return console.error("Error starting auto-sync:",e),{success:!1,error:e.message}}});a.handle("workload-excel:sync-stop-auto",async()=>{try{return await v.stopAutoSync()}catch(r){return console.error("Error stopping auto-sync:",r),{success:!1,error:r.message}}});a.handle("workload-excel:sync-from-excel",async(r,s)=>{try{return await v.syncFromExcel(s)}catch(e){return console.error("Error syncing from Excel:",e),{success:!1,error:e.message}}});a.handle("workload-excel:sync-to-excel",async(r,s,e)=>{try{return await v.syncToExcel(s,e)}catch(t){return console.error("Error syncing to Excel:",t),{success:!1,error:t.message}}});a.handle("workload-excel:sync-bidirectional",async(r,s,e)=>{try{return await v.performBidirectionalSync(s,e)}catch(t){return console.error("Error performing bidirectional sync:",t),{success:!1,error:t.message}}});a.handle("workload-excel:sync-status",async()=>{try{return{success:!0,status:v.getSyncStatus()}}catch(r){return console.error("Error getting sync status:",r),{success:!1,error:r.message}}});a.handle("workload:backup-create",async()=>{try{return await i.createBackup()}catch(r){return console.error("Error creating backup:",r),{success:!1,error:r.message}}});a.handle("das-general:load-all",async(r,s)=>{try{return await b.loadAllData(s)}catch(e){return console.error("Error loading DAS General data:",e),{success:!1,error:"LOAD_ERROR",message:e.message}}});a.handle("das-general:save-all",async(r,s,e)=>{try{return await b.saveAllData(s,e)}catch(t){return console.error("Error saving DAS General data:",t),{success:!1,error:"SAVE_ERROR",message:t.message}}});a.handle("das-general:check-access",async(r,s)=>{try{return await b.checkFileAccess(s)}catch(e){return console.error("Error checking DAS General file access:",e),{success:!1,error:"ACCESS_ERROR",message:e.message}}});a.handle("das-general:create-file",async(r,s)=>{try{return await b.createNewFile(s)}catch(e){return console.error("Error creating DAS General file:",e),{success:!1,error:"CREATE_ERROR",message:e.message}}});a.handle("das-general:save-team-members",async(r,s,e)=>{try{return await b.saveTeamMembers(s,e)}catch(t){return console.error("Error saving team members:",t),{success:!1,error:"SAVE_ERROR",message:t.message}}});a.handle("das-general:save-training-material",async(r,s,e)=>{try{return await b.saveTrainingMaterial(s,e)}catch(t){return console.error("Error saving training material:",t),{success:!1,error:"SAVE_ERROR",message:t.message}}});a.handle("das-general:save-products-info",async(r,s,e)=>{try{return await b.saveProductsInfo(s,e)}catch(t){return console.error("Error saving products info:",t),{success:!1,error:"SAVE_ERROR",message:t.message}}});a.handle("das-general:add-product",async(r,s,e)=>{try{return await b.addProduct(s,e)}catch(t){return console.error("Error adding product:",t),{success:!1,error:"ADD_ERROR",message:t.message}}});a.handle("das-general:remove-product",async(r,s,e)=>{try{return await b.removeProduct(s,e)}catch(t){return console.error("Error removing product:",t),{success:!1,error:"REMOVE_ERROR",message:t.message}}});a.handle("das-general:get-settings",async()=>{try{return await b.getSettings()}catch(r){return console.error("Error getting DAS General settings:",r),{success:!1,error:r.message}}});a.handle("das-general:update-settings",async(r,s)=>{try{return await b.updateSettings(s)}catch(e){return console.error("Error updating DAS General settings:",e),{success:!1,error:e.message}}});a.handle("das-general:select-file",async()=>{try{const r=await k.showOpenDialog(o,{title:"Select DAS General Excel File",filters:[{name:"Excel Files",extensions:["xlsx","xls"]}],properties:["openFile"]});return r.canceled||!r.filePaths[0]?{success:!1,canceled:!0}:{success:!0,filePath:r.filePaths[0]}}catch(r){return console.error("Error selecting file:",r),{success:!1,error:r.message}}});process.on("uncaughtException",r=>{console.error("Uncaught Exception:",r),o&&o.webContents.send("error",{type:"uncaught-exception",message:r.message,stack:r.stack})});process.on("unhandledRejection",(r,s)=>{console.error("Unhandled Rejection at:",s,"reason:",r),o&&o.webContents.send("error",{type:"unhandled-rejection",message:(r==null?void 0:r.message)||String(r),stack:r==null?void 0:r.stack})});
+      `;
+      const tempVbsPath = path.join(os.tmpdir(), "folder_browser_" + Date.now() + ".vbs");
+      await fs.writeFile(tempVbsPath, vbScript);
+      console.log("Executing VBScript folder browser...");
+      const { stdout, stderr } = await execPromise(`cscript.exe //NoLogo "${tempVbsPath}"`, {
+        windowsHide: false,
+        timeout: 12e4,
+        // 2 minutes
+        encoding: "utf8"
+      });
+      try {
+        await fs.unlink(tempVbsPath);
+      } catch (cleanupError) {
+        console.log("Could not clean up temp VBS file:", cleanupError.message);
+      }
+      console.log("VBScript browser stdout:", stdout);
+      console.log("VBScript browser stderr:", stderr);
+      if (!stderr && stdout && stdout.trim()) {
+        const selectedPath2 = stdout.trim();
+        if (selectedPath2 === "CANCELED") {
+          console.log("VBScript folder selection canceled");
+          return { success: false, canceled: true };
+        }
+        console.log("VBScript folder selected:", selectedPath2);
+        if (!fs.existsSync(selectedPath2)) {
+          return {
+            success: false,
+            error: `The specified path does not exist: ${selectedPath2}`
+          };
+        }
+        const validationResult2 = await projectCreationService.validateRFAFolder(selectedPath2);
+        return {
+          success: true,
+          selectedPath: selectedPath2,
+          validation: validationResult2
+        };
+      } else {
+        console.log("VBScript browser failed or returned empty result, using fallback");
+        throw new Error("VBScript browser returned empty result");
+      }
+    } catch (vbsError) {
+      console.log("Windows VBScript approach failed, using Electron fallback:", vbsError.message);
+    }
+    console.log("Using Electron dialog fallback...");
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ["openDirectory"],
+      title: "Select Previous RFA Folder",
+      defaultPath: explorerPath,
+      buttonLabel: "Select RFA Folder"
+    });
+    console.log("Electron dialog result:", result);
+    if (result.canceled) {
+      return { success: false, canceled: true };
+    }
+    const selectedPath = result.filePaths[0];
+    console.log("Electron dialog selected path:", selectedPath);
+    const validationResult = await projectCreationService.validateRFAFolder(selectedPath);
+    console.log("Validation result:", validationResult);
+    return {
+      success: true,
+      selectedPath,
+      validation: validationResult
+    };
+  } catch (error) {
+    console.error("revision-select-folder error:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("project-validate", async (event, projectData) => {
+  try {
+    return await projectCreationService.validateProject(projectData);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("project-validate-field", async (event, fieldName, value, projectData) => {
+  try {
+    return await projectCreationService.validateField(fieldName, value, projectData);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("form-settings-get-all", async (event) => {
+  try {
+    return { success: true, data: formSettingsService.getAllSettings() };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("form-settings-get-rfa-types", async (event) => {
+  try {
+    return { success: true, data: formSettingsService.getRFATypes() };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("form-settings-get-national-accounts", async (event) => {
+  try {
+    return { success: true, data: formSettingsService.getNationalAccounts() };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("form-settings-add-custom-rfa-type", async (event, label, value) => {
+  try {
+    const result = formSettingsService.addCustomRFAType(label, value);
+    return { success: true, data: result };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("form-settings-add-custom-national-account", async (event, label, value) => {
+  try {
+    const result = formSettingsService.addCustomNationalAccount(label, value);
+    return { success: true, data: result };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("form-settings-validate-form-data", async (event, formData) => {
+  try {
+    const result = formSettingsService.validateFormData(formData);
+    return { success: true, data: result };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("project-validation-status", async (event) => {
+  try {
+    return await projectCreationService.getValidationStatus();
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("project-clear-validation-caches", async (event) => {
+  try {
+    projectCreationService.clearValidationCaches();
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("project-export-das-board", async (event, projectData) => {
+  try {
+    return await projectCreationService.exportToDASBoard(projectData);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("project-export-agile", async (event, projectData) => {
+  try {
+    return await projectCreationService.exportToAgile(projectData);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("agencies-import-excel", async (event, filePath) => {
+  try {
+    return await agencyService.importFromExcel(filePath);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("agencies-load-all", async () => {
+  try {
+    const agencies = await agencyService.loadAgencies();
+    return {
+      success: true,
+      agencies,
+      count: agencies.length,
+      message: `${agencies.length} agencies loaded successfully`
+    };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("agencies-search", async (event, searchTerm, filters) => {
+  try {
+    const agencies = await agencyService.searchAgencies(searchTerm, filters);
+    return {
+      success: true,
+      agencies,
+      count: agencies.length
+    };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("agencies-get-filter-options", async () => {
+  try {
+    const options = await agencyService.getFilterOptions();
+    return {
+      success: true,
+      options
+    };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("agencies-add", async (event, agencyData) => {
+  try {
+    return await agencyService.addAgency(agencyData);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("agencies-update", async (event, agencyId, updates) => {
+  try {
+    return await agencyService.updateAgency(agencyId, updates);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("agencies-delete", async (event, agencyId) => {
+  try {
+    return await agencyService.deleteAgency(agencyId);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("agencies-get-statistics", async () => {
+  try {
+    const statistics = await agencyService.getStatistics();
+    return {
+      success: true,
+      statistics
+    };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("agencies-export-excel", async (event, outputPath) => {
+  try {
+    return await agencyService.exportToExcel(outputPath);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("agency-projects-get-all", async (event, agencyName, agentNumber) => {
+  try {
+    return await agencyProjectService.getProjectsByAgency(agencyName, agentNumber);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("agency-projects-get-active", async (event, agencyName, agentNumber) => {
+  try {
+    return await agencyProjectService.getActiveProjectsByAgency(agencyName, agentNumber);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("agency-projects-get-recently-completed", async (event, agencyName, agentNumber, days) => {
+  try {
+    return await agencyProjectService.getRecentlyCompletedProjects(agencyName, agentNumber, days);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("agency-projects-get-statistics", async (event, agencyName, agentNumber) => {
+  try {
+    return await agencyProjectService.getAgencyProjectStatistics(agencyName, agentNumber);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("agency-projects-get-performance-metrics", async (event, agencyName, agentNumber) => {
+  try {
+    return await agencyProjectService.getAgencyPerformanceMetrics(agencyName, agentNumber);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("select-excel-file", async () => {
+  try {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ["openFile"],
+      title: "Select Excel File",
+      filters: [
+        { name: "Excel Files", extensions: ["xlsx", "xls"] },
+        { name: "All Files", extensions: ["*"] }
+      ]
+    });
+    if (result.canceled) {
+      return { success: false, message: "File selection cancelled" };
+    }
+    return {
+      success: true,
+      filePath: result.filePaths[0],
+      message: "File selected successfully"
+    };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("excel-diagnose", async (event, filePath) => {
+  try {
+    return await excelDiagnosticService.diagnoseExcelFile(filePath);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("sync-get-settings", async () => {
+  try {
+    return await agencySyncService.getSyncSettings();
+  } catch (error) {
+    console.error("Error in sync-get-settings handler:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("sync-update-settings", async (event, newSettings) => {
+  try {
+    return await agencySyncService.updateSyncSettings(newSettings);
+  } catch (error) {
+    console.error("Error in sync-update-settings handler:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("sync-test-file-path", async (event, filePath) => {
+  try {
+    return await agencySyncService.testFilePath(filePath);
+  } catch (error) {
+    console.error("Error in sync-test-file-path handler:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("sync-start-auto", async (event, filePath) => {
+  try {
+    return await agencySyncService.startAutoSync(filePath);
+  } catch (error) {
+    console.error("Error in sync-start-auto handler:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("sync-stop-auto", async () => {
+  try {
+    return await agencySyncService.stopAutoSync();
+  } catch (error) {
+    console.error("Error in sync-stop-auto handler:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("sync-manual", async (event, filePath) => {
+  try {
+    return await agencySyncService.manualSync(filePath);
+  } catch (error) {
+    console.error("Error in sync-manual handler:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("sync-get-status", async () => {
+  try {
+    const status = agencySyncService.getSyncStatus();
+    return { success: true, status };
+  } catch (error) {
+    console.error("Error in sync-get-status handler:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("sync-export-to-excel", async (event, filePath, options = {}) => {
+  try {
+    return await agencySyncService.exportToExcel(filePath, options);
+  } catch (error) {
+    console.error("Error in sync-export-to-excel handler:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("email-templates-load-all", async () => {
+  try {
+    const templates = await emailTemplateService.loadTemplates();
+    return {
+      success: true,
+      templates,
+      count: templates.length,
+      message: `${templates.length} email templates loaded successfully`
+    };
+  } catch (error) {
+    console.error("Error loading email templates:", error);
+    return { success: false, error: error.message, templates: [] };
+  }
+});
+ipcMain.handle("email-templates-create", async (event, templateData) => {
+  try {
+    return await emailTemplateService.createTemplate(templateData);
+  } catch (error) {
+    console.error("Error creating email template:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("email-templates-update", async (event, templateId, updates) => {
+  try {
+    return await emailTemplateService.updateTemplate(templateId, updates);
+  } catch (error) {
+    console.error("Error updating email template:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("email-templates-delete", async (event, templateId) => {
+  try {
+    return await emailTemplateService.deleteTemplate(templateId);
+  } catch (error) {
+    console.error("Error deleting email template:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("email-templates-get", async (event, templateId) => {
+  try {
+    return await emailTemplateService.getTemplate(templateId);
+  } catch (error) {
+    console.error("Error getting email template:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("email-templates-get-by-category", async (event, category) => {
+  try {
+    return await emailTemplateService.getTemplatesByCategory(category);
+  } catch (error) {
+    console.error("Error getting templates by category:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("email-templates-get-categories", async () => {
+  try {
+    return await emailTemplateService.getTemplateCategories();
+  } catch (error) {
+    console.error("Error getting template categories:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("email-templates-get-variables", async () => {
+  try {
+    const variables = emailTemplateService.getAvailableVariables();
+    return { success: true, variables };
+  } catch (error) {
+    console.error("Error getting template variables:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("email-templates-generate-personalized", async (event, templateId, agencyData) => {
+  try {
+    const templateResult = await emailTemplateService.getTemplate(templateId);
+    if (!templateResult.success) {
+      return templateResult;
+    }
+    return emailTemplateService.generatePersonalizedEmail(templateResult.template, agencyData);
+  } catch (error) {
+    console.error("Error generating personalized email:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("email-templates-increment-usage", async (event, templateId) => {
+  try {
+    return await emailTemplateService.incrementUsageCount(templateId);
+  } catch (error) {
+    console.error("Error incrementing template usage:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("email-templates-get-statistics", async () => {
+  try {
+    return await emailTemplateService.getTemplateStatistics();
+  } catch (error) {
+    console.error("Error getting template statistics:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("email-templates-export", async (event, filePath) => {
+  try {
+    return await emailTemplateService.exportTemplates(filePath);
+  } catch (error) {
+    console.error("Error exporting email templates:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("email-templates-import", async (event, filePath, options = {}) => {
+  try {
+    return await emailTemplateService.importTemplates(filePath, options);
+  } catch (error) {
+    console.error("Error importing email templates:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("email-convert-image-to-base64", async (event, filePath) => {
+  try {
+    console.log("Converting image to base64:", filePath);
+    const imageBuffer = await fs.readFile(filePath);
+    const fileExtension = path.extname(filePath).toLowerCase().substring(1);
+    const mimeType = getMimeTypeFromExtension(fileExtension);
+    if (!mimeType) {
+      throw new Error(`Unsupported image format: ${fileExtension}`);
+    }
+    const base64Data = imageBuffer.toString("base64");
+    const dataUrl = `data:${mimeType};base64,${base64Data}`;
+    console.log(`Image converted successfully: ${filePath} (${fileExtension}, ${Math.round(base64Data.length / 1024)}KB)`);
+    return {
+      success: true,
+      dataUrl,
+      mimeType,
+      size: imageBuffer.length,
+      fileName: path.basename(filePath)
+    };
+  } catch (error) {
+    console.error("Error converting image to base64:", error);
+    return { success: false, error: error.message };
+  }
+});
+function getMimeTypeFromExtension(extension) {
+  const mimeTypes = {
+    "jpg": "image/jpeg",
+    "jpeg": "image/jpeg",
+    "png": "image/png",
+    "gif": "image/gif",
+    "bmp": "image/bmp",
+    "webp": "image/webp",
+    "svg": "image/svg+xml",
+    "ico": "image/x-icon"
+  };
+  return mimeTypes[extension.toLowerCase()] || null;
+}
+ipcMain.handle("email-open-outlook-with-template", async (event, emailData) => {
+  try {
+    const { subject, content, recipients } = emailData;
+    const htmlContent = content.replace(/\n/g, "<br>");
+    const recipientList = Array.isArray(recipients) ? recipients.join(";") : recipients;
+    const encodedSubject = encodeURIComponent(subject);
+    const encodedContent = encodeURIComponent(content);
+    const mailtoUrl = `mailto:${recipientList}?subject=${encodedSubject}&body=${encodedContent}`;
+    await shell.openExternal(mailtoUrl);
+    return {
+      success: true,
+      message: "Email opened in Outlook",
+      recipients: Array.isArray(recipients) ? recipients : [recipients]
+    };
+  } catch (error) {
+    console.error("Error opening Outlook with template:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("email-open-outlook-batch", async (event, emailsData) => {
+  try {
+    console.log("=== DEBUG: Batch email handler called ===");
+    console.log("Emails data received:", emailsData);
+    console.log("Number of emails to process:", emailsData.length);
+    const results = [];
+    for (const emailData of emailsData) {
+      try {
+        console.log("Processing email data:", emailData);
+        const { subject, content, recipient, agencyName } = emailData;
+        if (!recipient) {
+          console.error("No recipient found for email:", emailData);
+          results.push({
+            success: false,
+            agencyName: agencyName || "Unknown",
+            recipient: "None",
+            error: "No recipient email address"
+          });
+          continue;
+        }
+        let processedContent = content || "";
+        const hasImages = processedContent.includes("<img");
+        if (hasImages) {
+          processedContent = processedContent.replace(
+            /<img[^>]*src="data:image\/[^"]*"[^>]*>/gi,
+            "[IMAGE ATTACHMENT - Please attach images manually to this email]"
+          );
+          processedContent = processedContent.replace(/<br\s*\/?>/gi, "\n").replace(/<\/p>/gi, "\n").replace(/<p>/gi, "").replace(/<[^>]*>/g, "");
+          processedContent += "\n\n--- Note: This email template contained images that need to be attached manually ---";
+        } else {
+          processedContent = processedContent.replace(/<br\s*\/?>/gi, "\n").replace(/<\/p>/gi, "\n").replace(/<p>/gi, "").replace(/<[^>]*>/g, "");
+        }
+        const encodedSubject = encodeURIComponent(subject || "");
+        const encodedContent = encodeURIComponent(processedContent);
+        const mailtoUrl = `mailto:${recipient}?subject=${encodedSubject}&body=${encodedContent}`;
+        console.log("Generated mailto URL length:", mailtoUrl.length);
+        console.log("Has images:", hasImages);
+        if (mailtoUrl.length > 2e3) {
+          console.warn("WARNING: mailto URL is very long (" + mailtoUrl.length + " chars), may cause issues");
+        }
+        if (mailtoUrl.length < 500) {
+          console.log("Generated mailto URL:", mailtoUrl);
+        } else {
+          console.log("Generated mailto URL (truncated):", mailtoUrl.substring(0, 200) + "...");
+        }
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        await shell.openExternal(mailtoUrl);
+        results.push({
+          success: true,
+          agencyName,
+          recipient,
+          message: `Email opened for ${agencyName}`
+        });
+        console.log("Email opened successfully for:", agencyName);
+      } catch (emailError) {
+        console.error("Error processing individual email:", emailError);
+        results.push({
+          success: false,
+          agencyName: emailData.agencyName || "Unknown",
+          recipient: emailData.recipient || "None",
+          error: emailError.message
+        });
+      }
+    }
+    const successCount = results.filter((r) => r.success).length;
+    const failCount = results.length - successCount;
+    console.log("Batch email results:", {
+      total: results.length,
+      successful: successCount,
+      failed: failCount,
+      results
+    });
+    return {
+      success: true,
+      results,
+      summary: {
+        total: results.length,
+        successful: successCount,
+        failed: failCount
+      },
+      message: `Opened ${successCount} emails successfully${failCount > 0 ? `, ${failCount} failed` : ""}`
+    };
+  } catch (error) {
+    console.error("Error opening batch emails:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("oneDriveSyncUpload", async (event, { projectPath, projectData, settings }) => {
+  try {
+    console.log("Main process: Starting OneDrive sync upload");
+    oneDriveSyncService.initialize(settings || {
+      enabled: true,
+      syncFolderPath: "",
+      cleanupStrategy: "auto-delete"
+    });
+    const progressCallback = (progressData) => {
+      console.log("Progress update:", progressData);
+      event.sender.send("oneDriveSyncProgress", progressData);
+    };
+    progressCallback({ phase: "zipping", progress: 10, message: "Creating zip archive..." });
+    const zipPath = await zipService.zipProjectFolder(projectPath, projectData, progressCallback);
+    console.log("ZIP file created at:", zipPath);
+    progressCallback({ phase: "syncing", progress: 40, message: "Copying to OneDrive sync folder..." });
+    const uploadResult = await oneDriveSyncService.uploadToSync(
+      zipPath,
+      settings.syncFolderPath,
+      {
+        overwrite: true,
+        waitForSync: true,
+        syncTimeout: 12e4,
+        // 2 minutes
+        cleanupStrategy: settings.cleanupStrategy || "auto-delete",
+        progressCallback
+        // Pass through for sync status updates
+      }
+    );
+    console.log("Main process: OneDrive sync upload completed");
+    console.log("Sync status:", uploadResult.syncStatus);
+    console.log("Sync message:", uploadResult.syncMessage);
+    if (uploadResult.synced) {
+      progressCallback({
+        phase: "complete",
+        progress: 100,
+        message: "File synced to SharePoint successfully!",
+        syncStatus: "synced"
+      });
+    } else {
+      progressCallback({
+        phase: "complete",
+        progress: 95,
+        message: uploadResult.syncMessage || "File copied to OneDrive - syncing in background",
+        syncStatus: uploadResult.syncStatus || "pending"
+      });
+    }
+    return {
+      success: true,
+      uploadResult,
+      zipPath,
+      syncStatus: uploadResult.syncStatus,
+      synced: uploadResult.synced
+    };
+  } catch (error) {
+    console.error("Main process: OneDrive sync upload failed:", error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+ipcMain.handle("detectOneDriveSync", async () => {
+  try {
+    console.log("Main process: Detecting OneDrive sync folders");
+    const syncFolders = await oneDriveSyncService.findSharePointSyncFolders();
+    return {
+      success: true,
+      syncFolders,
+      message: `Found ${syncFolders.length} potential SharePoint sync folders`
+    };
+  } catch (error) {
+    console.error("Main process: OneDrive sync detection failed:", error);
+    return {
+      success: false,
+      error: error.message,
+      syncFolders: []
+    };
+  }
+});
+ipcMain.handle("testSyncFolder", async (event, syncFolderPath) => {
+  try {
+    console.log("Main process: Testing sync folder:", syncFolderPath);
+    const verification = await oneDriveSyncService.verifySyncFolder(syncFolderPath);
+    return {
+      success: verification.valid,
+      writable: verification.writable,
+      hasSyncIndicators: verification.hasSyncIndicators,
+      message: verification.valid ? "Sync folder is valid and ready for uploads" : `Invalid sync folder: ${verification.error}`
+    };
+  } catch (error) {
+    console.error("Main process: Sync folder test failed:", error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+ipcMain.handle("browseForSyncFolder", async () => {
+  try {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ["openDirectory"],
+      title: "Select OneDrive SharePoint Sync Folder",
+      message: "Choose the OneDrive folder that syncs with your SharePoint site"
+    });
+    if (result.canceled) {
+      return { success: false, canceled: true };
+    }
+    const selectedPath = result.filePaths[0];
+    console.log("User selected sync folder:", selectedPath);
+    const verification = await oneDriveSyncService.verifySyncFolder(selectedPath);
+    return {
+      success: true,
+      folderPath: selectedPath,
+      verification
+    };
+  } catch (error) {
+    console.error("Error browsing for sync folder:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload:load-all", async () => {
+  try {
+    return await workloadPersistenceService.loadWorkloads();
+  } catch (error) {
+    console.error("Error loading workloads:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload:load-user", async (event, userId) => {
+  try {
+    return await workloadPersistenceService.loadUserWorkload(userId);
+  } catch (error) {
+    console.error("Error loading user workload:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload:save", async (event, userId, workload) => {
+  try {
+    return await workloadPersistenceService.saveUserWorkload(userId, workload);
+  } catch (error) {
+    console.error("Error saving workload:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload:users-load-all", async () => {
+  try {
+    return await workloadPersistenceService.loadUsers();
+  } catch (error) {
+    console.error("Error loading users:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload:user-save", async (event, user) => {
+  try {
+    return await workloadPersistenceService.saveUser(user);
+  } catch (error) {
+    console.error("Error saving user:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload:user-get", async (event, userId) => {
+  try {
+    return await workloadPersistenceService.getUser(userId);
+  } catch (error) {
+    console.error("Error getting user:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload:user-delete", async (event, userId) => {
+  try {
+    return await workloadPersistenceService.deleteUser(userId);
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload:assignments-load-all", async () => {
+  try {
+    return await workloadPersistenceService.loadAssignments();
+  } catch (error) {
+    console.error("Error loading assignments:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload:assignment-save", async (event, assignment) => {
+  try {
+    const result = await workloadPersistenceService.saveAssignment(assignment);
+    return result;
+  } catch (error) {
+    console.error("Error saving assignment:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload:assignment-delete", async (event, assignmentId) => {
+  try {
+    const result = await workloadPersistenceService.deleteAssignment(assignmentId);
+    return result;
+  } catch (error) {
+    console.error("Error deleting assignment:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload:assignments-by-date-range", async (event, startDate, endDate) => {
+  try {
+    return await workloadPersistenceService.getAssignmentsByDateRange(startDate, endDate);
+  } catch (error) {
+    console.error("Error getting assignments by date range:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload:stats", async () => {
+  try {
+    return await workloadPersistenceService.getStats();
+  } catch (error) {
+    console.error("Error getting workload stats:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload:config-save", async (event, config) => {
+  try {
+    return await workloadPersistenceService.saveConfig(config);
+  } catch (error) {
+    console.error("Error saving workload config:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload:config-load", async () => {
+  try {
+    return await workloadPersistenceService.loadConfig();
+  } catch (error) {
+    console.error("Error loading workload config:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload:set-data-directory", async (event, directoryPath) => {
+  try {
+    await workloadPersistenceService.setDataDirectory(directoryPath);
+    if (fileWatcherService) {
+      await fileWatcherService.stopWatching();
+    }
+    fileWatcherService = new FileWatcherService(directoryPath);
+    await fileWatcherService.startWatching();
+    fileWatcherService.on("workload:changed", (data) => {
+      if (mainWindow) {
+        mainWindow.webContents.send("workload:file-changed", data);
+      }
+    });
+    fileWatcherService.on("users:changed", (data) => {
+      if (mainWindow) {
+        mainWindow.webContents.send("workload:users-file-changed", data);
+      }
+    });
+    fileWatcherService.on("assignments:changed", (data) => {
+      if (mainWindow) {
+        mainWindow.webContents.send("workload:assignments-file-changed", data);
+      }
+    });
+    return { success: true, message: "Data directory updated" };
+  } catch (error) {
+    console.error("Error setting data directory:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload:file-watcher-start", async (event, directoryPath) => {
+  try {
+    if (!fileWatcherService) {
+      fileWatcherService = new FileWatcherService(directoryPath);
+    }
+    const result = await fileWatcherService.startWatching();
+    if (result.success) {
+      fileWatcherService.removeAllListeners();
+      fileWatcherService.on("workload:changed", (data) => {
+        if (mainWindow) {
+          mainWindow.webContents.send("workload:file-changed", data);
+        }
+      });
+      fileWatcherService.on("users:changed", (data) => {
+        if (mainWindow) {
+          mainWindow.webContents.send("workload:users-file-changed", data);
+        }
+      });
+      fileWatcherService.on("assignments:changed", (data) => {
+        if (mainWindow) {
+          mainWindow.webContents.send("workload:assignments-file-changed", data);
+        }
+      });
+    }
+    return result;
+  } catch (error) {
+    console.error("Error starting file watcher:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload:file-watcher-stop", async () => {
+  try {
+    if (fileWatcherService) {
+      return await fileWatcherService.stopWatching();
+    }
+    return { success: true, message: "File watcher not running" };
+  } catch (error) {
+    console.error("Error stopping file watcher:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload:file-watcher-status", async () => {
+  try {
+    if (fileWatcherService) {
+      return { success: true, status: fileWatcherService.getStatus() };
+    }
+    return { success: true, status: { isWatching: false } };
+  } catch (error) {
+    console.error("Error getting file watcher status:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload-excel:field-mapping-get", async () => {
+  try {
+    const result = await fieldMappingService.getFieldMapping(settingsService);
+    return result;
+  } catch (error) {
+    console.error("Error getting field mapping:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload-excel:field-mapping-save", async (event, mapping) => {
+  try {
+    const result = await fieldMappingService.saveFieldMapping(settingsService, mapping);
+    return result;
+  } catch (error) {
+    console.error("Error saving field mapping:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload-excel:field-mapping-reset", async () => {
+  try {
+    const result = await fieldMappingService.resetToDefault(settingsService);
+    return result;
+  } catch (error) {
+    console.error("Error resetting field mapping:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload-excel:field-mapping-validate", async (event, mapping) => {
+  try {
+    const validation = fieldMappingService.validateMapping(mapping);
+    return { success: true, validation };
+  } catch (error) {
+    console.error("Error validating field mapping:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload-excel:test-file-path", async (event, filePath) => {
+  try {
+    const result = await workloadExcelService.testFilePath(filePath);
+    return result;
+  } catch (error) {
+    console.error("Error testing file path:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload-excel:browse-file", async () => {
+  try {
+    const result = await dialog.showSaveDialog(mainWindow, {
+      title: "Select or Create Excel Workload File",
+      filters: [
+        { name: "Excel Files", extensions: ["xlsx"] },
+        { name: "All Files", extensions: ["*"] }
+      ],
+      defaultPath: "ProjectWorkload.xlsx"
+    });
+    if (result.canceled || !result.filePath) {
+      return { success: false, error: "No file selected", canceled: true };
+    }
+    let filePath = result.filePath;
+    const path2 = require("path");
+    if (!filePath.toLowerCase().endsWith(".xlsx")) {
+      filePath = filePath + ".xlsx";
+    }
+    const pathInfo = await workloadExcelService.validateFilePath(filePath);
+    if (!pathInfo.isValid) {
+      return { success: false, error: pathInfo.error };
+    }
+    const normalizedPath = pathInfo.path;
+    const fs2 = require("fs-extra");
+    const dir = path2.dirname(normalizedPath);
+    try {
+      await fs2.ensureDir(dir);
+      await fs2.access(dir, fs2.constants.W_OK);
+      return { success: true, filePath: normalizedPath, isNew: !await fs2.pathExists(normalizedPath) };
+    } catch (error) {
+      return { success: false, error: `Cannot access directory: ${error.message}` };
+    }
+  } catch (error) {
+    console.error("Error browsing for Excel file:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload-excel:initialize-workbook", async (event, filePath) => {
+  try {
+    const fieldMappingResult = await fieldMappingService.getFieldMapping(settingsService);
+    if (!fieldMappingResult.success) {
+      return { success: false, error: "Failed to load field mapping" };
+    }
+    const result = await workloadExcelService.initializeWorkbook(filePath, fieldMappingResult.mapping);
+    return result;
+  } catch (error) {
+    console.error("Error initializing workbook:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload-excel:get-headers", async (event, filePath, sheetName) => {
+  try {
+    const result = await workloadExcelService.getExcelHeaders(filePath, sheetName);
+    return result;
+  } catch (error) {
+    console.error("Error getting Excel headers:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload-excel:export-projects", async (event, projects, filePath) => {
+  try {
+    const fieldMappingResult = await fieldMappingService.getFieldMapping(settingsService);
+    if (!fieldMappingResult.success) {
+      return { success: false, error: "Failed to load field mapping" };
+    }
+    const result = await workloadExcelService.exportProjectsToExcel(projects, filePath, fieldMappingResult.mapping);
+    return result;
+  } catch (error) {
+    console.error("Error exporting projects:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload-excel:export-assignments", async (event, assignments, filePath) => {
+  try {
+    const fieldMappingResult = await fieldMappingService.getFieldMapping(settingsService);
+    if (!fieldMappingResult.success) {
+      return { success: false, error: "Failed to load field mapping" };
+    }
+    const result = await workloadExcelService.exportAssignmentsToExcel(assignments, filePath, fieldMappingResult.mapping);
+    return result;
+  } catch (error) {
+    console.error("Error exporting assignments:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload-excel:export-users", async (event, users, filePath) => {
+  try {
+    const fieldMappingResult = await fieldMappingService.getFieldMapping(settingsService);
+    if (!fieldMappingResult.success) {
+      return { success: false, error: "Failed to load field mapping" };
+    }
+    const result = await workloadExcelService.exportUsersToExcel(users, filePath, fieldMappingResult.mapping);
+    return result;
+  } catch (error) {
+    console.error("Error exporting users:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload-excel:export-all", async (event, data, filePath) => {
+  try {
+    const fieldMappingResult = await fieldMappingService.getFieldMapping(settingsService);
+    if (!fieldMappingResult.success) {
+      return { success: false, error: "Failed to load field mapping" };
+    }
+    const result = await workloadExcelService.exportAllToExcel(data, filePath, fieldMappingResult.mapping);
+    return result;
+  } catch (error) {
+    console.error("Error exporting all data:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload-excel:optimize-file", async (event, filePath) => {
+  try {
+    const result = await workloadExcelService.optimizeExcelFile(filePath);
+    return result;
+  } catch (error) {
+    console.error("Error optimizing Excel file:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload-excel:import-projects", async (event, filePath) => {
+  try {
+    const fieldMappingResult = await fieldMappingService.getFieldMapping(settingsService);
+    if (!fieldMappingResult.success) {
+      return { success: false, error: "Failed to load field mapping" };
+    }
+    const result = await workloadExcelService.importProjectsFromExcel(filePath, fieldMappingResult.mapping);
+    if (result.success && result.projects) {
+      for (const project of result.projects) {
+        await projectPersistenceService.saveProject(project);
+      }
+    }
+    return result;
+  } catch (error) {
+    console.error("Error importing projects:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload-excel:import-assignments", async (event, filePath) => {
+  try {
+    const fieldMappingResult = await fieldMappingService.getFieldMapping(settingsService);
+    if (!fieldMappingResult.success) {
+      return { success: false, error: "Failed to load field mapping" };
+    }
+    const result = await workloadExcelService.importAssignmentsFromExcel(filePath, fieldMappingResult.mapping);
+    if (result.success && result.assignments) {
+      for (const assignment of result.assignments) {
+        await workloadPersistenceService.saveAssignment(assignment);
+      }
+    }
+    return result;
+  } catch (error) {
+    console.error("Error importing assignments:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload-excel:import-users", async (event, filePath) => {
+  try {
+    const fieldMappingResult = await fieldMappingService.getFieldMapping(settingsService);
+    if (!fieldMappingResult.success) {
+      return { success: false, error: "Failed to load field mapping" };
+    }
+    const result = await workloadExcelService.importUsersFromExcel(filePath, fieldMappingResult.mapping);
+    if (result.success && result.users) {
+      for (const user of result.users) {
+        await workloadPersistenceService.saveUser(user);
+      }
+    }
+    return result;
+  } catch (error) {
+    console.error("Error importing users:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload-excel:import-all", async (event, filePath) => {
+  try {
+    const fieldMappingResult = await fieldMappingService.getFieldMapping(settingsService);
+    if (!fieldMappingResult.success) {
+      return { success: false, error: "Failed to load field mapping" };
+    }
+    const result = await workloadExcelService.importAllFromExcel(filePath, fieldMappingResult.mapping);
+    if (result.success && result.data) {
+      if (result.data.projects) {
+        for (const project of result.data.projects) {
+          await projectPersistenceService.saveProject(project);
+        }
+      }
+      if (result.data.assignments) {
+        for (const assignment of result.data.assignments) {
+          await workloadPersistenceService.saveAssignment(assignment);
+        }
+      }
+      if (result.data.users) {
+        for (const user of result.data.users) {
+          await workloadPersistenceService.saveUser(user);
+        }
+      }
+    }
+    return result;
+  } catch (error) {
+    console.error("Error importing all data:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload-excel:sync-settings-get", async () => {
+  try {
+    const result = await workloadExcelSyncService.getSyncSettings();
+    return result;
+  } catch (error) {
+    console.error("Error getting sync settings:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload-excel:sync-settings-update", async (event, newSettings) => {
+  try {
+    const result = await workloadExcelSyncService.updateSyncSettings(newSettings);
+    return result;
+  } catch (error) {
+    console.error("Error updating sync settings:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload-excel:sync-start-auto", async (event, filePath) => {
+  try {
+    const result = await workloadExcelSyncService.startAutoSync(filePath);
+    return result;
+  } catch (error) {
+    console.error("Error starting auto-sync:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload-excel:sync-stop-auto", async () => {
+  try {
+    const result = await workloadExcelSyncService.stopAutoSync();
+    return result;
+  } catch (error) {
+    console.error("Error stopping auto-sync:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload-excel:sync-from-excel", async (event, filePath) => {
+  try {
+    const result = await workloadExcelSyncService.syncFromExcel(filePath);
+    return result;
+  } catch (error) {
+    console.error("Error syncing from Excel:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload-excel:sync-to-excel", async (event, data, filePath) => {
+  try {
+    const result = await workloadExcelSyncService.syncToExcel(data, filePath);
+    return result;
+  } catch (error) {
+    console.error("Error syncing to Excel:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload-excel:sync-bidirectional", async (event, appData, filePath) => {
+  try {
+    const result = await workloadExcelSyncService.performBidirectionalSync(appData, filePath);
+    return result;
+  } catch (error) {
+    console.error("Error performing bidirectional sync:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload-excel:sync-status", async () => {
+  try {
+    const status = workloadExcelSyncService.getSyncStatus();
+    return { success: true, status };
+  } catch (error) {
+    console.error("Error getting sync status:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("workload:backup-create", async () => {
+  try {
+    return await workloadPersistenceService.createBackup();
+  } catch (error) {
+    console.error("Error creating backup:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("das-general:load-all", async (event, filePath) => {
+  try {
+    const result = await dasGeneralService.loadAllData(filePath);
+    return result;
+  } catch (error) {
+    console.error("Error loading DAS General data:", error);
+    return { success: false, error: "LOAD_ERROR", message: error.message };
+  }
+});
+ipcMain.handle("das-general:save-all", async (event, data, filePath) => {
+  try {
+    const result = await dasGeneralService.saveAllData(data, filePath);
+    return result;
+  } catch (error) {
+    console.error("Error saving DAS General data:", error);
+    return { success: false, error: "SAVE_ERROR", message: error.message };
+  }
+});
+ipcMain.handle("das-general:check-access", async (event, filePath) => {
+  try {
+    const result = await dasGeneralService.checkFileAccess(filePath);
+    return result;
+  } catch (error) {
+    console.error("Error checking DAS General file access:", error);
+    return { success: false, error: "ACCESS_ERROR", message: error.message };
+  }
+});
+ipcMain.handle("das-general:create-file", async (event, filePath) => {
+  try {
+    const result = await dasGeneralService.createNewFile(filePath);
+    return result;
+  } catch (error) {
+    console.error("Error creating DAS General file:", error);
+    return { success: false, error: "CREATE_ERROR", message: error.message };
+  }
+});
+ipcMain.handle("das-general:save-team-members", async (event, teamMembers, filePath) => {
+  try {
+    const result = await dasGeneralService.saveTeamMembers(teamMembers, filePath);
+    return result;
+  } catch (error) {
+    console.error("Error saving team members:", error);
+    return { success: false, error: "SAVE_ERROR", message: error.message };
+  }
+});
+ipcMain.handle("das-general:save-training-material", async (event, trainingMaterial, filePath) => {
+  try {
+    const result = await dasGeneralService.saveTrainingMaterial(trainingMaterial, filePath);
+    return result;
+  } catch (error) {
+    console.error("Error saving training material:", error);
+    return { success: false, error: "SAVE_ERROR", message: error.message };
+  }
+});
+ipcMain.handle("das-general:save-products-info", async (event, productsInfo, filePath) => {
+  try {
+    const result = await dasGeneralService.saveProductsInfo(productsInfo, filePath);
+    return result;
+  } catch (error) {
+    console.error("Error saving products info:", error);
+    return { success: false, error: "SAVE_ERROR", message: error.message };
+  }
+});
+ipcMain.handle("das-general:add-product", async (event, productName, filePath) => {
+  try {
+    const result = await dasGeneralService.addProduct(productName, filePath);
+    return result;
+  } catch (error) {
+    console.error("Error adding product:", error);
+    return { success: false, error: "ADD_ERROR", message: error.message };
+  }
+});
+ipcMain.handle("das-general:remove-product", async (event, productName, filePath) => {
+  try {
+    const result = await dasGeneralService.removeProduct(productName, filePath);
+    return result;
+  } catch (error) {
+    console.error("Error removing product:", error);
+    return { success: false, error: "REMOVE_ERROR", message: error.message };
+  }
+});
+ipcMain.handle("das-general:get-settings", async () => {
+  try {
+    const result = await dasGeneralService.getSettings();
+    return result;
+  } catch (error) {
+    console.error("Error getting DAS General settings:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("das-general:update-settings", async (event, settings) => {
+  try {
+    const result = await dasGeneralService.updateSettings(settings);
+    return result;
+  } catch (error) {
+    console.error("Error updating DAS General settings:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("das-general:select-file", async () => {
+  try {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: "Select DAS General Excel File",
+      filters: [
+        { name: "Excel Files", extensions: ["xlsx", "xls"] }
+      ],
+      properties: ["openFile"]
+    });
+    if (result.canceled || !result.filePaths[0]) {
+      return { success: false, canceled: true };
+    }
+    return { success: true, filePath: result.filePaths[0] };
+  } catch (error) {
+    console.error("Error selecting file:", error);
+    return { success: false, error: error.message };
+  }
+});
+process.on("uncaughtException", (error) => {
+  console.error("Uncaught Exception:", error);
+  if (mainWindow) {
+    mainWindow.webContents.send("error", {
+      type: "uncaught-exception",
+      message: error.message,
+      stack: error.stack
+    });
+  }
+});
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Unhandled Rejection at:", promise, "reason:", reason);
+  if (mainWindow) {
+    mainWindow.webContents.send("error", {
+      type: "unhandled-rejection",
+      message: (reason == null ? void 0 : reason.message) || String(reason),
+      stack: reason == null ? void 0 : reason.stack
+    });
+  }
+});

@@ -875,6 +875,129 @@ class RevisionDetectionService {
   }
 
   /**
+   * Find the newest VSP file across all RFA folders in a project directory
+   * Scans all RFA folders and returns the VSP with the most recent mtime
+   * @param {string} projectPath - Path to the project directory containing RFA folders
+   * @returns {Promise<Object>} Result with newestVsp path, folder, and metadata
+   */
+  async findNewestVSPAcrossAllFolders(projectPath) {
+    try {
+      console.log('🔍 RevisionDetectionService: Scanning for newest VSP across all RFA folders');
+      console.log('📁 Project path:', projectPath);
+
+      if (!projectPath) {
+        return {
+          success: false,
+          error: 'Project path is required',
+          newestVsp: null
+        };
+      }
+
+      if (!await fs.pathExists(projectPath)) {
+        return {
+          success: false,
+          error: 'Project path does not exist',
+          newestVsp: null
+        };
+      }
+
+      // Get all RFA folders in the project directory
+      const contents = await fs.readdir(projectPath, { withFileTypes: true });
+      const rfaFolders = contents
+        .filter(dirent => dirent.isDirectory() && dirent.name.includes('RFA#'))
+        .map(dirent => ({
+          name: dirent.name,
+          path: path.join(projectPath, dirent.name)
+        }));
+
+      console.log(`📂 Found ${rfaFolders.length} RFA folders to scan`);
+
+      if (rfaFolders.length === 0) {
+        return {
+          success: false,
+          error: 'No RFA folders found in project directory',
+          newestVsp: null
+        };
+      }
+
+      // Scan all RFA folders for VSP files
+      const allVspFiles = [];
+
+      for (const rfaFolder of rfaFolders) {
+        try {
+          const folderContents = await fs.readdir(rfaFolder.path, { withFileTypes: true });
+          const vspFiles = folderContents.filter(
+            dirent => dirent.isFile() && path.extname(dirent.name).toLowerCase() === '.vsp'
+          );
+
+          for (const vspFile of vspFiles) {
+            const vspPath = path.join(rfaFolder.path, vspFile.name);
+            try {
+              const stats = await fs.stat(vspPath);
+              allVspFiles.push({
+                name: vspFile.name,
+                path: vspPath,
+                folderName: rfaFolder.name,
+                folderPath: rfaFolder.path,
+                mtime: stats.mtime,
+                mtimeMs: stats.mtimeMs,
+                size: stats.size
+              });
+            } catch (statError) {
+              console.warn(`⚠️ Could not stat VSP file ${vspPath}:`, statError.message);
+            }
+          }
+        } catch (readError) {
+          console.warn(`⚠️ Could not read RFA folder ${rfaFolder.path}:`, readError.message);
+        }
+      }
+
+      console.log(`📄 Found ${allVspFiles.length} total VSP files across all folders`);
+
+      if (allVspFiles.length === 0) {
+        return {
+          success: true,
+          newestVsp: null,
+          message: 'No VSP files found in any RFA folder',
+          scannedFolders: rfaFolders.length
+        };
+      }
+
+      // Sort by mtime descending (newest first)
+      allVspFiles.sort((a, b) => b.mtimeMs - a.mtimeMs);
+
+      const newestVsp = allVspFiles[0];
+      
+      console.log(`✅ Newest VSP found: "${newestVsp.name}"`);
+      console.log(`   📁 From folder: ${newestVsp.folderName}`);
+      console.log(`   📅 Modified: ${newestVsp.mtime.toISOString()}`);
+
+      // Log all VSP files for debugging (sorted by date)
+      console.log('📋 All VSP files by modification date:');
+      allVspFiles.forEach((vsp, index) => {
+        console.log(`   ${index + 1}. ${vsp.name} (${vsp.folderName}) - ${vsp.mtime.toISOString()}`);
+      });
+
+      return {
+        success: true,
+        newestVsp: newestVsp,
+        allVspFiles: allVspFiles,
+        scannedFolders: rfaFolders.length,
+        totalVspFiles: allVspFiles.length,
+        message: `Found newest VSP "${newestVsp.name}" from folder "${newestVsp.folderName}"`
+      };
+
+    } catch (error) {
+      console.error('❌ RevisionDetectionService: Error scanning for newest VSP:', error);
+      return {
+        success: false,
+        error: error.message,
+        newestVsp: null
+      };
+    }
+  }
+
+  /**
    * Clear any caches (for ValidationOrchestrator compatibility)
    */
   clearCache() {

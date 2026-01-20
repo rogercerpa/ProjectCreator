@@ -133,7 +133,18 @@ class RevisionFileCopyService {
         operations.push({ type: 'folder', name: 'BOM CHECK', weight: 20 });
       }
       if (copyOptions.copyVSP) {
-        operations.push({ type: 'files', extensions: ['.vsp'], weight: 30 });
+        // Check if a specific VSP file is provided (from newest VSP detection)
+        if (options.vspSourceFile) {
+          operations.push({ 
+            type: 'vsp_explicit', 
+            name: 'VSP (Newest)', 
+            vspSourceFile: options.vspSourceFile,
+            weight: 30 
+          });
+          console.log(`📄 Using explicit VSP source: ${options.vspSourceFile.name} from ${options.vspSourceFile.folderName}`);
+        } else {
+          operations.push({ type: 'files', extensions: ['.vsp'], weight: 30 });
+        }
       }
 
       // OPTIMIZATION: Execute operations with progress tracking
@@ -171,6 +182,8 @@ class RevisionFileCopyService {
           result = await this.copyFolderIfExists(previousRevisionPath, newRevisionPath, operation.name);
         } else if (operation.type === 'ae_markups_selective') {
           result = await this.copySelectedAEMarkupsFiles(previousRevisionPath, newRevisionPath, operation.selectedFiles);
+        } else if (operation.type === 'vsp_explicit') {
+          result = await this.copyExplicitVSPFile(operation.vspSourceFile, newRevisionPath);
         } else if (operation.type === 'files') {
           result = await this.copyFilesByExtension(previousRevisionPath, newRevisionPath, operation.extensions);
         }
@@ -609,6 +622,87 @@ class RevisionFileCopyService {
         error: error.message,
         details: {
           extensions: extensions,
+          error: error.message
+        }
+      };
+    }
+  }
+
+  /**
+   * Copy a specific VSP file with renaming (used when newest VSP is from a different folder)
+   * @param {Object} vspSourceFile - VSP file metadata from findNewestVSPAcrossAllFolders
+   * @param {string} targetPath - Target RFA folder path
+   * @returns {Promise<Object>} Copy result
+   */
+  async copyExplicitVSPFile(vspSourceFile, targetPath) {
+    try {
+      console.log(`📄 RevisionFileCopyService: Copying explicit VSP file`);
+      console.log(`   Source: ${vspSourceFile.path}`);
+      console.log(`   From folder: ${vspSourceFile.folderName}`);
+      console.log(`   Target: ${targetPath}`);
+
+      if (!vspSourceFile || !vspSourceFile.path) {
+        return {
+          success: false,
+          operation: 'Invalid VSP source file provided',
+          error: 'VSP source file path is required'
+        };
+      }
+
+      if (!await fs.pathExists(vspSourceFile.path)) {
+        return {
+          success: false,
+          operation: `VSP source file not found: ${vspSourceFile.name}`,
+          error: 'Source VSP file does not exist'
+        };
+      }
+
+      // Extract RFA version for VSP renaming
+      const newRFAVersion = this.extractRFAVersionFromPath(targetPath);
+      
+      // Generate new VSP filename with updated version and date
+      const originalFilename = vspSourceFile.name;
+      let targetFilename = originalFilename;
+      
+      if (newRFAVersion !== null) {
+        targetFilename = this.generateRenamedVSPFilename(originalFilename, newRFAVersion);
+        console.log(`🎯 VSP Rename: "${originalFilename}" → "${targetFilename}"`);
+      }
+      
+      const targetFile = path.join(targetPath, targetFilename);
+      
+      await fs.copy(vspSourceFile.path, targetFile, { 
+        overwrite: true, 
+        preserveTimestamps: false 
+      });
+      
+      console.log(`✅ RevisionFileCopyService: Copied and renamed VSP`);
+      console.log(`   Original: ${originalFilename}`);
+      console.log(`   Renamed: ${targetFilename}`);
+      console.log(`   Source folder: ${vspSourceFile.folderName}`);
+
+      return {
+        success: true,
+        operation: `Copied VSP (newest from ${vspSourceFile.folderName})`,
+        details: {
+          sourceFile: originalFilename,
+          sourcePath: vspSourceFile.path,
+          sourceFolder: vspSourceFile.folderName,
+          targetFile: targetFilename,
+          targetPath: targetFile,
+          renamed: targetFilename !== originalFilename,
+          modified: vspSourceFile.mtime
+        }
+      };
+
+    } catch (error) {
+      console.error('❌ RevisionFileCopyService: Error copying explicit VSP file:', error);
+      return {
+        success: false,
+        operation: 'Failed to copy VSP file',
+        error: error.message,
+        details: {
+          sourceFile: vspSourceFile?.name,
           error: error.message
         }
       };

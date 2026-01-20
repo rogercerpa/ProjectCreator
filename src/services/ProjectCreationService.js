@@ -1022,13 +1022,17 @@ class ProjectCreationService {
       }
       
       let previousRevisionPath = revisionOptions.previousRevisionPath;
+      let sourceProjectPath = revisionOptions.sourceProjectPath; // Project folder containing all RFA folders
+      
       if (!previousRevisionPath) {
         console.log('ProjectCreationService: Searching for previous revision automatically');
         const findResult = await this.findPreviousRevision(projectData);
         
         if (findResult.success) {
           previousRevisionPath = findResult.revisionPath;
+          sourceProjectPath = findResult.projectPath; // Store the project path for VSP scanning
           console.log('ProjectCreationService: Found previous revision at:', previousRevisionPath);
+          console.log('ProjectCreationService: Source project path:', sourceProjectPath);
           
           // Show RFA selection notification if we have smart selection details
           if (findResult.selectionReasoning && findResult.selectionStrategy) {
@@ -1134,12 +1138,54 @@ class ProjectCreationService {
           ...revisionOptions.copyOptions
         };
 
+        // Step 6a: Find the newest VSP across ALL RFA folders in the project
+        // This ensures we always copy the most recent VSP regardless of which RFA folder it's in
+        let newestVspFile = null;
+        
+        // Determine the project path for VSP scanning
+        // If we have sourceProjectPath from findPreviousRevision, use it
+        // Otherwise, derive it from previousRevisionPath (parent directory)
+        const projectPathForVspScan = sourceProjectPath || path.dirname(previousRevisionPath);
+        
+        if (copyOptions.copyVSP && projectPathForVspScan) {
+          if (revisionOptions.onProgress) {
+            revisionOptions.onProgress('Scanning for newest VSP file...', 37, { step: 'vsp_scan' });
+          }
+          console.log('ProjectCreationService: Scanning for newest VSP across all RFA folders');
+          
+          const vspScanResult = await this.revisionDetectionService.findNewestVSPAcrossAllFolders(projectPathForVspScan);
+          
+          if (vspScanResult.success && vspScanResult.newestVsp) {
+            newestVspFile = vspScanResult.newestVsp;
+            console.log(`✅ ProjectCreationService: Found newest VSP: "${newestVspFile.name}"`);
+            console.log(`   From folder: ${newestVspFile.folderName}`);
+            console.log(`   Modified: ${newestVspFile.mtime}`);
+            
+            // Report which VSP will be used
+            if (revisionOptions.onProgress) {
+              revisionOptions.onProgress(
+                `Using newest VSP: ${newestVspFile.name} from ${newestVspFile.folderName}`, 
+                38, 
+                { 
+                  step: 'vsp_selected',
+                  vspFile: newestVspFile.name,
+                  vspFolder: newestVspFile.folderName,
+                  vspModified: newestVspFile.mtime
+                }
+              );
+            }
+          } else {
+            console.log('ProjectCreationService: No VSP files found, will skip VSP copy');
+          }
+        }
+
         const copyResult = await this.revisionFileCopyService.copyRevisionAssets(
           previousRevisionPath,
           rfaFolderPath,
           {
             copyOptions: copyOptions,
             aeMarkupsSelectedFiles: revisionOptions.aeMarkupsSelectedFiles, // Pass AE Markups file selection
+            vspSourceFile: newestVspFile, // Pass the newest VSP file from any folder
             onProgress: revisionOptions.onProgress // Now we can pass the progress callback
           }
         );
