@@ -87,6 +87,10 @@ const ReadyForQCService = require('./main-process/services/ReadyForQCService');
 const readyForQCService = new ReadyForQCService();
 readyForQCService.setProjectPersistenceService(projectPersistenceService);
 
+// Initialize DAS Upload service
+const DasUploadService = require('./main-process/services/DasUploadService');
+const dasUploadService = new DasUploadService();
+
 // Initialize workload services
 const workloadPersistenceService = new WorkloadPersistenceService();
 let fileWatcherService = null; // Initialized when user configures shared folder
@@ -524,6 +528,54 @@ ipcMain.handle('qc-download-zip', async (event, zipFilePath, project) => {
     return result;
   } catch (error) {
     console.error('Error downloading and extracting zip:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// DAS Upload handlers
+ipcMain.handle('das-check-drive-access', async () => {
+  try {
+    return await dasUploadService.checkDriveAccess();
+  } catch (error) {
+    console.error('Error checking DAS drive access:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('das-upload-project', async (event, project, confirmed) => {
+  try {
+    // Create a progress callback that sends updates to the renderer
+    const progressCallback = (progress) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('das-upload-progress', progress);
+      }
+    };
+    
+    const result = await dasUploadService.uploadProject(project, confirmed, progressCallback);
+    
+    // If upload was successful, update the project with upload status
+    if (result.success && !result.needsConfirmation) {
+      const updatedProject = {
+        ...project,
+        dasUploadStatus: {
+          uploadedAt: new Date().toISOString(),
+          uploadedPath: result.uploadedPath,
+          isRevision: result.isRevision || false
+        }
+      };
+      
+      // Save the updated project
+      await projectPersistenceService.saveProject(updatedProject);
+      
+      return {
+        ...result,
+        updatedProject: updatedProject
+      };
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Error uploading project to DAS:', error);
     return { success: false, error: error.message };
   }
 });

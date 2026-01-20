@@ -18,6 +18,13 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
   const [isDownloading, setIsDownloading] = useState(false);
   const [showZipSelectionDialog, setShowZipSelectionDialog] = useState(false);
   const [showEmailEditor, setShowEmailEditor] = useState(false);
+  
+  // DAS Upload state
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({ phase: '', progress: 0, message: '' });
+  const [showUploadConfirmDialog, setShowUploadConfirmDialog] = useState(false);
+  const [uploadConfirmMessage, setUploadConfirmMessage] = useState('');
+  
   const hasPaidServices = !!project?.dasPaidServiceEnabled;
   const canSendPaidServiceEmail = hasPaidServices &&
     project?.dasRepEmail &&
@@ -319,6 +326,69 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
     await downloadZipFile(zipFile);
   };
 
+  // Setup DAS upload progress listener
+  useEffect(() => {
+    const cleanup = window.electronAPI.onDasUploadProgress((progress) => {
+      setUploadProgress(progress);
+    });
+    
+    return () => {
+      if (cleanup) cleanup();
+    };
+  }, []);
+
+  // Handle DAS upload
+  const handleDasUpload = async (confirmed = false) => {
+    if (!project?.projectName || !project?.projectContainer) {
+      showToast('Project name and container are required for upload.', 'error');
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadProgress({ phase: 'checking', progress: 0, message: 'Starting upload...' });
+
+    try {
+      const result = await window.electronAPI.dasUploadProject(project, confirmed);
+
+      if (result.needsConfirmation) {
+        // Show confirmation dialog
+        setUploadConfirmMessage(result.message);
+        setShowUploadConfirmDialog(true);
+        setIsUploading(false);
+        return;
+      }
+
+      if (result.success) {
+        showToast(`✓ ${result.message}`, 'success');
+        
+        // Update project with new upload status
+        if (result.updatedProject && onProjectUpdate) {
+          await onProjectUpdate(result.updatedProject);
+        }
+      } else {
+        showToast(`Upload failed: ${result.error}`, 'error');
+      }
+    } catch (error) {
+      console.error('DAS upload error:', error);
+      showToast(`Upload failed: ${error.message}`, 'error');
+    } finally {
+      setIsUploading(false);
+      setUploadProgress({ phase: '', progress: 0, message: '' });
+    }
+  };
+
+  // Handle confirmed upload (after user confirms overwrite)
+  const handleConfirmedUpload = async () => {
+    setShowUploadConfirmDialog(false);
+    await handleDasUpload(true);
+  };
+
+  // Determine if upload button should be shown
+  const isRfaCompleted = project?.rfaStatus === 'Completed';
+  const hasAlreadyUploaded = !!project?.dasUploadStatus?.uploadedAt;
+  const showUploadButton = isRfaCompleted;
+  const showDownloadButton = hasReadyForQCZip && !isRfaCompleted;
+
   return (
     <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 h-full overflow-y-auto custom-scrollbar">
       {/* Toast Notification */}
@@ -360,7 +430,7 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
             >
               📈 Copy to Agile
             </button>
-            {hasReadyForQCZip && (
+            {showDownloadButton && (
               <button 
                 onClick={handleDownloadFolder}
                 disabled={isDownloading}
@@ -369,6 +439,26 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
               >
                 {isDownloading ? '⏳ Downloading...' : '📥 Download Folder'}
               </button>
+            )}
+            {showUploadButton && (
+              hasAlreadyUploaded ? (
+                <button 
+                  disabled
+                  className="btn-outline-success btn-sm opacity-75 cursor-not-allowed"
+                  title={`Uploaded on ${new Date(project.dasUploadStatus.uploadedAt).toLocaleString()}`}
+                >
+                  ✅ Uploaded to DAS
+                </button>
+              ) : (
+                <button 
+                  onClick={() => handleDasUpload(false)}
+                  disabled={isUploading}
+                  className="btn-primary btn-sm"
+                  title="Upload project folder to DAS Drive (Z:)"
+                >
+                  {isUploading ? '⏳ Uploading...' : '📤 Upload to DAS Drive'}
+                </button>
+              )
             )}
           </div>
         </div>
@@ -499,6 +589,22 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
             <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">RFA Complexity</label>
             <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.rfaComplexity || 'Not specified'}</span>
           </div>
+          {project.dasUploadStatus?.uploadedAt && (
+            <div className="flex flex-col gap-2 p-3 bg-success-50 dark:bg-success-900/20 rounded-lg border border-success-200 dark:border-success-700">
+              <label className="text-xs font-semibold text-success-700 dark:text-success-400 uppercase tracking-wide">DAS Upload Status</label>
+              <div className="flex items-center gap-2">
+                <span className="text-success-600 dark:text-success-400">✓</span>
+                <span className="text-sm font-medium text-success-700 dark:text-success-300">
+                  Uploaded on {formatDate(project.dasUploadStatus.uploadedAt)}
+                </span>
+              </div>
+              {project.dasUploadStatus.uploadedPath && (
+                <span className="text-xs text-success-600 dark:text-success-400 truncate" title={project.dasUploadStatus.uploadedPath}>
+                  {project.dasUploadStatus.uploadedPath}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -876,6 +982,126 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
         onClose={() => setShowEmailEditor(false)}
         project={project}
       />
+
+      {/* DAS Upload Progress Modal */}
+      {isUploading && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+            <div className="p-6">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-xl flex items-center justify-center">
+                  <span className="text-2xl animate-pulse">📤</span>
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                    Uploading to DAS Drive
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {project.isRevision ? 'Uploading revision folder...' : 'Uploading project folder...'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Progress Section */}
+              <div className="space-y-4">
+                <div className="flex justify-between items-baseline mb-2">
+                  <span className="text-2xl font-bold text-primary-600 dark:text-primary-400">
+                    {uploadProgress.progress}%
+                  </span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                    {uploadProgress.message}
+                  </span>
+                </div>
+                <div className="relative h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                  <div 
+                    className="absolute inset-0 bg-gradient-to-r from-primary-500 via-primary-600 to-blue-600 transition-all duration-500 ease-out rounded-full" 
+                    style={{ width: `${uploadProgress.progress}%` }}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse" />
+                  </div>
+                </div>
+
+                {/* Phase indicator */}
+                <div className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-900 rounded-xl">
+                  {uploadProgress.phase === 'checking' && (
+                    <>
+                      <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center animate-pulse">
+                        <span className="text-white text-sm">🔍</span>
+                      </div>
+                      <span className="text-sm text-gray-700 dark:text-gray-300">Checking paths and access...</span>
+                    </>
+                  )}
+                  {uploadProgress.phase === 'preparing' && (
+                    <>
+                      <div className="w-8 h-8 bg-yellow-500 rounded-lg flex items-center justify-center animate-pulse">
+                        <span className="text-white text-sm">⚙️</span>
+                      </div>
+                      <span className="text-sm text-gray-700 dark:text-gray-300">Preparing upload...</span>
+                    </>
+                  )}
+                  {uploadProgress.phase === 'copying' && (
+                    <>
+                      <div className="w-8 h-8 bg-primary-500 rounded-lg flex items-center justify-center animate-pulse">
+                        <span className="text-white text-sm">📁</span>
+                      </div>
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                        {uploadProgress.currentFile ? `Copying: ${uploadProgress.currentFile}` : 'Copying files...'}
+                      </span>
+                    </>
+                  )}
+                  {uploadProgress.phase === 'complete' && (
+                    <>
+                      <div className="w-8 h-8 bg-success-500 rounded-lg flex items-center justify-center">
+                        <span className="text-white text-sm">✓</span>
+                      </div>
+                      <span className="text-sm text-success-700 dark:text-success-300 font-medium">Upload complete!</span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DAS Upload Confirmation Dialog */}
+      {showUploadConfirmDialog && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="p-6">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-12 h-12 bg-warning-100 dark:bg-warning-900/30 rounded-xl flex items-center justify-center">
+                  <span className="text-2xl">⚠️</span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                    Confirm Overwrite
+                  </h3>
+                </div>
+              </div>
+              
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                {uploadConfirmMessage}
+              </p>
+              
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setShowUploadConfirmDialog(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmedUpload}
+                  className="px-4 py-2 text-sm font-medium text-white bg-warning-600 hover:bg-warning-700 rounded-lg transition-colors"
+                >
+                  Yes, Overwrite
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

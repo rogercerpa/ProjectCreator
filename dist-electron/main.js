@@ -60,6 +60,8 @@ const oneDriveSyncService = new OneDriveSyncService();
 const ReadyForQCService = require("./main-process/services/ReadyForQCService");
 const readyForQCService = new ReadyForQCService();
 readyForQCService.setProjectPersistenceService(projectPersistenceService);
+const DasUploadService = require("./main-process/services/DasUploadService");
+const dasUploadService = new DasUploadService();
 const workloadPersistenceService = new WorkloadPersistenceService();
 let fileWatcherService = null;
 const fieldMappingService = new FieldMappingService();
@@ -439,6 +441,43 @@ ipcMain.handle("qc-download-zip", async (event, zipFilePath, project) => {
     return result;
   } catch (error) {
     console.error("Error downloading and extracting zip:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("das-check-drive-access", async () => {
+  try {
+    return await dasUploadService.checkDriveAccess();
+  } catch (error) {
+    console.error("Error checking DAS drive access:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("das-upload-project", async (event, project, confirmed) => {
+  try {
+    const progressCallback = (progress) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send("das-upload-progress", progress);
+      }
+    };
+    const result = await dasUploadService.uploadProject(project, confirmed, progressCallback);
+    if (result.success && !result.needsConfirmation) {
+      const updatedProject = {
+        ...project,
+        dasUploadStatus: {
+          uploadedAt: (/* @__PURE__ */ new Date()).toISOString(),
+          uploadedPath: result.uploadedPath,
+          isRevision: result.isRevision || false
+        }
+      };
+      await projectPersistenceService.saveProject(updatedProject);
+      return {
+        ...result,
+        updatedProject
+      };
+    }
+    return result;
+  } catch (error) {
+    console.error("Error uploading project to DAS:", error);
     return { success: false, error: error.message };
   }
 });

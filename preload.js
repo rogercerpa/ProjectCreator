@@ -174,6 +174,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   qcGetMatchingZips: (project) => ipcRenderer.invoke('qc-get-matching-zips', project),
   qcDownloadZip: (zipFilePath, project) => ipcRenderer.invoke('qc-download-zip', zipFilePath, project),
   
+  // DAS Upload operations
+  dasCheckDriveAccess: () => ipcRenderer.invoke('das-check-drive-access'),
+  dasUploadProject: (project, confirmed) => ipcRenderer.invoke('das-upload-project', project, confirmed),
+  onDasUploadProgress: (callback) => {
+    ipcRenderer.on('das-upload-progress', (event, data) => callback(data));
+    return () => ipcRenderer.removeAllListeners('das-upload-progress');
+  },
+  
   // Remove listeners
   removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel),
   
