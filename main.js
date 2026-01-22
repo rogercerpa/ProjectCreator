@@ -704,6 +704,21 @@ ipcMain.handle('open-external', async (event, url) => {
   }
 });
 
+// Open URL specifically in Microsoft Edge (Windows)
+ipcMain.handle('open-in-edge', async (event, url) => {
+  try {
+    const { exec } = require('child_process');
+    // Use Windows 'start' command to open URL in Edge
+    exec(`start msedge "${url}"`, (error) => {
+      if (error) console.error('Error opening in Edge:', error);
+    });
+    return { success: true };
+  } catch (error) {
+    console.error('Error opening in Edge:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 // Settings and persistence
 ipcMain.handle('settings-load', async () => {
   try {

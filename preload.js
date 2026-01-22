@@ -49,6 +49,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // External applications
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
+  openInEdge: (url) => ipcRenderer.invoke('open-in-edge', url),
   
   // Project creation
   projectCreateFolder: (projectData) => ipcRenderer.invoke('project-create-folder', projectData),

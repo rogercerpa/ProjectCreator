@@ -421,6 +421,29 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
     }
   };
 
+  // Handle opening RFA link in Microsoft Edge
+  const handleOpenRFALink = async () => {
+    if (!project?.rfaNumber) {
+      showToast('No RFA number available for this project.', 'error');
+      return;
+    }
+    
+    try {
+      // Extract base RFA number (remove version suffix like -1, -2, etc.)
+      const baseRfaNumber = project.rfaNumber.split('-')[0];
+      const rfaUrl = `http://rfa.acuitybrandslighting.net/#/requestnav/${baseRfaNumber}`;
+      const result = await window.electronAPI.openInEdge(rfaUrl);
+      if (result.success) {
+        showToast('Opening RFA in Microsoft Edge...', 'success');
+      } else {
+        showToast(`Failed to open RFA: ${result.error}`, 'error');
+      }
+    } catch (error) {
+      console.error('Error opening RFA link:', error);
+      showToast('Failed to open RFA link. Please try again.', 'error');
+    }
+  };
+
   return (
     <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 h-full overflow-y-auto custom-scrollbar">
       {/* Toast Notification */}
@@ -606,7 +629,17 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
 
       {/* RFA Info Section */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-6 shadow-md">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-5 pb-4 border-b-2 border-gray-100 dark:border-gray-700">📄 RFA Info</h2>
+        <div className="flex justify-between items-center mb-5 pb-4 border-b-2 border-gray-100 dark:border-gray-700">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">📄 RFA Info</h2>
+          <button 
+            onClick={handleOpenRFALink}
+            disabled={!project?.rfaNumber}
+            className="btn-outline-primary btn-sm"
+            title={project?.rfaNumber ? `Open RFA ${project.rfaNumber} in Microsoft Edge` : 'No RFA number available'}
+          >
+            🔗 Open RFA
+          </button>
+        </div>
         <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1">
           <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
             <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">RFA Number</label>

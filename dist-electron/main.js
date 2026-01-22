@@ -585,6 +585,18 @@ ipcMain.handle("open-external", async (event, url) => {
     return { success: false, error: error.message };
   }
 });
+ipcMain.handle("open-in-edge", async (event, url) => {
+  try {
+    const { exec } = require("child_process");
+    exec(`start msedge "${url}"`, (error) => {
+      if (error) console.error("Error opening in Edge:", error);
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("Error opening in Edge:", error);
+    return { success: false, error: error.message };
+  }
+});
 ipcMain.handle("settings-load", async () => {
   try {
     return await projectPersistenceService.loadSettings();
