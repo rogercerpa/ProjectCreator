@@ -487,7 +487,7 @@ const ProjectManagement = ({
                   ) : uploadStatus.isUploaded ? (
                     <>
                       <span className="mr-2">✅</span>
-                      Uploaded
+                      Uploaded to Cloud
                     </>
                   ) : (
                     <>
