@@ -581,6 +581,25 @@ ipcMain.handle('das-upload-project', async (event, project, confirmed) => {
   }
 });
 
+// Open DAS Drive folder in File Explorer
+ipcMain.handle('das-open-folder', async (event, project) => {
+  try {
+    const targetPath = dasUploadService.buildDasTargetPath(project);
+    const { shell } = require('electron');
+    const result = await shell.openPath(targetPath);
+    
+    // shell.openPath returns empty string on success, error message on failure
+    if (result === '') {
+      return { success: true, path: targetPath };
+    } else {
+      return { success: false, error: result || 'Failed to open folder' };
+    }
+  } catch (error) {
+    console.error('Error opening DAS folder:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 // Triage calculations
 ipcMain.handle('triage-calculate', async (event, triageData) => {
   try {

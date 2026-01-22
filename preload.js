@@ -177,6 +177,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // DAS Upload operations
   dasCheckDriveAccess: () => ipcRenderer.invoke('das-check-drive-access'),
   dasUploadProject: (project, confirmed) => ipcRenderer.invoke('das-upload-project', project, confirmed),
+  dasOpenFolder: (project) => ipcRenderer.invoke('das-open-folder', project),
   onDasUploadProgress: (callback) => {
     ipcRenderer.on('das-upload-progress', (event, data) => callback(data));
     return () => ipcRenderer.removeAllListeners('das-upload-progress');

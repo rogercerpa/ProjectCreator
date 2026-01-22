@@ -403,6 +403,23 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
   // Hide export buttons when RFA Status is Ready for QC, Completed, On Hold, or Cancelled
   const hideExportStatuses = ['Ready for QC', 'Completed', 'On Hold', 'Cancelled'];
   const showExportButtons = !hideExportStatuses.includes(project?.rfaStatus);
+  // Show Open DAS Folder button only when project is Completed
+  const showOpenDasButton = project?.rfaStatus === 'Completed';
+
+  // Handle opening DAS folder in File Explorer
+  const handleOpenDasFolder = async () => {
+    try {
+      const result = await window.electronAPI.dasOpenFolder(project);
+      if (result.success) {
+        showToast(`Opened folder: ${result.path}`, 'success');
+      } else {
+        showToast(`Failed to open folder: ${result.error}`, 'error');
+      }
+    } catch (error) {
+      console.error('Error opening DAS folder:', error);
+      showToast('Failed to open DAS folder. Please check if DAS Drive is accessible.', 'error');
+    }
+  };
 
   return (
     <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 h-full overflow-y-auto custom-scrollbar">
@@ -478,6 +495,15 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
                   {isUploading ? '⏳ Uploading...' : '📤 Upload to DAS Drive'}
                 </button>
               )
+            )}
+            {showOpenDasButton && (
+              <button 
+                onClick={handleOpenDasFolder}
+                className="btn-outline-primary btn-sm"
+                title="Open project folder on DAS Drive (Z:)"
+              >
+                📂 Open DAS Folder
+              </button>
             )}
           </div>
         </div>

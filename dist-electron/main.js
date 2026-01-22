@@ -483,6 +483,21 @@ ipcMain.handle("das-upload-project", async (event, project, confirmed) => {
     return { success: false, error: error.message };
   }
 });
+ipcMain.handle("das-open-folder", async (event, project) => {
+  try {
+    const targetPath = dasUploadService.buildDasTargetPath(project);
+    const { shell: shell2 } = require("electron");
+    const result = await shell2.openPath(targetPath);
+    if (result === "") {
+      return { success: true, path: targetPath };
+    } else {
+      return { success: false, error: result || "Failed to open folder" };
+    }
+  } catch (error) {
+    console.error("Error opening DAS folder:", error);
+    return { success: false, error: error.message };
+  }
+});
 ipcMain.handle("triage-calculate", async (event, triageData) => {
   try {
     return await projectService.calculateTriageTime(triageData);
