@@ -465,7 +465,7 @@ const ProjectManagement = ({
                   onClick={handleUploadToSharePoint}
                   className={`px-4 py-2 text-sm font-medium rounded shadow transition-all ${
                     uploadStatus.isUploaded 
-                      ? 'bg-success-600 hover:bg-success-700 text-white cursor-default' 
+                      ? 'btn-outline-success opacity-75 cursor-not-allowed' 
                       : 'bg-blue-600 hover:bg-blue-700 text-white'
                   }`}
                   disabled={uploadStatus.isUploading || uploadStatus.isUploaded || !appSettings?.oneDriveSyncSettings?.enabled || !appSettings?.oneDriveSyncSettings?.syncFolderPath}

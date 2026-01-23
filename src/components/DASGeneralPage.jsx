@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import TeamMembersTab from './dasgeneral/TeamMembersTab';
 import TrainingMaterialTab from './dasgeneral/TrainingMaterialTab';
 import ProductsInfoTab from './dasgeneral/ProductsInfoTab';
+import MonthlyAnalyticsReportTab from './dasgeneral/MonthlyAnalyticsReportTab';
 
 const { electronAPI } = window;
 
@@ -267,6 +268,12 @@ function DASGeneralPage() {
       label: 'Products Info',
       icon: '💡',
       description: 'Product details'
+    },
+    {
+      id: 'analytics',
+      label: 'Analytics Report',
+      icon: '📊',
+      description: 'Monthly project analytics'
     }
   ];
 
@@ -306,6 +313,8 @@ function DASGeneralPage() {
             isLoading={isLoading}
           />
         );
+      case 'analytics':
+        return <MonthlyAnalyticsReportTab />;
       default:
         return null;
     }

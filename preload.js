@@ -18,6 +18,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   projectStats: () => ipcRenderer.invoke('project-stats'),
   projectsLoadAll: () => ipcRenderer.invoke('projects-load-all'), // CRITICAL FIX for data persistence
   
+  // Status tracking operations
+  projectBackfillStatus: (projectId, statusDates) => ipcRenderer.invoke('project-backfill-status', projectId, statusDates),
+  projectGetAnalytics: (project) => ipcRenderer.invoke('project-get-analytics', project),
+  projectNeedsBackfill: (project) => ipcRenderer.invoke('project-needs-backfill', project),
+  
   // Triage calculations
   triageCalculate: (triageData) => ipcRenderer.invoke('triage-calculate', triageData),
   

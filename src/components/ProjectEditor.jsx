@@ -181,6 +181,11 @@ const ProjectEditor = ({
       newFormData.dasRepEmailList = manualEmails;
     }
     
+    // Mark rfaStatus changes as manual for status tracking
+    if (name === 'rfaStatus' && processedValue !== formData.rfaStatus) {
+      newFormData._statusChangeSource = 'manual';
+    }
+    
     // Validate if status is changing to 'Completed'
     if (name === 'status' && processedValue === 'Completed') {
       if (!newFormData.projectNotes || newFormData.projectNotes.trim() === '') {
@@ -747,6 +752,23 @@ const ProjectEditor = ({
                 onChange={handleInputChange}
               />
             </div>
+
+            {/* Completed Date - Read Only, Auto-populated when status changes to Completed */}
+            {formData.completedAt && (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-green-700 dark:text-green-400 font-semibold">Completed Date & Time</label>
+                <div className="px-3 py-2 bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-700 rounded-lg text-green-800 dark:text-green-300 text-sm">
+                  {new Date(formData.completedAt).toLocaleString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: true
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

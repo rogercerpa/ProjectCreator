@@ -2,6 +2,7 @@
 const fs = require('fs-extra');
 const path = require('path');
 const os = require('os');
+const StatusTrackingService = require('./StatusTrackingService');
 
 class ProjectPersistenceService {
   constructor() {
@@ -12,6 +13,9 @@ class ProjectPersistenceService {
       historyFile: 'history.json',
       templatesFile: 'templates.json'
     };
+    
+    // Initialize status tracking service
+    this.statusTrackingService = new StatusTrackingService();
     
     this.initializeDataDirectory();
   }
@@ -31,7 +35,7 @@ class ProjectPersistenceService {
     return path.join(this.config.dataDirectory, filename);
   }
 
-  // Save project data - FIXED VERSION
+  // Save project data - FIXED VERSION with status tracking
   async saveProject(projectData) {
     try {
       const projects = await this.loadProjects();
@@ -43,6 +47,33 @@ class ProjectPersistenceService {
       );
 
       if (existingIndex !== -1) {
+        const existingProject = projects[existingIndex];
+        
+        // Detect status change and record it
+        const statusChange = this.statusTrackingService.detectStatusChange(existingProject, projectData);
+        if (statusChange) {
+          // Get the source from the project data or default to 'manual'
+          const source = projectData._statusChangeSource || 'manual';
+          
+          // Preserve existing status history
+          projectData.statusHistory = existingProject.statusHistory || [];
+          projectData.completedAt = existingProject.completedAt;
+          
+          // Record the status change
+          this.statusTrackingService.recordStatusChange(projectData, statusChange.newStatus, source);
+          
+          console.log(`[ProjectPersistence] Status changed from "${statusChange.oldStatus}" to "${statusChange.newStatus}" (source: ${source})`);
+        } else {
+          // Preserve existing status tracking data if no change
+          projectData.statusHistory = projectData.statusHistory || existingProject.statusHistory;
+          projectData.statusDurations = projectData.statusDurations || existingProject.statusDurations;
+          projectData.totalProjectDuration = projectData.totalProjectDuration || existingProject.totalProjectDuration;
+          projectData.completedAt = projectData.completedAt || existingProject.completedAt;
+        }
+        
+        // Remove the internal source marker before saving
+        delete projectData._statusChangeSource;
+        
         // Update existing project
         projects[existingIndex] = {
           ...projects[existingIndex],
@@ -65,13 +96,22 @@ class ProjectPersistenceService {
         };
       } else {
         // Add new project
+        const now = new Date().toISOString();
         const newProject = {
           ...projectData,
           id: this.generateProjectId(),
-          createdAt: new Date().toISOString(),
-          lastModified: new Date().toISOString(),
+          createdAt: now,
+          lastModified: now,
           version: 1
         };
+        
+        // Initialize status history for new projects
+        const initialStatus = projectData.rfaStatus || 'In Progress';
+        this.statusTrackingService.initializeStatusHistory(newProject, initialStatus);
+        
+        // Remove the internal source marker before saving
+        delete newProject._statusChangeSource;
+        
         projects.push(newProject);
         
         // Save to file
@@ -665,6 +705,54 @@ class ProjectPersistenceService {
   // Generate unique project ID
   generateProjectId() {
     return `proj_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  // Backfill status history for an existing project
+  async backfillProjectStatusHistory(projectId, statusDates) {
+    try {
+      const projects = await this.loadProjects();
+      const projectIndex = projects.findIndex(p => p.id === projectId);
+      
+      if (projectIndex === -1) {
+        return {
+          success: false,
+          error: 'Project not found'
+        };
+      }
+      
+      // Backfill the status history
+      const project = projects[projectIndex];
+      this.statusTrackingService.backfillStatusHistory(project, statusDates);
+      
+      // Update lastModified
+      project.lastModified = new Date().toISOString();
+      project.version = (project.version || 0) + 1;
+      
+      // Save projects
+      await this.saveProjects(projects);
+      
+      return {
+        success: true,
+        project: project,
+        message: 'Status history backfilled successfully'
+      };
+    } catch (error) {
+      console.error('Error backfilling status history:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  // Get analytics summary for a project
+  getProjectAnalytics(project) {
+    return this.statusTrackingService.getAnalyticsSummary(project);
+  }
+
+  // Check if project needs status history backfill
+  needsStatusHistoryBackfill(project) {
+    return !this.statusTrackingService.hasStatusHistory(project);
   }
 
   // Generate unique history ID

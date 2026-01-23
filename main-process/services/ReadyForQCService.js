@@ -339,13 +339,16 @@ class ReadyForQCService {
         const updatedProject = {
           ...project,
           rfaStatus: 'Ready for QC',
-          lastModified: new Date().toISOString()
+          lastModified: new Date().toISOString(),
+          // Mark the source as automatic for status tracking
+          _statusChangeSource: 'automatic'
         };
 
         // Save updated project if persistence service is available
         if (this.projectPersistenceService) {
           const result = await this.projectPersistenceService.saveProject(updatedProject);
           if (result.success) {
+            console.log(`[ReadyForQC] Status tracking: recorded automatic transition to "Ready for QC"`);
             return result.project;
           }
         }

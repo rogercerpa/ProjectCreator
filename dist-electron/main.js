@@ -396,6 +396,32 @@ ipcMain.handle("projects-load-all", async () => {
     };
   }
 });
+ipcMain.handle("project-backfill-status", async (event, projectId, statusDates) => {
+  try {
+    return await projectPersistenceService.backfillProjectStatusHistory(projectId, statusDates);
+  } catch (error) {
+    console.error("Error backfilling status history:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("project-get-analytics", async (event, project) => {
+  try {
+    const analytics = projectPersistenceService.getProjectAnalytics(project);
+    return { success: true, analytics };
+  } catch (error) {
+    console.error("Error getting project analytics:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("project-needs-backfill", async (event, project) => {
+  try {
+    const needsBackfill = projectPersistenceService.needsStatusHistoryBackfill(project);
+    return { success: true, needsBackfill };
+  } catch (error) {
+    console.error("Error checking backfill status:", error);
+    return { success: false, error: error.message };
+  }
+});
 ipcMain.handle("qc-scan-folder", async () => {
   try {
     const projects = await projectPersistenceService.loadProjects();

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import TriageCalculatorModal from './TriageCalculatorModal';
+import BackfillStatusHistoryModal from './BackfillStatusHistoryModal';
 import NotificationToast from './NotificationToast';
 import ZipSelectionDialog from './ZipSelectionDialog';
 import EmailTemplateEditor from './shared/EmailTemplateEditor';
@@ -18,6 +19,10 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
   const [isDownloading, setIsDownloading] = useState(false);
   const [showZipSelectionDialog, setShowZipSelectionDialog] = useState(false);
   const [showEmailEditor, setShowEmailEditor] = useState(false);
+  
+  // Status history backfill state
+  const [showBackfillModal, setShowBackfillModal] = useState(false);
+  const [needsStatusBackfill, setNeedsStatusBackfill] = useState(false);
   
   // DAS Upload state
   const [isUploading, setIsUploading] = useState(false);
@@ -58,6 +63,44 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
 
     checkForZipFiles();
   }, [project?.id]);
+
+  // Check if project needs status history backfill
+  useEffect(() => {
+    const checkBackfillNeeded = async () => {
+      if (!project?.id) return;
+      
+      try {
+        // Check if project has status history
+        const hasHistory = project.statusHistory && project.statusHistory.length > 0;
+        setNeedsStatusBackfill(!hasHistory);
+      } catch (error) {
+        console.error('Error checking backfill status:', error);
+      }
+    };
+
+    checkBackfillNeeded();
+  }, [project?.id, project?.statusHistory]);
+
+  // Handle status history backfill save
+  const handleBackfillSave = async (statusDates) => {
+    try {
+      const result = await window.electronAPI.projectBackfillStatus(project.id, statusDates);
+      if (result.success) {
+        showToast('Status history backfilled successfully', 'success');
+        setShowBackfillModal(false);
+        setNeedsStatusBackfill(false);
+        // Update the project with new data
+        if (onProjectUpdate) {
+          onProjectUpdate(result.project);
+        }
+      } else {
+        throw new Error(result.error || 'Failed to backfill status history');
+      }
+    } catch (error) {
+      console.error('Error backfilling status history:', error);
+      showToast(error.message || 'Failed to backfill status history', 'error');
+    }
+  };
 
   // Show toast notification
   const showToast = (message, type = 'success') => {
@@ -787,7 +830,18 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
 
       {/* Important Dates Section */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-6 shadow-md">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-5 pb-4 border-b-2 border-gray-100 dark:border-gray-700">📅 Important Dates</h2>
+        <div className="flex justify-between items-center mb-5 pb-4 border-b-2 border-gray-100 dark:border-gray-700">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">📅 Important Dates</h2>
+          {needsStatusBackfill && (
+            <button
+              onClick={() => setShowBackfillModal(true)}
+              className="btn-outline-primary btn-sm flex items-center gap-1"
+              title="Add historical status dates for analytics"
+            >
+              <span>Add Status History</span>
+            </button>
+          )}
+        </div>
         <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1">
           <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
             <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Requested Date</label>
@@ -813,6 +867,14 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
             <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Bid Date</label>
             <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{formatDate(project.bidDate)}</span>
           </div>
+          {project.completedAt && (
+            <div className="flex flex-col gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-300 dark:border-green-700">
+              <label className="text-xs font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide flex items-center gap-1">
+                <span>Completed</span>
+              </label>
+              <span className="text-sm font-medium text-green-800 dark:text-green-300">{formatDate(project.completedAt)}</span>
+            </div>
+          )}
           <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
             <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Created</label>
             <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{formatDate(project.createdAt)}</span>
@@ -1044,6 +1106,14 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
         project={project}
         onSave={handleTriageSave}
         onCancel={() => setShowTriageModal(false)}
+      />
+
+      {/* Status History Backfill Modal */}
+      <BackfillStatusHistoryModal
+        isOpen={showBackfillModal}
+        project={project}
+        onSave={handleBackfillSave}
+        onCancel={() => setShowBackfillModal(false)}
       />
 
       {/* Zip Selection Dialog */}
