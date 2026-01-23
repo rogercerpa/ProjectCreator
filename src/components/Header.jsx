@@ -2,6 +2,7 @@ import React from 'react';
 import { getVersionDisplay } from '../utils/version';
 import logoUrl from '/assets/images/logo.png';
 import ThemeToggle from './ThemeToggle';
+import UploadStatusBar from './UploadStatusBar';
 
 function Header() {
   return (
@@ -19,6 +20,11 @@ function Header() {
               Project Creator
             </h1>
           </div>
+        </div>
+
+        {/* Center section - Upload Status Bar */}
+        <div className="flex-1 mx-8">
+          <UploadStatusBar />
         </div>
 
         {/* Right section - Version and Theme Toggle */}

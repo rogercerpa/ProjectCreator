@@ -5,6 +5,7 @@ import NotificationToast from './NotificationToast';
 import ZipSelectionDialog from './ZipSelectionDialog';
 import EmailTemplateEditor from './shared/EmailTemplateEditor';
 import { openPaidServicesEmail } from '../utils/emailTemplates';
+import { useUploadContext, UPLOAD_TYPES } from '../contexts/UploadContext';
 
 /**
  * ProjectDetails - Read-only display of project information
@@ -24,11 +25,13 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
   const [showBackfillModal, setShowBackfillModal] = useState(false);
   const [needsStatusBackfill, setNeedsStatusBackfill] = useState(false);
   
-  // DAS Upload state
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState({ phase: '', progress: 0, message: '' });
+  // DAS Upload state - now using global context for background uploads
+  const { startUpload, completeUpload, failUpload, isProjectUploading } = useUploadContext();
   const [showUploadConfirmDialog, setShowUploadConfirmDialog] = useState(false);
   const [uploadConfirmMessage, setUploadConfirmMessage] = useState('');
+  
+  // Check if this project is currently uploading
+  const isUploading = isProjectUploading(project?.id);
   
   const hasPaidServices = !!project?.dasPaidServiceEnabled;
   const canSendPaidServiceEmail = hasPaidServices &&
@@ -379,40 +382,33 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
     await downloadZipFile(zipFile);
   };
 
-  // Setup DAS upload progress listener
-  useEffect(() => {
-    const cleanup = window.electronAPI.onDasUploadProgress((progress) => {
-      setUploadProgress(progress);
-    });
-    
-    return () => {
-      if (cleanup) cleanup();
-    };
-  }, []);
+  // DAS upload progress is now handled by UploadContext globally
 
-  // Handle DAS upload
+  // Handle DAS upload - now uses global UploadContext for background uploads
   const handleDasUpload = async (confirmed = false) => {
     if (!project?.projectName || !project?.projectContainer) {
       showToast('Project name and container are required for upload.', 'error');
       return;
     }
 
-    setIsUploading(true);
-    setUploadProgress({ phase: 'checking', progress: 0, message: 'Starting upload...' });
+    // Start the upload in background via context
+    startUpload(project.id, project.projectName, UPLOAD_TYPES.DAS, { confirmed });
 
     try {
       const result = await window.electronAPI.dasUploadProject(project, confirmed);
 
       if (result.needsConfirmation) {
-        // Show confirmation dialog
+        // Show confirmation dialog - upload hasn't started yet
         setUploadConfirmMessage(result.message);
         setShowUploadConfirmDialog(true);
-        setIsUploading(false);
+        // Mark the upload as complete since it didn't actually run
+        completeUpload({ cancelled: true });
         return;
       }
 
       if (result.success) {
         showToast(`✓ ${result.message}`, 'success');
+        completeUpload({ success: true, message: result.message });
         
         // Update project with new upload status
         if (result.updatedProject && onProjectUpdate) {
@@ -420,13 +416,12 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
         }
       } else {
         showToast(`Upload failed: ${result.error}`, 'error');
+        failUpload(result.error);
       }
     } catch (error) {
       console.error('DAS upload error:', error);
       showToast(`Upload failed: ${error.message}`, 'error');
-    } finally {
-      setIsUploading(false);
-      setUploadProgress({ phase: '', progress: 0, message: '' });
+      failUpload(error.message);
     }
   };
 
@@ -1131,86 +1126,7 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
         project={project}
       />
 
-      {/* DAS Upload Progress Modal */}
-      {isUploading && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
-            <div className="p-6">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-xl flex items-center justify-center">
-                  <span className="text-2xl animate-pulse">📤</span>
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                    Uploading to DAS Drive
-                  </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {project.isRevision ? 'Uploading revision folder...' : 'Uploading project folder...'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Progress Section */}
-              <div className="space-y-4">
-                <div className="flex justify-between items-baseline mb-2">
-                  <span className="text-2xl font-bold text-primary-600 dark:text-primary-400">
-                    {uploadProgress.progress}%
-                  </span>
-                  <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
-                    {uploadProgress.message}
-                  </span>
-                </div>
-                <div className="relative h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                  <div 
-                    className="absolute inset-0 bg-gradient-to-r from-primary-500 via-primary-600 to-blue-600 transition-all duration-500 ease-out rounded-full" 
-                    style={{ width: `${uploadProgress.progress}%` }}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse" />
-                  </div>
-                </div>
-
-                {/* Phase indicator */}
-                <div className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-900 rounded-xl">
-                  {uploadProgress.phase === 'checking' && (
-                    <>
-                      <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center animate-pulse">
-                        <span className="text-white text-sm">🔍</span>
-                      </div>
-                      <span className="text-sm text-gray-700 dark:text-gray-300">Checking paths and access...</span>
-                    </>
-                  )}
-                  {uploadProgress.phase === 'preparing' && (
-                    <>
-                      <div className="w-8 h-8 bg-yellow-500 rounded-lg flex items-center justify-center animate-pulse">
-                        <span className="text-white text-sm">⚙️</span>
-                      </div>
-                      <span className="text-sm text-gray-700 dark:text-gray-300">Preparing upload...</span>
-                    </>
-                  )}
-                  {uploadProgress.phase === 'copying' && (
-                    <>
-                      <div className="w-8 h-8 bg-primary-500 rounded-lg flex items-center justify-center animate-pulse">
-                        <span className="text-white text-sm">📁</span>
-                      </div>
-                      <span className="text-sm text-gray-700 dark:text-gray-300">
-                        {uploadProgress.currentFile ? `Copying: ${uploadProgress.currentFile}` : 'Copying files...'}
-                      </span>
-                    </>
-                  )}
-                  {uploadProgress.phase === 'complete' && (
-                    <>
-                      <div className="w-8 h-8 bg-success-500 rounded-lg flex items-center justify-center">
-                        <span className="text-white text-sm">✓</span>
-                      </div>
-                      <span className="text-sm text-success-700 dark:text-success-300 font-medium">Upload complete!</span>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* DAS Upload Progress is now shown in the header status bar via UploadContext */}
 
       {/* DAS Upload Confirmation Dialog */}
       {showUploadConfirmDialog && (

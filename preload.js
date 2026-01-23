@@ -189,6 +189,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeAllListeners('das-upload-progress');
   },
   
+  // Check active uploads (for preventing app close during uploads)
+  checkActiveUploads: () => ipcRenderer.invoke('check-active-uploads'),
+  
   // Remove listeners
   removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel),
   

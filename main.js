@@ -62,6 +62,9 @@ const packageJson = require('./package.json');
 // Keep a global reference of the window object
 let mainWindow;
 
+// Track active uploads to prevent closing during upload
+let activeUploads = new Set();
+
 // Initialize services
 const projectService = new ProjectService();
 const wordService = new WordService();
@@ -170,6 +173,30 @@ function createWindow() {
   
   mainWindow.webContents.on('dom-ready', () => {
     console.log('DOM is ready');
+  });
+
+  // Prevent closing if uploads are in progress
+  mainWindow.on('close', async (event) => {
+    if (activeUploads.size > 0) {
+      event.preventDefault();
+      
+      const uploadCount = activeUploads.size;
+      const response = await dialog.showMessageBox(mainWindow, {
+        type: 'warning',
+        buttons: ['Cancel', 'Force Quit'],
+        defaultId: 0,
+        cancelId: 0,
+        title: 'Upload in Progress',
+        message: `${uploadCount} upload${uploadCount > 1 ? 's are' : ' is'} currently in progress.`,
+        detail: 'Closing the application will interrupt the upload. Are you sure you want to quit?'
+      });
+      
+      if (response.response === 1) {
+        // User clicked "Force Quit" - clear uploads and close
+        activeUploads.clear();
+        mainWindow.destroy();
+      }
+    }
   });
 
   // Handle window closed
@@ -573,7 +600,12 @@ ipcMain.handle('das-check-drive-access', async () => {
 });
 
 ipcMain.handle('das-upload-project', async (event, project, confirmed) => {
+  const uploadId = `das-${project.id}-${Date.now()}`;
+  
   try {
+    // Track active upload
+    activeUploads.add(uploadId);
+    
     // Create a progress callback that sends updates to the renderer
     const progressCallback = (progress) => {
       if (mainWindow && !mainWindow.isDestroyed()) {
@@ -598,14 +630,22 @@ ipcMain.handle('das-upload-project', async (event, project, confirmed) => {
       // Save the updated project
       await projectPersistenceService.saveProject(updatedProject);
       
+      // Remove from active uploads
+      activeUploads.delete(uploadId);
+      
       return {
         ...result,
         updatedProject: updatedProject
       };
     }
     
+    // Remove from active uploads (for confirmation dialogs or non-upload results)
+    activeUploads.delete(uploadId);
+    
     return result;
   } catch (error) {
+    // Remove from active uploads on error
+    activeUploads.delete(uploadId);
     console.error('Error uploading project to DAS:', error);
     return { success: false, error: error.message };
   }
@@ -1767,7 +1807,12 @@ ipcMain.handle('email-open-outlook-batch', async (event, emailsData) => {
 
 // OneDrive sync upload handlers
 ipcMain.handle('oneDriveSyncUpload', async (event, { projectPath, projectData, settings }) => {
+  const uploadId = `onedrive-${projectData?.id || 'unknown'}-${Date.now()}`;
+  
   try {
+    // Track active upload
+    activeUploads.add(uploadId);
+    
     console.log('Main process: Starting OneDrive sync upload');
 
     // Initialize sync service with settings
@@ -1824,6 +1869,9 @@ ipcMain.handle('oneDriveSyncUpload', async (event, { projectPath, projectData, s
       });
     }
 
+    // Remove from active uploads
+    activeUploads.delete(uploadId);
+
     return {
       success: true,
       uploadResult: uploadResult,
@@ -1833,6 +1881,9 @@ ipcMain.handle('oneDriveSyncUpload', async (event, { projectPath, projectData, s
     };
 
   } catch (error) {
+    // Remove from active uploads on error
+    activeUploads.delete(uploadId);
+    
     console.error('Main process: OneDrive sync upload failed:', error);
 
     return {
@@ -1840,6 +1891,14 @@ ipcMain.handle('oneDriveSyncUpload', async (event, { projectPath, projectData, s
       error: error.message
     };
   }
+});
+
+// Handler to check active uploads (for renderer to query)
+ipcMain.handle('check-active-uploads', async () => {
+  return {
+    hasActiveUploads: activeUploads.size > 0,
+    count: activeUploads.size
+  };
 });
 
 // Handler for detecting OneDrive sync folders
