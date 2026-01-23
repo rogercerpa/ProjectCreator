@@ -1,20 +1,44 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend, AreaChart, Area, LabelList
 } from 'recharts';
 import reportDataService from '../services/ReportDataService';
+import ReportSettingsModal from './ReportSettingsModal';
 import {
   formatCurrency,
   formatNumber,
   formatPercentage,
   formatDurationDays,
-  getMonthOptions,
-  formatMonthYear,
+  getMonthDateRange,
   CHART_COLORS,
   getChartColor,
   truncateText,
 } from '../utils/reportHelpers';
+
+// Format date range for display
+const formatDateRange = (startDate, endDate) => {
+  if (!startDate || !endDate) return 'Select date range';
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const options = { month: 'short', day: 'numeric', year: 'numeric' };
+  return `${start.toLocaleDateString('en-US', options)} - ${end.toLocaleDateString('en-US', options)}`;
+};
+
+// Active Filter Badge Component
+const FilterBadge = ({ label, onRemove }) => (
+  <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-primary-100 dark:bg-primary-900/50 text-primary-700 dark:text-primary-300 rounded-full">
+    {label}
+    <button
+      onClick={onRemove}
+      className="hover:text-primary-900 dark:hover:text-primary-100"
+    >
+      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+  </span>
+);
 
 // Compact Data Table Component for PDF export
 const DataTable = ({ data, columns, title }) => {
@@ -83,7 +107,7 @@ const KPICard = ({ title, value, subtitle, change, formatType = 'number', icon, 
       )}
       {change && (
         <div className={`text-[10px] sm:text-xs md:text-sm font-medium ${changeColor} truncate`}>
-          {change.formatted} vs last month
+          {change.formatted} vs prior period
         </div>
       )}
     </div>
@@ -154,41 +178,136 @@ const renderBarLabel = (props) => {
   );
 };
 
+// Get default date range (this month)
+const getDefaultDateRange = () => {
+  const today = new Date();
+  const { startDate, endDate } = getMonthDateRange(today.getFullYear(), today.getMonth());
+  return { startDate, endDate };
+};
+
 // Main Component
 function MonthlyAnalyticsReport({ projects = [] }) {
   const reportRef = useRef(null);
   const [isLoading, setIsLoading] = useState(true);
   const [reportData, setReportData] = useState(null);
-  const [selectedMonth, setSelectedMonth] = useState(() => {
-    const today = new Date();
-    return `${today.getFullYear()}-${today.getMonth()}`;
-  });
-  const [viewMode, setViewMode] = useState('created');
   const [isExporting, setIsExporting] = useState(false);
   const [isPrintMode, setIsPrintMode] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
 
-  const monthOptions = getMonthOptions();
+  // Report settings state
+  const [reportSettings, setReportSettings] = useState(() => {
+    const { startDate, endDate } = getDefaultDateRange();
+    return {
+      startDate,
+      endDate,
+      activePreset: 'This Month',
+      viewMode: 'created',
+      filters: {
+        rfaTypes: [],
+        regions: [],
+        statuses: [],
+        agencies: [],
+        products: [],
+        designer: null,
+        qc: null,
+        triage: null,
+      },
+    };
+  });
 
-  // Parse selected month
-  const [year, month] = selectedMonth.split('-').map(Number);
+  // Get filter options from data
+  const filterOptions = useMemo(() => {
+    reportDataService.setProjects(projects);
+    return reportDataService.getFilterOptions();
+  }, [projects]);
 
-  // Generate report when month or view mode changes
+  // Count active filters for badge
+  const activeFilterCount = useMemo(() => {
+    const { filters } = reportSettings;
+    let count = 0;
+    if (filters.rfaTypes?.length) count += filters.rfaTypes.length;
+    if (filters.regions?.length) count += filters.regions.length;
+    if (filters.statuses?.length) count += filters.statuses.length;
+    if (filters.agencies?.length) count += filters.agencies.length;
+    if (filters.products?.length) count += filters.products.length;
+    if (filters.designer) count++;
+    if (filters.qc) count++;
+    if (filters.triage) count++;
+    return count;
+  }, [reportSettings.filters]);
+
+  // Get active filter labels for display
+  const activeFilterLabels = useMemo(() => {
+    const labels = [];
+    const { filters } = reportSettings;
+    filters.rfaTypes?.forEach(v => labels.push({ type: 'rfaTypes', value: v, label: v }));
+    filters.regions?.forEach(v => labels.push({ type: 'regions', value: v, label: v }));
+    filters.statuses?.forEach(v => labels.push({ type: 'statuses', value: v, label: v }));
+    filters.agencies?.forEach(v => labels.push({ type: 'agencies', value: v, label: truncateText(v, 15) }));
+    filters.products?.forEach(v => labels.push({ type: 'products', value: v, label: v }));
+    if (filters.designer) labels.push({ type: 'designer', value: filters.designer, label: `Designer: ${filters.designer}` });
+    if (filters.qc) labels.push({ type: 'qc', value: filters.qc, label: `QC: ${filters.qc}` });
+    if (filters.triage) labels.push({ type: 'triage', value: filters.triage, label: `Triage: ${filters.triage}` });
+    return labels;
+  }, [reportSettings.filters]);
+
+  // Remove a single filter
+  const removeFilter = (type, value) => {
+    setReportSettings(prev => {
+      const newFilters = { ...prev.filters };
+      if (type === 'designer' || type === 'qc' || type === 'triage') {
+        newFilters[type] = null;
+      } else {
+        newFilters[type] = newFilters[type].filter(v => v !== value);
+      }
+      return { ...prev, filters: newFilters };
+    });
+  };
+
+  // Clear all filters
+  const clearAllFilters = () => {
+    setReportSettings(prev => ({
+      ...prev,
+      filters: {
+        rfaTypes: [],
+        regions: [],
+        statuses: [],
+        agencies: [],
+        products: [],
+        designer: null,
+        qc: null,
+        triage: null,
+      },
+    }));
+  };
+
+  // Generate report when settings change
   const generateReport = useCallback(() => {
     setIsLoading(true);
     try {
       reportDataService.setProjects(projects);
-      const data = reportDataService.generateReport(year, month, viewMode);
+      const data = reportDataService.generateReportWithFilters(
+        reportSettings.startDate,
+        reportSettings.endDate,
+        reportSettings.viewMode,
+        reportSettings.filters
+      );
       setReportData(data);
     } catch (error) {
       console.error('Error generating report:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [projects, year, month, viewMode]);
+  }, [projects, reportSettings]);
 
   useEffect(() => {
     generateReport();
   }, [generateReport]);
+
+  // Handle settings apply
+  const handleApplySettings = (newSettings) => {
+    setReportSettings(newSettings);
+  };
 
   // Print handler
   const handlePrint = () => {
@@ -261,7 +380,9 @@ function MonthlyAnalyticsReport({ projects = [] }) {
         remainingHeight -= heightToDraw;
       }
 
-      const fileName = `Project_Analytics_Report_${formatMonthYear(year, month).replace(' ', '_')}.pdf`;
+      const startStr = reportSettings.startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).replace(' ', '');
+      const endStr = reportSettings.endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).replace(/[\s,]/g, '');
+      const fileName = `Project_Analytics_Report_${startStr}-${endStr}.pdf`;
       pdf.save(fileName);
     } catch (error) {
       console.error('Error exporting PDF:', error);
@@ -284,48 +405,47 @@ function MonthlyAnalyticsReport({ projects = [] }) {
 
   return (
     <div className="space-y-6">
+      {/* Settings Modal */}
+      <ReportSettingsModal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        onApply={handleApplySettings}
+        currentSettings={reportSettings}
+        filterOptions={filterOptions}
+      />
+
       {/* Header Controls */}
       <div className="flex flex-wrap items-center justify-between gap-4 print:hidden">
         <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-          {/* Month Selector */}
+          {/* Date Range Display */}
           <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">Month:</label>
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="px-2 sm:px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-primary-500"
-            >
-              {monthOptions.map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">📅</span>
+            <span className="px-3 py-2 text-sm font-medium text-gray-900 dark:text-white bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg">
+              {formatDateRange(reportSettings.startDate, reportSettings.endDate)}
+            </span>
           </div>
 
-          {/* View Mode Toggle */}
-          <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
-            <button
-              onClick={() => setViewMode('created')}
-              className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors ${
-                viewMode === 'created'
-                  ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-              }`}
-            >
-              Created
-            </button>
-            <button
-              onClick={() => setViewMode('completed')}
-              className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors ${
-                viewMode === 'completed'
-                  ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-              }`}
-            >
-              Completed
-            </button>
-          </div>
+          {/* Configure Report Button */}
+          <button
+            onClick={() => setShowSettingsModal(true)}
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span className="hidden sm:inline">Configure</span>
+            {activeFilterCount > 0 && (
+              <span className="px-1.5 py-0.5 text-xs font-bold bg-primary-600 text-white rounded-full">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+
+          {/* View Mode Indicator */}
+          <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+            By {reportSettings.viewMode === 'created' ? 'Created' : 'Completed'} Date
+          </span>
         </div>
 
         {/* Export Buttons */}
@@ -362,6 +482,31 @@ function MonthlyAnalyticsReport({ projects = [] }) {
         </div>
       </div>
 
+      {/* Active Filter Badges */}
+      {activeFilterLabels.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 print:hidden">
+          <span className="text-xs text-gray-500 dark:text-gray-400">Filters:</span>
+          {activeFilterLabels.slice(0, 8).map((filter, index) => (
+            <FilterBadge
+              key={`${filter.type}-${filter.value}-${index}`}
+              label={filter.label}
+              onRemove={() => removeFilter(filter.type, filter.value)}
+            />
+          ))}
+          {activeFilterLabels.length > 8 && (
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              +{activeFilterLabels.length - 8} more
+            </span>
+          )}
+          <button
+            onClick={clearAllFilters}
+            className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 underline"
+          >
+            Clear all
+          </button>
+        </div>
+      )}
+
       {/* Report Content */}
       <div ref={reportRef} className={`space-y-4 sm:space-y-6 p-4 sm:p-6 rounded-xl print:bg-white print:p-0 ${isPrintMode ? 'bg-white' : 'bg-gray-50 dark:bg-gray-900'}`}>
         {/* Report Title */}
@@ -370,10 +515,11 @@ function MonthlyAnalyticsReport({ projects = [] }) {
             Project Analytics Report
           </h2>
           <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
-            {formatMonthYear(year, month)} • {viewMode === 'created' ? 'By Created Date' : 'By Completed Date'}
+            {formatDateRange(reportSettings.startDate, reportSettings.endDate)} • {reportSettings.viewMode === 'created' ? 'By Created Date' : 'By Completed Date'}
           </p>
           <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-500 mt-1">
             {reportData.projectCount} projects analyzed
+            {activeFilterCount > 0 && ` (${activeFilterCount} filter${activeFilterCount > 1 ? 's' : ''} applied)`}
           </p>
         </div>
 
@@ -547,10 +693,10 @@ function MonthlyAnalyticsReport({ projects = [] }) {
           {/* Weekly Project Intake */}
           <div className={`rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-4 ${isPrintMode ? 'bg-white' : 'bg-white dark:bg-gray-800'}`}>
             <h3 className="font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4 text-sm sm:text-base">Weekly Project Intake</h3>
-            {charts.weeklyIntake.length > 0 ? (
+            {charts.projectIntake.length > 0 ? (
               <>
                 <ResponsiveContainer width="100%" height={isPrintMode ? 200 : 220}>
-                  <AreaChart data={charts.weeklyIntake}>
+                  <AreaChart data={charts.projectIntake}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.2} />
                     <XAxis dataKey="name" stroke="#9CA3AF" fontSize={10} />
                     <YAxis stroke="#9CA3AF" fontSize={10} />
@@ -562,7 +708,7 @@ function MonthlyAnalyticsReport({ projects = [] }) {
                 </ResponsiveContainer>
                 {isPrintMode && (
                   <DataTable
-                    data={charts.weeklyIntake}
+                    data={charts.projectIntake}
                     columns={[
                       { key: 'name', header: 'Week' },
                       { key: 'value', header: 'Projects', align: 'right' }
