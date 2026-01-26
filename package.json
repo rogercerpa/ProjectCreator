@@ -49,7 +49,7 @@
     "project-creator",
     "desktop-app"
   ],
-  "author": "Acuity Brands, Inc.",
+  "author": "Roger Cerpa",
   "license": "ISC",
   "devDependencies": {
     "@babel/core": "^7.28.3",

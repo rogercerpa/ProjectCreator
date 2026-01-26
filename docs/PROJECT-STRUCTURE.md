@@ -281,19 +281,6 @@ npm test
 - **Performance Metrics**: Regular performance reviews
 - **Error Tracking**: Automated error reporting
 
-## 📞 Support
-
-### Development Team
-- **Email**: dev@acuitybrands.com
-- **Documentation**: Check `docs/` directory
-- **Issues**: Use project issue tracker
-
-### Security Team
-- **Email**: security@acuitybrands.com
-- **Emergency**: security-emergency@acuitybrands.com
-- **Reports**: security@acuitybrands.com
-
----
 
 ## 🔄 MS 365 Integration Architecture
 

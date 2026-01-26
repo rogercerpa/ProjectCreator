@@ -116,9 +116,7 @@ npm run dist:linux
 
 This project is licensed under the ISC License - see the [LICENSE](LICENSE) file for details.
 
-## Company
 
-**Acuity Brands, Inc.** - Lighting and building management solutions
 
 ## Version History
 

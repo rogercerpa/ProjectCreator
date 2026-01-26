@@ -222,12 +222,6 @@ npm update
 - Penetration testing
 - Compliance reporting
 
-## 📞 Security Contacts
-
-- **Security Team**: security@acuitybrands.com
-- **Development Team**: dev@acuitybrands.com
-- **Emergency Contact**: security-emergency@acuitybrands.com
-
 ## 📅 Next Review Date
 
 **Next Security Audit**: 3 months from implementation
