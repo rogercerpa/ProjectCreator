@@ -451,7 +451,7 @@ function DASGeneralPage() {
       </div>
 
       {/* Tab content */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto custom-scrollbar">
         {isLoading && !data.teamMembers.length ? (
           <div className="flex items-center justify-center h-64">
             <div className="text-center">

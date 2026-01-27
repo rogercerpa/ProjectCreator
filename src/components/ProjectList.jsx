@@ -415,7 +415,7 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onNewProject,
       </div>
 
       {/* Results Container */}
-      <div className="flex-1 overflow-y-auto bg-gray-50/50 dark:bg-gray-900/20">
+      <div className="flex-1 overflow-y-auto bg-gray-50/50 dark:bg-gray-900/20 custom-scrollbar">
         <div className="max-w-7xl mx-auto p-8 pt-4">
           <div className="flex items-center gap-3 mb-6">
             <div className="h-2 w-2 rounded-full bg-primary-500 animate-pulse"></div>

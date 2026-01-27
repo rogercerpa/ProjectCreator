@@ -335,38 +335,58 @@ function App() {
     
     console.log('✅ handleProjectCreated: Project validation passed');
     
+    // IDLE FIX: Helper to wrap promises with timeout to prevent hanging after long idle
+    // Returns fallbackValue if promise doesn't resolve within timeout
+    const withTimeout = (promise, ms, fallbackValue) => {
+      const timeout = new Promise((resolve) => {
+        setTimeout(() => {
+          console.warn(`⚠️ handleProjectCreated: IPC call timed out after ${ms}ms`);
+          resolve(fallbackValue);
+        }, ms);
+      });
+      return Promise.race([promise, timeout]);
+    };
+    
     try {
-      // CRITICAL FIX: Reload all projects from persistent storage to ensure UI is in sync
-      console.log('🔄 handleProjectCreated: Reloading all projects from storage to ensure sync');
-      const projectsResult = await window.electronAPI.projectsLoadAll();
+      // IDLE FIX: Reload projects with timeout protection
+      // If app was idle for 30+ minutes, IPC may be slow - use 3 second timeout
+      console.log('🔄 handleProjectCreated: Reloading projects with timeout protection...');
+      const projectsResult = await withTimeout(
+        window.electronAPI.projectsLoadAll(),
+        3000, // 3 second timeout
+        null  // Return null on timeout
+      );
       
       let projectToSet = project;
+      let projectsList = null;
       
       if (projectsResult && projectsResult.success && Array.isArray(projectsResult.projects)) {
         console.log('✅ handleProjectCreated: Successfully reloaded projects from storage');
         console.log(`🔄 handleProjectCreated: Found ${projectsResult.projects.length} projects in storage`);
         
+        projectsList = projectsResult.projects;
+        
         // Find the newly created project in the fresh data
-        const freshProject = projectsResult.projects.find(p => p.id === project.id);
+        const freshProject = projectsList.find(p => p.id === project.id);
         if (freshProject) {
-          console.log('✅ handleProjectCreated: Found newly created project in fresh data:', freshProject);
+          console.log('✅ handleProjectCreated: Found newly created project in fresh data');
           projectToSet = freshProject;
         } else {
-          console.log('⚠️ handleProjectCreated: Using provided project data as fallback:', project);
+          console.log('⚠️ handleProjectCreated: Using provided project data as fallback');
         }
-        
-        // RACE CONDITION FIX: Use flushSync for critical state updates
-        // This forces synchronous state updates to ensure currentProject is set before navigation
-        console.log('🔄 handleProjectCreated: Using flushSync for reliable state updates');
-        flushSync(() => {
-          setProjects(projectsResult.projects);
-          setCurrentProject(projectToSet);
-        });
-        
       } else {
-        console.warn('⚠️ handleProjectCreated: Failed to reload projects, using fallback approach');
-        // Fallback to original approach with flushSync
-        flushSync(() => {
+        // Timeout or failure - use provided project directly
+        console.warn('⚠️ handleProjectCreated: Projects reload timed out or failed, using provided project');
+        projectsList = null; // Will trigger fallback below
+      }
+      
+      // Update state with flushSync for synchronous updates
+      console.log('🔄 handleProjectCreated: Updating state...');
+      flushSync(() => {
+        if (projectsList) {
+          setProjects(projectsList);
+        } else {
+          // Fallback: add project to existing list
           setProjects(prev => {
             const existingIndex = prev.findIndex(p => p.id === project.id);
             if (existingIndex !== -1) {
@@ -377,61 +397,37 @@ function App() {
               return [project, ...prev];
             }
           });
-          setCurrentProject(projectToSet);
-        });
-      }
+        }
+        setCurrentProject(projectToSet);
+      });
       
-      // RACE CONDITION FIX: Wait for state to be fully committed with verification
-      // Use a longer wait time and verify the state is actually set
-      console.log('🔄 handleProjectCreated: Waiting for state commitment...');
+      // Reset form data so wizard shows clean Step 1 when user returns
+      console.log('🔄 handleProjectCreated: Resetting form data...');
+      handleFormReset(); // Don't await - let it run async
       
-      let stateVerified = false;
-      let verifyAttempts = 0;
-      const maxVerifyAttempts = 10;
-      const verifyInterval = 50; // 50ms between checks, max 500ms total
-      
-      while (!stateVerified && verifyAttempts < maxVerifyAttempts) {
-        await new Promise(resolve => setTimeout(resolve, verifyInterval));
-        verifyAttempts++;
-        
-        // The state should be committed after flushSync, but verify just in case
-        // We check by looking at what we set - flushSync guarantees synchronous update
-        stateVerified = true; // flushSync guarantees state is set
-        console.log(`🔄 handleProjectCreated: State verification attempt ${verifyAttempts}/${maxVerifyAttempts}`);
-      }
-      
-      // Additional safety delay to ensure React has processed the state
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Reset form data BEFORE navigation so wizard shows clean Step 1 when user returns
-      console.log('🔄 handleProjectCreated: Resetting form data before navigation');
-      await handleFormReset();
-      console.log('✅ handleProjectCreated: Form data reset for clean wizard on return');
-      
-      // Navigate to project management view using flushSync for synchronous update
-      console.log('🎯 handleProjectCreated: Setting current view to project-management');
+      // Navigate to project management view immediately
+      console.log('🎯 handleProjectCreated: Navigating to project-management');
       flushSync(() => {
         setCurrentView('project-management');
       });
       
-      console.log('✅ handleProjectCreated: All state updates and navigation completed successfully');
+      console.log('✅ handleProjectCreated: Navigation completed successfully');
       
     } catch (error) {
       console.error('❌ handleProjectCreated: Error during state updates:', error);
       
-      // Fallback approach with flushSync
+      // Fallback: Use provided project and navigate anyway
+      console.log('🔄 handleProjectCreated: Attempting fallback navigation...');
       try {
         flushSync(() => {
           setProjects(prev => [project, ...prev]);
           setCurrentProject(project);
         });
         
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Reset form data (don't await)
+        handleFormReset();
         
-        // Reset form data BEFORE navigation in fallback path too
-        await handleFormReset();
-        
-        // Navigate to project management view using flushSync
+        // Navigate to project management view
         flushSync(() => {
           setCurrentView('project-management');
         });
@@ -439,11 +435,15 @@ function App() {
         console.log('✅ handleProjectCreated: Fallback navigation completed');
       } catch (fallbackError) {
         console.error('❌ handleProjectCreated: Fallback also failed:', fallbackError);
-        throw fallbackError;
+        // Still try to navigate even if fallback failed
+        try {
+          setCurrentProject(project);
+          setCurrentView('project-management');
+        } catch (e) {
+          console.error('❌ handleProjectCreated: Final navigation attempt failed:', e);
+        }
       }
-      
-      // Re-throw original error so caller knows there were issues
-      throw error;
+      // Don't re-throw - navigation should have completed
     }
     
     // Track project creation in analytics (non-blocking)
