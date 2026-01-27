@@ -102,6 +102,7 @@
     "appId": "com.acuitybrands.projectcreator",
     "productName": "Project Creator",
     "copyright": "Copyright © 2024 Acuity Brands, Inc.",
+    "electronLanguages": ["en-US", "en-GB", "es", "es-419"],
     "directories": {
       "output": "dist"
     },
@@ -110,24 +111,37 @@
       "preload.js",
       "index.html",
       "dist/**/*",
-      "node_modules/**/*",
       "assets/**/*",
-      "main-process/**/*"
+      "main-process/**/*",
+      "node_modules/**/*",
+      "!node_modules/**/*.md",
+      "!node_modules/**/*.map",
+      "!node_modules/**/*.ts",
+      "!node_modules/**/test/**",
+      "!node_modules/**/tests/**",
+      "!node_modules/**/__tests__/**",
+      "!node_modules/**/docs/**",
+      "!node_modules/**/example/**",
+      "!node_modules/**/examples/**",
+      "!node_modules/**/.github/**"
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/xlsx/**/*",
+      "node_modules/mammoth/**/*"
     ],
     "win": {
       "target": [
         {
           "target": "nsis",
           "arch": [
-            "x64",
-            "ia32"
+            "x64"
           ]
         },
         {
           "target": "portable",
           "arch": [
-            "x64",
-            "ia32"
+            "x64"
           ]
         }
       ],

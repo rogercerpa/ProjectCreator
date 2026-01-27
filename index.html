@@ -7,6 +7,7 @@
     <link rel="icon" type="image/x-icon" href="./assets/icons/favicon.ico">
     <link rel="shortcut icon" type="image/x-icon" href="./assets/icons/favicon.ico">
     <link rel="apple-touch-icon" href="./assets/images/logo.png">
+    <link rel="stylesheet" href="./loading.css">
     
     <!-- Global polyfill - must come before any other scripts -->
     <script>
@@ -18,83 +19,6 @@
             window.process = { env: { NODE_ENV: 'production' } };
         }
     </script>
-    
-    <style>
-        :root {
-            --brand-gradient: linear-gradient(135deg, #007239 0%, #0099D8 100%);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: var(--brand-gradient);
-            height: 100vh;
-            overflow: hidden;
-        }
-
-        #root {
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .loading {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            color: white;
-            text-align: center;
-        }
-
-        .loading h1 {
-            font-size: 2.5rem;
-            margin-bottom: 1rem;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
-
-        .loading p {
-            font-size: 1.2rem;
-            opacity: 0.9;
-        }
-
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 4px solid rgba(255,255,255,0.3);
-            border-top: 4px solid white;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 2rem 0;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .logo {
-            width: 80px;
-            height: 80px;
-            margin-bottom: 2rem;
-            filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.3));
-        }
-
-        .error-message {
-            display: none;
-            color: #ff6b6b;
-            background: rgba(255, 255, 255, 0.1);
-            padding: 1rem;
-            border-radius: 8px;
-            margin-top: 1rem;
-        }
-    </style>
 </head>
 <body>
     <div id="root">

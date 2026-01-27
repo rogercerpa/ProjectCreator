@@ -4,6 +4,7 @@ import {
   ResponsiveContainer, Legend, AreaChart, Area, LabelList
 } from 'recharts';
 import reportDataService from '../services/ReportDataService';
+import reportExportService from '../services/ReportExportService';
 import ReportSettingsModal from './ReportSettingsModal';
 import {
   formatCurrency,
@@ -24,6 +25,25 @@ const formatDateRange = (startDate, endDate) => {
   const options = { month: 'short', day: 'numeric', year: 'numeric' };
   return `${start.toLocaleDateString('en-US', options)} - ${end.toLocaleDateString('en-US', options)}`;
 };
+
+// Print Section Component - prevents page breaks within sections for PDF export
+// Adds a visible gap before each section in print mode for better page break detection
+const PrintSection = ({ children, isPrintMode }) => (
+  <div style={isPrintMode ? { pageBreakInside: 'avoid', breakInside: 'avoid' } : {}}>
+    {/* Page break marker - a white band that the PDF algorithm can detect */}
+    {isPrintMode && (
+      <div 
+        data-page-break-marker="true" 
+        style={{ 
+          height: '20px', 
+          backgroundColor: '#ffffff', 
+          marginBottom: '8px'
+        }} 
+      />
+    )}
+    {children}
+  </div>
+);
 
 // Active Filter Badge Component
 const FilterBadge = ({ label, onRemove }) => (
@@ -93,20 +113,23 @@ const KPICard = ({ title, value, subtitle, change, formatType = 'number', icon, 
     ? 'text-red-600 dark:text-red-400' 
     : 'text-gray-500 dark:text-gray-400';
 
+  // In print mode, don't truncate text so full content appears in PDF
+  const truncateClass = isPrintMode ? '' : 'truncate';
+
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-4 flex flex-col min-w-0">
+    <div className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-4 flex flex-col min-w-0 ${isPrintMode ? 'min-h-[100px]' : ''}`}>
       <div className="flex items-center justify-between mb-1 sm:mb-2 gap-1">
-        <span className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 truncate">{title}</span>
+        <span className={`text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 ${truncateClass}`}>{title}</span>
         {icon && <span className="text-base sm:text-xl flex-shrink-0">{icon}</span>}
       </div>
-      <div className={`font-bold text-gray-900 dark:text-white mb-1 truncate ${isPrintMode ? 'text-lg' : 'text-base sm:text-lg md:text-xl lg:text-2xl'}`}>
+      <div className={`font-bold text-gray-900 dark:text-white mb-1 ${truncateClass} ${isPrintMode ? 'text-lg' : 'text-base sm:text-lg md:text-xl lg:text-2xl'}`}>
         {formattedValue}
       </div>
       {subtitle && (
-        <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mb-1 truncate">{subtitle}</div>
+        <div className={`text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mb-1 ${truncateClass}`}>{subtitle}</div>
       )}
       {change && (
-        <div className={`text-[10px] sm:text-xs md:text-sm font-medium ${changeColor} truncate`}>
+        <div className={`text-[10px] sm:text-xs md:text-sm font-medium ${changeColor} ${truncateClass}`}>
           {change.formatted} vs prior period
         </div>
       )}
@@ -114,40 +137,59 @@ const KPICard = ({ title, value, subtitle, change, formatType = 'number', icon, 
   );
 };
 
-// Collapsible Section Component - with forceOpen for print mode
+// Collapsible Section Component - with forceOpen for print mode and page-break control
 const CollapsibleSection = ({ title, icon, defaultOpen = true, forceOpen = false, children, isPrintMode }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   // Force open when in print mode
   const actuallyOpen = forceOpen || isOpen;
 
+  // Page break styles for print mode - avoid breaking inside sections
+  const printStyles = isPrintMode ? { pageBreakInside: 'avoid', breakInside: 'avoid' } : {};
+
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-      <button
-        onClick={() => !isPrintMode && setIsOpen(!isOpen)}
-        className={`w-full flex items-center justify-between p-4 transition-colors ${isPrintMode ? 'cursor-default' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}`}
-      >
-        <div className="flex items-center gap-2">
-          {icon && <span className="text-xl">{icon}</span>}
-          <span className="font-semibold text-gray-900 dark:text-white">{title}</span>
-        </div>
-        {!isPrintMode && (
-          <svg
-            className={`w-5 h-5 text-gray-500 transition-transform ${actuallyOpen ? 'rotate-180' : ''}`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        )}
-      </button>
-      {actuallyOpen && (
-        <div className="p-4 pt-0 border-t border-gray-100 dark:border-gray-700">
-          {children}
-        </div>
+    <>
+      {/* White band marker for PDF page break detection */}
+      {isPrintMode && (
+        <div 
+          data-page-break-marker="true"
+          style={{ 
+            height: '24px', 
+            backgroundColor: '#ffffff',
+            marginTop: '8px'
+          }} 
+        />
       )}
-    </div>
+      <div 
+        className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden"
+        style={printStyles}
+      >
+        <button
+          onClick={() => !isPrintMode && setIsOpen(!isOpen)}
+          className={`w-full flex items-center justify-between p-4 transition-colors ${isPrintMode ? 'cursor-default' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+        >
+          <div className="flex items-center gap-2">
+            {icon && <span className="text-xl">{icon}</span>}
+            <span className="font-semibold text-gray-900 dark:text-white">{title}</span>
+          </div>
+          {!isPrintMode && (
+            <svg
+              className={`w-5 h-5 text-gray-500 transition-transform ${actuallyOpen ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          )}
+        </button>
+        {actuallyOpen && (
+          <div className="p-4 pt-0 border-t border-gray-100 dark:border-gray-700">
+            {children}
+          </div>
+        )}
+      </div>
+    </>
   );
 };
 
@@ -188,11 +230,14 @@ const getDefaultDateRange = () => {
 // Main Component
 function MonthlyAnalyticsReport({ projects = [] }) {
   const reportRef = useRef(null);
+  const exportDropdownRef = useRef(null);
   const [isLoading, setIsLoading] = useState(true);
   const [reportData, setReportData] = useState(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [exportType, setExportType] = useState(null); // 'pdf', 'excel', 'csv'
   const [isPrintMode, setIsPrintMode] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showExportDropdown, setShowExportDropdown] = useState(false);
 
   // Report settings state
   const [reportSettings, setReportSettings] = useState(() => {
@@ -314,13 +359,15 @@ function MonthlyAnalyticsReport({ projects = [] }) {
     window.print();
   };
 
-  // PDF Export handler - now with print mode
+  // PDF Export handler - with improved pagination and section awareness
   const handleExportPDF = async () => {
     setIsExporting(true);
+    setExportType('pdf');
+    setShowExportDropdown(false);
     setIsPrintMode(true);
     
     // Wait for React to re-render with print mode
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 600));
     
     try {
       const { default: jsPDF } = await import('jspdf');
@@ -329,15 +376,28 @@ function MonthlyAnalyticsReport({ projects = [] }) {
       const element = reportRef.current;
       if (!element) return;
 
+      // Capture the element with improved settings
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
-        windowWidth: 1200, // Force wider render for better layout
+        windowWidth: 1400, // Wider render for better layout and less truncation
+        onclone: (clonedDoc) => {
+          // Ensure all text is visible in the cloned document
+          const clonedElement = clonedDoc.body.querySelector('[data-report-content]') || clonedDoc.body;
+          const allElements = clonedElement.querySelectorAll('*');
+          allElements.forEach(el => {
+            const style = window.getComputedStyle(el);
+            if (style.overflow === 'hidden' || style.textOverflow === 'ellipsis') {
+              el.style.overflow = 'visible';
+              el.style.textOverflow = 'clip';
+              el.style.whiteSpace = 'normal';
+            }
+          });
+        }
       });
 
-      const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'in',
@@ -348,36 +408,152 @@ function MonthlyAnalyticsReport({ projects = [] }) {
       const pageHeight = 11;
       const margin = 0.4;
       const contentWidth = pageWidth - margin * 2;
+      const contentHeight = pageHeight - margin * 2;
+      
+      // Calculate scaling
       const imgAspectRatio = canvas.height / canvas.width;
-      const imgHeight = contentWidth * imgAspectRatio;
-
-      let remainingHeight = imgHeight;
-      let sourceY = 0;
-
-      while (remainingHeight > 0) {
-        const availableHeight = pageHeight - margin * 2;
-        const heightToDraw = Math.min(remainingHeight, availableHeight);
-        const sourceHeight = (heightToDraw / imgHeight) * canvas.height;
-
+      const scaledImgHeight = contentWidth * imgAspectRatio;
+      
+      // Find white bands in the canvas that indicate good break points
+      // A "white band" is multiple consecutive rows that are mostly white
+      const findWhiteBands = (canvasElement) => {
+        const ctx = canvasElement.getContext('2d');
+        const whiteBands = [];
+        const minBandHeight = 10; // Minimum height of white band to consider
+        
+        let bandStart = -1;
+        
+        for (let y = 0; y < canvasElement.height; y += 2) {
+          // Sample pixels across this row
+          const imageData = ctx.getImageData(0, y, canvasElement.width, 1);
+          let whitePixels = 0;
+          const samples = Math.floor(canvasElement.width / 5);
+          
+          for (let x = 0; x < canvasElement.width; x += 5) {
+            const idx = x * 4;
+            const r = imageData.data[idx];
+            const g = imageData.data[idx + 1];
+            const b = imageData.data[idx + 2];
+            // Check if pixel is white/very light
+            if (r > 245 && g > 245 && b > 245) {
+              whitePixels++;
+            }
+          }
+          
+          const whiteRatio = whitePixels / samples;
+          const isWhiteRow = whiteRatio > 0.9; // 90% of row is white
+          
+          if (isWhiteRow && bandStart === -1) {
+            bandStart = y;
+          } else if (!isWhiteRow && bandStart !== -1) {
+            const bandHeight = y - bandStart;
+            if (bandHeight >= minBandHeight) {
+              // Store the middle of the white band as a potential break point
+              whiteBands.push({
+                y: bandStart + Math.floor(bandHeight / 2),
+                height: bandHeight
+              });
+            }
+            bandStart = -1;
+          }
+        }
+        
+        return whiteBands;
+      };
+      
+      // Find optimal page breaks using white bands
+      const findPageBreaks = (canvasElement, maxPageHeight) => {
+        const whiteBands = findWhiteBands(canvasElement);
+        const breaks = [0];
+        let currentY = 0;
+        
+        // Convert max page height from inches to canvas pixels
+        const scale = canvasElement.height / scaledImgHeight;
+        const maxHeightPx = maxPageHeight * scale;
+        
+        while (currentY < canvasElement.height - 50) {
+          const targetY = currentY + maxHeightPx;
+          
+          if (targetY >= canvasElement.height) {
+            breaks.push(canvasElement.height);
+            break;
+          }
+          
+          // Find the best white band near the target position
+          // Search range: from 70% to 100% of page height from current position
+          const searchStart = currentY + maxHeightPx * 0.7;
+          const searchEnd = Math.min(currentY + maxHeightPx * 1.05, canvasElement.height);
+          
+          // Find white bands in the search range, prefer those closer to target
+          const candidateBands = whiteBands.filter(band => 
+            band.y > searchStart && band.y < searchEnd
+          );
+          
+          if (candidateBands.length > 0) {
+            // Prefer bands with larger height (more obvious breaks)
+            // and closer to target position
+            let bestBand = candidateBands[0];
+            let bestScore = 0;
+            
+            for (const band of candidateBands) {
+              // Score based on band height and proximity to ideal position
+              const proximityScore = 1 - Math.abs(band.y - targetY) / maxHeightPx;
+              const heightScore = Math.min(band.height / 40, 1); // Max score at 40px height
+              const score = proximityScore * 0.4 + heightScore * 0.6;
+              
+              if (score > bestScore) {
+                bestScore = score;
+                bestBand = band;
+              }
+            }
+            
+            breaks.push(bestBand.y);
+            currentY = bestBand.y;
+          } else {
+            // No good white band found, break at target (fallback)
+            breaks.push(Math.floor(targetY));
+            currentY = Math.floor(targetY);
+          }
+        }
+        
+        // Ensure the last segment is added
+        if (breaks[breaks.length - 1] < canvasElement.height - 50) {
+          breaks.push(canvasElement.height);
+        }
+        
+        return breaks;
+      };
+      
+      // Find optimal break points
+      const pageBreaks = findPageBreaks(canvas, contentHeight);
+      
+      // Generate pages
+      for (let i = 0; i < pageBreaks.length - 1; i++) {
+        const startY = pageBreaks[i];
+        const endY = pageBreaks[i + 1];
+        const sectionHeight = endY - startY;
+        
+        if (sectionHeight <= 10) continue;
+        
         // Create a temporary canvas for this page section
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = canvas.width;
-        tempCanvas.height = sourceHeight;
+        tempCanvas.height = sectionHeight;
         const tempCtx = tempCanvas.getContext('2d');
         tempCtx.fillStyle = '#ffffff';
         tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-        tempCtx.drawImage(canvas, 0, sourceY, canvas.width, sourceHeight, 0, 0, canvas.width, sourceHeight);
+        tempCtx.drawImage(canvas, 0, startY, canvas.width, sectionHeight, 0, 0, canvas.width, sectionHeight);
 
         const pageImgData = tempCanvas.toDataURL('image/png');
         
-        if (sourceY > 0) {
+        if (i > 0) {
           pdf.addPage();
         }
         
-        pdf.addImage(pageImgData, 'PNG', margin, margin, contentWidth, heightToDraw);
-
-        sourceY += sourceHeight;
-        remainingHeight -= heightToDraw;
+        // Calculate the height this section should be on the PDF page
+        const pdfSectionHeight = (sectionHeight / canvas.height) * scaledImgHeight;
+        
+        pdf.addImage(pageImgData, 'PNG', margin, margin, contentWidth, pdfSectionHeight);
       }
 
       const startStr = reportSettings.startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).replace(' ', '');
@@ -390,8 +566,55 @@ function MonthlyAnalyticsReport({ projects = [] }) {
     } finally {
       setIsPrintMode(false);
       setIsExporting(false);
+      setExportType(null);
     }
   };
+
+  // Excel Export handler
+  const handleExportExcel = async () => {
+    setIsExporting(true);
+    setExportType('excel');
+    setShowExportDropdown(false);
+    
+    try {
+      await reportExportService.exportToExcel(reportData, reportSettings, projects);
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      alert('Failed to export to Excel. Please try again.');
+    } finally {
+      setIsExporting(false);
+      setExportType(null);
+    }
+  };
+
+  // CSV Export handler
+  const handleExportCSV = async () => {
+    setIsExporting(true);
+    setExportType('csv');
+    setShowExportDropdown(false);
+    
+    try {
+      await reportExportService.exportToCSV(reportData, reportSettings, projects);
+    } catch (error) {
+      console.error('Error exporting to CSV:', error);
+      alert('Failed to export to CSV. Please try again.');
+    } finally {
+      setIsExporting(false);
+      setExportType(null);
+    }
+  };
+
+  // Close export dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (exportDropdownRef.current && !exportDropdownRef.current.contains(event.target)) {
+        setShowExportDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   if (isLoading || !reportData) {
     return (
@@ -459,26 +682,78 @@ function MonthlyAnalyticsReport({ projects = [] }) {
             </svg>
             <span className="hidden sm:inline">Print</span>
           </button>
-          <button
-            onClick={handleExportPDF}
-            disabled={isExporting}
-            className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {isExporting ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                <span className="hidden sm:inline">Exporting...</span>
-              </>
-            ) : (
-              <>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <span className="hidden sm:inline">Export PDF</span>
-                <span className="sm:hidden">PDF</span>
-              </>
+          
+          {/* Export Dropdown */}
+          <div className="relative" ref={exportDropdownRef}>
+            <button
+              onClick={() => setShowExportDropdown(!showExportDropdown)}
+              disabled={isExporting}
+              className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {isExporting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span className="hidden sm:inline">
+                    {exportType === 'pdf' ? 'Exporting PDF...' : 
+                     exportType === 'excel' ? 'Exporting Excel...' : 
+                     exportType === 'csv' ? 'Exporting CSV...' : 'Exporting...'}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <span className="hidden sm:inline">Export</span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </>
+              )}
+            </button>
+            
+            {/* Dropdown Menu */}
+            {showExportDropdown && !isExporting && (
+              <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50">
+                <button
+                  onClick={handleExportPDF}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 2l5 5h-5V4zM8.5 13h1v4h-1v-4zm2 0h1v1h-1v-1zm0 2h1v2h-1v-2zm2-2h1v4h-1v-4zm2 0h1.5v1h-1v3h-.5v-4z"/>
+                  </svg>
+                  <div className="text-left">
+                    <div className="font-medium">PDF</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">Print-ready document</div>
+                  </div>
+                </button>
+                <button
+                  onClick={handleExportExcel}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 2l5 5h-5V4zM8 17l2-4-2-4h1.5l1.25 2.5L12 9h1.5l-2 4 2 4H12l-1.25-2.5L9.5 17H8z"/>
+                  </svg>
+                  <div className="text-left">
+                    <div className="font-medium">Excel</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">Multi-sheet workbook</div>
+                  </div>
+                </button>
+                <button
+                  onClick={handleExportCSV}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <svg className="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 2l5 5h-5V4zM7 12h2v2H7v-2zm0 4h2v2H7v-2zm4-4h2v2h-2v-2zm0 4h2v2h-2v-2zm4-4h2v2h-2v-2zm0 4h2v2h-2v-2z"/>
+                  </svg>
+                  <div className="text-left">
+                    <div className="font-medium">CSV</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">Simple data export</div>
+                  </div>
+                </button>
+              </div>
             )}
-          </button>
+          </div>
         </div>
       </div>
 
@@ -524,202 +799,217 @@ function MonthlyAnalyticsReport({ projects = [] }) {
         </div>
 
         {/* KPI Cards - Responsive grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 md:gap-4">
-          <KPICard
-            title="Total Projects"
-            value={kpis.totalProjects.value}
-            change={kpis.totalProjects.change}
-            icon="📊"
-            isPrintMode={isPrintMode}
-          />
-          <KPICard
-            title="Completed"
-            value={kpis.completedProjects.value}
-            subtitle={`${formatPercentage(kpis.completedProjects.rate)} rate`}
-            change={kpis.completedProjects.change}
-            icon="✅"
-            isPrintMode={isPrintMode}
-          />
-          <KPICard
-            title="RFA Value"
-            value={kpis.totalRfaValue.value}
-            formatType="currency"
-            change={kpis.totalRfaValue.change}
-            icon="💰"
-            isPrintMode={isPrintMode}
-          />
-          <KPICard
-            title="DAS Revenue"
-            value={kpis.totalDasRevenue.value}
-            formatType="currency"
-            subtitle={`${kpis.totalDasRevenue.count} services`}
-            change={kpis.totalDasRevenue.change}
-            icon="💵"
-            isPrintMode={isPrintMode}
-          />
-          <KPICard
-            title="Turnaround"
-            value={kpis.avgTurnaroundTime.value}
-            formatType="duration"
-            change={kpis.avgTurnaroundTime.change}
-            icon="⏱️"
-            isPrintMode={isPrintMode}
-          />
-          <KPICard
-            title="On-Time"
-            value={kpis.onTimeRate.value}
-            formatType="percentage"
-            change={kpis.onTimeRate.change}
-            icon="🎯"
-            isPrintMode={isPrintMode}
-          />
-        </div>
+        <PrintSection isPrintMode={isPrintMode}>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 md:gap-4">
+            <KPICard
+              title="Total Projects"
+              value={kpis.totalProjects.value}
+              change={kpis.totalProjects.change}
+              icon="📊"
+              isPrintMode={isPrintMode}
+            />
+            <KPICard
+              title="Completed"
+              value={kpis.completedProjects.value}
+              subtitle={`${formatPercentage(kpis.completedProjects.rate)} rate`}
+              change={kpis.completedProjects.change}
+              icon="✅"
+              isPrintMode={isPrintMode}
+            />
+            <KPICard
+              title="RFA Value"
+              value={kpis.totalRfaValue.value}
+              formatType="currency"
+              change={kpis.totalRfaValue.change}
+              icon="💰"
+              isPrintMode={isPrintMode}
+            />
+            <KPICard
+              title="DAS Revenue"
+              value={kpis.totalDasRevenue.value}
+              formatType="currency"
+              subtitle={`${kpis.totalDasRevenue.count} services`}
+              change={kpis.totalDasRevenue.change}
+              icon="💵"
+              isPrintMode={isPrintMode}
+            />
+            <KPICard
+              title="Turnaround"
+              value={kpis.avgTurnaroundTime.value}
+              formatType="duration"
+              change={kpis.avgTurnaroundTime.change}
+              icon="⏱️"
+              isPrintMode={isPrintMode}
+            />
+            <KPICard
+              title="On-Time"
+              value={kpis.onTimeRate.value}
+              formatType="percentage"
+              change={kpis.onTimeRate.change}
+              icon="🎯"
+              isPrintMode={isPrintMode}
+            />
+          </div>
+        </PrintSection>
+
+        {/* White band marker for Charts Row 1 */}
+        {isPrintMode && (
+          <div data-page-break-marker="true" style={{ height: '24px', backgroundColor: '#ffffff' }} />
+        )}
 
         {/* Charts Row 1 - Always visible */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* RFA Type Distribution */}
-          <div className={`rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-4 ${isPrintMode ? 'bg-white' : 'bg-white dark:bg-gray-800'}`}>
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4 text-sm sm:text-base">RFA Type Distribution</h3>
-            {charts.rfaTypeDistribution.length > 0 ? (
-              <>
-                <ResponsiveContainer width="100%" height={isPrintMode ? 200 : 220}>
-                  <PieChart>
-                    <Pie
+          <PrintSection isPrintMode={isPrintMode}>
+            <div className={`rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-4 ${isPrintMode ? 'bg-white' : 'bg-white dark:bg-gray-800'}`}>
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4 text-sm sm:text-base">RFA Type Distribution</h3>
+              {charts.rfaTypeDistribution.length > 0 ? (
+                <>
+                  <ResponsiveContainer width="100%" height={isPrintMode ? 200 : 220}>
+                    <PieChart>
+                      <Pie
+                        data={charts.rfaTypeDistribution}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={isPrintMode ? 40 : 50}
+                        outerRadius={isPrintMode ? 70 : 85}
+                        paddingAngle={2}
+                        dataKey="value"
+                        label={({ name, percent }) => `${truncateText(name, 10)} ${(percent * 100).toFixed(0)}%`}
+                        labelLine={false}
+                      >
+                        {charts.rfaTypeDistribution.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={getChartColor(index)} />
+                        ))}
+                      </Pie>
+                      {isPrintMode && <Legend layout="horizontal" verticalAlign="bottom" wrapperStyle={{ fontSize: 10 }} />}
+                      <Tooltip content={<CustomTooltip />} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  {isPrintMode && (
+                    <DataTable
                       data={charts.rfaTypeDistribution}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={isPrintMode ? 40 : 50}
-                      outerRadius={isPrintMode ? 70 : 85}
-                      paddingAngle={2}
-                      dataKey="value"
-                      label={({ name, percent }) => `${truncateText(name, 10)} ${(percent * 100).toFixed(0)}%`}
-                      labelLine={false}
-                    >
-                      {charts.rfaTypeDistribution.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={getChartColor(index)} />
-                      ))}
-                    </Pie>
-                    {isPrintMode && <Legend layout="horizontal" verticalAlign="bottom" wrapperStyle={{ fontSize: 10 }} />}
-                    <Tooltip content={<CustomTooltip />} />
-                  </PieChart>
-                </ResponsiveContainer>
-                {isPrintMode && (
-                  <DataTable
-                    data={charts.rfaTypeDistribution}
-                    columns={[
-                      { key: 'name', header: 'RFA Type' },
-                      { key: 'value', header: 'Count', align: 'right' }
-                    ]}
-                  />
-                )}
-              </>
-            ) : (
-              <div className="h-48 flex items-center justify-center text-gray-500 text-sm">No data available</div>
-            )}
-          </div>
+                      columns={[
+                        { key: 'name', header: 'RFA Type' },
+                        { key: 'value', header: 'Count', align: 'right' }
+                      ]}
+                    />
+                  )}
+                </>
+              ) : (
+                <div className="h-48 flex items-center justify-center text-gray-500 text-sm">No data available</div>
+              )}
+            </div>
+          </PrintSection>
 
           {/* Regional Team Volume */}
-          <div className={`rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-4 ${isPrintMode ? 'bg-white' : 'bg-white dark:bg-gray-800'}`}>
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4 text-sm sm:text-base">Regional Team Volume</h3>
-            {charts.regionalDistribution.length > 0 ? (
-              <>
-                <ResponsiveContainer width="100%" height={isPrintMode ? 200 : 220}>
-                  <BarChart data={charts.regionalDistribution} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.2} />
-                    <XAxis type="number" stroke="#9CA3AF" fontSize={10} />
-                    <YAxis dataKey="name" type="category" width={80} stroke="#9CA3AF" tick={{ fontSize: 10 }} />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Bar dataKey="value" fill="#3B82F6" radius={[0, 4, 4, 0]}>
-                      {isPrintMode && <LabelList dataKey="value" position="right" fontSize={10} />}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-                {isPrintMode && (
-                  <DataTable
-                    data={charts.regionalDistribution}
-                    columns={[
-                      { key: 'name', header: 'Region' },
-                      { key: 'value', header: 'Projects', align: 'right' }
-                    ]}
-                  />
-                )}
-              </>
-            ) : (
-              <div className="h-48 flex items-center justify-center text-gray-500 text-sm">No data available</div>
-            )}
-          </div>
+          <PrintSection isPrintMode={isPrintMode}>
+            <div className={`rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-4 ${isPrintMode ? 'bg-white' : 'bg-white dark:bg-gray-800'}`}>
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4 text-sm sm:text-base">Regional Team Volume</h3>
+              {charts.regionalDistribution.length > 0 ? (
+                <>
+                  <ResponsiveContainer width="100%" height={isPrintMode ? 200 : 220}>
+                    <BarChart data={charts.regionalDistribution} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.2} />
+                      <XAxis type="number" stroke="#9CA3AF" fontSize={10} />
+                      <YAxis dataKey="name" type="category" width={80} stroke="#9CA3AF" tick={{ fontSize: 10 }} />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Bar dataKey="value" fill="#3B82F6" radius={[0, 4, 4, 0]}>
+                        {isPrintMode && <LabelList dataKey="value" position="right" fontSize={10} />}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                  {isPrintMode && (
+                    <DataTable
+                      data={charts.regionalDistribution}
+                      columns={[
+                        { key: 'name', header: 'Region' },
+                        { key: 'value', header: 'Projects', align: 'right' }
+                      ]}
+                    />
+                  )}
+                </>
+              ) : (
+                <div className="h-48 flex items-center justify-center text-gray-500 text-sm">No data available</div>
+              )}
+            </div>
+          </PrintSection>
         </div>
 
         {/* Charts Row 2 - Always visible */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Top 10 Agencies */}
-          <div className={`rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-4 ${isPrintMode ? 'bg-white' : 'bg-white dark:bg-gray-800'}`}>
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4 text-sm sm:text-base">Top 10 Agencies</h3>
-            {charts.topAgencies.length > 0 ? (
-              <>
-                <ResponsiveContainer width="100%" height={isPrintMode ? 200 : 220}>
-                  <BarChart data={charts.topAgencies.slice(0, 8)} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.2} />
-                    <XAxis type="number" stroke="#9CA3AF" fontSize={10} />
-                    <YAxis 
-                      dataKey="name" 
-                      type="category" 
-                      width={100} 
-                      stroke="#9CA3AF" 
-                      tick={{ fontSize: 9 }}
-                      tickFormatter={(value) => truncateText(value, 14)}
+          <PrintSection isPrintMode={isPrintMode}>
+            <div className={`rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-4 ${isPrintMode ? 'bg-white' : 'bg-white dark:bg-gray-800'}`}>
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4 text-sm sm:text-base">Top 10 Agencies</h3>
+              {charts.topAgencies.length > 0 ? (
+                <>
+                  <ResponsiveContainer width="100%" height={isPrintMode ? 200 : 220}>
+                    <BarChart data={charts.topAgencies.slice(0, 8)} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.2} />
+                      <XAxis type="number" stroke="#9CA3AF" fontSize={10} />
+                      <YAxis 
+                        dataKey="name" 
+                        type="category" 
+                        width={100} 
+                        stroke="#9CA3AF" 
+                        tick={{ fontSize: 9 }}
+                        tickFormatter={(value) => truncateText(value, 14)}
+                      />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Bar dataKey="value" fill="#10B981" radius={[0, 4, 4, 0]}>
+                        {isPrintMode && <LabelList dataKey="value" position="right" fontSize={10} />}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                  {isPrintMode && (
+                    <DataTable
+                      data={charts.topAgencies}
+                      columns={[
+                        { key: 'name', header: 'Agency' },
+                        { key: 'value', header: 'Projects', align: 'right' }
+                      ]}
                     />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Bar dataKey="value" fill="#10B981" radius={[0, 4, 4, 0]}>
-                      {isPrintMode && <LabelList dataKey="value" position="right" fontSize={10} />}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-                {isPrintMode && (
-                  <DataTable
-                    data={charts.topAgencies}
-                    columns={[
-                      { key: 'name', header: 'Agency' },
-                      { key: 'value', header: 'Projects', align: 'right' }
-                    ]}
-                  />
-                )}
-              </>
-            ) : (
-              <div className="h-48 flex items-center justify-center text-gray-500 text-sm">No data available</div>
-            )}
-          </div>
+                  )}
+                </>
+              ) : (
+                <div className="h-48 flex items-center justify-center text-gray-500 text-sm">No data available</div>
+              )}
+            </div>
+          </PrintSection>
 
           {/* Weekly Project Intake */}
-          <div className={`rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-4 ${isPrintMode ? 'bg-white' : 'bg-white dark:bg-gray-800'}`}>
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4 text-sm sm:text-base">Weekly Project Intake</h3>
-            {charts.projectIntake.length > 0 ? (
-              <>
-                <ResponsiveContainer width="100%" height={isPrintMode ? 200 : 220}>
-                  <AreaChart data={charts.projectIntake}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.2} />
-                    <XAxis dataKey="name" stroke="#9CA3AF" fontSize={10} />
-                    <YAxis stroke="#9CA3AF" fontSize={10} />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Area type="monotone" dataKey="value" stroke="#8B5CF6" fill="#8B5CF6" fillOpacity={0.3}>
-                      {isPrintMode && <LabelList dataKey="value" position="top" fontSize={10} />}
-                    </Area>
-                  </AreaChart>
-                </ResponsiveContainer>
-                {isPrintMode && (
-                  <DataTable
-                    data={charts.projectIntake}
-                    columns={[
-                      { key: 'name', header: 'Week' },
-                      { key: 'value', header: 'Projects', align: 'right' }
-                    ]}
-                  />
-                )}
-              </>
-            ) : (
-              <div className="h-48 flex items-center justify-center text-gray-500 text-sm">No data available</div>
-            )}
-          </div>
+          <PrintSection isPrintMode={isPrintMode}>
+            <div className={`rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-4 ${isPrintMode ? 'bg-white' : 'bg-white dark:bg-gray-800'}`}>
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4 text-sm sm:text-base">Weekly Project Intake</h3>
+              {charts.projectIntake.length > 0 ? (
+                <>
+                  <ResponsiveContainer width="100%" height={isPrintMode ? 200 : 220}>
+                    <AreaChart data={charts.projectIntake}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.2} />
+                      <XAxis dataKey="name" stroke="#9CA3AF" fontSize={10} />
+                      <YAxis stroke="#9CA3AF" fontSize={10} />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Area type="monotone" dataKey="value" stroke="#8B5CF6" fill="#8B5CF6" fillOpacity={0.3}>
+                        {isPrintMode && <LabelList dataKey="value" position="top" fontSize={10} />}
+                      </Area>
+                    </AreaChart>
+                  </ResponsiveContainer>
+                  {isPrintMode && (
+                    <DataTable
+                      data={charts.projectIntake}
+                      columns={[
+                        { key: 'name', header: 'Week' },
+                        { key: 'value', header: 'Projects', align: 'right' }
+                      ]}
+                    />
+                  )}
+                </>
+              ) : (
+                <div className="h-48 flex items-center justify-center text-gray-500 text-sm">No data available</div>
+              )}
+            </div>
+          </PrintSection>
         </div>
 
         {/* Collapsible Sections - Force open in print mode */}
@@ -824,11 +1114,11 @@ function MonthlyAnalyticsReport({ projects = [] }) {
                 {teamPerformance.byDesigner.length > 0 ? (
                   <div className="space-y-2">
                     {teamPerformance.byDesigner.slice(0, 5).map((item, index) => (
-                      <div key={index} className="flex items-center justify-between">
-                        <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate max-w-[120px] sm:max-w-[150px]">
+                      <div key={index} className="flex items-center justify-between gap-2">
+                        <span className={`text-xs sm:text-sm text-gray-600 dark:text-gray-400 ${isPrintMode ? '' : 'truncate max-w-[120px] sm:max-w-[150px]'}`}>
                           {item.name}
                         </span>
-                        <span className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">
+                        <span className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white flex-shrink-0">
                           {item.value}
                         </span>
                       </div>
@@ -845,11 +1135,11 @@ function MonthlyAnalyticsReport({ projects = [] }) {
                 {teamPerformance.byQC.length > 0 ? (
                   <div className="space-y-2">
                     {teamPerformance.byQC.slice(0, 5).map((item, index) => (
-                      <div key={index} className="flex items-center justify-between">
-                        <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate max-w-[120px] sm:max-w-[150px]">
+                      <div key={index} className="flex items-center justify-between gap-2">
+                        <span className={`text-xs sm:text-sm text-gray-600 dark:text-gray-400 ${isPrintMode ? '' : 'truncate max-w-[120px] sm:max-w-[150px]'}`}>
                           {item.name}
                         </span>
-                        <span className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">
+                        <span className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white flex-shrink-0">
                           {item.value}
                         </span>
                       </div>
@@ -866,11 +1156,11 @@ function MonthlyAnalyticsReport({ projects = [] }) {
                 {teamPerformance.byTriage.length > 0 ? (
                   <div className="space-y-2">
                     {teamPerformance.byTriage.slice(0, 5).map((item, index) => (
-                      <div key={index} className="flex items-center justify-between">
-                        <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate max-w-[120px] sm:max-w-[150px]">
+                      <div key={index} className="flex items-center justify-between gap-2">
+                        <span className={`text-xs sm:text-sm text-gray-600 dark:text-gray-400 ${isPrintMode ? '' : 'truncate max-w-[120px] sm:max-w-[150px]'}`}>
                           {item.name}
                         </span>
-                        <span className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">
+                        <span className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white flex-shrink-0">
                           {item.value}
                         </span>
                       </div>
