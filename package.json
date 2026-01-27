@@ -1,6 +1,6 @@
 {
   "name": "project-creator",
-  "version": "5.0.201",
+  "version": "5.0.202",
   "description": "Project Creator - Modern Electron application for creating and managing projects",
   "main": "main.js",
   "homepage": "./",
@@ -102,7 +102,12 @@
     "appId": "com.acuitybrands.projectcreator",
     "productName": "Project Creator",
     "copyright": "Copyright © 2024 Acuity Brands, Inc.",
-    "electronLanguages": ["en-US", "en-GB", "es", "es-419"],
+    "electronLanguages": [
+      "en-US",
+      "en-GB",
+      "es",
+      "es-419"
+    ],
     "directories": {
       "output": "dist"
     },
