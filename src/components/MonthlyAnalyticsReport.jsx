@@ -936,6 +936,11 @@ function MonthlyAnalyticsReport({ projects = [] }) {
           </PrintSection>
         </div>
 
+        {/* White band marker for Charts Row 2 */}
+        {isPrintMode && (
+          <div data-page-break-marker="true" style={{ height: '24px', backgroundColor: '#ffffff' }} />
+        )}
+
         {/* Charts Row 2 - Always visible */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Top 10 Agencies */}

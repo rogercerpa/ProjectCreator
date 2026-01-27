@@ -7,6 +7,42 @@ import { formatCurrency, formatPercentage, formatDurationDays } from '../utils/r
 
 class ReportExportService {
   /**
+   * Dynamically load xlsx library
+   * @returns {Promise<Object>} The xlsx library
+   */
+  async _loadXLSX() {
+    // Use xlsx.mjs ES module entry point for better bundler compatibility
+    const xlsxModule = await import('xlsx/xlsx.mjs');
+    // Handle different module formats - CommonJS wrapped by bundler vs ES module
+    const xlsx = xlsxModule.default || xlsxModule;
+    
+    // Verify the library loaded correctly
+    if (!xlsx.utils || !xlsx.write) {
+      console.error('XLSX module structure:', Object.keys(xlsxModule));
+      throw new Error('XLSX library structure is invalid');
+    }
+    
+    return xlsx;
+  }
+
+  /**
+   * Dynamically load file-saver library
+   * @returns {Promise<Function>} The saveAs function
+   */
+  async _loadSaveAs() {
+    const fileSaverModule = await import('file-saver');
+    // Handle different module formats
+    const saveAs = fileSaverModule.saveAs || fileSaverModule.default?.saveAs || fileSaverModule.default;
+    
+    if (typeof saveAs !== 'function') {
+      console.error('FileSaver module structure:', Object.keys(fileSaverModule));
+      throw new Error('file-saver saveAs function not found');
+    }
+    
+    return saveAs;
+  }
+
+  /**
    * Export report data to Excel with multiple sheets
    * @param {Object} reportData - The report data from ReportDataService
    * @param {Object} reportSettings - The current report settings (date range, filters)
@@ -15,13 +51,9 @@ class ReportExportService {
    */
   async exportToExcel(reportData, reportSettings, projects = []) {
     try {
-      // Dynamic imports to avoid loading these large libraries on initial page load
-      const XLSXModule = await import('xlsx');
-      const fileSaver = await import('file-saver');
-      
-      // Handle both default and named exports
-      const XLSX = XLSXModule.default || XLSXModule;
-      const saveAs = fileSaver.saveAs || fileSaver.default?.saveAs || fileSaver.default;
+      // Load dependencies dynamically
+      const XLSX = await this._loadXLSX();
+      const saveAs = await this._loadSaveAs();
       
       const workbook = XLSX.utils.book_new();
       
@@ -123,6 +155,9 @@ class ReportExportService {
    */
   async exportToCSV(reportData, reportSettings, projects = []) {
     try {
+      // Load file-saver dynamically
+      const saveAs = await this._loadSaveAs();
+      
       // CSV will contain summary + all projects data
       const csvData = [];
       
@@ -196,10 +231,6 @@ class ReportExportService {
         }).join(',')
       ).join('\n');
 
-      // Dynamic import file-saver to avoid loading on initial page load
-      const fileSaver = await import('file-saver');
-      const saveAs = fileSaver.saveAs || fileSaver.default?.saveAs || fileSaver.default;
-      
       // Save file
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
       saveAs(blob, fileName);
