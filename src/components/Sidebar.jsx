@@ -1,7 +1,8 @@
 import React from 'react';
+import featureFlagService from '../services/FeatureFlagService';
 
 function Sidebar({ currentView, onViewChange, projectCount }) {
-  const menuItems = [
+  const allMenuItems = [
     {
       id: 'welcome',
       label: 'Welcome',
@@ -45,6 +46,14 @@ function Sidebar({ currentView, onViewChange, projectCount }) {
       description: 'Configure options'
     }
   ];
+
+  // Filter menu items based on feature flags
+  const menuItems = allMenuItems.filter(item => {
+    if (item.id === 'workload') {
+      return featureFlagService.isWorkloadDashboardEnabled();
+    }
+    return true;
+  });
 
   return (
     <aside className="w-70 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col shadow-lg">

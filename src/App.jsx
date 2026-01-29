@@ -1029,6 +1029,11 @@ function App() {
             />
           );
         case 'workload':
+          // Guard: redirect to welcome if workload dashboard is disabled
+          if (!featureFlagService.isWorkloadDashboardEnabled()) {
+            setCurrentView('welcome');
+            return null;
+          }
           return <WorkloadDashboard 
             onNavigateToProject={(project) => {
               setCurrentProject(project);

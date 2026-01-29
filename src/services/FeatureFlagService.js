@@ -136,6 +136,17 @@ class FeatureFlagService {
         description: 'Show interactive wizard tutorial for first-time users',
         category: 'onboarding',
         defaultValue: true
+      },
+      
+      // Development-only features
+      'workload-dashboard': {
+        enabled: false, // Disabled by default (production)
+        rolloutPercentage: 0,
+        userGroups: ['admin', 'developers'],
+        description: 'Enable Workload Dashboard (in development)',
+        category: 'experimental',
+        defaultValue: false,
+        devOnly: true // Auto-enable in development environment
       }
     };
 
@@ -149,6 +160,20 @@ class FeatureFlagService {
         lastUpdated: Date.now()
       });
     });
+    
+    // Auto-enable devOnly flags in development environment
+    const isDevelopment = typeof import.meta !== 'undefined' 
+      ? (import.meta.env?.MODE === 'development' || import.meta.env?.DEV)
+      : (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development');
+    
+    if (isDevelopment) {
+      this.flags.forEach((flag, key) => {
+        if (flag.devOnly) {
+          flag.enabled = true;
+          flag.rolloutPercentage = 100;
+        }
+      });
+    }
   }
 
   // Load stored flags from localStorage
@@ -469,6 +494,11 @@ class FeatureFlagService {
 
   shouldShowWizardTutorial() {
     return this.isEnabled('wizard-tutorial');
+  }
+
+  // Workload Dashboard feature flag
+  isWorkloadDashboardEnabled() {
+    return this.isEnabled('workload-dashboard');
   }
 
   // Migration strategy helpers
