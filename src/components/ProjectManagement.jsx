@@ -84,6 +84,17 @@ const ProjectManagement = ({
   }, []);
 
   // OneDrive sync upload progress is now handled by UploadContext globally
+  
+  // Sync local upload state with context - when context clears upload, clear local state too
+  useEffect(() => {
+    if (!isCurrentlyUploading && uploadStatus.isUploading) {
+      // Context upload completed but local state still shows uploading - sync them
+      setUploadStatus(prev => ({
+        ...prev,
+        isUploading: false
+      }));
+    }
+  }, [isCurrentlyUploading, uploadStatus.isUploading]);
 
   // Handle project data changes in edit mode
   const handleProjectDataChange = (newData) => {

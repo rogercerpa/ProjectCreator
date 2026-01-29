@@ -78,6 +78,39 @@ export function UploadProvider({ children }) {
     };
   }, [activeUpload?.type]);
 
+  // Auto-complete when phase becomes 'complete'
+  // This ensures the upload is cleared even if the component fails to call completeUpload()
+  useEffect(() => {
+    if (activeUpload?.phase === 'complete') {
+      // Small delay to allow UI to show 100% complete state briefly
+      const timer = setTimeout(() => {
+        // Only auto-complete if still in 'complete' phase (not already manually completed)
+        setActiveUpload(current => {
+          if (current?.phase === 'complete') {
+            const completedUpload = {
+              ...current,
+              status: UPLOAD_STATUS.COMPLETE,
+              completedAt: new Date().toISOString(),
+              result: { autoCompleted: true }
+            };
+            
+            setCompletedUploads(prev => [completedUpload, ...prev].slice(0, 5));
+            
+            // Auto-remove from completed after 5 seconds
+            setTimeout(() => {
+              setCompletedUploads(prev => prev.filter(u => u.id !== completedUpload.id));
+            }, 5000);
+            
+            return null; // Clear active upload
+          }
+          return current;
+        });
+      }, 1500); // 1.5 seconds to show completion state
+      
+      return () => clearTimeout(timer);
+    }
+  }, [activeUpload?.phase]);
+
   // Process the next upload in queue when current one completes
   const processNextUpload = useCallback(async () => {
     if (isProcessingRef.current || activeUpload || uploadQueue.length === 0) {
