@@ -94,6 +94,10 @@ readyForQCService.setProjectPersistenceService(projectPersistenceService);
 const DasUploadService = require('./main-process/services/DasUploadService');
 const dasUploadService = new DasUploadService();
 
+// Initialize DAS Search service
+const DASSearchService = require('./main-process/services/DASSearchService');
+const dasSearchService = new DASSearchService();
+
 // Initialize workload services
 const workloadPersistenceService = new WorkloadPersistenceService();
 let fileWatcherService = null; // Initialized when user configures shared folder
@@ -666,6 +670,40 @@ ipcMain.handle('das-open-folder', async (event, project) => {
     }
   } catch (error) {
     console.error('Error opening DAS folder:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// DAS Drive Search handlers
+ipcMain.handle('das-search', async (event, query, options) => {
+  try {
+    return await dasSearchService.search(query, options);
+  } catch (error) {
+    console.error('Error searching DAS Drive:', error);
+    return { success: false, error: error.message, results: [] };
+  }
+});
+
+ipcMain.handle('das-search-status', async () => {
+  try {
+    return await dasSearchService.checkDriveStatus();
+  } catch (error) {
+    console.error('Error checking DAS Drive status:', error);
+    return { accessible: false, error: error.message };
+  }
+});
+
+ipcMain.handle('das-search-open-path', async (event, folderPath) => {
+  try {
+    const { shell } = require('electron');
+    const result = await shell.openPath(folderPath);
+    if (result === '') {
+      return { success: true, path: folderPath };
+    } else {
+      return { success: false, error: result || 'Failed to open folder' };
+    }
+  } catch (error) {
+    console.error('Error opening folder:', error);
     return { success: false, error: error.message };
   }
 });

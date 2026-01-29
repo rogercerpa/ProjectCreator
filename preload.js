@@ -189,6 +189,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeAllListeners('das-upload-progress');
   },
   
+  // DAS Drive Search operations
+  dasSearch: (query, options) => ipcRenderer.invoke('das-search', query, options),
+  dasSearchStatus: () => ipcRenderer.invoke('das-search-status'),
+  dasSearchOpenPath: (folderPath) => ipcRenderer.invoke('das-search-open-path', folderPath),
+  
   // Check active uploads (for preventing app close during uploads)
   checkActiveUploads: () => ipcRenderer.invoke('check-active-uploads'),
   
