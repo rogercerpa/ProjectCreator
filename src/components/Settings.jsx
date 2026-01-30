@@ -74,6 +74,11 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
       autoRefresh: false,
       refreshInterval: 30000
     },
+    bomSettings: {
+      autoImportOnDownload: true,
+      showImportNotification: true,
+      includeInReports: true
+    },
     workloadSettings: {
       enableRealTimeSync: true,
       dataDirectory: '',

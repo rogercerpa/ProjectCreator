@@ -770,6 +770,143 @@ const AdvancedSettingsTab = ({ settings, setSettings }) => {
           </div>
         </div>
       </div>
+
+      {/* BOM Analytics Settings */}
+      <div className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900 rounded-lg border border-blue-200 dark:border-gray-700">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+          <span>📦</span>
+          <span>BOM Analytics Settings</span>
+        </h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+          Configure Bill of Materials (BOM) data capture and analytics settings.
+        </p>
+
+        <div className="space-y-4">
+          {/* Auto-import BOM on Download Folder */}
+          <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div>
+              <h3 className="font-medium text-gray-900 dark:text-white">Auto-import BOM on Download</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Automatically import BOM data when downloading a project folder from Ready for QC
+              </p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={settings.bomSettings?.autoImportOnDownload ?? true}
+                onChange={(e) => setSettings(prev => ({
+                  ...prev,
+                  bomSettings: {
+                    ...prev.bomSettings,
+                    autoImportOnDownload: e.target.checked
+                  }
+                }))}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+            </label>
+          </div>
+
+          {/* Show BOM Notifications */}
+          <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div>
+              <h3 className="font-medium text-gray-900 dark:text-white">Show BOM Import Notifications</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Display a notification when BOM data is automatically imported
+              </p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={settings.bomSettings?.showImportNotification ?? true}
+                onChange={(e) => setSettings(prev => ({
+                  ...prev,
+                  bomSettings: {
+                    ...prev.bomSettings,
+                    showImportNotification: e.target.checked
+                  }
+                }))}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+            </label>
+          </div>
+
+          {/* Include BOM Analytics in Reports */}
+          <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div>
+              <h3 className="font-medium text-gray-900 dark:text-white">Include BOM in Analytics Reports</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Show BOM statistics in the Monthly Analytics report
+              </p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={settings.bomSettings?.includeInReports ?? true}
+                onChange={(e) => setSettings(prev => ({
+                  ...prev,
+                  bomSettings: {
+                    ...prev.bomSettings,
+                    includeInReports: e.target.checked
+                  }
+                }))}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+            </label>
+          </div>
+
+          {/* BOM Catalog Stats */}
+          <div className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="font-medium text-gray-900 dark:text-white">BOM Catalog Maintenance</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Rebuild the aggregated product catalog from all projects
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (window.confirm('Rebuild the BOM catalog from all projects? This may take a moment.')) {
+                    try {
+                      const result = await electronAPI.bomRebuildCatalog();
+                      if (result.success) {
+                        alert(`✅ Catalog rebuilt successfully!\n\nProcessed ${result.processedProjects} projects`);
+                      } else {
+                        alert(`❌ Failed to rebuild catalog: ${result.error}`);
+                      }
+                    } catch (error) {
+                      alert(`❌ Error: ${error.message}`);
+                    }
+                  }
+                }}
+                className="px-4 py-2 bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-300 rounded-lg text-sm font-medium transition-all"
+              >
+                🔄 Rebuild Catalog
+              </button>
+            </div>
+          </div>
+
+          {/* Info box */}
+          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+            <div className="flex items-start gap-3">
+              <span className="text-xl">📦</span>
+              <div className="text-sm text-gray-700 dark:text-gray-300">
+                <p className="font-semibold mb-2">About BOM Analytics</p>
+                <ul className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
+                  <li>• BOM data is captured from Visual Controls CSV or XML exports</li>
+                  <li>• CSV files are preferred as they include startup cost information</li>
+                  <li>• BOM files are automatically detected in the "BOM CHECK" folder within each project</li>
+                  <li>• You can also manually upload BOM files from the Project Details page</li>
+                  <li>• Analytics include device counts, startup costs, and product popularity trends</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

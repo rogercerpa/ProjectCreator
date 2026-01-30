@@ -4,6 +4,7 @@ import BackfillStatusHistoryModal from './BackfillStatusHistoryModal';
 import NotificationToast from './NotificationToast';
 import ZipSelectionDialog from './ZipSelectionDialog';
 import EmailTemplateEditor from './shared/EmailTemplateEditor';
+import BOMDetailsSection from './bom/BOMDetailsSection';
 import { openPaidServicesEmail } from '../utils/emailTemplates';
 import { useUploadContext, UPLOAD_TYPES } from '../contexts/UploadContext';
 
@@ -358,12 +359,28 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
         showToast(`✓ Folder downloaded to ${result.extractedPath}`, 'success');
         
         // Update project with download timestamp so Upload button appears
+        let updatedProject = {
+          ...project,
+          qcFolderDownloadedAt: new Date().toISOString(),
+          qcFolderDownloadedPath: result.extractedPath
+        };
+        
+        // Auto-import BOM if BOM CHECK folder exists
+        try {
+          const bomResult = await window.electronAPI.bomAutoImportFromFolder(result.extractedPath, project.id);
+          if (bomResult.success) {
+            showToast(`📦 BOM imported: ${bomResult.stats?.totalDevices || 0} devices`, 'success');
+            // Update project with BOM data
+            if (bomResult.project) {
+              updatedProject = bomResult.project;
+            }
+          }
+          // If no BOM found, don't show error - it's optional
+        } catch (bomError) {
+          console.log('No BOM data found or error importing:', bomError.message);
+        }
+        
         if (onProjectUpdate) {
-          const updatedProject = {
-            ...project,
-            qcFolderDownloadedAt: new Date().toISOString(),
-            qcFolderDownloadedPath: result.extractedPath
-          };
           await onProjectUpdate(updatedProject);
         }
       } else {
@@ -1094,6 +1111,12 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
           </div>
         </div>
       )}
+
+      {/* BOM Data Section */}
+      <BOMDetailsSection 
+        project={project} 
+        onProjectUpdate={onProjectUpdate} 
+      />
 
       {/* Triage Calculator Modal */}
       <TriageCalculatorModal

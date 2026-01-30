@@ -450,6 +450,249 @@ class ReportDataService {
     };
   }
 
+  // =============================================
+  // BOM ANALYTICS METHODS
+  // =============================================
+
+  /**
+   * Get BOM coverage statistics
+   * @param {Array} projects - Array of projects
+   * @returns {object} BOM coverage stats
+   */
+  getBOMCoverage(projects) {
+    const projectsWithBOM = projects.filter(p => p.bomData && p.bomData.totalDevices > 0);
+    return {
+      totalProjects: projects.length,
+      projectsWithBOM: projectsWithBOM.length,
+      projectsWithoutBOM: projects.length - projectsWithBOM.length,
+      coveragePercent: projects.length > 0 
+        ? Math.round(projectsWithBOM.length / projects.length * 100 * 10) / 10 
+        : 0,
+    };
+  }
+
+  /**
+   * Get BOM device summary KPIs
+   * @param {Array} projects - Array of projects
+   * @returns {object} Device summary KPIs
+   */
+  getBOMDeviceSummary(projects) {
+    const projectsWithBOM = projects.filter(p => p.bomData && p.bomData.totalDevices > 0);
+    
+    if (projectsWithBOM.length === 0) {
+      return {
+        totalDevices: 0,
+        totalLineItems: 0,
+        avgDevicesPerProject: 0,
+        projectsWithBOM: 0,
+      };
+    }
+
+    const totalDevices = projectsWithBOM.reduce((sum, p) => sum + (p.bomData.totalDevices || 0), 0);
+    const totalLineItems = projectsWithBOM.reduce((sum, p) => sum + (p.bomData.totalLineItems || 0), 0);
+
+    return {
+      totalDevices,
+      totalLineItems,
+      avgDevicesPerProject: Math.round(totalDevices / projectsWithBOM.length),
+      projectsWithBOM: projectsWithBOM.length,
+    };
+  }
+
+  /**
+   * Get startup cost summary
+   * @param {Array} projects - Array of projects
+   * @returns {object} Startup cost summary
+   */
+  getBOMStartupCostSummary(projects) {
+    const projectsWithStartupCost = projects.filter(
+      p => p.bomData?.startupCosts?.total > 0
+    );
+
+    if (projectsWithStartupCost.length === 0) {
+      return {
+        totalStartupCost: 0,
+        avgStartupCost: 0,
+        projectsWithStartupCost: 0,
+        breakdown: {
+          systemStartup: 0,
+          onsiteTraining: 0,
+          preconstructionMeeting: 0,
+          other: 0,
+        },
+      };
+    }
+
+    const totalStartupCost = projectsWithStartupCost.reduce(
+      (sum, p) => sum + (p.bomData.startupCosts.total || 0), 0
+    );
+
+    const breakdown = {
+      systemStartup: projectsWithStartupCost.reduce(
+        (sum, p) => sum + (p.bomData.startupCosts.systemStartup || 0), 0
+      ),
+      onsiteTraining: projectsWithStartupCost.reduce(
+        (sum, p) => sum + (p.bomData.startupCosts.onsiteTraining || 0), 0
+      ),
+      preconstructionMeeting: projectsWithStartupCost.reduce(
+        (sum, p) => sum + (p.bomData.startupCosts.preconstructionMeeting || 0), 0
+      ),
+      other: projectsWithStartupCost.reduce(
+        (sum, p) => sum + (p.bomData.startupCosts.other || 0), 0
+      ),
+    };
+
+    return {
+      totalStartupCost,
+      avgStartupCost: Math.round(totalStartupCost / projectsWithStartupCost.length),
+      projectsWithStartupCost: projectsWithStartupCost.length,
+      breakdown,
+    };
+  }
+
+  /**
+   * Get top catalog numbers by total quantity
+   * @param {Array} projects - Array of projects
+   * @param {number} limit - Number of results
+   * @returns {Array} Top catalog numbers
+   */
+  getTopCatalogNumbers(projects, limit = 15) {
+    const catalogCounts = {};
+
+    projects.forEach(project => {
+      if (!project.bomData?.devices) return;
+
+      project.bomData.devices.forEach(device => {
+        const key = device.catalogNumber;
+        if (!catalogCounts[key]) {
+          catalogCounts[key] = {
+            catalogNumber: key,
+            description: device.description || '',
+            productFamily: device.productFamily || 'Other',
+            totalQuantity: 0,
+            projectCount: 0,
+          };
+        }
+        catalogCounts[key].totalQuantity += device.quantity || 0;
+        catalogCounts[key].projectCount += 1;
+      });
+    });
+
+    return Object.values(catalogCounts)
+      .sort((a, b) => b.totalQuantity - a.totalQuantity)
+      .slice(0, limit);
+  }
+
+  /**
+   * Get product family breakdown by device count
+   * @param {Array} projects - Array of projects
+   * @returns {Array} Product family breakdown
+   */
+  getProductFamilyByDeviceCount(projects) {
+    const familyCounts = {};
+
+    projects.forEach(project => {
+      if (!project.bomData?.productFamilySummary) return;
+
+      Object.entries(project.bomData.productFamilySummary).forEach(([family, data]) => {
+        if (!familyCounts[family]) {
+          familyCounts[family] = {
+            name: family,
+            quantity: 0,
+            lineItems: 0,
+            projectCount: 0,
+          };
+        }
+        familyCounts[family].quantity += data.quantity || 0;
+        familyCounts[family].lineItems += data.lineItems || 0;
+        familyCounts[family].projectCount += 1;
+      });
+    });
+
+    return Object.values(familyCounts)
+      .sort((a, b) => b.quantity - a.quantity);
+  }
+
+  /**
+   * Get project size distribution (by device count)
+   * @param {Array} projects - Array of projects
+   * @returns {object} Size distribution
+   */
+  getProjectSizeDistribution(projects) {
+    const projectsWithBOM = projects.filter(p => p.bomData && p.bomData.totalDevices > 0);
+    
+    const distribution = {
+      small: 0,    // < 50 devices
+      medium: 0,   // 50-200 devices
+      large: 0,    // > 200 devices
+    };
+
+    projectsWithBOM.forEach(project => {
+      const devices = project.bomData.totalDevices || 0;
+      if (devices < 50) distribution.small++;
+      else if (devices <= 200) distribution.medium++;
+      else distribution.large++;
+    });
+
+    return [
+      { name: 'Small (<50)', value: distribution.small },
+      { name: 'Medium (50-200)', value: distribution.medium },
+      { name: 'Large (>200)', value: distribution.large },
+    ];
+  }
+
+  /**
+   * Get device count trends over time
+   * @param {Array} projects - Array of projects
+   * @returns {Array} Monthly device count trend
+   */
+  getDeviceCountTrend(projects) {
+    const monthlyData = {};
+
+    projects.forEach(project => {
+      if (!project.bomData?.totalDevices) return;
+
+      const dateField = project.createdAt || project.submittedDate;
+      if (!dateField) return;
+
+      const date = new Date(dateField);
+      const monthKey = date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+
+      if (!monthlyData[monthKey]) {
+        monthlyData[monthKey] = { totalDevices: 0, projectCount: 0, date };
+      }
+      monthlyData[monthKey].totalDevices += project.bomData.totalDevices;
+      monthlyData[monthKey].projectCount += 1;
+    });
+
+    return Object.entries(monthlyData)
+      .map(([name, data]) => ({
+        name,
+        avgDevices: data.projectCount > 0 ? Math.round(data.totalDevices / data.projectCount) : 0,
+        totalDevices: data.totalDevices,
+        projectCount: data.projectCount,
+        date: data.date,
+      }))
+      .sort((a, b) => a.date - b.date);
+  }
+
+  /**
+   * Get complete BOM analytics data
+   * @param {Array} projects - Array of projects
+   * @returns {object} Complete BOM analytics
+   */
+  getBOMAnalytics(projects) {
+    return {
+      coverage: this.getBOMCoverage(projects),
+      deviceSummary: this.getBOMDeviceSummary(projects),
+      startupCosts: this.getBOMStartupCostSummary(projects),
+      topCatalogNumbers: this.getTopCatalogNumbers(projects, 15),
+      productFamilyBreakdown: this.getProductFamilyByDeviceCount(projects),
+      sizeDistribution: this.getProjectSizeDistribution(projects),
+      deviceTrend: this.getDeviceCountTrend(projects),
+    };
+  }
+
   /**
    * Generate complete report data with custom date range and filters
    * @param {Date} startDate - Start date
@@ -482,6 +725,7 @@ class ReportDataService {
       teamPerformance: this.getTeamPerformance(projects),
       dasRevenue: this.getDasRevenueBreakdown(projects),
       rfaValue: this.getRfaValueDistribution(projects),
+      bomAnalytics: this.getBOMAnalytics(projects), // BOM Analytics data
     };
   }
 

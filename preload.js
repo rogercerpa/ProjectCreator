@@ -336,7 +336,50 @@ contextBridge.exposeInMainWorld('electronAPI', {
   dasGeneralUpdateSettings: (settings) => ipcRenderer.invoke('das-general:update-settings', settings),
   
   // File selection
-  dasGeneralSelectFile: () => ipcRenderer.invoke('das-general:select-file')
+  dasGeneralSelectFile: () => ipcRenderer.invoke('das-general:select-file'),
+  
+  // ===== BOM ANALYTICS APIs =====
+  
+  // BOM parsing and management
+  bomParseFile: (filePath) => ipcRenderer.invoke('bom:parse-file', filePath),
+  bomSaveToProject: (projectId, bomData) => ipcRenderer.invoke('bom:save-to-project', projectId, bomData),
+  bomGetProjectData: (projectId) => ipcRenderer.invoke('bom:get-project-data', projectId),
+  bomRemoveFromProject: (projectId) => ipcRenderer.invoke('bom:remove-from-project', projectId),
+  
+  // BOM analytics
+  bomGetCoverage: () => ipcRenderer.invoke('bom:get-coverage'),
+  bomGetCatalogStats: () => ipcRenderer.invoke('bom:get-catalog-stats'),
+  bomGetTopCatalogNumbers: (limit) => ipcRenderer.invoke('bom:get-top-catalog-numbers', limit),
+  bomGetCoOccurrence: (catalogNumber, limit) => ipcRenderer.invoke('bom:get-co-occurrence', catalogNumber, limit),
+  bomFindProjectsByCatalog: (catalogNumber) => ipcRenderer.invoke('bom:find-projects-by-catalog', catalogNumber),
+  bomGetDeprecatedProducts: (monthsThreshold) => ipcRenderer.invoke('bom:get-deprecated-products', monthsThreshold),
+  bomGetStartupStats: () => ipcRenderer.invoke('bom:get-startup-stats'),
+  bomRebuildCatalog: () => ipcRenderer.invoke('bom:rebuild-catalog'),
+  
+  // BOM bulk import
+  bomBulkPreview: (rootFolder, options) => ipcRenderer.invoke('bom:bulk-preview', rootFolder, options),
+  bomBulkImport: (rootFolder, options) => ipcRenderer.invoke('bom:bulk-import', rootFolder, options),
+  bomBulkImportMatched: (bomLocations, options) => ipcRenderer.invoke('bom:bulk-import-matched', bomLocations, options),
+  bomSelectBulkImportFolder: () => ipcRenderer.invoke('bom:select-bulk-import-folder'),
+  bomSelectFile: () => ipcRenderer.invoke('bom:select-file'),
+  
+  // BOM auto-import (for Download Folder integration)
+  bomCheckProjectFolder: (projectFolderPath) => ipcRenderer.invoke('bom:check-project-folder', projectFolderPath),
+  bomAutoImportFromFolder: (projectFolderPath, projectId) => ipcRenderer.invoke('bom:auto-import-from-folder', projectFolderPath, projectId),
+  
+  // BOM event listeners
+  onBomBulkImportProgress: (callback) => {
+    ipcRenderer.on('bom:bulk-import-progress', (event, data) => callback(data));
+    return () => ipcRenderer.removeAllListeners('bom:bulk-import-progress');
+  },
+  onBomBulkImportComplete: (callback) => {
+    ipcRenderer.on('bom:bulk-import-complete', (event, data) => callback(data));
+    return () => ipcRenderer.removeAllListeners('bom:bulk-import-complete');
+  },
+  onBomAutoImportComplete: (callback) => {
+    ipcRenderer.on('bom:auto-import-complete', (event, data) => callback(data));
+    return () => ipcRenderer.removeAllListeners('bom:auto-import-complete');
+  }
 });
 
 // SECURITY: Prevent access to Node.js APIs

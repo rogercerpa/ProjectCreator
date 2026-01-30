@@ -624,7 +624,7 @@ function MonthlyAnalyticsReport({ projects = [] }) {
     );
   }
 
-  const { kpis, charts, teamPerformance, dasRevenue, rfaValue } = reportData;
+  const { kpis, charts, teamPerformance, dasRevenue, rfaValue, bomAnalytics } = reportData;
 
   return (
     <div className="space-y-6">
@@ -1329,6 +1329,218 @@ function MonthlyAnalyticsReport({ projects = [] }) {
               </div>
             </div>
           </CollapsibleSection>
+
+          {/* BOM Analytics */}
+          {bomAnalytics && bomAnalytics.coverage && (
+            <CollapsibleSection 
+              title="BOM Analytics" 
+              icon="📦" 
+              defaultOpen={false}
+              forceOpen={isPrintMode}
+              isPrintMode={isPrintMode}
+            >
+              <PrintSection isPrintMode={isPrintMode}>
+                {/* BOM KPIs */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                  <div className={`p-3 rounded-lg text-center ${isPrintMode ? 'bg-blue-50' : 'bg-blue-50 dark:bg-blue-900/20'}`}>
+                    <div className="text-xs text-blue-600 dark:text-blue-400">Total Devices</div>
+                    <div className="text-lg font-bold text-blue-700 dark:text-blue-300">
+                      {formatNumber(bomAnalytics.deviceSummary?.totalDevices || 0)}
+                    </div>
+                  </div>
+                  <div className={`p-3 rounded-lg text-center ${isPrintMode ? 'bg-green-50' : 'bg-green-50 dark:bg-green-900/20'}`}>
+                    <div className="text-xs text-green-600 dark:text-green-400">Avg Devices/Project</div>
+                    <div className="text-lg font-bold text-green-700 dark:text-green-300">
+                      {formatNumber(bomAnalytics.deviceSummary?.avgDevicesPerProject || 0)}
+                    </div>
+                  </div>
+                  <div className={`p-3 rounded-lg text-center ${isPrintMode ? 'bg-amber-50' : 'bg-amber-50 dark:bg-amber-900/20'}`}>
+                    <div className="text-xs text-amber-600 dark:text-amber-400">Total Startup Cost</div>
+                    <div className="text-lg font-bold text-amber-700 dark:text-amber-300">
+                      {formatCurrency(bomAnalytics.startupCosts?.totalStartupCost || 0)}
+                    </div>
+                  </div>
+                  <div className={`p-3 rounded-lg text-center ${isPrintMode ? 'bg-purple-50' : 'bg-purple-50 dark:bg-purple-900/20'}`}>
+                    <div className="text-xs text-purple-600 dark:text-purple-400">BOM Coverage</div>
+                    <div className="text-lg font-bold text-purple-700 dark:text-purple-300">
+                      {bomAnalytics.coverage?.coveragePercent || 0}%
+                    </div>
+                  </div>
+                </div>
+
+                {/* Charts Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Top Catalog Numbers */}
+                  <div>
+                    <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-3 text-sm">Top Catalog Numbers</h4>
+                    {bomAnalytics.topCatalogNumbers?.length > 0 ? (
+                      <>
+                        <ResponsiveContainer width="100%" height={200}>
+                          <BarChart data={bomAnalytics.topCatalogNumbers.slice(0, 8)} layout="vertical">
+                            <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.2} />
+                            <XAxis type="number" stroke="#9CA3AF" fontSize={10} />
+                            <YAxis 
+                              dataKey="catalogNumber" 
+                              type="category" 
+                              width={90} 
+                              stroke="#9CA3AF" 
+                              tick={{ fontSize: 9 }}
+                              tickFormatter={(value) => truncateText(value, 12)}
+                            />
+                            <Tooltip 
+                              formatter={(value, name) => [formatNumber(value), 'Quantity']}
+                              labelFormatter={(label) => `${label}`}
+                            />
+                            <Bar dataKey="totalQuantity" fill="#3B82F6" radius={[0, 4, 4, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                        {isPrintMode && (
+                          <DataTable
+                            data={bomAnalytics.topCatalogNumbers.slice(0, 10)}
+                            columns={[
+                              { key: 'catalogNumber', header: 'Catalog #' },
+                              { key: 'totalQuantity', header: 'Qty', align: 'right', format: (v) => formatNumber(v) },
+                              { key: 'productFamily', header: 'Family' }
+                            ]}
+                          />
+                        )}
+                      </>
+                    ) : (
+                      <div className="h-40 flex items-center justify-center text-gray-500 text-sm">No BOM data available</div>
+                    )}
+                  </div>
+
+                  {/* Product Family Breakdown */}
+                  <div>
+                    <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-3 text-sm">Device Count by Product Family</h4>
+                    {bomAnalytics.productFamilyBreakdown?.length > 0 ? (
+                      <>
+                        <ResponsiveContainer width="100%" height={200}>
+                          <PieChart>
+                            <Pie
+                              data={bomAnalytics.productFamilyBreakdown.slice(0, 6)}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={40}
+                              outerRadius={70}
+                              paddingAngle={2}
+                              dataKey="quantity"
+                              nameKey="name"
+                            >
+                              {bomAnalytics.productFamilyBreakdown.slice(0, 6).map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={getChartColor(index)} />
+                              ))}
+                            </Pie>
+                            <Tooltip formatter={(value) => formatNumber(value)} />
+                            <Legend 
+                              layout="horizontal" 
+                              align="center" 
+                              verticalAlign="bottom"
+                              wrapperStyle={{ fontSize: '10px' }}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                        {isPrintMode && (
+                          <DataTable
+                            data={bomAnalytics.productFamilyBreakdown}
+                            columns={[
+                              { key: 'name', header: 'Product Family' },
+                              { key: 'quantity', header: 'Devices', align: 'right', format: (v) => formatNumber(v) },
+                              { key: 'projectCount', header: 'Projects', align: 'right' }
+                            ]}
+                          />
+                        )}
+                      </>
+                    ) : (
+                      <div className="h-40 flex items-center justify-center text-gray-500 text-sm">No BOM data available</div>
+                    )}
+                  </div>
+
+                  {/* Project Size Distribution */}
+                  <div>
+                    <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-3 text-sm">Project Size Distribution</h4>
+                    {bomAnalytics.sizeDistribution?.some(d => d.value > 0) ? (
+                      <>
+                        <ResponsiveContainer width="100%" height={160}>
+                          <BarChart data={bomAnalytics.sizeDistribution}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.2} />
+                            <XAxis dataKey="name" stroke="#9CA3AF" fontSize={10} />
+                            <YAxis stroke="#9CA3AF" fontSize={10} />
+                            <Tooltip />
+                            <Bar dataKey="value" fill="#10B981" radius={[4, 4, 0, 0]}>
+                              {bomAnalytics.sizeDistribution.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={['#FCD34D', '#3B82F6', '#8B5CF6'][index]} />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </>
+                    ) : (
+                      <div className="h-40 flex items-center justify-center text-gray-500 text-sm">No BOM data available</div>
+                    )}
+                  </div>
+
+                  {/* Device Count Trend */}
+                  <div>
+                    <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-3 text-sm">Device Count Trend</h4>
+                    {bomAnalytics.deviceTrend?.length > 0 ? (
+                      <>
+                        <ResponsiveContainer width="100%" height={160}>
+                          <AreaChart data={bomAnalytics.deviceTrend}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.2} />
+                            <XAxis dataKey="name" stroke="#9CA3AF" fontSize={10} />
+                            <YAxis stroke="#9CA3AF" fontSize={10} />
+                            <Tooltip 
+                              formatter={(value, name) => [formatNumber(value), name === 'avgDevices' ? 'Avg Devices' : 'Total Devices']}
+                            />
+                            <Area 
+                              type="monotone" 
+                              dataKey="avgDevices" 
+                              stroke="#8B5CF6" 
+                              fill="#8B5CF6" 
+                              fillOpacity={0.3} 
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </>
+                    ) : (
+                      <div className="h-40 flex items-center justify-center text-gray-500 text-sm">No trend data available</div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Startup Cost Breakdown */}
+                {bomAnalytics.startupCosts?.totalStartupCost > 0 && (
+                  <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className={`p-3 rounded-lg ${isPrintMode ? 'bg-gray-100' : 'bg-gray-50 dark:bg-gray-700'}`}>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">System Startup</div>
+                      <div className="text-sm font-bold text-gray-900 dark:text-white">
+                        {formatCurrency(bomAnalytics.startupCosts.breakdown?.systemStartup || 0)}
+                      </div>
+                    </div>
+                    <div className={`p-3 rounded-lg ${isPrintMode ? 'bg-gray-100' : 'bg-gray-50 dark:bg-gray-700'}`}>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">Onsite Training</div>
+                      <div className="text-sm font-bold text-gray-900 dark:text-white">
+                        {formatCurrency(bomAnalytics.startupCosts.breakdown?.onsiteTraining || 0)}
+                      </div>
+                    </div>
+                    <div className={`p-3 rounded-lg ${isPrintMode ? 'bg-gray-100' : 'bg-gray-50 dark:bg-gray-700'}`}>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">Preconstruction</div>
+                      <div className="text-sm font-bold text-gray-900 dark:text-white">
+                        {formatCurrency(bomAnalytics.startupCosts.breakdown?.preconstructionMeeting || 0)}
+                      </div>
+                    </div>
+                    <div className={`p-3 rounded-lg ${isPrintMode ? 'bg-gray-100' : 'bg-gray-50 dark:bg-gray-700'}`}>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">Projects w/ Startup</div>
+                      <div className="text-sm font-bold text-gray-900 dark:text-white">
+                        {formatNumber(bomAnalytics.startupCosts.projectsWithStartupCost || 0)}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </PrintSection>
+            </CollapsibleSection>
+          )}
         </div>
 
         {/* Footer */}
