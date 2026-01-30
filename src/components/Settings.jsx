@@ -10,6 +10,7 @@ import AgenciesTab from './settings/AgenciesTab';
 import UserProfileTab from './settings/UserProfileTab';
 import WorkloadTab from './settings/WorkloadTab';
 import TriageCalcTab from './settings/TriageCalcTab';
+import featureFlagService from '../services/FeatureFlagService';
 
 // Access secure electron API through contextBridge
 const { electronAPI } = window;
@@ -1400,7 +1401,7 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
     );
   }
 
-  const tabs = [
+  const allTabs = [
     {
       id: 'app-info',
       label: 'App Info',
@@ -1444,6 +1445,14 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
       fullLabel: 'Triage Calculation Settings'
     }
   ];
+
+  // Filter tabs based on feature flags
+  const tabs = allTabs.filter(tab => {
+    if (tab.id === 'workload') {
+      return featureFlagService.isWorkloadDashboardEnabled();
+    }
+    return true;
+  });
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -3242,6 +3251,10 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
         );
 
       case 'workload':
+        // Guard: return null if workload dashboard is disabled
+        if (!featureFlagService.isWorkloadDashboardEnabled()) {
+          return null;
+        }
         return (
           <WorkloadTab
             ref={workloadTabRef}
