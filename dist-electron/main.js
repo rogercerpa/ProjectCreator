@@ -2524,6 +2524,71 @@ ipcMain.handle("bom:auto-import-from-folder", async (event, projectFolderPath, p
     return { success: false, error: error.message };
   }
 });
+ipcMain.handle("bom:smart-upload", async (event, project) => {
+  var _a;
+  try {
+    console.log(`📦 Smart BOM Upload requested for: ${project.projectName}`);
+    const smartResult = await bomParserService.smartBOMUpload(project);
+    if (smartResult.success) {
+      const saveResult = await bomPersistenceService.saveBOMToProject(project.id, smartResult.bomData);
+      if (saveResult.success) {
+        console.log(`✅ Smart BOM Upload successful: ${smartResult.bomData.totalDevices} devices`);
+        return {
+          success: true,
+          autoImported: true,
+          bomData: smartResult.bomData,
+          bomFile: smartResult.bomFile,
+          projectPath: smartResult.projectPath,
+          bomCheckPath: smartResult.bomCheckPath,
+          project: saveResult.project,
+          stats: {
+            totalDevices: smartResult.bomData.totalDevices,
+            startupCost: ((_a = smartResult.bomData.startupCosts) == null ? void 0 : _a.total) || 0
+          }
+        };
+      } else {
+        return {
+          success: false,
+          error: saveResult.error || "Failed to save BOM data",
+          bomData: smartResult.bomData
+        };
+      }
+    } else {
+      console.log(`⚠️ Smart BOM Upload requires manual selection: ${smartResult.reason}`);
+      return {
+        success: false,
+        autoImportFailed: true,
+        reason: smartResult.reason,
+        suggestedPath: smartResult.suggestedPath,
+        projectPath: smartResult.projectPath,
+        bomCheckPath: smartResult.bomCheckPath,
+        searchedFolders: smartResult.searchedFolders,
+        requiresManualSelection: smartResult.requiresManualSelection
+      };
+    }
+  } catch (error) {
+    console.error("Error in smart BOM upload:", error);
+    return {
+      success: false,
+      error: error.message,
+      requiresManualSelection: true
+    };
+  }
+});
+ipcMain.handle("bom:open-folder", async (event, folderPath) => {
+  try {
+    const { shell: shell2 } = require("electron");
+    const result = await shell2.openPath(folderPath);
+    if (result === "") {
+      return { success: true, path: folderPath };
+    } else {
+      return { success: false, error: result || "Failed to open folder" };
+    }
+  } catch (error) {
+    console.error("Error opening folder:", error);
+    return { success: false, error: error.message };
+  }
+});
 process.on("uncaughtException", (error) => {
   console.error("Uncaught Exception:", error);
   if (mainWindow) {

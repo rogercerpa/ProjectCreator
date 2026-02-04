@@ -3131,6 +3131,82 @@ ipcMain.handle('bom:auto-import-from-folder', async (event, projectFolderPath, p
   }
 });
 
+// Smart BOM upload - auto-detects BOM from project's DAS path
+ipcMain.handle('bom:smart-upload', async (event, project) => {
+  try {
+    console.log(`📦 Smart BOM Upload requested for: ${project.projectName}`);
+    
+    // Use the smart upload function that handles path resolution
+    const smartResult = await bomParserService.smartBOMUpload(project);
+
+    if (smartResult.success) {
+      // BOM was found and parsed, save it to the project
+      const saveResult = await bomPersistenceService.saveBOMToProject(project.id, smartResult.bomData);
+      
+      if (saveResult.success) {
+        console.log(`✅ Smart BOM Upload successful: ${smartResult.bomData.totalDevices} devices`);
+        return {
+          success: true,
+          autoImported: true,
+          bomData: smartResult.bomData,
+          bomFile: smartResult.bomFile,
+          projectPath: smartResult.projectPath,
+          bomCheckPath: smartResult.bomCheckPath,
+          project: saveResult.project,
+          stats: {
+            totalDevices: smartResult.bomData.totalDevices,
+            startupCost: smartResult.bomData.startupCosts?.total || 0
+          }
+        };
+      } else {
+        return {
+          success: false,
+          error: saveResult.error || 'Failed to save BOM data',
+          bomData: smartResult.bomData
+        };
+      }
+    } else {
+      // Auto-import failed, return info for manual selection
+      console.log(`⚠️ Smart BOM Upload requires manual selection: ${smartResult.reason}`);
+      return {
+        success: false,
+        autoImportFailed: true,
+        reason: smartResult.reason,
+        suggestedPath: smartResult.suggestedPath,
+        projectPath: smartResult.projectPath,
+        bomCheckPath: smartResult.bomCheckPath,
+        searchedFolders: smartResult.searchedFolders,
+        requiresManualSelection: smartResult.requiresManualSelection
+      };
+    }
+  } catch (error) {
+    console.error('Error in smart BOM upload:', error);
+    return { 
+      success: false, 
+      error: error.message,
+      requiresManualSelection: true
+    };
+  }
+});
+
+// Open folder in file explorer (for manual BOM selection fallback)
+ipcMain.handle('bom:open-folder', async (event, folderPath) => {
+  try {
+    const { shell } = require('electron');
+    const result = await shell.openPath(folderPath);
+    
+    // shell.openPath returns empty string on success
+    if (result === '') {
+      return { success: true, path: folderPath };
+    } else {
+      return { success: false, error: result || 'Failed to open folder' };
+    }
+  } catch (error) {
+    console.error('Error opening folder:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 // Error handling
 process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);

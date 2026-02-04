@@ -597,6 +597,360 @@ class BOMParserService {
   getProductFamilies() {
     return [...PRODUCTS, 'Wiring', 'Other'];
   }
+
+  // =============================================
+  // SMART BOM PATH RESOLUTION METHODS
+  // =============================================
+
+  /**
+   * Resolve the best known path for a project's folder on DAS Drive
+   * @param {object} project - Project data
+   * @returns {object} { path, source, accessible }
+   */
+  async resolveProjectDASPath(project) {
+    const results = [];
+
+    // Priority 1: Explicit DAS upload path (most reliable for completed projects)
+    if (project.dasUploadStatus?.uploadedPath) {
+      const pathInfo = await this.checkPathAccessibility(project.dasUploadStatus.uploadedPath);
+      results.push({
+        path: project.dasUploadStatus.uploadedPath,
+        source: 'dasUploadStatus',
+        ...pathInfo
+      });
+      if (pathInfo.accessible) {
+        return results[0];
+      }
+    }
+
+    // Priority 2: QC folder downloaded path
+    if (project.qcFolderDownloadedPath) {
+      const pathInfo = await this.checkPathAccessibility(project.qcFolderDownloadedPath);
+      results.push({
+        path: project.qcFolderDownloadedPath,
+        source: 'qcFolderDownloadedPath',
+        ...pathInfo
+      });
+      if (pathInfo.accessible) {
+        return results[results.length - 1];
+      }
+    }
+
+    // Priority 3: Construct path from project metadata
+    const constructedPath = this.constructDASPathFromProject(project);
+    if (constructedPath) {
+      const pathInfo = await this.checkPathAccessibility(constructedPath);
+      results.push({
+        path: constructedPath,
+        source: 'constructed',
+        ...pathInfo
+      });
+      if (pathInfo.accessible) {
+        return results[results.length - 1];
+      }
+    }
+
+    // Return best result (first accessible, or first non-accessible with reason)
+    return results[0] || { path: null, source: null, accessible: false, reason: 'No path information available' };
+  }
+
+  /**
+   * Construct DAS Drive path from project metadata
+   * @param {object} project - Project data
+   * @returns {string|null} Constructed path or null
+   */
+  constructDASPathFromProject(project) {
+    if (!project.projectContainer || !project.projectName) {
+      return null;
+    }
+
+    try {
+      // Get year from container (e.g., "26-12345" -> "2026")
+      const yearPrefix = project.projectContainer.substring(0, 2);
+      const year = `20${yearPrefix}`;
+
+      // Get first letter (sanitize project name)
+      const sanitizedName = project.projectName
+        .replace(/[\\/:_<>"|?*]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toUpperCase();
+      
+      const firstLetter = /^[A-Z]/.test(sanitizedName) ? sanitizedName[0] : '#';
+
+      // Build folder name
+      const folderName = `${sanitizedName}_${project.projectContainer}`;
+
+      // Construct full path
+      return path.join('Z:', `${year} Projects`, firstLetter, folderName);
+    } catch (error) {
+      console.error('Error constructing DAS path:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Check if a path is accessible
+   * @param {string} targetPath - Path to check
+   * @returns {object} { accessible, reason }
+   */
+  async checkPathAccessibility(targetPath) {
+    try {
+      if (!targetPath) {
+        return { accessible: false, reason: 'Path is empty' };
+      }
+
+      const exists = await fs.pathExists(targetPath);
+      if (!exists) {
+        return { accessible: false, reason: 'Path does not exist' };
+      }
+
+      // Try to read directory to verify access
+      await fs.readdir(targetPath);
+      return { accessible: true, reason: 'Path is accessible' };
+    } catch (error) {
+      if (error.code === 'EACCES' || error.code === 'EPERM') {
+        return { accessible: false, reason: 'Access denied' };
+      }
+      if (error.code === 'ENOENT') {
+        return { accessible: false, reason: 'Path does not exist' };
+      }
+      return { accessible: false, reason: `Error: ${error.message}` };
+    }
+  }
+
+  /**
+   * Find BOM CHECK folder within a project folder (searches RFA subfolders)
+   * Also handles the case where the given path IS an RFA folder
+   * @param {string} projectFolderPath - Path to project folder (or RFA folder)
+   * @param {string} rfaNumber - Optional RFA number to prioritize
+   * @returns {object} { found, bomCheckPath, rfaFolderPath, bomFile }
+   */
+  async findBOMCheckInProject(projectFolderPath, rfaNumber = null) {
+    try {
+      if (!await fs.pathExists(projectFolderPath)) {
+        return { found: false, reason: 'Project folder not found' };
+      }
+
+      // Check if the given path IS an RFA folder (e.g., downloaded RFA folder path)
+      const folderName = path.basename(projectFolderPath);
+      if (folderName.toUpperCase().includes('RFA')) {
+        console.log(`📁 Given path is an RFA folder: ${folderName}`);
+        
+        // Check directly for BOM CHECK inside this RFA folder
+        const bomCheckPath = path.join(projectFolderPath, 'BOM CHECK');
+        if (await fs.pathExists(bomCheckPath)) {
+          const bomFile = await this.selectBOMFile(bomCheckPath);
+          if (bomFile) {
+            console.log(`✓ Found BOM in current RFA folder: ${bomFile.path}`);
+            return {
+              found: true,
+              bomCheckPath,
+              rfaFolderPath: projectFolderPath,
+              rfaFolderName: folderName,
+              bomFile,
+              reason: 'BOM file found in RFA folder'
+            };
+          } else {
+            return {
+              found: false,
+              bomCheckPath,
+              rfaFolderPath: projectFolderPath,
+              rfaFolderName: folderName,
+              reason: 'BOM CHECK folder exists but contains no valid BOM files'
+            };
+          }
+        }
+        
+        // BOM CHECK not in current RFA folder, try parent as project folder
+        console.log(`📁 BOM CHECK not found in RFA folder, checking parent directory...`);
+        projectFolderPath = path.dirname(projectFolderPath);
+        
+        if (!await fs.pathExists(projectFolderPath)) {
+          return { found: false, reason: 'Parent project folder not found' };
+        }
+      }
+
+      // Get all items in project folder
+      const items = await fs.readdir(projectFolderPath, { withFileTypes: true });
+      const rfaFolders = items.filter(item => 
+        item.isDirectory() && item.name.toUpperCase().includes('RFA')
+      );
+
+      if (rfaFolders.length === 0) {
+        return { found: false, reason: 'No RFA folders found in project' };
+      }
+
+      // If specific RFA number provided, prioritize matching folder
+      let searchOrder = rfaFolders;
+      if (rfaNumber) {
+        const normalizedRFA = rfaNumber.replace(/[#\-_\s]/g, '').toLowerCase();
+        searchOrder = rfaFolders.sort((a, b) => {
+          const aMatches = a.name.replace(/[#\-_\s]/g, '').toLowerCase().includes(normalizedRFA);
+          const bMatches = b.name.replace(/[#\-_\s]/g, '').toLowerCase().includes(normalizedRFA);
+          if (aMatches && !bMatches) return -1;
+          if (!aMatches && bMatches) return 1;
+          return 0;
+        });
+      }
+
+      // Search RFA folders for BOM CHECK
+      for (const rfaFolder of searchOrder) {
+        const rfaFolderPath = path.join(projectFolderPath, rfaFolder.name);
+        const bomCheckPath = path.join(rfaFolderPath, 'BOM CHECK');
+
+        if (await fs.pathExists(bomCheckPath)) {
+          // Found BOM CHECK folder, check for BOM files
+          const bomFile = await this.selectBOMFile(bomCheckPath);
+          
+          if (bomFile) {
+            return {
+              found: true,
+              bomCheckPath,
+              rfaFolderPath,
+              rfaFolderName: rfaFolder.name,
+              bomFile,
+              reason: 'BOM file found'
+            };
+          } else {
+            // BOM CHECK exists but no valid files
+            return {
+              found: false,
+              bomCheckPath,
+              rfaFolderPath,
+              rfaFolderName: rfaFolder.name,
+              reason: 'BOM CHECK folder exists but contains no valid BOM files'
+            };
+          }
+        }
+      }
+
+      // No BOM CHECK folder found, return the most recent RFA folder for manual selection
+      const mostRecentRFA = await this.getMostRecentRFAFolder(projectFolderPath, rfaFolders);
+      
+      return {
+        found: false,
+        rfaFolderPath: mostRecentRFA ? path.join(projectFolderPath, mostRecentRFA.name) : projectFolderPath,
+        rfaFolderName: mostRecentRFA?.name,
+        reason: 'No BOM CHECK folder found in any RFA folder',
+        searchedFolders: rfaFolders.map(f => f.name)
+      };
+    } catch (error) {
+      console.error('Error finding BOM CHECK folder:', error);
+      return { found: false, reason: `Error searching: ${error.message}` };
+    }
+  }
+
+  /**
+   * Get the most recently modified RFA folder
+   * @param {string} projectFolderPath - Project folder path
+   * @param {object[]} rfaFolders - Array of dirent objects for RFA folders
+   * @returns {object|null} Most recent folder dirent or null
+   */
+  async getMostRecentRFAFolder(projectFolderPath, rfaFolders) {
+    let mostRecent = null;
+    let mostRecentTime = 0;
+
+    for (const folder of rfaFolders) {
+      try {
+        const folderPath = path.join(projectFolderPath, folder.name);
+        const stats = await fs.stat(folderPath);
+        if (stats.mtimeMs > mostRecentTime) {
+          mostRecentTime = stats.mtimeMs;
+          mostRecent = folder;
+        }
+      } catch (error) {
+        // Skip folders we can't stat
+      }
+    }
+
+    return mostRecent;
+  }
+
+  /**
+   * Smart BOM upload - attempts auto-detection, provides fallback info
+   * @param {object} project - Project data
+   * @returns {object} Result with bomData or fallback path info
+   */
+  async smartBOMUpload(project) {
+    console.log(`🔍 Smart BOM Upload for project: ${project.projectName}`);
+
+    // Step 1: Resolve the project's DAS path
+    const pathResult = await this.resolveProjectDASPath(project);
+    
+    if (!pathResult.accessible) {
+      console.log(`❌ Project path not accessible: ${pathResult.reason}`);
+      return {
+        success: false,
+        autoImportFailed: true,
+        reason: pathResult.reason,
+        suggestedPath: pathResult.path,
+        pathSource: pathResult.source,
+        requiresManualSelection: true
+      };
+    }
+
+    console.log(`✓ Project path found: ${pathResult.path} (source: ${pathResult.source})`);
+
+    // Step 2: Find BOM CHECK folder
+    const bomCheckResult = await this.findBOMCheckInProject(pathResult.path, project.rfaNumber);
+
+    if (!bomCheckResult.found) {
+      console.log(`❌ BOM not found: ${bomCheckResult.reason}`);
+      return {
+        success: false,
+        autoImportFailed: true,
+        reason: bomCheckResult.reason,
+        projectPath: pathResult.path,
+        suggestedPath: bomCheckResult.rfaFolderPath || pathResult.path,
+        bomCheckPath: bomCheckResult.bomCheckPath,
+        searchedFolders: bomCheckResult.searchedFolders,
+        requiresManualSelection: true
+      };
+    }
+
+    console.log(`✓ BOM file found: ${bomCheckResult.bomFile.path}`);
+
+    // Step 3: Parse the BOM file
+    try {
+      const bomData = await this.parse(bomCheckResult.bomFile);
+      const validation = this.validateBOMData(bomData);
+
+      if (!validation.valid) {
+        return {
+          success: false,
+          autoImportFailed: true,
+          reason: `BOM parsing failed: ${validation.errors.join(', ')}`,
+          bomFile: bomCheckResult.bomFile,
+          suggestedPath: bomCheckResult.bomCheckPath,
+          requiresManualSelection: true
+        };
+      }
+
+      console.log(`✓ BOM parsed successfully: ${bomData.totalDevices} devices`);
+
+      return {
+        success: true,
+        bomData,
+        bomFile: bomCheckResult.bomFile,
+        bomCheckPath: bomCheckResult.bomCheckPath,
+        rfaFolderPath: bomCheckResult.rfaFolderPath,
+        projectPath: pathResult.path,
+        validation,
+        requiresManualSelection: false
+      };
+    } catch (parseError) {
+      console.error('Error parsing BOM file:', parseError);
+      return {
+        success: false,
+        autoImportFailed: true,
+        reason: `Failed to parse BOM file: ${parseError.message}`,
+        bomFile: bomCheckResult.bomFile,
+        suggestedPath: bomCheckResult.bomCheckPath,
+        requiresManualSelection: true
+      };
+    }
+  }
 }
 
 module.exports = BOMParserService;

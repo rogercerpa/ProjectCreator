@@ -367,6 +367,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   bomCheckProjectFolder: (projectFolderPath) => ipcRenderer.invoke('bom:check-project-folder', projectFolderPath),
   bomAutoImportFromFolder: (projectFolderPath, projectId) => ipcRenderer.invoke('bom:auto-import-from-folder', projectFolderPath, projectId),
   
+  // Smart BOM upload (auto-detects from DAS path, falls back to manual)
+  bomSmartUpload: (project) => ipcRenderer.invoke('bom:smart-upload', project),
+  bomOpenFolder: (folderPath) => ipcRenderer.invoke('bom:open-folder', folderPath),
+  
   // BOM event listeners
   onBomBulkImportProgress: (callback) => {
     ipcRenderer.on('bom:bulk-import-progress', (event, data) => callback(data));

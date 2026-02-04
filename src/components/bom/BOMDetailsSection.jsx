@@ -2,15 +2,18 @@ import React, { useState, useEffect } from 'react';
 
 /**
  * BOMDetailsSection - Displays BOM (Bill of Materials) data for a project
- * Shows device breakdown, startup costs, and allows manual upload
+ * Shows device breakdown, startup costs, and allows smart/manual upload
  */
 const BOMDetailsSection = ({ project, onProjectUpdate }) => {
   const [bomData, setBomData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState(null); // 'searching', 'found', 'not-found', 'parsing', 'error'
+  const [uploadMessage, setUploadMessage] = useState('');
   const [isExpanded, setIsExpanded] = useState(true);
   const [showDeviceTable, setShowDeviceTable] = useState(false);
   const [notification, setNotification] = useState(null);
+  const [suggestedPath, setSuggestedPath] = useState(null);
 
   // Load BOM data when project changes
   useEffect(() => {
@@ -39,16 +42,96 @@ const BOMDetailsSection = ({ project, onProjectUpdate }) => {
     loadBOMData();
   }, [project?.id, project?.bomData]);
 
-  // Handle manual BOM file upload
-  const handleUploadBOM = async () => {
+  // Smart BOM upload - auto-detects from DAS path, falls back to manual
+  const handleSmartUpload = async () => {
     try {
+      setIsUploading(true);
+      setSuggestedPath(null);
+      setUploadStatus('searching');
+      setUploadMessage('Looking for BOM in project folder...');
+
+      // Try smart upload (auto-detects from DAS path)
+      const result = await window.electronAPI.bomSmartUpload(project);
+
+      if (result.success) {
+        // BOM was auto-imported successfully
+        setUploadStatus('found');
+        setUploadMessage(`Found and imported BOM: ${result.stats?.totalDevices || 0} devices`);
+        
+        setBomData(result.bomData);
+        
+        if (onProjectUpdate && result.project) {
+          onProjectUpdate(result.project);
+        }
+
+        setNotification({
+          type: 'success',
+          message: `BOM auto-imported: ${result.stats?.totalDevices || 0} devices${result.stats?.startupCost ? `, $${result.stats.startupCost.toLocaleString()} startup cost` : ''}`
+        });
+
+        // Clear status after a moment
+        setTimeout(() => {
+          setUploadStatus(null);
+          setUploadMessage('');
+        }, 3000);
+
+      } else if (result.requiresManualSelection) {
+        // Auto-import failed, need manual selection
+        setUploadStatus('not-found');
+        setUploadMessage(result.reason || 'BOM file not found automatically');
+        setSuggestedPath(result.suggestedPath || result.projectPath);
+
+        // Show info about where to look
+        setNotification({
+          type: 'info',
+          message: result.reason || 'Could not find BOM automatically. Please select the file manually.'
+        });
+
+      } else {
+        throw new Error(result.error || 'Smart upload failed');
+      }
+
+    } catch (error) {
+      console.error('Error in smart BOM upload:', error);
+      setUploadStatus('error');
+      setUploadMessage(error.message || 'Upload failed');
+      setNotification({
+        type: 'error',
+        message: error.message || 'Failed to upload BOM'
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // Manual BOM file upload (with optional starting path)
+  const handleManualUpload = async (startPath = null) => {
+    try {
+      setIsUploading(true);
+      setUploadStatus('parsing');
+      setUploadMessage('Select BOM file...');
+
+      // If we have a suggested path, try to open it first
+      if (startPath) {
+        try {
+          await window.electronAPI.bomOpenFolder(startPath);
+          // Give user a moment to see the folder
+          await new Promise(resolve => setTimeout(resolve, 500));
+        } catch (e) {
+          console.log('Could not open suggested folder:', e);
+        }
+      }
+
       // Open file picker
       const fileResult = await window.electronAPI.bomSelectFile();
       if (!fileResult.success || fileResult.canceled) {
+        setUploadStatus(null);
+        setUploadMessage('');
+        setIsUploading(false);
         return;
       }
 
-      setIsUploading(true);
+      setUploadMessage('Parsing BOM file...');
 
       // Parse the selected file
       const parseResult = await window.electronAPI.bomParseFile(fileResult.filePath);
@@ -61,6 +144,8 @@ const BOMDetailsSection = ({ project, onProjectUpdate }) => {
         console.warn('BOM parsing warnings:', parseResult.validation.warnings);
       }
 
+      setUploadMessage('Saving BOM data...');
+
       // Save to project
       const saveResult = await window.electronAPI.bomSaveToProject(project.id, parseResult.bomData);
       if (!saveResult.success) {
@@ -69,6 +154,9 @@ const BOMDetailsSection = ({ project, onProjectUpdate }) => {
 
       // Update local state
       setBomData(parseResult.bomData);
+      setSuggestedPath(null);
+      setUploadStatus(null);
+      setUploadMessage('');
       
       // Notify parent component
       if (onProjectUpdate && saveResult.project) {
@@ -82,6 +170,8 @@ const BOMDetailsSection = ({ project, onProjectUpdate }) => {
 
     } catch (error) {
       console.error('Error uploading BOM:', error);
+      setUploadStatus('error');
+      setUploadMessage(error.message);
       setNotification({
         type: 'error',
         message: error.message || 'Failed to upload BOM file'
@@ -147,6 +237,34 @@ const BOMDetailsSection = ({ project, onProjectUpdate }) => {
     }
   }, [notification]);
 
+  // Render upload status message
+  const renderUploadStatus = () => {
+    if (!uploadStatus) return null;
+
+    const statusConfig = {
+      searching: { icon: '🔍', color: 'blue' },
+      found: { icon: '✅', color: 'green' },
+      'not-found': { icon: '⚠️', color: 'amber' },
+      parsing: { icon: '⏳', color: 'blue' },
+      error: { icon: '❌', color: 'red' }
+    };
+
+    const config = statusConfig[uploadStatus] || statusConfig.searching;
+
+    return (
+      <div className={`flex items-center gap-2 text-sm text-${config.color}-600 dark:text-${config.color}-400`}>
+        <span>{config.icon}</span>
+        <span>{uploadMessage}</span>
+        {uploadStatus === 'searching' && (
+          <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+          </svg>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mb-4">
       {/* Section Header */}
@@ -171,29 +289,44 @@ const BOMDetailsSection = ({ project, onProjectUpdate }) => {
           )}
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleUploadBOM();
-            }}
-            disabled={isUploading}
-            className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
-          >
-            {isUploading ? (
-              <>
-                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                <span>Uploading...</span>
-              </>
-            ) : (
-              <>
-                <span>📤</span>
-                <span>{bomData ? 'Replace BOM' : 'Upload BOM'}</span>
-              </>
-            )}
-          </button>
+          {!bomData && !isLoading && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSmartUpload();
+              }}
+              disabled={isUploading}
+              className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+            >
+              {isUploading ? (
+                <>
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  <span>Searching...</span>
+                </>
+              ) : (
+                <>
+                  <span>🔍</span>
+                  <span>Auto Upload BOM</span>
+                </>
+              )}
+            </button>
+          )}
+          {bomData && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleManualUpload();
+              }}
+              disabled={isUploading}
+              className="px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+            >
+              <span>📤</span>
+              <span>Replace BOM</span>
+            </button>
+          )}
           <svg 
             className={`w-5 h-5 text-gray-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
             fill="none" 
@@ -210,6 +343,8 @@ const BOMDetailsSection = ({ project, onProjectUpdate }) => {
         <div className={`mx-4 mb-2 p-3 rounded-md ${
           notification.type === 'success' 
             ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800'
+            : notification.type === 'info'
+            ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
             : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800'
         }`}>
           {notification.message}
@@ -228,13 +363,87 @@ const BOMDetailsSection = ({ project, onProjectUpdate }) => {
               Loading BOM data...
             </div>
           ) : !bomData ? (
-            <div className="py-8 text-center">
-              <p className="text-gray-500 dark:text-gray-400 mb-4">
-                No BOM data available for this project.
-              </p>
-              <p className="text-sm text-gray-400 dark:text-gray-500">
-                Upload a CSV or XML file from Visual Controls to add BOM data.
-              </p>
+            <div className="py-6">
+              {/* Upload Status */}
+              {uploadStatus && (
+                <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                  {renderUploadStatus()}
+                </div>
+              )}
+
+              {/* Not found - show manual upload option */}
+              {uploadStatus === 'not-found' && suggestedPath && (
+                <div className="mb-4 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                  <div className="flex items-start gap-3">
+                    <span className="text-xl">📁</span>
+                    <div className="flex-1">
+                      <p className="font-medium text-amber-800 dark:text-amber-300 mb-1">
+                        BOM file not found automatically
+                      </p>
+                      <p className="text-sm text-amber-700 dark:text-amber-400 mb-3">
+                        The BOM CHECK folder was not found in the expected location. You can manually select the BOM file.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          onClick={() => handleManualUpload(suggestedPath)}
+                          className="px-3 py-1.5 text-sm bg-amber-600 text-white rounded-md hover:bg-amber-700 flex items-center gap-1"
+                        >
+                          <span>📂</span>
+                          <span>Browse Project Folder</span>
+                        </button>
+                        <button
+                          onClick={() => handleManualUpload()}
+                          className="px-3 py-1.5 text-sm bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 flex items-center gap-1"
+                        >
+                          <span>📤</span>
+                          <span>Select Any File</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setUploadStatus(null);
+                            setSuggestedPath(null);
+                          }}
+                          className="px-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Default empty state */}
+              {!uploadStatus && (
+                <div className="text-center">
+                  <div className="text-4xl mb-3">📦</div>
+                  <p className="text-gray-500 dark:text-gray-400 mb-2">
+                    No BOM data available for this project.
+                  </p>
+                  <p className="text-sm text-gray-400 dark:text-gray-500 mb-4">
+                    Click "Auto Upload BOM" to automatically find and import the BOM file from the project's DAS folder,
+                    or manually upload a CSV/XML file from Visual Controls.
+                  </p>
+                  <div className="flex justify-center gap-3">
+                    <button
+                      onClick={handleSmartUpload}
+                      disabled={isUploading}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                    >
+                      <span>🔍</span>
+                      <span>Auto Upload BOM</span>
+                    </button>
+                    <button
+                      onClick={() => handleManualUpload()}
+                      disabled={isUploading}
+                      className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 flex items-center gap-2"
+                    >
+                      <span>📤</span>
+                      <span>Manual Upload</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="pt-4 space-y-4">

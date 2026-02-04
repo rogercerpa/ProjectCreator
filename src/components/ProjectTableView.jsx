@@ -298,13 +298,27 @@ function ProjectTableView({
                       case 'projectName':
                         return (
                           <td key={column.key} className="px-6 py-4">
-                            <div className="flex flex-col">
-                              <span className="text-sm font-bold text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors" title={project.projectName}>
-                                {project.projectName || 'Untitled Project'}
-                              </span>
-                              <span className="text-[10px] text-gray-400 uppercase tracking-wider mt-0.5">
-                                {project.projectType || 'Standard'}
-                              </span>
+                            <div className="flex items-center gap-2">
+                              {/* BOM Status Indicator */}
+                              <div 
+                                className={`shrink-0 w-2.5 h-2.5 rounded-full transition-colors ${
+                                  project.bomData 
+                                    ? 'bg-green-500 shadow-sm shadow-green-500/50' 
+                                    : 'bg-amber-400 shadow-sm shadow-amber-400/50'
+                                }`}
+                                title={project.bomData 
+                                  ? `BOM: ${project.bomData.totalDevices || 0} devices${project.bomData.startupCosts?.total ? ` • $${project.bomData.startupCosts.total.toLocaleString()} startup` : ''}`
+                                  : 'No BOM uploaded'
+                                }
+                              />
+                              <div className="flex flex-col">
+                                <span className="text-sm font-bold text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors" title={project.projectName}>
+                                  {project.projectName || 'Untitled Project'}
+                                </span>
+                                <span className="text-[10px] text-gray-400 uppercase tracking-wider mt-0.5">
+                                  {project.projectType || 'Standard'}
+                                </span>
+                              </div>
                             </div>
                           </td>
                         );

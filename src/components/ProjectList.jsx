@@ -310,12 +310,24 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onNewProject,
     return 'low';
   };
 
+  // Helper function for BOM tooltip text
+  const getBOMTooltip = (project) => {
+    if (!project.bomData) return 'No BOM uploaded';
+    const devices = project.bomData.totalDevices || 0;
+    const cost = project.bomData.startupCosts?.total;
+    return cost 
+      ? `${devices} devices • $${cost.toLocaleString()} startup`
+      : `${devices} devices`;
+  };
+
   const renderCardView = (projectsToRender = sortedProjects) => {
     return projectsToRender.map((project) => (
       <div 
         key={project.id}
         onClick={() => onProjectSelect(project)}
-        className="group relative p-6 rounded-3xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer overflow-hidden"
+        className={`group relative p-6 rounded-3xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer overflow-hidden border-l-4 ${
+          project.bomData ? 'border-l-green-500' : 'border-l-amber-400'
+        }`}
       >
         <div className="relative z-10 h-full flex flex-col">
           <div className="flex flex-col gap-1 mb-4">
@@ -323,9 +335,23 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onNewProject,
               <h4 className="font-bold text-gray-900 dark:text-white text-lg group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors leading-tight line-clamp-2" title={project.projectName}>
                 {project.projectName || 'Untitled Project'}
               </h4>
-              <span className="shrink-0 px-2 py-1 rounded-md bg-gray-100 dark:bg-gray-700/50 text-[10px] font-bold text-gray-500 dark:text-gray-400 border border-gray-200/50 dark:border-gray-600/50 whitespace-nowrap tabular-nums tracking-tighter">
-                {project.rfaNumber || 'N/A'}
-              </span>
+              <div className="shrink-0 flex flex-col items-end gap-1">
+                <span className="px-2 py-1 rounded-md bg-gray-100 dark:bg-gray-700/50 text-[10px] font-bold text-gray-500 dark:text-gray-400 border border-gray-200/50 dark:border-gray-600/50 whitespace-nowrap tabular-nums tracking-tighter">
+                  {project.rfaNumber || 'N/A'}
+                </span>
+                {/* BOM Status Badge */}
+                <span 
+                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider transition-all ${
+                    project.bomData 
+                      ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-700' 
+                      : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-700'
+                  }`}
+                  title={getBOMTooltip(project)}
+                >
+                  <span>{project.bomData ? '📦' : '○'}</span>
+                  <span>{project.bomData ? `${project.bomData.totalDevices || 0}` : 'No BOM'}</span>
+                </span>
+              </div>
             </div>
             <span className="text-[10px] font-bold text-primary-600/60 dark:text-primary-400/60 uppercase tracking-widest">
               {project.projectType || 'Standard Project'}
