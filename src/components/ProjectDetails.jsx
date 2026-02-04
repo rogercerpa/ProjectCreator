@@ -4,6 +4,7 @@ import BackfillStatusHistoryModal from './BackfillStatusHistoryModal';
 import NotificationToast from './NotificationToast';
 import ZipSelectionDialog from './ZipSelectionDialog';
 import EmailTemplateEditor from './shared/EmailTemplateEditor';
+import CollapsibleSection from './shared/CollapsibleSection';
 import BOMDetailsSection from './bom/BOMDetailsSection';
 import { openPaidServicesEmail } from '../utils/emailTemplates';
 import { useUploadContext, UPLOAD_TYPES } from '../contexts/UploadContext';
@@ -30,6 +31,38 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
   const { startUpload, completeUpload, failUpload, isProjectUploading } = useUploadContext();
   const [showUploadConfirmDialog, setShowUploadConfirmDialog] = useState(false);
   const [uploadConfirmMessage, setUploadConfirmMessage] = useState('');
+  
+  // Section expansion states for Expand All / Collapse All functionality
+  const [sectionStates, setSectionStates] = useState({
+    projectInfo: true,
+    agencyInfo: true,
+    rfaInfo: true,
+    workTask: true,
+    dasPaidServices: true,
+    importantDates: true,
+    triageCalculation: true,
+    panelScheduleDetails: true,
+    submittalDetails: true,
+    photometrics: true,
+    bomData: true
+  });
+  
+  // Helper functions for expand/collapse all
+  const expandAllSections = () => {
+    setSectionStates(prev => Object.fromEntries(Object.keys(prev).map(key => [key, true])));
+  };
+  
+  const collapseAllSections = () => {
+    setSectionStates(prev => Object.fromEntries(Object.keys(prev).map(key => [key, false])));
+  };
+  
+  const toggleSection = (sectionName) => {
+    setSectionStates(prev => ({ ...prev, [sectionName]: !prev[sectionName] }));
+  };
+  
+  // Check if all sections are expanded or collapsed
+  const allExpanded = Object.values(sectionStates).every(v => v);
+  const allCollapsed = Object.values(sectionStates).every(v => !v);
   
   // Check if this project is currently uploading
   const isUploading = isProjectUploading(project?.id);
@@ -512,11 +545,33 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
         </div>
       )}
 
+      {/* Expand/Collapse All Controls */}
+      <div className="flex items-center justify-end gap-2 -mb-2">
+        <span className="text-sm text-gray-500 dark:text-gray-400">Sections:</span>
+        <button
+          onClick={expandAllSections}
+          disabled={allExpanded}
+          className="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          Expand All
+        </button>
+        <button
+          onClick={collapseAllSections}
+          disabled={allCollapsed}
+          className="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          Collapse All
+        </button>
+      </div>
+
       {/* Project Info Section */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-6 shadow-md">
-        <div className="flex justify-between items-center mb-6 pb-4 border-b-2 border-gray-100 dark:border-gray-700">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">📋 Project Info</h2>
-          <div className="flex gap-2">
+      <CollapsibleSection
+        title="Project Info"
+        icon="📋"
+        isExpanded={sectionStates.projectInfo}
+        onToggle={() => toggleSection('projectInfo')}
+        headerActions={
+          <>
             {showExportButtons && (
               <>
                 <button 
@@ -583,9 +638,10 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
                 📂 Open DAS Folder
               </button>
             )}
-          </div>
-        </div>
-        <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1">
+          </>
+        }
+      >
+        <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1 pt-4">
           <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
             <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Project Name</label>
             <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{project.projectName || 'Not specified'}</span>
@@ -653,12 +709,16 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
             <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.saveLocation || 'Server'}</span>
           </div>
         </div>
-      </div>
+      </CollapsibleSection>
 
       {/* Agency Info Section */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-6 shadow-md">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-5 pb-4 border-b-2 border-gray-100 dark:border-gray-700">🏢 Agency Info</h2>
-        <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1">
+      <CollapsibleSection
+        title="Agency Info"
+        icon="🏢"
+        isExpanded={sectionStates.agencyInfo}
+        onToggle={() => toggleSection('agencyInfo')}
+      >
+        <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1 pt-4">
           <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
             <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Agency Name</label>
             <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.agencyName || 'Not specified'}</span>
@@ -680,12 +740,15 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
             <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.nationalAccount || 'Not specified'}</span>
           </div>
         </div>
-      </div>
+      </CollapsibleSection>
 
       {/* RFA Info Section */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-6 shadow-md">
-        <div className="flex justify-between items-center mb-5 pb-4 border-b-2 border-gray-100 dark:border-gray-700">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">📄 RFA Info</h2>
+      <CollapsibleSection
+        title="RFA Info"
+        icon="📄"
+        isExpanded={sectionStates.rfaInfo}
+        onToggle={() => toggleSection('rfaInfo')}
+        headerActions={
           <button 
             onClick={handleOpenRFALink}
             disabled={!project?.rfaNumber}
@@ -694,8 +757,9 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
           >
             🔗 Open RFA
           </button>
-        </div>
-        <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1">
+        }
+      >
+        <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1 pt-4">
           <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
             <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">RFA Number</label>
             <span className="text-sm font-bold text-primary-600 dark:text-primary-400">{project.rfaNumber || 'Not specified'}</span>
@@ -739,12 +803,16 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
             </div>
           )}
         </div>
-      </div>
+      </CollapsibleSection>
 
       {/* WorkTask Section */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-6 shadow-md">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-5 pb-4 border-b-2 border-gray-100 dark:border-gray-700">👥 WorkTask</h2>
-        <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1">
+      <CollapsibleSection
+        title="WorkTask"
+        icon="👥"
+        isExpanded={sectionStates.workTask}
+        onToggle={() => toggleSection('workTask')}
+      >
+        <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1 pt-4">
           <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
             <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Triaged By</label>
             <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.triagedBy || 'Not assigned'}</span>
@@ -758,13 +826,16 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
             <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.qcBy || 'Not assigned'}</span>
           </div>
         </div>
-      </div>
+      </CollapsibleSection>
 
       {/* DAS Paid Services */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-6 shadow-md">
-        <div className="flex items-center justify-between mb-5 pb-4 border-b-2 border-gray-100 dark:border-gray-700">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">💡 DAS Paid Services</h2>
-          {hasPaidServices ? (
+      <CollapsibleSection
+        title="DAS Paid Services"
+        icon="💡"
+        isExpanded={sectionStates.dasPaidServices}
+        onToggle={() => toggleSection('dasPaidServices')}
+        headerExtra={
+          hasPaidServices ? (
             <span
               className={`px-3 py-1 rounded-full text-xs font-semibold ${
                 project.dasStatus === 'Paid'
@@ -776,7 +847,10 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
             >
               {project.dasStatus || 'Waiting on Order'}
             </span>
-          ) : (
+          ) : null
+        }
+        headerActions={
+          !hasPaidServices ? (
             <button
               type="button"
               onClick={onEdit}
@@ -784,67 +858,72 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
             >
               Enable Paid Services
             </button>
+          ) : null
+        }
+      >
+        <div className="pt-4">
+          {hasPaidServices ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 md:grid-cols-1 gap-4">
+                <div className="flex flex-col gap-1 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Lighting Pages</span>
+                  <span className="text-lg font-bold text-gray-900 dark:text-white">{project.dasLightingPages || 0}</span>
+                </div>
+                <div className="flex flex-col gap-1 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Cost per Page</span>
+                  <span className="text-lg font-bold text-gray-900 dark:text-white">{formatCurrency(project.dasCostPerPage)}</span>
+                </div>
+                <div className="flex flex-col gap-1 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Fee</span>
+                  <span className="text-lg font-bold text-primary-700 dark:text-primary-300">{formatCurrency(project.dasFee)}</span>
+                </div>
+                <div className="flex flex-col gap-1 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Rep Email</span>
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">{project.dasRepEmail || 'Not set'}</span>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-3 justify-end">
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={!canSendPaidServiceEmail}
+                  onClick={handlePaidServicesEmail}
+                >
+                  Draft Outlook Email
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline btn-sm"
+                  onClick={() => setShowEmailEditor(true)}
+                  title="Edit email template and signature"
+                >
+                  ✏️ Edit Template
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={onEdit}
+                >
+                  ✏️ Edit Paid Services
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              Paid services are not enabled for this project. Click &quot;Edit&quot; to add lighting pages, cost per page, and fee details.
+            </p>
           )}
         </div>
-
-        {hasPaidServices ? (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 md:grid-cols-1 gap-4">
-              <div className="flex flex-col gap-1 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Lighting Pages</span>
-                <span className="text-lg font-bold text-gray-900 dark:text-white">{project.dasLightingPages || 0}</span>
-              </div>
-              <div className="flex flex-col gap-1 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Cost per Page</span>
-                <span className="text-lg font-bold text-gray-900 dark:text-white">{formatCurrency(project.dasCostPerPage)}</span>
-              </div>
-              <div className="flex flex-col gap-1 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Fee</span>
-                <span className="text-lg font-bold text-primary-700 dark:text-primary-300">{formatCurrency(project.dasFee)}</span>
-              </div>
-              <div className="flex flex-col gap-1 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Rep Email</span>
-                <span className="text-sm font-medium text-gray-900 dark:text-white">{project.dasRepEmail || 'Not set'}</span>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-3 justify-end">
-              <button
-                type="button"
-                className="btn btn-primary"
-                disabled={!canSendPaidServiceEmail}
-                onClick={handlePaidServicesEmail}
-              >
-                Draft Outlook Email
-              </button>
-              <button
-                type="button"
-                className="btn btn-outline btn-sm"
-                onClick={() => setShowEmailEditor(true)}
-                title="Edit email template and signature"
-              >
-                ✏️ Edit Template
-              </button>
-              <button
-                type="button"
-                className="btn btn-outline"
-                onClick={onEdit}
-              >
-                ✏️ Edit Paid Services
-              </button>
-            </div>
-          </div>
-        ) : (
-          <p className="text-sm text-gray-600 dark:text-gray-300">
-            Paid services are not enabled for this project. Click &quot;Edit&quot; to add lighting pages, cost per page, and fee details.
-          </p>
-        )}
-      </div>
+      </CollapsibleSection>
 
       {/* Important Dates Section */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-6 shadow-md">
-        <div className="flex justify-between items-center mb-5 pb-4 border-b-2 border-gray-100 dark:border-gray-700">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">📅 Important Dates</h2>
-          {needsStatusBackfill && (
+      <CollapsibleSection
+        title="Important Dates"
+        icon="📅"
+        isExpanded={sectionStates.importantDates}
+        onToggle={() => toggleSection('importantDates')}
+        headerActions={
+          needsStatusBackfill ? (
             <button
               onClick={() => setShowBackfillModal(true)}
               className="btn-outline-primary btn-sm flex items-center gap-1"
@@ -852,9 +931,10 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
             >
               <span>Add Status History</span>
             </button>
-          )}
-        </div>
-        <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1">
+          ) : null
+        }
+      >
+        <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1 pt-4">
           <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
             <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Requested Date</label>
             <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{formatDate(project.requestedDate)}</span>
@@ -896,13 +976,16 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
             <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{formatDate(project.updatedAt)}</span>
           </div>
         </div>
-      </div>
+      </CollapsibleSection>
 
       {/* Triage Calculation Section */}
       {(project.totalTriage > 0 || project.hasPanelSchedules || project.hasSubmittals || (!project.hasSubmittals || (project.hasSubmittals && project.needsLayoutBOM))) && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-6 shadow-md">
-          <div className="flex justify-between items-center mb-6 pb-4 border-b-2 border-gray-100 dark:border-gray-700">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">🧮 Triage Calculation</h2>
+        <CollapsibleSection
+          title="Triage Calculation"
+          icon="🧮"
+          isExpanded={sectionStates.triageCalculation}
+          onToggle={() => toggleSection('triageCalculation')}
+          headerActions={
             <button 
               onClick={() => setShowTriageModal(true)}
               className="btn-outline-primary btn-sm"
@@ -910,177 +993,188 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
             >
               ✏️ Edit Triage
             </button>
-          </div>
-          
-          {/* Total Triage - Prominent Display */}
-          <div className="mb-6 p-5 bg-gradient-to-br from-primary-50 to-blue-50 dark:from-primary-900/20 dark:to-blue-900/20 rounded-lg border-2 border-primary-500 dark:border-primary-700">
-            <label className="text-sm font-semibold text-primary-700 dark:text-primary-300 uppercase tracking-wide">Total Triage Time</label>
-            <div className="text-3xl font-bold text-primary-600 dark:text-primary-400 mt-2">{project.totalTriage || 0} hours</div>
-          </div>
-          
-          {/* Time Breakdown */}
-          {(project.panelTime > 0 || project.layoutTime > 0 || project.submittalTime > 0 || project.selfQC > 0 || project.fluff > 0) && (
-            <div className="mb-6">
-              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">⏱️ Time Breakdown</h3>
-              <div className="grid grid-cols-3 gap-4 2xl:grid-cols-5 lg:grid-cols-2 md:grid-cols-1">
-                {project.panelTime > 0 && (
-                  <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-                    <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Panel Time</label>
-                    <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{project.panelTime} hr</span>
-                  </div>
-                )}
-                {project.layoutTime > 0 && (
-                  <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-                    <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Layout Time</label>
-                    <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{project.layoutTime} hr</span>
-                  </div>
-                )}
-                {project.submittalTime > 0 && (
-                  <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-                    <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Submittal Time</label>
-                    <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{project.submittalTime} hr</span>
-                  </div>
-                )}
-                {project.selfQC > 0 && (
-                  <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-                    <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Self QC</label>
-                    <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{project.selfQC} hr</span>
-                  </div>
-                )}
-                {project.fluff > 0 && (
-                  <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-                    <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Fluff</label>
-                    <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{project.fluff} hr</span>
-                  </div>
-                )}
-              </div>
+          }
+        >
+          <div className="pt-4">
+            {/* Total Triage - Prominent Display */}
+            <div className="mb-6 p-5 bg-gradient-to-br from-primary-50 to-blue-50 dark:from-primary-900/20 dark:to-blue-900/20 rounded-lg border-2 border-primary-500 dark:border-primary-700">
+              <label className="text-sm font-semibold text-primary-700 dark:text-primary-300 uppercase tracking-wide">Total Triage Time</label>
+              <div className="text-3xl font-bold text-primary-600 dark:text-primary-400 mt-2">{project.totalTriage || 0} hours</div>
             </div>
-          )}
+            
+            {/* Time Breakdown */}
+            {(project.panelTime > 0 || project.layoutTime > 0 || project.submittalTime > 0 || project.selfQC > 0 || project.fluff > 0) && (
+              <div className="mb-6">
+                <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">⏱️ Time Breakdown</h3>
+                <div className="grid grid-cols-3 gap-4 2xl:grid-cols-5 lg:grid-cols-2 md:grid-cols-1">
+                  {project.panelTime > 0 && (
+                    <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+                      <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Panel Time</label>
+                      <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{project.panelTime} hr</span>
+                    </div>
+                  )}
+                  {project.layoutTime > 0 && (
+                    <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+                      <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Layout Time</label>
+                      <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{project.layoutTime} hr</span>
+                    </div>
+                  )}
+                  {project.submittalTime > 0 && (
+                    <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+                      <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Submittal Time</label>
+                      <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{project.submittalTime} hr</span>
+                    </div>
+                  )}
+                  {project.selfQC > 0 && (
+                    <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+                      <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Self QC</label>
+                      <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{project.selfQC} hr</span>
+                    </div>
+                  )}
+                  {project.fluff > 0 && (
+                    <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+                      <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Fluff</label>
+                      <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{project.fluff} hr</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
-          {/* Configuration */}
-          <div className="mb-6">
-            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">⚙️ Configuration</h3>
-            <div className="grid grid-cols-3 gap-4 lg:grid-cols-2 md:grid-cols-1">
-              <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-                <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Panel Schedules</label>
-                <span className={`text-sm font-bold ${project.hasPanelSchedules ? 'text-success-600 dark:text-success-400' : 'text-gray-600 dark:text-gray-400'}`}>
-                  {project.hasPanelSchedules ? '✓ Yes' : '✗ No'}
-                </span>
-              </div>
-              <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-                <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Submittal Section</label>
-                <span className={`text-sm font-bold ${project.hasSubmittals ? 'text-success-600 dark:text-success-400' : 'text-gray-600 dark:text-gray-400'}`}>
-                  {project.hasSubmittals ? '✓ Yes' : '✗ No'}
-                </span>
-              </div>
-              {project.hasSubmittals && (
+            {/* Configuration */}
+            <div className="mb-6">
+              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">⚙️ Configuration</h3>
+              <div className="grid grid-cols-3 gap-4 lg:grid-cols-2 md:grid-cols-1">
                 <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-                  <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Needs Layout/BOM</label>
-                  <span className={`text-sm font-bold ${project.needsLayoutBOM ? 'text-success-600 dark:text-success-400' : 'text-gray-600 dark:text-gray-400'}`}>
-                    {project.needsLayoutBOM ? '✓ Yes' : '✗ No'}
+                  <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Panel Schedules</label>
+                  <span className={`text-sm font-bold ${project.hasPanelSchedules ? 'text-success-600 dark:text-success-400' : 'text-gray-600 dark:text-gray-400'}`}>
+                    {project.hasPanelSchedules ? '✓ Yes' : '✗ No'}
                   </span>
                 </div>
-              )}
-            </div>
-          </div>
-
-          {/* Layout Details subsection */}
-          {(!project.hasSubmittals || (project.hasSubmittals && project.needsLayoutBOM)) && (
-            <div>
-              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">📐 Layout Details</h3>
-              <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1">
                 <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-                  <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Number of Rooms</label>
-                  <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{project.numOfRooms || 0}</span>
+                  <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Submittal Section</label>
+                  <span className={`text-sm font-bold ${project.hasSubmittals ? 'text-success-600 dark:text-success-400' : 'text-gray-600 dark:text-gray-400'}`}>
+                    {project.hasSubmittals ? '✓ Yes' : '✗ No'}
+                  </span>
                 </div>
-                <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-                  <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Room Multiplier</label>
-                  <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.roomMultiplier || 2} min/room</span>
-                </div>
-                <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-                  <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Override Rooms</label>
-                  <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.overrideRooms || 0} hr</span>
-                </div>
-                <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-                  <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Review/Setup Time</label>
-                  <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.reviewSetup || 0} hr</span>
-                </div>
-                <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-                  <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Number of Pages</label>
-                  <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{project.numOfPages || 1}</span>
-                </div>
-                <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-                  <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Spec Review</label>
-                  <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.specReview || 0} hr</span>
-                </div>
+                {project.hasSubmittals && (
+                  <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+                    <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Needs Layout/BOM</label>
+                    <span className={`text-sm font-bold ${project.needsLayoutBOM ? 'text-success-600 dark:text-success-400' : 'text-gray-600 dark:text-gray-400'}`}>
+                      {project.needsLayoutBOM ? '✓ Yes' : '✗ No'}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
-          )}
-        </div>
+
+            {/* Layout Details subsection */}
+            {(!project.hasSubmittals || (project.hasSubmittals && project.needsLayoutBOM)) && (
+              <div>
+                <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">📐 Layout Details</h3>
+                <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1">
+                  <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+                    <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Number of Rooms</label>
+                    <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{project.numOfRooms || 0}</span>
+                  </div>
+                  <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+                    <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Room Multiplier</label>
+                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.roomMultiplier || 2} min/room</span>
+                  </div>
+                  <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+                    <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Override Rooms</label>
+                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.overrideRooms || 0} hr</span>
+                  </div>
+                  <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+                    <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Review/Setup Time</label>
+                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.reviewSetup || 0} hr</span>
+                  </div>
+                  <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+                    <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Number of Pages</label>
+                    <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{project.numOfPages || 1}</span>
+                  </div>
+                  <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+                    <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Spec Review</label>
+                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.specReview || 0} hr</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </CollapsibleSection>
       )}
 
       {/* Panel Schedule Details */}
       {project.hasPanelSchedules && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-6 shadow-md">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-5 pb-4 border-b-2 border-gray-100 dark:border-gray-700">⚡ Panel Schedule Details</h2>
-          
-          <div className="mb-5">
-            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">LMPs</h3>
-            <div className="grid grid-cols-3 gap-4 lg:grid-cols-2 md:grid-cols-1">
-              <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-                <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Large</label>
-                <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{project.largeLMPs || 0}</span>
-              </div>
-              <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-                <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Medium</label>
-                <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{project.mediumLMPs || 0}</span>
-              </div>
-              <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-                <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Small</label>
-                <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{project.smallLMPs || 0}</span>
-              </div>
-            </div>
-          </div>
-          
-          <div className="mb-5">
-            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">nLight ARPs</h3>
-            <div className="grid grid-cols-4 gap-4 lg:grid-cols-2 md:grid-cols-1">
-              <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-                <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">ARP 8</label>
-                <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{project.arp8 || 0}</span>
-              </div>
-              <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-                <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">ARP 16</label>
-                <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{project.arp16 || 0}</span>
-              </div>
-              <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-                <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">ARP 32</label>
-                <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{project.arp32 || 0}</span>
-              </div>
-              <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-                <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">ARP 48</label>
-                <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{project.arp48 || 0}</span>
+        <CollapsibleSection
+          title="Panel Schedule Details"
+          icon="⚡"
+          isExpanded={sectionStates.panelScheduleDetails}
+          onToggle={() => toggleSection('panelScheduleDetails')}
+        >
+          <div className="pt-4">
+            <div className="mb-5">
+              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">LMPs</h3>
+              <div className="grid grid-cols-3 gap-4 lg:grid-cols-2 md:grid-cols-1">
+                <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+                  <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Large</label>
+                  <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{project.largeLMPs || 0}</span>
+                </div>
+                <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+                  <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Medium</label>
+                  <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{project.mediumLMPs || 0}</span>
+                </div>
+                <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+                  <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Small</label>
+                  <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{project.smallLMPs || 0}</span>
+                </div>
               </div>
             </div>
-          </div>
+            
+            <div className="mb-5">
+              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">nLight ARPs</h3>
+              <div className="grid grid-cols-4 gap-4 lg:grid-cols-2 md:grid-cols-1">
+                <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+                  <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">ARP 8</label>
+                  <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{project.arp8 || 0}</span>
+                </div>
+                <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+                  <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">ARP 16</label>
+                  <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{project.arp16 || 0}</span>
+                </div>
+                <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+                  <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">ARP 32</label>
+                  <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{project.arp32 || 0}</span>
+                </div>
+                <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+                  <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">ARP 48</label>
+                  <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{project.arp48 || 0}</span>
+                </div>
+              </div>
+            </div>
 
-          <div>
-            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">E-Sheets</h3>
-            <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-              <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Panel Schedules on E-Sheets</label>
-              <span className={`text-sm font-bold ${project.esheetsSchedules === 1 ? 'text-success-600 dark:text-success-400' : 'text-gray-600 dark:text-gray-400'}`}>
-                {project.esheetsSchedules === 1 ? '✓ Yes' : '✗ No'}
-              </span>
+            <div>
+              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">E-Sheets</h3>
+              <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+                <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Panel Schedules on E-Sheets</label>
+                <span className={`text-sm font-bold ${project.esheetsSchedules === 1 ? 'text-success-600 dark:text-success-400' : 'text-gray-600 dark:text-gray-400'}`}>
+                  {project.esheetsSchedules === 1 ? '✓ Yes' : '✗ No'}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
+        </CollapsibleSection>
       )}
 
       {/* Submittal Details */}
       {project.hasSubmittals && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-6 shadow-md">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-5 pb-4 border-b-2 border-gray-100 dark:border-gray-700">📝 Submittal Details</h2>
-          <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1">
+        <CollapsibleSection
+          title="Submittal Details"
+          icon="📝"
+          isExpanded={sectionStates.submittalDetails}
+          onToggle={() => toggleSection('submittalDetails')}
+        >
+          <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1 pt-4">
             <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
               <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Number of Rooms</label>
               <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{project.numOfSubRooms || 0}</span>
@@ -1098,24 +1192,30 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
               <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.soo || 0} hr</span>
             </div>
           </div>
-        </div>
+        </CollapsibleSection>
       )}
 
       {/* Photometrics */}
       {project.showPhotometrics && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-6 shadow-md">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-5 pb-4 border-b-2 border-gray-100 dark:border-gray-700">💡 Photometrics</h2>
-          <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+        <CollapsibleSection
+          title="Photometrics"
+          icon="💡"
+          isExpanded={sectionStates.photometrics}
+          onToggle={() => toggleSection('photometrics')}
+        >
+          <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600 mt-4">
             <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Photo Software</label>
             <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.photoSoftware || 'Not specified'}</span>
           </div>
-        </div>
+        </CollapsibleSection>
       )}
 
       {/* BOM Data Section */}
       <BOMDetailsSection 
         project={project} 
-        onProjectUpdate={onProjectUpdate} 
+        onProjectUpdate={onProjectUpdate}
+        isExpanded={sectionStates.bomData}
+        onToggle={() => toggleSection('bomData')}
       />
 
       {/* Triage Calculator Modal */}

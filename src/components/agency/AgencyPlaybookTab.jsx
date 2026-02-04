@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import CollapsibleSection from './CollapsibleSection';
+import CollapsibleSection from '../shared/CollapsibleSection';
 
 function AgencyPlaybookTab({ agency }) {
   // Section expansion states
