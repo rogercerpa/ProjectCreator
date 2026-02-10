@@ -4,6 +4,7 @@
  * caches results, diffs for changes, and invokes callbacks for updates and new RFAs.
  */
 
+const fs = require('fs');
 const DEFAULT_POLL_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
 /**
@@ -356,7 +357,7 @@ function buildProjectDetailUrl(rfaNumber, pattern) {
 
 /**
  * Script injected into the RFA project details page to extract Header tab fields.
- * Runs in browser context. Uses generic label/value discovery (labels + adjacent inputs/spans).
+ * Targets: title bar (RFA number, job name, REP, ECD) and form labels (Status, ECD, Assigned To, etc.).
  * Returns { header: Object, isLoginPage?: boolean }.
  */
 function getProjectHeaderExtractionScript() {
@@ -367,10 +368,7 @@ function getProjectHeaderExtractionScript() {
       return { header: {}, isLoginPage: true };
     }
     const header = {};
-    const labelKeys = [
-      'Status', 'ECD', 'Requested Date', 'Submitted Date', 'Assigned To', 'Rep Contacts',
-      'Complexity', 'RFA Value', 'Products on This Request', 'National Account', 'Last Updated', 'Created By'
-    ];
+
     function querySelectorAllDeep(root, selector) {
       if (!root) return [];
       const list = Array.from(root.querySelectorAll(selector));
@@ -379,28 +377,59 @@ function getProjectHeaderExtractionScript() {
       });
       return list;
     }
-    const allElements = querySelectorAllDeep(document, 'label, [class*="label"], th, [role="columnheader"], span, div');
-    for (const labelText of labelKeys) {
+
+    // Title bar: find element containing "Request for Assistance" and parse REP, ECD, job name
+    const banner = querySelectorAllDeep(document, '[class*="header"], [class*="banner"], [class*="title"], h1, header').find((el) => {
+      const t = (el.textContent || '').trim();
+      return t.includes('Request for Assistance') && (t.includes('REP:') || t.includes('ECD:'));
+    }) || document.body;
+    const bannerText = (banner.textContent || '').trim();
+    const repMatch = bannerText.match(/REP:\s*(\d+)/i);
+    const ecdMatch = bannerText.match(/ECD:\s*([\d/]+\s+\d+:\d+\s*[AP]M|\d{1,2}\/\d{1,2}\/\d{4}[^\\s]*)/i);
+    if (repMatch) header.rep = trim(repMatch[1]);
+    if (ecdMatch) header.ecdBanner = trim(ecdMatch[1]);
+    const rfaMatch = bannerText.match(/Request for Assistance\s+([\d-]+)/i);
+    if (rfaMatch) header.rfaNumber = trim(rfaMatch[1]);
+    const jobMatch = bannerText.match(/([A-Z0-9][A-Za-z0-9\s]+)\s+\d{2}-\d{5}/);
+    if (jobMatch) header.jobNameBanner = trim(jobMatch[1]);
+
+    // Form fields: labels that start with or equal these strings
+    const labelPatterns = [
+      'Status', 'ECD', 'Requested Date', 'Submitted Date', 'Assigned To', 'Rep Contacts',
+      'Complexity', 'RFA Value', 'Products on This Request', 'Root Cause', 'National Account',
+      'Last Updated', 'Created By', 'Number of Lighting pages'
+    ];
+    const keyFromLabel = (label) => {
+      const k = label.replace(/\s*[-–]\s*Revision\s*$/i, '').replace(/\s+/g, '');
+      return k === 'NumberofLightingpages' ? 'LightingPagesWithControls' : k;
+    };
+    const allElements = querySelectorAllDeep(document, 'label, [class*="label"], th, [role="columnheader"], span, div, dt');
+    for (const labelPattern of labelPatterns) {
+      const key = keyFromLabel(labelPattern);
+      if (header[key]) continue;
       for (const el of allElements) {
         const text = trim(el.textContent);
-        if (text !== labelText) continue;
+        if (!text || text.length > 100) continue;
+        const isMatch = text === labelPattern || text.startsWith(labelPattern + ':') || text.startsWith(labelPattern + ' ');
+        if (!isMatch) continue;
         let value = '';
-        const parent = el.parentElement;
+        const container = el.closest('tr, [class*="row"], [class*="field"], div, section') || el.parentElement;
         const next = el.nextElementSibling;
         if (next) {
-          const input = next.querySelector('input, select, [role="textbox"], [contenteditable="true"]');
-          value = trim((input ? input.value || input.textContent : next.textContent) || '');
+          const inp = next.querySelector && next.querySelector('input, select, textarea, [role="combobox"]');
+          if (inp) value = trim((inp.value != null ? inp.value : inp.textContent) || '');
+          else value = trim(next.textContent || '');
         }
-        if (!value && parent) {
-          const sibling = parent.nextElementSibling;
-          if (sibling) value = trim(sibling.textContent || '');
+        if (!value && container) {
+          const inp = container.querySelector('input, select, textarea, [role="combobox"], [contenteditable="true"]');
+          if (inp) value = trim((inp.value != null ? inp.value : inp.textContent) || '');
         }
-        if (!value && el.closest('label')) {
-          const input = el.closest('label').querySelector('input, select');
-          if (input) value = trim(input.value || input.textContent || '');
+        if (!value && container) {
+          const chip = container.querySelector('[class*="chip"], [class*="tag"], [class*="badge"]');
+          if (chip) value = trim(chip.textContent || '');
         }
+        if (!value && el.parentElement && el.parentElement.nextElementSibling) value = trim(el.parentElement.nextElementSibling.textContent || '');
         if (value) {
-          const key = labelText.replace(/\s+/g, '');
           header[key] = value;
           break;
         }
@@ -441,7 +470,9 @@ function getProjectDetailsExtractionScript() {
 }
 
 /**
- * Script to extract notes list from the current view (Notes tab).
+ * Script to extract notes from the Notes tab table.
+ * Columns: Critical, Category, Source #, Shared, Description, Last Update (author), Last Update (date).
+ * Returns array of { category, description, author, date } for the current page only.
  */
 function getProjectNotesExtractionScript() {
   return function extractProjectNotes() {
@@ -455,17 +486,59 @@ function getProjectNotesExtractionScript() {
       });
       return list;
     }
-    const items = querySelectorAllDeep(document, '[class*="note"], [class*="comment"], li, .item');
-    items.forEach((el) => {
-      const text = trim(el.textContent);
-      if (text.length > 0 && text.length < 2000) notes.push({ text: text.slice(0, 500) });
-    });
-    return notes.slice(0, 50);
+    const table = querySelectorAllDeep(document, 'table').find((t) => {
+      const text = (t.textContent || '').toLowerCase();
+      return (text.includes('request note') || text.includes('category') || text.includes('description')) && text.includes('last update');
+    }) || querySelectorAllDeep(document, '[role="grid"]').find((g) => (g.textContent || '').toLowerCase().includes('request note'));
+    const container = table || document.body;
+    const rows = container.querySelectorAll ? container.querySelectorAll('tr, [role="row"]') : [];
+    const headerRow = rows[0];
+    const headerTexts = headerRow ? Array.from(headerRow.querySelectorAll('th, td, [role="columnheader"], [role="gridcell"]')).map((c) => trim(c.textContent).toLowerCase()) : [];
+    const col = (name) => {
+      const i = headerTexts.findIndex((h) => h.includes(name));
+      return i >= 0 ? i : (name === 'category' ? 1 : name === 'description' ? 4 : name === 'author' ? 5 : name === 'date' ? 6 : -1);
+    };
+    const categoryIdx = headerTexts.some((h) => h.includes('category')) ? col('category') : 1;
+    const descIdx = headerTexts.some((h) => h.includes('description')) ? col('description') : 4;
+    const authorIdx = headerTexts.some((h) => h.includes('author') || h.includes('last update')) ? (headerTexts.findIndex((h) => h.includes('author')) >= 0 ? col('author') : 5) : 5;
+    const dateIdx = headerTexts.some((h) => h.includes('date') || h.includes('update')) ? (headerTexts.findIndex((h) => h.includes('date') || h.includes('update')) >= 0 ? headerTexts.findIndex((h) => h.includes('date') || h.includes('update')) : 6) : 6;
+    for (let r = 1; r < rows.length; r++) {
+      const cells = rows[r].querySelectorAll('td, [role="gridcell"]');
+      const values = Array.from(cells).map((c) => trim(c.textContent));
+      const category = values[categoryIdx] || '';
+      const description = values[descIdx] || '';
+      const author = values[authorIdx] || '';
+      const date = values[dateIdx] || '';
+      if (description || category) notes.push({ category, description, author, date });
+    }
+    return notes;
   };
 }
 
 /**
- * Script to extract documents list from the current view (Documents tab).
+ * Script run in page to click the Notes table "next page" button (e.g. > arrow).
+ * @returns {boolean} true if a next button was found and clicked, false otherwise.
+ */
+function clickNotesNextPageScript() {
+  return function clickNotesNextPage() {
+    const candidates = Array.from(document.querySelectorAll('button, a, [role="button"], [class*="pager"], [class*="pagination"] *'));
+    const nextBtn = candidates.find((el) => {
+      const text = (el.textContent || '').trim();
+      const aria = (el.getAttribute('aria-label') || '').toLowerCase();
+      return text === '>' || text === 'Next' || text === '»' || aria.includes('next') || (el.classList && (el.classList.contains('next') || el.classList.contains('pagination-next')));
+    });
+    if (nextBtn && !nextBtn.disabled) {
+      nextBtn.click();
+      return true;
+    }
+    return false;
+  };
+}
+
+/**
+ * Script to extract documents from the Documents tab table.
+ * Columns: Category, Tags, Description, File Link, File Date, Upload Date, Share w/Rep, File Size, Created By, Last Update.
+ * Returns array of { category, description, fileLink, fileDate, uploadDate, fileSize, createdBy }.
  */
 function getProjectDocumentsExtractionScript() {
   return function extractProjectDocuments() {
@@ -479,13 +552,37 @@ function getProjectDocumentsExtractionScript() {
       });
       return list;
     }
-    const links = querySelectorAllDeep(document, 'a[href]');
-    links.forEach((a) => {
-      const name = trim(a.textContent) || trim(a.getAttribute('aria-label')) || '';
-      const href = (a.getAttribute('href') || '').trim();
-      if (name.length > 0 && name.length < 300) documents.push({ name, url: href || undefined });
-    });
-    return documents.slice(0, 50);
+    const table = querySelectorAllDeep(document, 'table').find((t) => {
+      const text = (t.textContent || '').toLowerCase();
+      return (text.includes('file link') || text.includes('file date')) && (text.includes('category') || text.includes('description'));
+    }) || querySelectorAllDeep(document, '[role="grid"]').find((g) => (g.textContent || '').toLowerCase().includes('file link'));
+    const container = table || document.body;
+    const rows = container.querySelectorAll ? container.querySelectorAll('tr, [role="row"]') : [];
+    const headerRow = rows[0];
+    const headerTexts = headerRow ? Array.from(headerRow.querySelectorAll('th, td, [role="columnheader"], [role="gridcell"]')).map((c) => trim(c.textContent).toLowerCase()) : [];
+    const col = (name) => headerTexts.findIndex((h) => h.includes(name));
+    const categoryIdx = col('category') >= 0 ? col('category') : 0;
+    const descIdx = col('description') >= 0 ? col('description') : 2;
+    const fileLinkIdx = col('file link') >= 0 ? col('file link') : 3;
+    const fileDateIdx = col('file date') >= 0 ? col('file date') : 4;
+    const uploadDateIdx = col('upload date') >= 0 ? col('upload date') : 5;
+    const fileSizeIdx = col('file size') >= 0 ? col('file size') : 7;
+    const createdByIdx = col('created by') >= 0 ? col('created by') : 8;
+    for (let r = 1; r < rows.length; r++) {
+      const cells = rows[r].querySelectorAll('td, [role="gridcell"]');
+      const cellEls = Array.from(cells);
+      const values = cellEls.map((c) => trim(c.textContent));
+      const linkEl = cellEls[fileLinkIdx] ? cellEls[fileLinkIdx].querySelector('a[href]') : null;
+      const fileLink = linkEl ? (linkEl.getAttribute('href') || '').trim() : '';
+      const description = values[descIdx] || (linkEl ? trim(linkEl.textContent) : '') || '';
+      const category = values[categoryIdx] || '';
+      const fileDate = values[fileDateIdx] || '';
+      const uploadDate = values[uploadDateIdx] || '';
+      const fileSize = values[fileSizeIdx] || '';
+      const createdBy = values[createdByIdx] || '';
+      if (fileLink || description || category) documents.push({ category, description, fileLink, fileDate, uploadDate, fileSize, createdBy });
+    }
+    return documents;
   };
 }
 
@@ -714,7 +811,16 @@ class AgileScrapingService {
       } catch (_) {}
       try {
         await clickTab('Notes');
-        notes = await page.evaluate(getProjectNotesExtractionScript()) || [];
+        const notesExtract = getProjectNotesExtractionScript();
+        const clickNext = clickNotesNextPageScript();
+        const maxNotePages = 20;
+        for (let p = 0; p < maxNotePages; p++) {
+          const pageNotes = await page.evaluate(notesExtract) || [];
+          notes.push(...pageNotes);
+          const hasNext = await page.evaluate(clickNext);
+          if (!hasNext) break;
+          await new Promise((r) => setTimeout(r, 800));
+        }
       } catch (_) {}
       try {
         await clickTab('Documents');
@@ -727,6 +833,55 @@ class AgileScrapingService {
       if (page) page.close().catch(() => {});
       console.error('AgileScrapingService scrapeRfaProjectPage error:', err);
       return { error: err.message || 'Failed to fetch project details' };
+    }
+  }
+
+  /**
+   * Download a document file from the RFA site using the CDP session (SSO cookies).
+   * Fetches the file as a blob in page context, returns base64, writes to savePath.
+   * @param {string} docUrl - Full URL of the document (same origin as RFA site)
+   * @param {string} savePath - Full filesystem path to save the file
+   * @returns {Promise<{ path?: string, error?: string }>}
+   */
+  async downloadProjectDocument(docUrl, savePath) {
+    if (!docUrl || !savePath) return { error: 'Missing url or save path' };
+    let browser;
+    let page;
+    try {
+      browser = this.edgeManager.getBrowser();
+      if (!browser) {
+        await this.edgeManager.connect();
+        browser = this.edgeManager.getBrowser();
+      }
+      if (!browser) return { error: 'Could not connect to Edge' };
+      const originUrl = this.workqueueUrl || 'http://rfa.acuitybrandslighting.net';
+      page = await this.edgeManager.openProjectPage(browser, originUrl);
+      const dataUrl = await page.evaluate(async (url) => {
+        try {
+          const r = await fetch(url, { credentials: 'include' });
+          if (!r.ok) return null;
+          const blob = await r.blob();
+          return await new Promise((res, rej) => {
+            const fr = new FileReader();
+            fr.onload = () => res(fr.result);
+            fr.onerror = rej;
+            fr.readAsDataURL(blob);
+          });
+        } catch (e) {
+          return null;
+        }
+      }, docUrl);
+      await page.close().catch(() => {});
+      if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:')) {
+        return { error: 'Failed to fetch document; check VPN and permissions.' };
+      }
+      const base64 = dataUrl.replace(/^data:[^;]+;base64,/, '');
+      fs.writeFileSync(savePath, Buffer.from(base64, 'base64'));
+      return { path: savePath };
+    } catch (err) {
+      if (page) page.close().catch(() => {});
+      console.error('AgileScrapingService downloadProjectDocument error:', err);
+      return { error: err.message || 'Download failed' };
     }
   }
 

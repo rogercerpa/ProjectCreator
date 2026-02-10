@@ -967,6 +967,19 @@ ipcMain.handle('agile-diagnose-project-page', async (event, { rfaNumber, rfaDeta
   }
 });
 
+ipcMain.handle('agile-download-document', async (event, { url, filename }) => {
+  try {
+    const { filePath } = await dialog.showSaveDialog(mainWindow || undefined, {
+      defaultPath: filename || 'document',
+      title: 'Save document'
+    });
+    if (!filePath) return { cancelled: true };
+    return await agileScrapingService.downloadProjectDocument(url, filePath);
+  } catch (e) {
+    return { error: e.message };
+  }
+});
+
 // Settings and persistence
 ipcMain.handle('settings-load', async () => {
   try {

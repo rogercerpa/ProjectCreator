@@ -32,6 +32,7 @@ export default function AgileMonitorView({ onNavigateToWizard, onImportRfaData }
   const [projectDetails, setProjectDetails] = useState(null);
   const [projectDetailsModalOpen, setProjectDetailsModalOpen] = useState(false);
   const [projectDetailsRow, setProjectDetailsRow] = useState(null);
+  const [downloadingDocUrl, setDownloadingDocUrl] = useState(null);
 
   const loadStatus = useCallback(async () => {
     if (!window.electronAPI?.agileGetStatus) return;
@@ -225,6 +226,7 @@ export default function AgileMonitorView({ onNavigateToWizard, onImportRfaData }
     setProjectDetailsModalOpen(false);
     setProjectDetails(null);
     setProjectDetailsRow(null);
+    setDownloadingDocUrl(null);
     if (onNavigateToWizard) onNavigateToWizard();
   };
 
@@ -366,7 +368,7 @@ export default function AgileMonitorView({ onNavigateToWizard, onImportRfaData }
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Project details</h3>
               <button
                 type="button"
-                onClick={() => { setProjectDetailsModalOpen(false); setProjectDetails(null); setProjectDetailsRow(null); }}
+                onClick={() => { setProjectDetailsModalOpen(false); setProjectDetails(null); setProjectDetailsRow(null); setDownloadingDocUrl(null); }}
                 className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
               >
                 ×
@@ -380,12 +382,12 @@ export default function AgileMonitorView({ onNavigateToWizard, onImportRfaData }
                   {Object.keys(projectDetails.header || {}).length > 0 && (
                     <section className="mb-4">
                       <h4 className="font-medium text-gray-700 dark:text-gray-200 mb-2">Header</h4>
-                      <dl className="grid grid-cols-1 gap-1">
+                      <dl className="grid grid-cols-2 gap-x-4 gap-y-1">
                         {Object.entries(projectDetails.header).map(([k, v]) => (
-                          <div key={k} className="flex gap-2">
-                            <dt className="text-gray-500 dark:text-gray-400 shrink-0">{k}:</dt>
+                          <React.Fragment key={k}>
+                            <dt className="text-gray-500 dark:text-gray-400">{k.replace(/([A-Z])/g, ' $1').trim().replace(/^./, (c) => c.toUpperCase())}:</dt>
                             <dd className="text-gray-900 dark:text-gray-100 break-words">{v}</dd>
-                          </div>
+                          </React.Fragment>
                         ))}
                       </dl>
                     </section>
@@ -393,12 +395,12 @@ export default function AgileMonitorView({ onNavigateToWizard, onImportRfaData }
                   {Object.keys(projectDetails.details || {}).length > 0 && (
                     <section className="mb-4">
                       <h4 className="font-medium text-gray-700 dark:text-gray-200 mb-2">Details</h4>
-                      <dl className="grid grid-cols-1 gap-1">
+                      <dl className="grid grid-cols-2 gap-x-4 gap-y-1">
                         {Object.entries(projectDetails.details).slice(0, 15).map(([k, v]) => (
-                          <div key={k} className="flex gap-2">
+                          <React.Fragment key={k}>
                             <dt className="text-gray-500 dark:text-gray-400 shrink-0">{k}:</dt>
                             <dd className="text-gray-900 dark:text-gray-100 break-words">{String(v).slice(0, 200)}</dd>
-                          </div>
+                          </React.Fragment>
                         ))}
                       </dl>
                     </section>
@@ -406,9 +408,17 @@ export default function AgileMonitorView({ onNavigateToWizard, onImportRfaData }
                   {Array.isArray(projectDetails.notes) && projectDetails.notes.length > 0 && (
                     <section className="mb-4">
                       <h4 className="font-medium text-gray-700 dark:text-gray-200 mb-2">Notes ({projectDetails.notes.length})</h4>
-                      <ul className="list-disc pl-4 space-y-1 text-gray-700 dark:text-gray-300">
-                        {projectDetails.notes.slice(0, 5).map((n, i) => (
-                          <li key={i}>{n.text || JSON.stringify(n)}</li>
+                      <ul className="space-y-3 text-gray-700 dark:text-gray-300">
+                        {projectDetails.notes.map((n, i) => (
+                          <li key={i} className="border-b border-gray-100 dark:border-gray-700 pb-2 last:border-0">
+                            {n.category && <span className="font-medium text-gray-600 dark:text-gray-400">{n.category}</span>}
+                            <p className="mt-0.5">{n.description || n.text || '-'}</p>
+                            {(n.author || n.date) && (
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                {[n.author, n.date].filter(Boolean).join(' · ')}
+                              </p>
+                            )}
+                          </li>
                         ))}
                       </ul>
                     </section>
@@ -416,11 +426,57 @@ export default function AgileMonitorView({ onNavigateToWizard, onImportRfaData }
                   {Array.isArray(projectDetails.documents) && projectDetails.documents.length > 0 && (
                     <section className="mb-4">
                       <h4 className="font-medium text-gray-700 dark:text-gray-200 mb-2">Documents ({projectDetails.documents.length})</h4>
-                      <ul className="list-disc pl-4 space-y-1 text-gray-700 dark:text-gray-300">
-                        {projectDetails.documents.slice(0, 5).map((d, i) => (
-                          <li key={i}>{d.name || d.url || '-'}</li>
-                        ))}
-                      </ul>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse border border-gray-200 dark:border-gray-600">
+                          <thead>
+                            <tr className="bg-gray-50 dark:bg-gray-700">
+                              <th className="border border-gray-200 dark:border-gray-600 px-2 py-1.5 font-medium">File</th>
+                              <th className="border border-gray-200 dark:border-gray-600 px-2 py-1.5 font-medium">Category</th>
+                              <th className="border border-gray-200 dark:border-gray-600 px-2 py-1.5 font-medium">File date</th>
+                              <th className="border border-gray-200 dark:border-gray-600 px-2 py-1.5 font-medium">Size</th>
+                              <th className="border border-gray-200 dark:border-gray-600 px-2 py-1.5 font-medium">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {projectDetails.documents.map((d, i) => (
+                              <tr key={i} className="border-b border-gray-200 dark:border-gray-600">
+                                <td className="border border-gray-200 dark:border-gray-600 px-2 py-1.5">{d.description || d.name || '-'}</td>
+                                <td className="border border-gray-200 dark:border-gray-600 px-2 py-1.5">{d.category || '-'}</td>
+                                <td className="border border-gray-200 dark:border-gray-600 px-2 py-1.5">{d.fileDate || '-'}</td>
+                                <td className="border border-gray-200 dark:border-gray-600 px-2 py-1.5">{d.fileSize || '-'}</td>
+                                <td className="border border-gray-200 dark:border-gray-600 px-2 py-1.5">
+                                  {d.fileLink ? (
+                                    <button
+                                      type="button"
+                                      disabled={!!downloadingDocUrl}
+                                      onClick={async () => {
+                                        if (!window.electronAPI?.agileDownloadDocument) return;
+                                        setDownloadingDocUrl(d.fileLink);
+                                        try {
+                                          const result = await window.electronAPI.agileDownloadDocument({
+                                            url: d.fileLink,
+                                            filename: d.description || d.name || 'document'
+                                          });
+                                          if (result?.error && !result.cancelled) {
+                                            console.error('Download failed:', result.error);
+                                          }
+                                        } finally {
+                                          setDownloadingDocUrl(null);
+                                        }
+                                      }}
+                                      className="text-sm px-2 py-1 bg-primary-600 hover:bg-primary-700 dark:bg-primary-700 dark:hover:bg-primary-600 text-white rounded disabled:opacity-50"
+                                    >
+                                      {downloadingDocUrl === d.fileLink ? '…' : 'Download'}
+                                    </button>
+                                  ) : (
+                                    '-'
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </section>
                   )}
                 </>
@@ -430,7 +486,7 @@ export default function AgileMonitorView({ onNavigateToWizard, onImportRfaData }
               <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => { setProjectDetailsModalOpen(false); setProjectDetails(null); setProjectDetailsRow(null); }}
+                  onClick={() => { setProjectDetailsModalOpen(false); setProjectDetails(null); setProjectDetailsRow(null); setDownloadingDocUrl(null); }}
                   className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
                 >
                   Cancel

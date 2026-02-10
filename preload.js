@@ -66,6 +66,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   agileGetWorkqueue: () => ipcRenderer.invoke('agile-get-workqueue'),
   agileDiagnosePage: () => ipcRenderer.invoke('agile-diagnose-page'),
   agileFetchProjectDetails: (payload) => ipcRenderer.invoke('agile-fetch-project-details', payload),
+  agileDownloadDocument: (payload) => ipcRenderer.invoke('agile-download-document', payload),
   agileDiagnoseProjectPage: (payload) => ipcRenderer.invoke('agile-diagnose-project-page', payload),
   onAgileUpdate: (callback) => {
     ipcRenderer.on('agile-workqueue-update', (event, data) => callback(data));
