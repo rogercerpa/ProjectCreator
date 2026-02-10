@@ -92,6 +92,7 @@
     "mammoth": "^1.6.0",
     "officegen": "^0.6.5",
     "path-browserify": "^1.0.1",
+    "puppeteer-core": "^24.37.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "recharts": "^3.7.0",
@@ -133,7 +134,8 @@
     "asar": true,
     "asarUnpack": [
       "node_modules/xlsx/**/*",
-      "node_modules/mammoth/**/*"
+      "node_modules/mammoth/**/*",
+      "node_modules/puppeteer-core/**/*"
     ],
     "win": {
       "target": [

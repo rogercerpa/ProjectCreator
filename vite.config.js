@@ -12,7 +12,7 @@ export default defineConfig({
       vite: {
         build: {
           rollupOptions: {
-            external: ['electron', 'fs-extra', 'path', 'os', 'chokidar', 'archiver', 'xlsx', 'officegen', 'docx', 'mammoth', 'ws'],
+            external: ['electron', 'fs-extra', 'path', 'os', 'chokidar', 'archiver', 'xlsx', 'officegen', 'docx', 'mammoth', 'ws', 'puppeteer-core'],
             output: {
               format: 'cjs'
             }
@@ -38,11 +38,11 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
     rollupOptions: {
-      external: ['electron', 'fs-extra', 'path', 'os', 'chokidar', 'archiver', 'xlsx', 'officegen', 'mammoth', 'ws'],
+      external: ['electron', 'fs-extra', 'path', 'os', 'chokidar', 'archiver', 'xlsx', 'officegen', 'mammoth', 'ws', 'puppeteer-core'],
     },
   },
   optimizeDeps: {
-    exclude: ['fs-extra', 'path', 'os', 'chokidar', 'archiver', 'xlsx', 'officegen', 'mammoth', 'ws']
+    exclude: ['fs-extra', 'path', 'os', 'chokidar', 'archiver', 'xlsx', 'officegen', 'mammoth', 'ws', 'puppeteer-core']
   },
   server: {
     port: 5173,

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, ipcMain, dialog, shell } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, dialog, shell, Notification } = require('electron');
 const path = require('path');
 const fs = require('fs-extra');
 const os = require('os');
@@ -117,6 +117,58 @@ const BOMBulkImportService = require('./main-process/services/BOMBulkImportServi
 const bomParserService = new BOMParserService();
 const bomPersistenceService = new BOMPersistenceService(projectPersistenceService);
 const bomBulkImportService = new BOMBulkImportService(bomPersistenceService, projectPersistenceService);
+
+// Agile workqueue scraping (Edge CDP + puppeteer-core)
+const EdgeConnectionManager = require('./main-process/services/EdgeConnectionManager');
+const AgileScrapingService = require('./main-process/services/AgileScrapingService');
+const edgeConnectionManager = new EdgeConnectionManager({ debugPort: 9222 });
+function showAgileNotification(title, body) {
+  if (!Notification.isSupported()) return;
+  try {
+    const n = new Notification({ title: title || 'Project Creator', body: body || '' });
+    n.show();
+  } catch (e) {
+    console.warn('Agile notification failed:', e.message);
+  }
+}
+
+const ECD_NOTIFY_THROTTLE_MS = 6 * 60 * 60 * 1000; // 6 hours per RFA
+const lastECDNotifyByRfa = new Map();
+
+const agileScrapingService = new AgileScrapingService(edgeConnectionManager, {
+  onWorkqueueUpdate: (data) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('agile-workqueue-update', data);
+    }
+  },
+  onNewRFA: (rfa) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('agile-new-rfa', rfa);
+    }
+    showAgileNotification('New RFA in workqueue', `${rfa.rfaNumber || 'RFA'}${rfa.projectName ? ` - ${rfa.projectName}` : ''}`);
+  },
+  onRFAChanged: (rfa) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('agile-rfa-changed', rfa);
+    }
+    showAgileNotification('RFA updated', `${rfa.rfaNumber || 'RFA'}${rfa.status ? ` - ${rfa.status}` : ''}`);
+  },
+  onECDAAlert: (rfa) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('agile-ecd-alert', rfa);
+    }
+    const key = rfa.rfaNumber || rfa.projectName || 'unknown';
+    const now = Date.now();
+    const last = lastECDNotifyByRfa.get(key);
+    if (last == null || now - last > ECD_NOTIFY_THROTTLE_MS) {
+      lastECDNotifyByRfa.set(key, now);
+      showAgileNotification('ECD due soon or overdue', `${rfa.rfaNumber || 'RFA'}${rfa.ecd ? ` - ECD ${rfa.ecd}` : ''}`);
+    }
+  }
+});
+edgeConnectionManager.onDisconnect(() => {
+  agileScrapingService.stopMonitoring();
+});
 
 // Setup workload Excel sync event listeners
 workloadExcelSyncService.on('syncStarted', (data) => {
@@ -834,6 +886,84 @@ ipcMain.handle('open-in-edge', async (event, url) => {
   } catch (error) {
     console.error('Error opening in Edge:', error);
     return { success: false, error: error.message };
+  }
+});
+
+// Agile workqueue monitoring (Edge CDP)
+ipcMain.handle('agile-check-edge-connection', async () => {
+  try {
+    return await edgeConnectionManager.checkConnection();
+  } catch (e) {
+    return { connected: false, error: e.message };
+  }
+});
+ipcMain.handle('agile-launch-edge-debug', async (event, port) => {
+  try {
+    return await edgeConnectionManager.launchEdgeWithDebug(port ?? 9222);
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+ipcMain.handle('agile-start-monitoring', async (event, intervalMs) => {
+  try {
+    agileScrapingService.startMonitoring(intervalMs ?? 5 * 60 * 1000);
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+ipcMain.handle('agile-stop-monitoring', async () => {
+  try {
+    agileScrapingService.stopMonitoring();
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+ipcMain.handle('agile-scrape-now', async () => {
+  try {
+    return await agileScrapingService.scrapeWorkqueue();
+  } catch (e) {
+    return { entries: [], scrapedAt: new Date().toISOString(), error: e.message };
+  }
+});
+ipcMain.handle('agile-get-status', async () => {
+  try {
+    const edgeStatus = await edgeConnectionManager.checkConnection();
+    const agileStatus = agileScrapingService.getStatus();
+    return { edge: edgeStatus, ...agileStatus };
+  } catch (e) {
+    return { edge: { connected: false, error: e.message }, isMonitoring: false, lastError: e.message };
+  }
+});
+ipcMain.handle('agile-get-workqueue', async () => {
+  try {
+    return agileScrapingService.getWorkqueue();
+  } catch (e) {
+    return [];
+  }
+});
+ipcMain.handle('agile-diagnose-page', async () => {
+  try {
+    return await agileScrapingService.diagnosePage();
+  } catch (e) {
+    return { error: e.message };
+  }
+});
+
+ipcMain.handle('agile-fetch-project-details', async (event, { rfaNumber, rfaDetailUrlPattern }) => {
+  try {
+    return await agileScrapingService.scrapeRfaProjectPage(rfaNumber || '', { rfaDetailUrlPattern });
+  } catch (e) {
+    return { error: e.message };
+  }
+});
+
+ipcMain.handle('agile-diagnose-project-page', async (event, { rfaNumber, rfaDetailUrlPattern }) => {
+  try {
+    return await agileScrapingService.diagnoseProjectPage(rfaNumber || '', { rfaDetailUrlPattern });
+  } catch (e) {
+    return { error: e.message };
   }
 });
 

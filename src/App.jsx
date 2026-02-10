@@ -9,6 +9,7 @@ import ProjectList from './components/ProjectList';
 import AgencyDirectory from './components/AgencyDirectory';
 import AgencyDashboard from './components/AgencyDashboard';
 import WorkloadDashboard from './components/WorkloadDashboard';
+import AgileMonitorView from './components/agile/AgileMonitorView';
 import DraftRecoveryModal from './components/wizard/components/DraftRecoveryModal';
 import MigrationAssistant from './components/wizard/components/MigrationAssistant';
 import Settings from './components/Settings';
@@ -1044,6 +1045,34 @@ function App() {
               setCurrentView('settings');
             }}
           />;
+        case 'agile-monitor':
+          return (
+            <AgileMonitorView
+              onNavigateToWizard={() => setCurrentView('wizard')}
+              onImportRfaData={(rfaData) => {
+                if (rfaData) {
+                  setFormData((prev) => ({
+                    ...prev,
+                    rfaNumber: rfaData.rfaNumber ?? prev.rfaNumber,
+                    rfaType: rfaData.rfaType ?? prev.rfaType,
+                    projectName: rfaData.projectName ?? prev.projectName,
+                    projectContainer: rfaData.projectContainer ?? prev.projectContainer,
+                    agentNumber: rfaData.agentNumber ?? prev.agentNumber,
+                    ecd: rfaData.ecd ?? prev.ecd,
+                    rfaStatus: rfaData.status ?? prev.rfaStatus,
+                    ...(rfaData.assignedTo != null && { assignedTo: rfaData.assignedTo }),
+                    ...(rfaData.priority != null && { complexity: rfaData.priority }),
+                    ...(rfaData.nationalAccount != null && { nationalAccount: rfaData.nationalAccount }),
+                    ...(rfaData.requestedDate != null && { requestedDate: rfaData.requestedDate }),
+                    ...(rfaData.submittedDate != null && { submittedDate: rfaData.submittedDate }),
+                    ...(rfaData.notes != null && { rfaNotes: rfaData.notes }),
+                    ...(rfaData.documents != null && { rfaDocuments: rfaData.documents })
+                  }));
+                }
+                setCurrentView('wizard');
+              }}
+            />
+          );
         case 'das-general':
           return <DASGeneralPage />;
         case 'settings':

@@ -28,6 +28,12 @@ function Sidebar({ currentView, onViewChange, projectCount }) {
       description: 'Team workload'
     },
     {
+      id: 'agile-monitor',
+      label: 'Agile Workqueue',
+      icon: '📥',
+      description: 'Monitor Agile queue'
+    },
+    {
       id: 'agencies',
       label: 'Agency Directory',
       icon: '📋',

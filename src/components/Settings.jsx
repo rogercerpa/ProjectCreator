@@ -10,6 +10,7 @@ import AgenciesTab from './settings/AgenciesTab';
 import UserProfileTab from './settings/UserProfileTab';
 import WorkloadTab from './settings/WorkloadTab';
 import TriageCalcTab from './settings/TriageCalcTab';
+import AgileTab from './settings/AgileTab';
 import featureFlagService from '../services/FeatureFlagService';
 
 // Access secure electron API through contextBridge
@@ -88,6 +89,17 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
       weeklyCapacity: 40,
       showNotifications: true,
       onlyMyAssignments: false
+    },
+    agileSettings: {
+      workqueueUrl: 'https://agile.acuitybrandslighting.net/applications/workqueue2',
+      rfaDetailUrlPattern: 'http://rfa.acuitybrandslighting.net/#/requestnav/{rfaNumber}',
+      edgeDebugPort: 9222,
+      pollingIntervalMinutes: 5,
+      notifications: {
+        newRfa: true,
+        statusChange: true,
+        ecdAlert: true
+      }
     }
   });
 
@@ -316,7 +328,7 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
       if (electronAPI && electronAPI.settingsLoad) {
         const savedSettings = await electronAPI.settingsLoad();
         if (savedSettings && savedSettings.success) {
-          // Ensure workloadSettings exists in saved data
+          // Ensure workloadSettings and agileSettings exist in saved data
           const mergedData = {
             ...savedSettings.data,
             workloadSettings: {
@@ -331,6 +343,14 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
               onlyMyAssignments: false,
               productKnowledge: {},
               ...savedSettings.data?.workloadSettings
+            },
+            agileSettings: {
+              workqueueUrl: 'https://agile.acuitybrandslighting.net/applications/workqueue2',
+              rfaDetailUrlPattern: 'http://rfa.acuitybrandslighting.net/#/requestnav/{rfaNumber}',
+              edgeDebugPort: 9222,
+              pollingIntervalMinutes: 5,
+              notifications: { newRfa: true, statusChange: true, ecdAlert: true },
+              ...savedSettings.data?.agileSettings
             }
           };
           setSettings(prev => ({ ...prev, ...mergedData }));
@@ -1437,6 +1457,12 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
       label: 'Workload',
       icon: '📊',
       fullLabel: 'Workload Dashboard Settings'
+    },
+    {
+      id: 'agile',
+      label: 'Agile Monitor',
+      icon: '📥',
+      fullLabel: 'Agile Workqueue Monitor Settings'
     },
     {
       id: 'triage-calc',
@@ -3258,6 +3284,14 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
         return (
           <WorkloadTab
             ref={workloadTabRef}
+            settings={settings}
+            setSettings={setSettings}
+          />
+        );
+
+      case 'agile':
+        return (
+          <AgileTab
             settings={settings}
             setSettings={setSettings}
           />

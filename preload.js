@@ -56,6 +56,26 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
   openInEdge: (url) => ipcRenderer.invoke('open-in-edge', url),
   
+  // Agile workqueue monitoring
+  agileCheckEdge: () => ipcRenderer.invoke('agile-check-edge-connection'),
+  agileLaunchEdge: (port) => ipcRenderer.invoke('agile-launch-edge-debug', port),
+  agileStartMonitoring: (intervalMs) => ipcRenderer.invoke('agile-start-monitoring', intervalMs),
+  agileStopMonitoring: () => ipcRenderer.invoke('agile-stop-monitoring'),
+  agileScrapeNow: () => ipcRenderer.invoke('agile-scrape-now'),
+  agileGetStatus: () => ipcRenderer.invoke('agile-get-status'),
+  agileGetWorkqueue: () => ipcRenderer.invoke('agile-get-workqueue'),
+  agileDiagnosePage: () => ipcRenderer.invoke('agile-diagnose-page'),
+  agileFetchProjectDetails: (payload) => ipcRenderer.invoke('agile-fetch-project-details', payload),
+  agileDiagnoseProjectPage: (payload) => ipcRenderer.invoke('agile-diagnose-project-page', payload),
+  onAgileUpdate: (callback) => {
+    ipcRenderer.on('agile-workqueue-update', (event, data) => callback(data));
+    return () => ipcRenderer.removeAllListeners('agile-workqueue-update');
+  },
+  onAgileNewRFA: (callback) => {
+    ipcRenderer.on('agile-new-rfa', (event, data) => callback(data));
+    return () => ipcRenderer.removeAllListeners('agile-new-rfa');
+  },
+  
   // Project creation
   projectCreateFolder: (projectData) => ipcRenderer.invoke('project-create-folder', projectData),
   projectCreateWithFolders: (projectData) => ipcRenderer.invoke('project-create-with-folders', projectData),
