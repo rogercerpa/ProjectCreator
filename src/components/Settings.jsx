@@ -11,6 +11,7 @@ import UserProfileTab from './settings/UserProfileTab';
 import WorkloadTab from './settings/WorkloadTab';
 import TriageCalcTab from './settings/TriageCalcTab';
 import AgileTab from './settings/AgileTab';
+import AISettingsTab from './settings/AISettingsTab';
 import featureFlagService from '../services/FeatureFlagService';
 
 // Access secure electron API through contextBridge
@@ -1469,6 +1470,12 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
       label: 'Triage Calc',
       icon: '🧮',
       fullLabel: 'Triage Calculation Settings'
+    },
+    {
+      id: 'ai-settings',
+      label: 'AI Config',
+      icon: '🤖',
+      fullLabel: 'AI Provider Configuration'
     }
   ];
 
@@ -3296,6 +3303,9 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
             setSettings={setSettings}
           />
         );
+
+      case 'ai-settings':
+        return <AISettingsTab />;
 
       // Original code for reference (now replaced by WorkloadTab component)
       case 'workload-old':

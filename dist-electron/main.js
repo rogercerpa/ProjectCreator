@@ -77,6 +77,11 @@ const BOMBulkImportService = require("./main-process/services/BOMBulkImportServi
 const bomParserService = new BOMParserService();
 const bomPersistenceService = new BOMPersistenceService(projectPersistenceService);
 const bomBulkImportService = new BOMBulkImportService(bomPersistenceService, projectPersistenceService);
+const AIService = require("./main-process/services/AIService");
+const BOMQCService = require("./main-process/services/BOMQCService");
+const { getAllBuildingCodes, getManualRequirements } = require("./main-process/constants/BuildingCodes");
+const aiService = new AIService(settingsService);
+const bomQCService = new BOMQCService(aiService, bomPersistenceService, projectPersistenceService);
 const EdgeConnectionManager = require("./main-process/services/EdgeConnectionManager");
 const AgileScrapingService = require("./main-process/services/AgileScrapingService");
 const edgeConnectionManager = new EdgeConnectionManager({ debugPort: 9222 });
@@ -2714,6 +2719,128 @@ ipcMain.handle("bom:open-folder", async (event, folderPath) => {
     }
   } catch (error) {
     console.error("Error opening folder:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("ai:save-config", async (event, config) => {
+  try {
+    return await aiService.saveConfig(config);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("ai:get-config", async () => {
+  try {
+    return await aiService.getConfig();
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("ai:test-connection", async () => {
+  try {
+    return await aiService.testConnection();
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("ai:has-key", async () => {
+  try {
+    const hasKey = await aiService.hasApiKey();
+    return { success: true, hasKey };
+  } catch (error) {
+    return { success: false, hasKey: false, error: error.message };
+  }
+});
+ipcMain.handle("ai:clear-key", async () => {
+  try {
+    return await aiService.clearKey();
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("ai:get-providers", async () => {
+  try {
+    return { success: true, providers: aiService.getProviders() };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("bom-qc:run-analysis", async (event, projectId, requirementsConfig) => {
+  try {
+    return await bomQCService.runFullAnalysis(projectId, requirementsConfig);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("bom-qc:analyze-devices", async (event, devices) => {
+  try {
+    const results = await bomQCService.analyzeDeviceCapabilities(devices);
+    return { success: true, devices: results };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("bom-qc:parse-spec", async (event, filePath) => {
+  try {
+    return await bomQCService.parseProjectSpec(filePath);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("bom-qc:select-spec-file", async (event, project) => {
+  try {
+    const dialogOptions = {
+      properties: ["openFile"],
+      filters: [
+        { name: "Specification Documents", extensions: ["pdf", "docx", "doc", "txt"] }
+      ],
+      title: "Select Project Specification"
+    };
+    if (project) {
+      try {
+        const pathResult = await bomParserService.resolveProjectDASPath(project);
+        if (pathResult && pathResult.accessible && pathResult.path) {
+          dialogOptions.defaultPath = pathResult.path;
+          console.log(`📁 Spec file dialog opening at DAS path: ${pathResult.path}`);
+        }
+      } catch (pathError) {
+        console.log("Could not resolve DAS path for spec dialog:", pathError.message);
+      }
+    }
+    const result = await dialog.showOpenDialog(mainWindow, dialogOptions);
+    if (result.canceled || !result.filePaths.length) {
+      return { success: false, canceled: true };
+    }
+    return { success: true, filePath: result.filePaths[0] };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("bom-qc:get-building-codes", async () => {
+  try {
+    return { success: true, buildingCodes: getAllBuildingCodes(), manualRequirements: getManualRequirements() };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("bom-qc:clear-device-cache", async () => {
+  try {
+    return await bomQCService.clearDeviceCache();
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("bom-qc:get-requirements", async (event, projectId) => {
+  try {
+    return await bomQCService.getProjectRequirements(projectId);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("bom-qc:save-requirements", async (event, projectId, requirementsConfig) => {
+  try {
+    return await bomQCService.saveProjectRequirements(projectId, requirementsConfig);
+  } catch (error) {
     return { success: false, error: error.message };
   }
 });

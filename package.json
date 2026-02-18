@@ -80,6 +80,8 @@
     "vite-plugin-electron-renderer": "^0.14.6"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.76.0",
+    "@google/generative-ai": "^0.24.1",
     "archiver": "^7.0.1",
     "axios": "^1.12.2",
     "chokidar": "^3.5.3",
@@ -91,7 +93,9 @@
     "jspdf": "^4.0.0",
     "mammoth": "^1.6.0",
     "officegen": "^0.6.5",
+    "openai": "^6.22.0",
     "path-browserify": "^1.0.1",
+    "pdf-parse": "^2.4.5",
     "puppeteer-core": "^24.37.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",

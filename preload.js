@@ -392,6 +392,24 @@ contextBridge.exposeInMainWorld('electronAPI', {
   bomSmartUpload: (project) => ipcRenderer.invoke('bom:smart-upload', project),
   bomOpenFolder: (folderPath) => ipcRenderer.invoke('bom:open-folder', folderPath),
   
+  // ===== AI PROVIDER APIs =====
+  aiSaveConfig: (config) => ipcRenderer.invoke('ai:save-config', config),
+  aiGetConfig: () => ipcRenderer.invoke('ai:get-config'),
+  aiTestConnection: () => ipcRenderer.invoke('ai:test-connection'),
+  aiHasKey: () => ipcRenderer.invoke('ai:has-key'),
+  aiClearKey: () => ipcRenderer.invoke('ai:clear-key'),
+  aiGetProviders: () => ipcRenderer.invoke('ai:get-providers'),
+
+  // ===== BOM QC REVIEW APIs =====
+  bomQcRunAnalysis: (projectId, requirementsConfig) => ipcRenderer.invoke('bom-qc:run-analysis', projectId, requirementsConfig),
+  bomQcAnalyzeDevices: (devices) => ipcRenderer.invoke('bom-qc:analyze-devices', devices),
+  bomQcParseSpec: (filePath) => ipcRenderer.invoke('bom-qc:parse-spec', filePath),
+  bomQcSelectSpecFile: (project) => ipcRenderer.invoke('bom-qc:select-spec-file', project),
+  bomQcClearDeviceCache: () => ipcRenderer.invoke('bom-qc:clear-device-cache'),
+  bomQcGetBuildingCodes: () => ipcRenderer.invoke('bom-qc:get-building-codes'),
+  bomQcGetRequirements: (projectId) => ipcRenderer.invoke('bom-qc:get-requirements', projectId),
+  bomQcSaveRequirements: (projectId, requirementsConfig) => ipcRenderer.invoke('bom-qc:save-requirements', projectId, requirementsConfig),
+
   // BOM event listeners
   onBomBulkImportProgress: (callback) => {
     ipcRenderer.on('bom:bulk-import-progress', (event, data) => callback(data));

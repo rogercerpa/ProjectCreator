@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import CollapsibleSection from '../shared/CollapsibleSection';
+import BOMQCReviewPanel from './BOMQCReviewPanel';
 
 /**
  * BOMDetailsSection - Displays BOM (Bill of Materials) data for a project
@@ -19,6 +20,16 @@ const BOMDetailsSection = ({ project, onProjectUpdate, isExpanded: controlledExp
   const [showDeviceTable, setShowDeviceTable] = useState(false);
   const [notification, setNotification] = useState(null);
   const [suggestedPath, setSuggestedPath] = useState(null);
+  const [qcScore, setQcScore] = useState(null);
+
+  // Load QC status for header indicator
+  useEffect(() => {
+    if (project?.qcAnalysis?.summary) {
+      setQcScore(project.qcAnalysis.summary.score);
+    } else {
+      setQcScore(null);
+    }
+  }, [project?.qcAnalysis]);
 
   // Load BOM data when project changes
   useEffect(() => {
@@ -270,10 +281,19 @@ const BOMDetailsSection = ({ project, onProjectUpdate, isExpanded: controlledExp
     );
   };
 
-  // Build header extra content (device count or "No BOM uploaded")
+  // Build header extra content (device count + QC badge or "No BOM uploaded")
   const headerExtra = bomData ? (
-    <span className="text-sm text-gray-500 dark:text-gray-400">
-      ({bomData.totalDevices} devices)
+    <span className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+      <span>({bomData.totalDevices} devices)</span>
+      {qcScore !== null && (
+        <span className={`px-1.5 py-0.5 rounded text-xs font-bold ${
+          qcScore >= 80 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+          : qcScore >= 50 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+          : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+        }`}>
+          QC {qcScore}%
+        </span>
+      )}
     </span>
   ) : !isLoading ? (
     <span className="text-sm text-gray-400 dark:text-gray-500 italic">
@@ -597,6 +617,18 @@ const BOMDetailsSection = ({ project, onProjectUpdate, isExpanded: controlledExp
                   </button>
                 </div>
               </div>
+
+              {/* QC Review Panel */}
+              <BOMQCReviewPanel
+                project={project}
+                bomData={bomData}
+                onProjectUpdate={(updatedProject) => {
+                  if (updatedProject?.qcAnalysis?.summary) {
+                    setQcScore(updatedProject.qcAnalysis.summary.score);
+                  }
+                  if (onProjectUpdate) onProjectUpdate(updatedProject);
+                }}
+              />
             </div>
           )}
         </div>

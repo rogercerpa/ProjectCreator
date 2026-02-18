@@ -228,6 +228,8 @@ class BOMParserService {
     };
 
     let currentSection = 'devices'; // devices, wires, or services
+    let currentPhase = null;
+    const phases = [];
 
     // Parse data rows
     for (let i = 1; i < lines.length; i++) {
@@ -242,8 +244,21 @@ class BOMParserService {
       const pricingValue = parseFloat(values[headerMap.pricing]) || 0;
 
       // Check for section headers
-      if (lineCategory === 'Group Header' && catalogNumber.toLowerCase() === 'wires') {
-        currentSection = 'wires';
+      if (lineCategory === 'Group Header') {
+        const lowerCat = catalogNumber.toLowerCase();
+        if (lowerCat === 'wires') {
+          currentSection = 'wires';
+          continue;
+        }
+        if (lowerCat === 'services' || lowerCat === 'service') {
+          currentSection = 'services';
+          continue;
+        }
+        // Any other Group Header is a phase/section label
+        currentPhase = catalogNumber.trim() || null;
+        if (currentPhase && !phases.includes(currentPhase)) {
+          phases.push(currentPhase);
+        }
         continue;
       }
 
@@ -264,7 +279,8 @@ class BOMParserService {
         quantity: qty,
         description: lineComments,
         type,
-        productFamily
+        productFamily,
+        phase: currentPhase
       };
 
       if (currentSection === 'wires' || type.startsWith('CAT5') || type.startsWith('CAT6')) {
@@ -293,6 +309,8 @@ class BOMParserService {
       wireLineItems: wires.length,
       startupCosts: serviceCosts,
       productFamilySummary,
+      phases,
+      isMultiPhase: phases.length > 1,
       devices,
       wires
     };
