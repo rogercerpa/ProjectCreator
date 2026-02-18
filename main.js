@@ -3235,36 +3235,24 @@ ipcMain.handle('bom:check-project-folder', async (event, projectFolderPath) => {
   }
 });
 
-// Auto-import BOM from project folder
+// Auto-import BOM from project folder (recursively searches for BOM CHECK)
 ipcMain.handle('bom:auto-import-from-folder', async (event, projectFolderPath, projectId) => {
   try {
-    const bomCheckPath = path.join(projectFolderPath, 'BOM CHECK');
-    
-    if (!await fs.pathExists(bomCheckPath)) {
-      return { success: false, error: 'No BOM CHECK folder found' };
+    const bomCheckResult = await bomParserService.findBOMCheckInProject(projectFolderPath);
+
+    if (!bomCheckResult.found) {
+      return { success: false, error: bomCheckResult.reason || 'No BOM CHECK folder found' };
     }
 
-    const bomFile = await bomParserService.selectBOMFile(bomCheckPath);
-    
-    if (!bomFile) {
-      return { success: false, error: 'No BOM files found in BOM CHECK folder' };
-    }
-
-    // Parse the BOM file
-    const bomData = await bomParserService.parse(bomFile);
-    
-    // Save to project
+    const bomData = await bomParserService.parse(bomCheckResult.bomFile);
     const result = await bomPersistenceService.saveBOMToProject(projectId, bomData);
 
-    if (result.success) {
-      // Send notification to renderer
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('bom:auto-import-complete', {
-          projectId,
-          totalDevices: bomData.totalDevices,
-          startupCost: bomData.startupCosts?.total || 0
-        });
-      }
+    if (result.success && mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('bom:auto-import-complete', {
+        projectId,
+        totalDevices: bomData.totalDevices,
+        startupCost: bomData.startupCosts?.total || 0
+      });
     }
 
     return result;

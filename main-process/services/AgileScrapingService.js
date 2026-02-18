@@ -345,14 +345,291 @@ function isValidRfaForUrl(rfaNumber) {
 }
 
 /**
+ * Parse RFA identifier into base number + requested version.
+ * If no revision suffix is present, defaults requestedVersion to 0.
+ * @param {string} rfaNumber
+ * @returns {{ baseRfa: string, requestedVersion: number }}
+ */
+function parseRfaIdentifier(rfaNumber) {
+  const raw = (rfaNumber || '').trim();
+  const m = raw.match(/^([0-9]+)(?:-([0-9]+))?$/);
+  if (m) {
+    return {
+      baseRfa: m[1] || '',
+      requestedVersion: Number.isFinite(Number(m[2])) ? Number(m[2]) : 0
+    };
+  }
+  return {
+    baseRfa: raw.split('-')[0] || '',
+    requestedVersion: 0
+  };
+}
+
+/**
  * Build project detail URL from RFA number and pattern.
  * @param {string} rfaNumber - e.g. "314165-0" or "24-64950"
  * @param {string} pattern - e.g. "http://rfa.acuitybrandslighting.net/#/requestnav/{rfaNumber}"
  */
 function buildProjectDetailUrl(rfaNumber, pattern) {
-  const base = (rfaNumber || '').trim().split('-')[0] || '';
+  const parsed = parseRfaIdentifier(rfaNumber);
+  const base = parsed.baseRfa || '';
   const url = (pattern || '').replace(/\{rfaNumber\}/gi, base);
   return url;
+}
+
+/**
+ * Script to select project version from the page's Version dropdown.
+ * Returns { requestedVersion, selectedVersion, availableVersions, versionFallback, versionWarning }.
+ */
+function getProjectVersionSelectionScript() {
+  return function selectProjectVersion(requestedVersion) {
+    const querySelectorAllDeep = (root, selector) => {
+      if (!root || !root.querySelectorAll) return [];
+      const list = Array.from(root.querySelectorAll(selector));
+      root.querySelectorAll('*').forEach((el) => {
+        if (el.shadowRoot) list.push(...querySelectorAllDeep(el.shadowRoot, selector));
+      });
+      return list;
+    };
+
+    const out = {
+      requestedVersion: Number.isFinite(Number(requestedVersion)) ? Number(requestedVersion) : 0,
+      selectedVersion: null,
+      availableVersions: [],
+      versionFallback: false,
+      versionWarning: null,
+      debug: {
+        versionLabelFound: false,
+        totalSelectCount: 0,
+        visibleSelectCount: 0,
+        deepTotalSelectCount: 0,
+        deepVisibleSelectCount: 0,
+        comboboxCount: 0,
+        deepComboboxCount: 0,
+        optionsLikeCount: 0,
+        containerSelectCount: 0,
+        visibleSelectSummaries: [],
+        versionLabelText: null,
+        versionContainerTag: null,
+        versionContainerClass: null,
+        versionContainerTextSample: null,
+        versionContainerInteractive: [],
+        versionLikeElements: [],
+        selectionPath: null,
+        customOptionCount: 0,
+        customTargetFound: false
+      }
+    };
+
+    const parseOptionNumber = (s) => {
+      const t = (s || '').trim();
+      if (!/^\d+$/.test(t)) return null;
+      return Number(t);
+    };
+    const isVisible = (el) => {
+      if (!el) return false;
+      const style = window.getComputedStyle(el);
+      return style && style.visibility !== 'hidden' && style.display !== 'none';
+    };
+
+    const allSelectNodes = Array.from(document.querySelectorAll('select'));
+    const deepSelectNodes = querySelectorAllDeep(document, 'select');
+    out.debug.totalSelectCount = allSelectNodes.length;
+    out.debug.visibleSelectCount = allSelectNodes.filter(isVisible).length;
+    out.debug.deepTotalSelectCount = deepSelectNodes.length;
+    out.debug.deepVisibleSelectCount = deepSelectNodes.filter(isVisible).length;
+    out.debug.comboboxCount = document.querySelectorAll('[role="combobox"]').length;
+    out.debug.deepComboboxCount = querySelectorAllDeep(document, '[role="combobox"]').length;
+    out.debug.optionsLikeCount = document.querySelectorAll('[role="option"], [class*="option"], [class*="menu-item"]').length;
+    out.debug.visibleSelectSummaries = deepSelectNodes
+      .filter(isVisible)
+      .slice(0, 8)
+      .map((s, i) => {
+        const opts = Array.from(s.options || []);
+        const parsed = opts
+          .map((o) => parseOptionNumber(o.textContent || o.value))
+          .filter((n) => Number.isFinite(n));
+        return {
+          idx: i,
+          id: s.id || null,
+          name: s.name || null,
+          className: (s.className || '').toString().slice(0, 120),
+          optionCount: opts.length,
+          numericOptions: parsed.slice(0, 12)
+        };
+      });
+
+    let selectEl = null;
+    const labels = querySelectorAllDeep(document, 'label, span, div, th');
+    const versionLabel = labels.find((el) => /version\s*:?\s*$/i.test((el.textContent || '').trim()));
+    out.debug.versionLabelFound = !!versionLabel;
+    if (versionLabel) {
+      out.debug.versionLabelText = (versionLabel.textContent || '').trim();
+    }
+    if (versionLabel) {
+      const container = versionLabel.closest('tr, [class*="row"], [class*="field"], div, section') || versionLabel.parentElement;
+      if (container) {
+        out.debug.versionContainerTag = container.tagName || null;
+        out.debug.versionContainerClass = (container.className || '').toString().slice(0, 200);
+        out.debug.versionContainerTextSample = (container.textContent || '').trim().slice(0, 300);
+        out.debug.versionContainerInteractive = querySelectorAllDeep(container, 'select, input, button, [role="button"], [role="combobox"], [role="listbox"], [aria-haspopup], [class*="dropdown"], [class*="combo"], [class*="select"]')
+          .slice(0, 20)
+          .map((el) => ({
+            tag: el.tagName || null,
+            role: el.getAttribute ? el.getAttribute('role') : null,
+            id: el.id || null,
+            className: (el.className || '').toString().slice(0, 140),
+            text: (el.textContent || '').trim().slice(0, 60),
+            value: (typeof el.value !== 'undefined' && el.value !== null) ? String(el.value).slice(0, 60) : null,
+            ariaLabel: el.getAttribute ? (el.getAttribute('aria-label') || null) : null,
+            ariaExpanded: el.getAttribute ? (el.getAttribute('aria-expanded') || null) : null
+          }));
+        const deepContainerSelects = querySelectorAllDeep(container, 'select');
+        out.debug.containerSelectCount = deepContainerSelects.length;
+        selectEl = deepContainerSelects[0] || null;
+      }
+    }
+    out.debug.versionLikeElements = querySelectorAllDeep(document, '[id*="version" i], [name*="version" i], [class*="version" i], [aria-label*="version" i]')
+      .slice(0, 20)
+      .map((el) => ({
+        tag: el.tagName || null,
+        id: el.id || null,
+        name: el.name || null,
+        role: el.getAttribute ? el.getAttribute('role') : null,
+        className: (el.className || '').toString().slice(0, 140),
+        text: (el.textContent || '').trim().slice(0, 60),
+        value: (typeof el.value !== 'undefined' && el.value !== null) ? String(el.value).slice(0, 60) : null,
+        ariaExpanded: el.getAttribute ? (el.getAttribute('aria-expanded') || null) : null
+      }));
+    if (!selectEl) {
+      const allSelects = deepSelectNodes.filter(isVisible);
+      selectEl = allSelects.find((s) => {
+        const nums = Array.from(s.options || [])
+          .map((o) => parseOptionNumber(o.textContent || o.value))
+          .filter((n) => Number.isFinite(n));
+        return nums.length >= 2;
+      }) || null;
+    }
+    if (!selectEl) {
+      // Custom Kendo-style dropdown fallback (non-<select>)
+      const versionContainer = versionLabel
+        ? (versionLabel.closest('tr, [class*="row"], [class*="field"], div, section') || versionLabel.parentElement)
+        : null;
+      const customInput = querySelectorAllDeep(document, 'input[id*="version" i], input[name*="version" i]')
+        .find((el) => {
+          const idLike = (el.id || '').toLowerCase().includes('requestversion') || (el.name || '').toLowerCase().includes('requestversion');
+          if (idLike) return true;
+          return versionContainer ? versionContainer.contains(el) : false;
+        }) || null;
+      const listbox = (customInput && customInput.id && document.getElementById(`${customInput.id}_listbox`))
+        || querySelectorAllDeep(document, 'ul[role="listbox"], [id$="_listbox"]').find((ul) => {
+          const liNums = Array.from(ul.querySelectorAll('li, [role="option"]'))
+            .map((li) => parseOptionNumber(li.textContent || ''))
+            .filter((n) => Number.isFinite(n));
+          return liNums.length >= 2;
+        })
+        || null;
+      const optionEls = listbox ? Array.from(listbox.querySelectorAll('li, [role="option"]')) : [];
+      const customAvailable = optionEls
+        .map((li) => parseOptionNumber(li.textContent || ''))
+        .filter((n) => Number.isFinite(n));
+      out.debug.customOptionCount = customAvailable.length;
+
+      if (customAvailable.length > 0) {
+        out.debug.selectionPath = 'custom-dropdown';
+        out.availableVersions = Array.from(new Set(customAvailable)).sort((a, b) => a - b);
+        const hasRequested = out.availableVersions.includes(out.requestedVersion);
+        const target = hasRequested ? out.requestedVersion : out.availableVersions[out.availableVersions.length - 1];
+        out.selectedVersion = target;
+        out.versionFallback = !hasRequested;
+        if (!hasRequested) {
+          out.versionWarning = `Requested version ${out.requestedVersion} was not found; used ${target}.`;
+        }
+
+        const dropdownRoot = (customInput && (customInput.closest('.k-dropdown, [role="listbox"]'))) ||
+          (versionContainer && querySelectorAllDeep(versionContainer, '.k-dropdown, [role="listbox"]').find(Boolean)) ||
+          null;
+        if (dropdownRoot) {
+          dropdownRoot.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+          dropdownRoot.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+          dropdownRoot.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+          const arrow = dropdownRoot.querySelector('.k-select, [aria-label="select"], [class*="select"]');
+          if (arrow) {
+            arrow.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+            arrow.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+            arrow.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+          }
+        }
+
+        const targetOption = optionEls.find((li) => parseOptionNumber(li.textContent || '') === target) || null;
+        out.debug.customTargetFound = !!targetOption;
+        if (targetOption) {
+          targetOption.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+          targetOption.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+          targetOption.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        } else {
+          out.versionWarning = out.versionWarning || 'Version option could not be clicked from custom dropdown.';
+        }
+        return out;
+      }
+    }
+    if (!selectEl) {
+      out.debug.selectionPath = 'none';
+      out.versionWarning = 'Version selector not found; scraped current default version.';
+      return out;
+    }
+
+    out.debug.selectionPath = 'native-select';
+    const options = Array.from(selectEl.options || []);
+    const available = options
+      .map((o) => parseOptionNumber(o.textContent || o.value))
+      .filter((n) => Number.isFinite(n));
+    out.availableVersions = Array.from(new Set(available)).sort((a, b) => a - b);
+    if (out.availableVersions.length === 0) {
+      out.versionWarning = 'Version selector found but no numeric versions were available.';
+      return out;
+    }
+
+    const hasRequested = out.availableVersions.includes(out.requestedVersion);
+    const target = hasRequested ? out.requestedVersion : out.availableVersions[out.availableVersions.length - 1];
+    out.selectedVersion = target;
+    out.versionFallback = !hasRequested;
+    if (!hasRequested) {
+      out.versionWarning = `Requested version ${out.requestedVersion} was not found; used ${target}.`;
+    }
+
+    const targetOption = options.find((o) => parseOptionNumber(o.textContent || o.value) === target);
+    if (targetOption) {
+      selectEl.value = targetOption.value;
+      selectEl.dispatchEvent(new Event('input', { bubbles: true }));
+      selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+      if (typeof targetOption.selected !== 'undefined') targetOption.selected = true;
+    }
+
+    return out;
+  };
+}
+
+/**
+ * Capture current version control state from project page.
+ */
+function getProjectVersionStateScript() {
+  return function getProjectVersionState() {
+    const trim = (s) => (s && typeof s === 'string' ? s.trim() : '') || '';
+    const dropdown = document.querySelector('#versionSection .k-dropdown, .k-dropdown[role="listbox"]');
+    const dropdownText = trim(dropdown ? dropdown.textContent : '');
+    const selectedLi = document.querySelector('#ddlselectedRequestVersion_listbox .k-state-selected, #ddlselectedRequestVersion_listbox [aria-selected="true"]');
+    const selectedLiText = trim(selectedLi ? selectedLi.textContent : '');
+    const inputEl = document.getElementById('ddlselectedRequestVersion');
+    const inputValue = inputEl && typeof inputEl.value !== 'undefined' ? String(inputEl.value) : '';
+    const titleText = trim((document.querySelector('header, [class*="header"], [class*="banner"], [class*="title"], h1') || document.body).textContent || '');
+    return {
+      dropdownText: dropdownText.slice(0, 120),
+      selectedLiText: selectedLiText.slice(0, 40),
+      inputValue: inputValue.slice(0, 80),
+      titleText: titleText.slice(0, 180)
+    };
+  };
 }
 
 /**
@@ -363,11 +640,36 @@ function buildProjectDetailUrl(rfaNumber, pattern) {
 function getProjectHeaderExtractionScript() {
   return function extractProjectHeader() {
     const trim = (s) => (s && typeof s === 'string' ? s.trim() : '') || '';
+    const normalizeInline = (s) => trim((s || '').replace(/\s+/g, ' '));
     const bodyText = (document.body && document.body.innerText) ? document.body.innerText : '';
     if (/sign\s*in|log\s*in/i.test(bodyText) && !/Request for Assistance/i.test(bodyText)) {
       return { header: {}, isLoginPage: true };
     }
-    const header = {};
+    const header = {
+      rfaNumber: '',
+      rfaType: '',
+      rfaTypeDetail: '',
+      projectName: '',
+      projectContainer: '',
+      repAgencyNumber: '',
+      ecdBanner: '',
+      version: '',
+      status: '',
+      ecd: '',
+      requestedDate: '',
+      submittedDate: '',
+      explicitSequenceOfOperations: '',
+      assignedTo: '',
+      repContacts: '',
+      complexity: '',
+      rfaValue: '',
+      productsOnThisRequest: '',
+      rootCauseRevision: '',
+      nationalAccount: '',
+      lastUpdated: '',
+      createdBy: '',
+      lightingPagesWithControls: ''
+    };
 
     function querySelectorAllDeep(root, selector) {
       if (!root) return [];
@@ -378,63 +680,162 @@ function getProjectHeaderExtractionScript() {
       return list;
     }
 
-    // Title bar: find element containing "Request for Assistance" and parse REP, ECD, job name
-    const banner = querySelectorAllDeep(document, '[class*="header"], [class*="banner"], [class*="title"], h1, header').find((el) => {
-      const t = (el.textContent || '').trim();
-      return t.includes('Request for Assistance') && (t.includes('REP:') || t.includes('ECD:'));
-    }) || document.body;
-    const bannerText = (banner.textContent || '').trim();
-    const repMatch = bannerText.match(/REP:\s*(\d+)/i);
-    const ecdMatch = bannerText.match(/ECD:\s*([\d/]+\s+\d+:\d+\s*[AP]M|\d{1,2}\/\d{1,2}\/\d{4}[^\\s]*)/i);
-    if (repMatch) header.rep = trim(repMatch[1]);
-    if (ecdMatch) header.ecdBanner = trim(ecdMatch[1]);
-    const rfaMatch = bannerText.match(/Request for Assistance\s+([\d-]+)/i);
-    if (rfaMatch) header.rfaNumber = trim(rfaMatch[1]);
-    const jobMatch = bannerText.match(/([A-Z0-9][A-Za-z0-9\s]+)\s+\d{2}-\d{5}/);
-    if (jobMatch) header.jobNameBanner = trim(jobMatch[1]);
+    const lines = bodyText.split('\n').map((l) => normalizeInline(l)).filter(Boolean);
+    const bannerLine = lines.find((l) => /Request for Assistance\s+\d+-\d+\s*-/i.test(l)) || '';
+    const bannerMatch = bannerLine.match(/Request for Assistance\s+(\d+-\d+)\s*-\s*([^-]+?)\s*-\s*(.+)$/i);
+    if (bannerMatch) {
+      header.rfaNumber = trim(bannerMatch[1]);
+      header.rfaType = trim(bannerMatch[2]);
+      header.rfaTypeDetail = trim(bannerMatch[3]);
+    } else {
+      const rfaTypeFallback = bannerLine.match(/Request for Assistance\s+(\d+-\d+)\s*-\s*(.+)$/i);
+      if (rfaTypeFallback) {
+        header.rfaNumber = trim(rfaTypeFallback[1]);
+        header.rfaType = trim(rfaTypeFallback[2]);
+      } else {
+        const rfaMatch = bodyText.match(/Request for Assistance\s+(\d+-\d+)/i);
+        if (rfaMatch) header.rfaNumber = trim(rfaMatch[1]);
+      }
+    }
+    const repMatch = bodyText.match(/REP:\s*(\d+)/i);
+    if (repMatch) header.repAgencyNumber = trim(repMatch[1]);
+    const ecdBannerMatch = bodyText.match(/ECD:\s*([\d/]+\s+\d+:\d+\s*[AP]M|\d{1,2}\/\d{1,2}\/\d{4}[^\\s]*)/i);
+    if (ecdBannerMatch) header.ecdBanner = trim(ecdBannerMatch[1]);
+    const versionMatch = bodyText.match(/Version:\s*(\d+)/i);
+    if (versionMatch) header.version = trim(versionMatch[1]);
+    const projectContainerMatch = bodyText.match(/\b(\d{2}-\d{5})\b/);
+    if (projectContainerMatch) header.projectContainer = trim(projectContainerMatch[1]);
+    if (header.projectContainer) {
+      const projectLine = lines.find((l) => l.includes(header.projectContainer));
+      if (projectLine) {
+        header.projectName = trim(projectLine.replace(header.projectContainer, ''));
+      }
+    }
 
-    // Form fields: labels that start with or equal these strings
-    const labelPatterns = [
-      'Status', 'ECD', 'Requested Date', 'Submitted Date', 'Assigned To', 'Rep Contacts',
-      'Complexity', 'RFA Value', 'Products on This Request', 'Root Cause', 'National Account',
-      'Last Updated', 'Created By', 'Number of Lighting pages'
+    const labelSpecs = [
+      { label: 'Status', key: 'status' },
+      { label: 'ECD', key: 'ecd' },
+      { label: 'Requested Date', key: 'requestedDate' },
+      { label: 'Submitted Date', key: 'submittedDate' },
+      { label: 'Is an explicit Sequence of Operations available?', key: 'explicitSequenceOfOperations' },
+      { label: 'Assigned To', key: 'assignedTo', chips: true },
+      { label: 'Rep Contacts', key: 'repContacts', chips: true },
+      { label: 'Complexity', key: 'complexity' },
+      { label: 'RFA Value', key: 'rfaValue', inputOnly: true },
+      { label: 'Products on This Request', key: 'productsOnThisRequest', chips: true },
+      { label: 'Root Cause - Revision', key: 'rootCauseRevision' },
+      { label: 'National Account', key: 'nationalAccount' },
+      { label: 'Last Updated', key: 'lastUpdated' },
+      { label: 'Created By', key: 'createdBy' },
+      { label: 'Number of Lighting pages with Controls', key: 'lightingPagesWithControls' }
     ];
-    const keyFromLabel = (label) => {
-      const k = label.replace(/\s*[-–]\s*Revision\s*$/i, '').replace(/\s+/g, '');
-      return k === 'NumberofLightingpages' ? 'LightingPagesWithControls' : k;
-    };
     const allElements = querySelectorAllDeep(document, 'label, [class*="label"], th, [role="columnheader"], span, div, dt');
-    for (const labelPattern of labelPatterns) {
-      const key = keyFromLabel(labelPattern);
+    const hasOtherLabelText = (value) => /Products on This Request|Root Cause|National Account|Last Updated|Created By|Number of Lighting pages|Supporting Documents Needed/i.test(value || '');
+    const looksLikeLabelOnly = (s) => /^[A-Za-z][A-Za-z0-9\s./&-]*:\s*$/.test((s || '').trim());
+    const isVisible = (el) => {
+      if (!el) return false;
+      const style = window.getComputedStyle(el);
+      if (!style) return true;
+      if (style.display === 'none' || style.visibility === 'hidden') return false;
+      return true;
+    };
+    const getChipListValue = (root) => {
+      if (!root || !root.querySelectorAll) return '';
+      const chips = Array.from(root.querySelectorAll('.k-button, [class*="chip"], [class*="tag"], [class*="badge"]'))
+        .filter(isVisible)
+        .map((c) => normalizeInline(c.textContent || ''))
+        .filter((t) => t && t.length < 120 && !looksLikeLabelOnly(t));
+      const unique = Array.from(new Set(chips));
+      return unique.join(', ');
+    };
+    const pickControlValue = (root) => {
+      if (!root || !root.querySelectorAll) return '';
+      const controls = Array.from(root.querySelectorAll('input, select, textarea, [role="combobox"], [contenteditable="true"], .k-dropdown'));
+      for (const ctrl of controls) {
+        if (!isVisible(ctrl)) continue;
+        if (ctrl.tagName === 'INPUT' && ((ctrl.type || '').toLowerCase() === 'hidden')) continue;
+        if (ctrl.classList && (ctrl.classList.contains('k-dropdown') || ctrl.getAttribute('role') === 'listbox')) {
+          const txt = normalizeInline(ctrl.textContent || '');
+          if (txt && txt.length < 120) return txt;
+        }
+        const v = normalizeInline((ctrl.value != null ? ctrl.value : ctrl.textContent) || '');
+        if (v && v.length < 120) return v;
+      }
+      return '';
+    };
+    for (const spec of labelSpecs) {
+      const labelPattern = spec.label;
+      const key = spec.key;
       if (header[key]) continue;
       for (const el of allElements) {
-        const text = trim(el.textContent);
+        const text = normalizeInline(el.textContent || '');
         if (!text || text.length > 100) continue;
-        const isMatch = text === labelPattern || text.startsWith(labelPattern + ':') || text.startsWith(labelPattern + ' ');
+        const isExact = text === labelPattern || text === `${labelPattern}:` || text === `${labelPattern} .`;
+        const isShortInline = text.startsWith(`${labelPattern}:`) && text.length <= (labelPattern.length + 40);
+        const isMatch = isExact || isShortInline;
         if (!isMatch) continue;
         let value = '';
         const container = el.closest('tr, [class*="row"], [class*="field"], div, section') || el.parentElement;
+        if (spec.chips && container) {
+          const chipList = getChipListValue(container);
+          if (chipList) value = chipList;
+        }
         const next = el.nextElementSibling;
-        if (next) {
-          const inp = next.querySelector && next.querySelector('input, select, textarea, [role="combobox"]');
-          if (inp) value = trim((inp.value != null ? inp.value : inp.textContent) || '');
-          else value = trim(next.textContent || '');
+        if (next && !spec.inputOnly) {
+          value = pickControlValue(next);
+          if (!value) {
+            const nextText = normalizeInline(next.textContent || '');
+            if (nextText && nextText.length < 120 && !hasOtherLabelText(nextText) && !looksLikeLabelOnly(nextText)) value = nextText;
+          }
         }
         if (!value && container) {
-          const inp = container.querySelector('input, select, textarea, [role="combobox"], [contenteditable="true"]');
-          if (inp) value = trim((inp.value != null ? inp.value : inp.textContent) || '');
+          value = pickControlValue(container);
         }
         if (!value && container) {
           const chip = container.querySelector('[class*="chip"], [class*="tag"], [class*="badge"]');
-          if (chip) value = trim(chip.textContent || '');
+          if (chip) {
+            const chipText = trim(chip.textContent || '');
+            if (chipText && chipText.length < 140) value = chipText;
+          }
         }
-        if (!value && el.parentElement && el.parentElement.nextElementSibling) value = trim(el.parentElement.nextElementSibling.textContent || '');
+        if (!value && el.parentElement && el.parentElement.nextElementSibling) {
+          const siblingText = normalizeInline(el.parentElement.nextElementSibling.textContent || '');
+          if (siblingText && siblingText.length < 120 && !hasOtherLabelText(siblingText) && !looksLikeLabelOnly(siblingText)) value = siblingText;
+        }
+        if (spec.inputOnly && container) {
+          const input = container.querySelector('input:not([type="hidden"]), textarea');
+          const inputValue = input ? normalizeInline(input.value || '') : '';
+          if (inputValue) value = inputValue;
+          else if (!value) value = '';
+        }
+        if (labelPattern === 'Complexity') {
+          if (!value || /^\$?\d[\d,]*(\.\d+)?$/.test(value)) continue;
+        }
+        if (labelPattern === 'Created By' && value) {
+          value = value.replace(/^s\s+/, 's ');
+        }
         if (value) {
           header[key] = value;
           break;
         }
       }
     }
+    header.rep = header.repAgencyNumber;
+    header.ECDBanner = header.ecdBanner;
+    header.Status = header.status;
+    header.ECD = header.ecd;
+    header.RequestedDate = header.requestedDate;
+    header.SubmittedDate = header.submittedDate;
+    header.AssignedTo = header.assignedTo;
+    header.RepContacts = header.repContacts;
+    header.Complexity = header.complexity;
+    header.RFAValue = header.rfaValue;
+    header.ProductsonThisRequest = header.productsOnThisRequest;
+    header.RootCauseRevision = header.rootCauseRevision;
+    header.NationalAccount = header.nationalAccount;
+    header.LastUpdated = header.lastUpdated;
+    header.CreatedBy = header.createdBy;
+    header.LightingPagesWithControls = header.lightingPagesWithControls;
     return { header, isLoginPage: false };
   };
 }
@@ -486,30 +887,62 @@ function getProjectNotesExtractionScript() {
       });
       return list;
     }
-    const table = querySelectorAllDeep(document, 'table').find((t) => {
-      const text = (t.textContent || '').toLowerCase();
-      return (text.includes('request note') || text.includes('category') || text.includes('description')) && text.includes('last update');
-    }) || querySelectorAllDeep(document, '[role="grid"]').find((g) => (g.textContent || '').toLowerCase().includes('request note'));
-    const container = table || document.body;
+    const getHeaderTexts = (container) => {
+      const headerCells = container.querySelectorAll('thead th, thead td, tr th, [role="columnheader"]');
+      return Array.from(headerCells).map((c) => trim(c.textContent).toLowerCase()).filter(Boolean);
+    };
+    const candidates = [
+      ...querySelectorAllDeep(document, 'table'),
+      ...querySelectorAllDeep(document, '[role="grid"]')
+    ];
+    const table = candidates.find((t) => {
+      const headers = getHeaderTexts(t);
+      if (headers.length === 0) return false;
+      const hasCategory = headers.some((h) => h.includes('category'));
+      const hasDesc = headers.some((h) => h.includes('description'));
+      const hasLastUpdate = headers.some((h) => h.includes('last update'));
+      const hasDateUserActions = headers.some((h) => h === 'date') && headers.some((h) => h === 'user') && headers.some((h) => h === 'actions');
+      return (hasCategory && hasDesc && hasLastUpdate) || hasDateUserActions;
+    }) || null;
+    if (!table) return [];
+    const container = table;
     const rows = container.querySelectorAll ? container.querySelectorAll('tr, [role="row"]') : [];
     const headerRow = rows[0];
     const headerTexts = headerRow ? Array.from(headerRow.querySelectorAll('th, td, [role="columnheader"], [role="gridcell"]')).map((c) => trim(c.textContent).toLowerCase()) : [];
-    const col = (name) => {
-      const i = headerTexts.findIndex((h) => h.includes(name));
-      return i >= 0 ? i : (name === 'category' ? 1 : name === 'description' ? 4 : name === 'author' ? 5 : name === 'date' ? 6 : -1);
-    };
-    const categoryIdx = headerTexts.some((h) => h.includes('category')) ? col('category') : 1;
-    const descIdx = headerTexts.some((h) => h.includes('description')) ? col('description') : 4;
-    const authorIdx = headerTexts.some((h) => h.includes('author') || h.includes('last update')) ? (headerTexts.findIndex((h) => h.includes('author')) >= 0 ? col('author') : 5) : 5;
-    const dateIdx = headerTexts.some((h) => h.includes('date') || h.includes('update')) ? (headerTexts.findIndex((h) => h.includes('date') || h.includes('update')) >= 0 ? headerTexts.findIndex((h) => h.includes('date') || h.includes('update')) : 6) : 6;
+    const col = (name) => headerTexts.findIndex((h) => h.includes(name));
+    const categoryIdx = col('category');
+    const descIdx = col('description');
+    const authorIdx = col('author');
+    const lastUpdateIdx = col('last update');
+    const dateIdx = col('date');
+    const userIdx = headerTexts.findIndex((h) => h === 'user');
+    const actionsIdx = headerTexts.findIndex((h) => h === 'actions');
+    const isDateUserActions = dateIdx >= 0 && userIdx >= 0 && actionsIdx >= 0;
+    const seen = new Set();
     for (let r = 1; r < rows.length; r++) {
       const cells = rows[r].querySelectorAll('td, [role="gridcell"]');
       const values = Array.from(cells).map((c) => trim(c.textContent));
-      const category = values[categoryIdx] || '';
-      const description = values[descIdx] || '';
-      const author = values[authorIdx] || '';
-      const date = values[dateIdx] || '';
-      if (description || category) notes.push({ category, description, author, date });
+      if (values.length < 3) continue;
+      const category = isDateUserActions ? 'Request Note' : (categoryIdx >= 0 ? (values[categoryIdx] || '') : '');
+      const description = isDateUserActions ? (values[actionsIdx] || '') : (descIdx >= 0 ? (values[descIdx] || '') : '');
+      if (!description || description.length < 2) continue;
+      let author = isDateUserActions ? (values[userIdx] || '') : (authorIdx >= 0 ? (values[authorIdx] || '') : '');
+      let date = dateIdx >= 0 ? (values[dateIdx] || '') : '';
+      if ((!author || !date) && lastUpdateIdx >= 0) {
+        const lu = values[lastUpdateIdx] || '';
+        if (!author) {
+          const email = (lu.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i) || [])[0] || '';
+          author = email || author;
+        }
+        if (!date) {
+          const dt = (lu.match(/\d{1,2}\/\d{1,2}\/\d{4}(?:\s+\d{1,2}:\d{2}\s*[AP]M)?/i) || [])[0] || '';
+          date = dt || date;
+        }
+      }
+      const sig = `${category}|${description}|${author}|${date}`;
+      if (seen.has(sig)) continue;
+      seen.add(sig);
+      notes.push({ category, description, author, date });
     }
     return notes;
   };
@@ -552,11 +985,26 @@ function getProjectDocumentsExtractionScript() {
       });
       return list;
     }
-    const table = querySelectorAllDeep(document, 'table').find((t) => {
-      const text = (t.textContent || '').toLowerCase();
-      return (text.includes('file link') || text.includes('file date')) && (text.includes('category') || text.includes('description'));
-    }) || querySelectorAllDeep(document, '[role="grid"]').find((g) => (g.textContent || '').toLowerCase().includes('file link'));
-    const container = table || document.body;
+    const getHeaderTexts = (container) => {
+      const headerCells = container.querySelectorAll('thead th, thead td, tr th, [role="columnheader"]');
+      return Array.from(headerCells).map((c) => trim(c.textContent).toLowerCase()).filter(Boolean);
+    };
+    const candidates = [
+      ...querySelectorAllDeep(document, 'table'),
+      ...querySelectorAllDeep(document, '[role="grid"]')
+    ];
+    const table = candidates.find((t) => {
+      const headers = getHeaderTexts(t);
+      if (headers.length === 0) return false;
+      const hasCategory = headers.some((h) => h.includes('category'));
+      const hasDesc = headers.some((h) => h.includes('description'));
+      const hasFileLink = headers.some((h) => h.includes('file link'));
+      const hasFileDate = headers.some((h) => h.includes('file date'));
+      const hasUploadOrSize = headers.some((h) => h.includes('upload date') || h.includes('file size'));
+      return hasCategory && hasDesc && hasFileLink && hasFileDate && hasUploadOrSize;
+    }) || null;
+    if (!table) return [];
+    const container = table;
     const rows = container.querySelectorAll ? container.querySelectorAll('tr, [role="row"]') : [];
     const headerRow = rows[0];
     const headerTexts = headerRow ? Array.from(headerRow.querySelectorAll('th, td, [role="columnheader"], [role="gridcell"]')).map((c) => trim(c.textContent).toLowerCase()) : [];
@@ -580,7 +1028,9 @@ function getProjectDocumentsExtractionScript() {
       const uploadDate = values[uploadDateIdx] || '';
       const fileSize = values[fileSizeIdx] || '';
       const createdBy = values[createdByIdx] || '';
-      if (fileLink || description || category) documents.push({ category, description, fileLink, fileDate, uploadDate, fileSize, createdBy });
+      if (description && (fileLink || fileDate || uploadDate || fileSize || createdBy)) {
+        documents.push({ category, description, fileLink, fileDate, uploadDate, fileSize, createdBy });
+      }
     }
     return documents;
   };
@@ -753,6 +1203,8 @@ class AgileScrapingService {
     if (!isValidRfaForUrl(rfaNumber)) {
       return { error: 'This row does not have a valid RFA number. The workqueue may have loaded with a different column layout—use a row whose RFA # (Doc) column shows a number like 314165 or 24-64950.' };
     }
+    const rfaParsed = parseRfaIdentifier(rfaNumber);
+    const requestedVersion = rfaParsed.requestedVersion;
     const pattern = options.rfaDetailUrlPattern || 'http://rfa.acuitybrandslighting.net/#/requestnav/{rfaNumber}';
     const url = buildProjectDetailUrl(rfaNumber, pattern);
     let browser;
@@ -784,6 +1236,47 @@ class AgileScrapingService {
         return { error: 'Project page did not load in time. Check VPN and try again.' };
       }
 
+      let selectedVersion = null;
+      let availableVersions = [];
+      let versionFallback = false;
+      let versionWarning = null;
+      try {
+        const versionSelection = await page.evaluate(getProjectVersionSelectionScript(), requestedVersion);
+        const hasExplicitSelected = versionSelection && versionSelection.selectedVersion !== null && versionSelection.selectedVersion !== undefined && versionSelection.selectedVersion !== '';
+        selectedVersion = hasExplicitSelected && Number.isFinite(Number(versionSelection.selectedVersion)) ? Number(versionSelection.selectedVersion) : null;
+        availableVersions = Array.isArray(versionSelection?.availableVersions) ? versionSelection.availableVersions : [];
+        versionFallback = !!versionSelection?.versionFallback;
+        versionWarning = versionSelection?.versionWarning || null;
+        if (selectedVersion !== null) {
+          await page.waitForFunction(
+            (v) => {
+              const listbox = document.getElementById('ddlselectedRequestVersion_listbox');
+              if (listbox) {
+                const selectedLi = listbox.querySelector('.k-state-selected, [aria-selected="true"]');
+                const txt = ((selectedLi && selectedLi.textContent) || '').trim();
+                if (txt === String(v)) return true;
+              }
+              const dropdown = document.querySelector('#versionSection .k-dropdown, .k-dropdown[role="listbox"]');
+              const display = ((dropdown && dropdown.textContent) || '').trim();
+              return new RegExp(`\\b${String(v)}\\b`).test(display);
+            },
+            { timeout: 3000 },
+            selectedVersion
+          ).catch(() => {});
+          const expectedRfaWithVersion = `${rfaParsed.baseRfa}-${selectedVersion}`;
+          await page.waitForFunction(
+            (expectedRfa) => {
+              const titleCandidates = Array.from(document.querySelectorAll('header, [class*="header"], [class*="banner"], [class*="title"], h1'));
+              const titleText = titleCandidates.map((el) => (el.textContent || '')).join(' ');
+              const body = document.body && document.body.innerText ? document.body.innerText : '';
+              return titleText.includes(expectedRfa) || body.includes(`Request for Assistance ${expectedRfa}`);
+            },
+            { timeout: 10000 },
+            expectedRfaWithVersion
+          ).catch(() => {});
+        }
+      } catch (_) {}
+
       const extractHeader = getProjectHeaderExtractionScript();
       const result = await page.evaluate(extractHeader);
       if (result && result.isLoginPage) {
@@ -792,43 +1285,24 @@ class AgileScrapingService {
       }
 
       const header = (result && result.header) ? result.header : {};
-      let details = {};
-      let notes = [];
-      let documents = [];
-
-      const clickTab = async (tabLabel) => {
-        await page.evaluate((label) => {
-          const candidates = Array.from(document.querySelectorAll('[role="tab"], button, a, [class*="tab"]'));
-          const tab = candidates.find((el) => el.textContent && el.textContent.trim().toLowerCase().includes(label.toLowerCase()));
-          if (tab) tab.click();
-        }, tabLabel);
-        await new Promise((r) => setTimeout(r, 1500));
-      };
-
-      try {
-        await clickTab('Details');
-        details = await page.evaluate(getProjectDetailsExtractionScript()) || {};
-      } catch (_) {}
-      try {
-        await clickTab('Notes');
-        const notesExtract = getProjectNotesExtractionScript();
-        const clickNext = clickNotesNextPageScript();
-        const maxNotePages = 20;
-        for (let p = 0; p < maxNotePages; p++) {
-          const pageNotes = await page.evaluate(notesExtract) || [];
-          notes.push(...pageNotes);
-          const hasNext = await page.evaluate(clickNext);
-          if (!hasNext) break;
-          await new Promise((r) => setTimeout(r, 800));
-        }
-      } catch (_) {}
-      try {
-        await clickTab('Documents');
-        documents = await page.evaluate(getProjectDocumentsExtractionScript()) || [];
-      } catch (_) {}
+      const details = {};
+      const notes = [];
+      const documents = [];
 
       await page.close().catch(() => {});
-      return { header, details, notes, documents };
+      return {
+        header,
+        details,
+        notes,
+        documents,
+        nonHeaderTabsUnavailable: true,
+        nonHeaderTabsMessage: 'Non-header tabs are blocked in current browser mode. Fetch Details currently returns Header only.',
+        requestedVersion,
+        selectedVersion,
+        availableVersions,
+        versionFallback,
+        versionWarning
+      };
     } catch (err) {
       if (page) page.close().catch(() => {});
       console.error('AgileScrapingService scrapeRfaProjectPage error:', err);

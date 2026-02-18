@@ -207,20 +207,26 @@ export default function AgileMonitorView({ onNavigateToWizard, onImportRfaData }
   const handleUseProjectDetailsInWizard = () => {
     if (!projectDetailsRow || !onImportRfaData) return;
     const h = projectDetails?.header || {};
+    const pick = (...vals) => vals.find((v) => v !== undefined && v !== null && String(v).trim() !== '');
     const enriched = {
       ...projectDetailsRow,
-      status: h.Status ?? projectDetailsRow.status,
-      ecd: h.ECD ?? projectDetailsRow.ecd,
-      assignedTo: h.AssignedTo,
-      priority: h.Complexity,
-      nationalAccount: h.NationalAccount,
-      requestedDate: h.RequestedDate,
-      submittedDate: h.SubmittedDate,
-      lastUpdated: h.LastUpdated,
-      createdBy: h.CreatedBy,
-      products: h['ProductsonThisRequest'],
-      notes: projectDetails?.notes,
-      documents: projectDetails?.documents
+      rfaType: pick(h.rfaType, projectDetailsRow.rfaType),
+      projectName: pick(h.projectName, projectDetailsRow.projectName),
+      projectContainer: pick(h.projectContainer, projectDetailsRow.projectContainer),
+      agentNumber: pick(h.repAgencyNumber, h.rep, projectDetailsRow.agentNumber),
+      status: pick(h.status, h.Status, projectDetailsRow.status),
+      ecd: pick(h.ecd, h.ECD, projectDetailsRow.ecd),
+      assignedTo: pick(h.assignedTo, h.AssignedTo),
+      priority: pick(h.complexity, h.Complexity),
+      nationalAccount: pick(h.nationalAccount, h.NationalAccount),
+      requestedDate: pick(h.requestedDate, h.RequestedDate),
+      submittedDate: pick(h.submittedDate, h.SubmittedDate),
+      lastUpdated: pick(h.lastUpdated, h.LastUpdated),
+      createdBy: pick(h.createdBy, h.CreatedBy),
+      products: pick(h.productsOnThisRequest, h.ProductsonThisRequest),
+      requestedVersion: projectDetails?.requestedVersion,
+      selectedVersion: projectDetails?.selectedVersion,
+      versionWarning: projectDetails?.versionWarning
     };
     onImportRfaData(enriched);
     setProjectDetailsModalOpen(false);
@@ -228,6 +234,40 @@ export default function AgileMonitorView({ onNavigateToWizard, onImportRfaData }
     setProjectDetailsRow(null);
     setDownloadingDocUrl(null);
     if (onNavigateToWizard) onNavigateToWizard();
+  };
+
+  const getHeaderValue = (header, ...keys) => {
+    for (const key of keys) {
+      const value = header?.[key];
+      if (value !== undefined && value !== null && String(value).trim() !== '') return String(value).trim();
+    }
+    return '';
+  };
+
+  const normalizeForCompare = (value) => String(value ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
+  const normalizeDigits = (value) => String(value ?? '').replace(/[^\d]/g, '');
+  const parseAgileDateTime = (value) => {
+    const raw = String(value ?? '').trim();
+    if (!raw) return null;
+    const todayMatch = raw.match(/^today\s+(\d{1,2}:\d{2}\s*[ap]m)$/i);
+    if (todayMatch) {
+      const now = new Date();
+      const mm = todayMatch[1].match(/^(\d{1,2}):(\d{2})\s*([ap]m)$/i);
+      if (!mm) return null;
+      let hour = Number(mm[1]);
+      const minute = Number(mm[2]);
+      const ap = mm[3].toLowerCase();
+      if (ap === 'pm' && hour < 12) hour += 12;
+      if (ap === 'am' && hour === 12) hour = 0;
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute, 0, 0);
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+    const parsed = new Date(raw);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+  const sameMinute = (a, b) => {
+    if (!a || !b) return false;
+    return Math.abs(a.getTime() - b.getTime()) < 60 * 1000;
   };
 
   const byStatus = workqueue.reduce((acc, e) => {
@@ -379,11 +419,136 @@ export default function AgileMonitorView({ onNavigateToWizard, onImportRfaData }
                 <p className="text-amber-600 dark:text-amber-400">{projectDetails.error}</p>
               ) : (
                 <>
+                  {projectDetailsRow && (
+                    <section className="mb-4">
+                      <h4 className="font-medium text-gray-700 dark:text-gray-200 mb-2">QA: Expected vs Scraped</h4>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse border border-gray-200 dark:border-gray-600 text-xs">
+                          <thead>
+                            <tr className="bg-gray-50 dark:bg-gray-700">
+                              <th className="border border-gray-200 dark:border-gray-600 px-2 py-1.5 font-medium">Field</th>
+                              <th className="border border-gray-200 dark:border-gray-600 px-2 py-1.5 font-medium">Expected</th>
+                              <th className="border border-gray-200 dark:border-gray-600 px-2 py-1.5 font-medium">Scraped</th>
+                              <th className="border border-gray-200 dark:border-gray-600 px-2 py-1.5 font-medium">Result</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(() => {
+                              const h = projectDetails.header || {};
+                              const expectedVersion = (() => {
+                                const m = String(projectDetailsRow.rfaNumber || '').match(/-(\d+)$/);
+                                return m ? m[1] : '0';
+                              })();
+                              const rows = [
+                                { field: 'RFA Number', expected: projectDetailsRow.rfaNumber || '', scraped: getHeaderValue(h, 'rfaNumber'), rule: 'textExact' },
+                                { field: 'RFA Type', expected: projectDetailsRow.rfaType || '', scraped: getHeaderValue(h, 'rfaType'), rule: 'textExact' },
+                                { field: 'Project Name', expected: projectDetailsRow.projectName || '', scraped: getHeaderValue(h, 'projectName'), rule: 'textContains' },
+                                { field: 'Project Container', expected: projectDetailsRow.projectContainer || '', scraped: getHeaderValue(h, 'projectContainer'), rule: 'containerOrInfo' },
+                                { field: 'Rep Agency #', expected: projectDetailsRow.agentNumber || '', scraped: getHeaderValue(h, 'repAgencyNumber', 'rep'), rule: 'digitsExact' },
+                                { field: 'Version', expected: expectedVersion, scraped: String(projectDetails.selectedVersion ?? getHeaderValue(h, 'version') ?? ''), rule: 'digitsExact' },
+                                { field: 'Status', expected: projectDetailsRow.status || '', scraped: getHeaderValue(h, 'status', 'Status'), rule: 'textExact' },
+                                { field: 'ECD', expected: projectDetailsRow.ecd || '', scraped: getHeaderValue(h, 'ecd', 'ECD'), rule: 'dateMinute' }
+                              ];
+                              return rows.map((row) => {
+                                const expectedNorm = normalizeForCompare(row.expected);
+                                const scrapedNorm = normalizeForCompare(row.scraped);
+                                let result = 'Check';
+                                if (row.rule === 'containerOrInfo' && (!expectedNorm || expectedNorm === '-')) {
+                                  result = 'Info';
+                                } else if (row.rule === 'digitsExact') {
+                                  result = normalizeDigits(row.expected) && normalizeDigits(row.expected) === normalizeDigits(row.scraped) ? 'Match' : 'Check';
+                                } else if (row.rule === 'dateMinute') {
+                                  const d1 = parseAgileDateTime(row.expected);
+                                  const d2 = parseAgileDateTime(row.scraped);
+                                  result = sameMinute(d1, d2) ? 'Match' : 'Check';
+                                } else if (row.rule === 'textContains') {
+                                  result = expectedNorm && scrapedNorm && (scrapedNorm.includes(expectedNorm) || expectedNorm.includes(scrapedNorm)) ? 'Match' : 'Check';
+                                } else {
+                                  result = expectedNorm && scrapedNorm && expectedNorm === scrapedNorm ? 'Match' : 'Check';
+                                }
+                                const colorClass = result === 'Match'
+                                  ? 'text-green-600 dark:text-green-400'
+                                  : result === 'Info'
+                                    ? 'text-sky-600 dark:text-sky-400'
+                                    : 'text-amber-600 dark:text-amber-400';
+                                return (
+                                  <tr key={row.field} className="border-b border-gray-200 dark:border-gray-600">
+                                    <td className="border border-gray-200 dark:border-gray-600 px-2 py-1.5">{row.field}</td>
+                                    <td className="border border-gray-200 dark:border-gray-600 px-2 py-1.5">{row.expected || '-'}</td>
+                                    <td className="border border-gray-200 dark:border-gray-600 px-2 py-1.5">{row.scraped || '-'}</td>
+                                    <td className={`border border-gray-200 dark:border-gray-600 px-2 py-1.5 font-medium ${colorClass}`}>
+                                      {result}
+                                    </td>
+                                  </tr>
+                                );
+                              });
+                            })()}
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
+                  )}
+                  {projectDetails.nonHeaderTabsUnavailable && (
+                    <section className="mb-4 rounded border border-amber-300/50 dark:border-amber-600/50 bg-amber-50/60 dark:bg-amber-900/20 px-3 py-2">
+                      <p className="text-amber-700 dark:text-amber-300">
+                        {projectDetails.nonHeaderTabsMessage || 'Only Header data is currently available in this browser mode.'}
+                      </p>
+                    </section>
+                  )}
+                  {(projectDetails.requestedVersion !== undefined || projectDetails.selectedVersion !== undefined) && (
+                    <section className="mb-4">
+                      <h4 className="font-medium text-gray-700 dark:text-gray-200 mb-2">Version</h4>
+                      <dl className="grid grid-cols-2 gap-x-4 gap-y-1">
+                        <dt className="text-gray-500 dark:text-gray-400">Requested:</dt>
+                        <dd className="text-gray-900 dark:text-gray-100">
+                          {projectDetails.requestedVersion ?? '-'}
+                        </dd>
+                        <dt className="text-gray-500 dark:text-gray-400">Selected:</dt>
+                        <dd className="text-gray-900 dark:text-gray-100">
+                          {projectDetails.selectedVersion ?? '-'}
+                        </dd>
+                      </dl>
+                      {projectDetails.versionWarning && (
+                        <p className="mt-2 text-amber-600 dark:text-amber-400">
+                          {projectDetails.versionWarning}
+                        </p>
+                      )}
+                    </section>
+                  )}
                   {Object.keys(projectDetails.header || {}).length > 0 && (
                     <section className="mb-4">
                       <h4 className="font-medium text-gray-700 dark:text-gray-200 mb-2">Header</h4>
                       <dl className="grid grid-cols-2 gap-x-4 gap-y-1">
-                        {Object.entries(projectDetails.header).map(([k, v]) => (
+                        {(() => {
+                          const h = projectDetails.header || {};
+                          const ordered = [
+                            ['rfaNumber', h.rfaNumber],
+                            ['rfaType', h.rfaType],
+                            ['rfaTypeDetail', h.rfaTypeDetail],
+                            ['projectName', h.projectName],
+                            ['projectContainer', h.projectContainer],
+                            ['repAgencyNumber', h.repAgencyNumber || h.rep],
+                            ['version', h.version],
+                            ['status', h.status || h.Status],
+                            ['ecd', h.ecd || h.ECD],
+                            ['requestedDate', h.requestedDate || h.RequestedDate],
+                            ['submittedDate', h.submittedDate || h.SubmittedDate],
+                            ['explicitSequenceOfOperations', h.explicitSequenceOfOperations],
+                            ['assignedTo', h.assignedTo || h.AssignedTo],
+                            ['repContacts', h.repContacts || h.RepContacts],
+                            ['complexity', h.complexity || h.Complexity],
+                            ['rfaValue', h.rfaValue || h.RFAValue],
+                            ['productsOnThisRequest', h.productsOnThisRequest || h.ProductsonThisRequest],
+                            ['rootCauseRevision', h.rootCauseRevision || h.RootCauseRevision],
+                            ['nationalAccount', h.nationalAccount || h.NationalAccount],
+                            ['lastUpdated', h.lastUpdated || h.LastUpdated],
+                            ['createdBy', h.createdBy || h.CreatedBy],
+                            ['lightingPagesWithControls', h.lightingPagesWithControls || h.LightingPagesWithControls]
+                          ];
+                          const seen = new Set(ordered.map(([k]) => k));
+                          const extras = Object.entries(h).filter(([k, v]) => !seen.has(k) && String(v || '').trim() !== '');
+                          return [...ordered.filter(([, v]) => String(v || '').trim() !== ''), ...extras];
+                        })().map(([k, v]) => (
                           <React.Fragment key={k}>
                             <dt className="text-gray-500 dark:text-gray-400">{k.replace(/([A-Z])/g, ' $1').trim().replace(/^./, (c) => c.toUpperCase())}:</dt>
                             <dd className="text-gray-900 dark:text-gray-100 break-words">{v}</dd>
@@ -392,7 +557,7 @@ export default function AgileMonitorView({ onNavigateToWizard, onImportRfaData }
                       </dl>
                     </section>
                   )}
-                  {Object.keys(projectDetails.details || {}).length > 0 && (
+                  {!projectDetails.nonHeaderTabsUnavailable && Object.keys(projectDetails.details || {}).length > 0 && (
                     <section className="mb-4">
                       <h4 className="font-medium text-gray-700 dark:text-gray-200 mb-2">Details</h4>
                       <dl className="grid grid-cols-2 gap-x-4 gap-y-1">
@@ -405,7 +570,7 @@ export default function AgileMonitorView({ onNavigateToWizard, onImportRfaData }
                       </dl>
                     </section>
                   )}
-                  {Array.isArray(projectDetails.notes) && projectDetails.notes.length > 0 && (
+                  {!projectDetails.nonHeaderTabsUnavailable && Array.isArray(projectDetails.notes) && projectDetails.notes.length > 0 && (
                     <section className="mb-4">
                       <h4 className="font-medium text-gray-700 dark:text-gray-200 mb-2">Notes ({projectDetails.notes.length})</h4>
                       <ul className="space-y-3 text-gray-700 dark:text-gray-300">
@@ -423,7 +588,7 @@ export default function AgileMonitorView({ onNavigateToWizard, onImportRfaData }
                       </ul>
                     </section>
                   )}
-                  {Array.isArray(projectDetails.documents) && projectDetails.documents.length > 0 && (
+                  {!projectDetails.nonHeaderTabsUnavailable && Array.isArray(projectDetails.documents) && projectDetails.documents.length > 0 && (
                     <section className="mb-4">
                       <h4 className="font-medium text-gray-700 dark:text-gray-200 mb-2">Documents ({projectDetails.documents.length})</h4>
                       <div className="overflow-x-auto">

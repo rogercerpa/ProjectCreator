@@ -720,10 +720,69 @@ class BOMParserService {
   }
 
   /**
-   * Find BOM CHECK folder within a project folder (searches RFA subfolders)
-   * Also handles the case where the given path IS an RFA folder
-   * @param {string} projectFolderPath - Path to project folder (or RFA folder)
-   * @param {string} rfaNumber - Optional RFA number to prioritize
+   * Recursively search for a BOM CHECK folder starting from the given path.
+   * Walks the directory tree up to maxDepth levels deep.
+   * @param {string} folderPath - Starting path
+   * @param {number} maxDepth - Maximum recursion depth (default 5)
+   * @param {number} currentDepth - Current depth (internal)
+   * @returns {object|null} { bomCheckPath, bomFile, parentFolder } or null
+   */
+  async findBOMCheckRecursive(folderPath, maxDepth = 5, currentDepth = 0) {
+    if (currentDepth > maxDepth) return null;
+
+    try {
+      const items = await fs.readdir(folderPath, { withFileTypes: true });
+      const directories = items.filter(item => item.isDirectory());
+
+      // Check if BOM CHECK exists at this level
+      const bomCheckDir = directories.find(
+        item => item.name.toUpperCase() === 'BOM CHECK'
+      );
+
+      if (bomCheckDir) {
+        const bomCheckPath = path.join(folderPath, bomCheckDir.name);
+        const bomFile = await this.selectBOMFile(bomCheckPath);
+        if (bomFile) {
+          // Determine the parent RFA folder name if applicable
+          const parentName = path.basename(folderPath);
+          const isRFAFolder = parentName.toUpperCase().includes('RFA');
+          return {
+            bomCheckPath,
+            bomFile,
+            parentFolder: folderPath,
+            rfaFolderPath: isRFAFolder ? folderPath : null,
+            rfaFolderName: isRFAFolder ? parentName : null
+          };
+        }
+        // BOM CHECK folder exists but no valid files -- keep searching siblings
+      }
+
+      // Recurse into subdirectories (skip BOM CHECK itself)
+      for (const subDir of directories) {
+        if (subDir.name.toUpperCase() === 'BOM CHECK') continue;
+
+        const result = await this.findBOMCheckRecursive(
+          path.join(folderPath, subDir.name),
+          maxDepth,
+          currentDepth + 1
+        );
+        if (result) return result;
+      }
+
+      return null;
+    } catch (error) {
+      console.error(`Error scanning ${folderPath}:`, error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Find BOM CHECK folder within a project folder.
+   * Recursively searches through any nesting of subfolders (wrapper folders,
+   * RFA folders, etc.) up to 5 levels deep until a BOM CHECK directory with
+   * valid CSV/XML files is found.
+   * @param {string} projectFolderPath - Path to project folder (or RFA folder, or wrapper)
+   * @param {string} rfaNumber - Optional RFA number (unused in recursive mode, kept for API compat)
    * @returns {object} { found, bomCheckPath, rfaFolderPath, bomFile }
    */
   async findBOMCheckInProject(projectFolderPath, rfaNumber = null) {
@@ -732,108 +791,28 @@ class BOMParserService {
         return { found: false, reason: 'Project folder not found' };
       }
 
-      // Check if the given path IS an RFA folder (e.g., downloaded RFA folder path)
-      const folderName = path.basename(projectFolderPath);
-      if (folderName.toUpperCase().includes('RFA')) {
-        console.log(`📁 Given path is an RFA folder: ${folderName}`);
-        
-        // Check directly for BOM CHECK inside this RFA folder
-        const bomCheckPath = path.join(projectFolderPath, 'BOM CHECK');
-        if (await fs.pathExists(bomCheckPath)) {
-          const bomFile = await this.selectBOMFile(bomCheckPath);
-          if (bomFile) {
-            console.log(`✓ Found BOM in current RFA folder: ${bomFile.path}`);
-            return {
-              found: true,
-              bomCheckPath,
-              rfaFolderPath: projectFolderPath,
-              rfaFolderName: folderName,
-              bomFile,
-              reason: 'BOM file found in RFA folder'
-            };
-          } else {
-            return {
-              found: false,
-              bomCheckPath,
-              rfaFolderPath: projectFolderPath,
-              rfaFolderName: folderName,
-              reason: 'BOM CHECK folder exists but contains no valid BOM files'
-            };
-          }
-        }
-        
-        // BOM CHECK not in current RFA folder, try parent as project folder
-        console.log(`📁 BOM CHECK not found in RFA folder, checking parent directory...`);
-        projectFolderPath = path.dirname(projectFolderPath);
-        
-        if (!await fs.pathExists(projectFolderPath)) {
-          return { found: false, reason: 'Parent project folder not found' };
-        }
+      console.log(`🔍 Searching for BOM CHECK recursively from: ${projectFolderPath}`);
+
+      const result = await this.findBOMCheckRecursive(projectFolderPath);
+
+      if (result) {
+        console.log(`✓ Found BOM: ${result.bomFile.path}`);
+        return {
+          found: true,
+          bomCheckPath: result.bomCheckPath,
+          rfaFolderPath: result.rfaFolderPath || result.parentFolder,
+          rfaFolderName: result.rfaFolderName || path.basename(result.parentFolder),
+          bomFile: result.bomFile,
+          reason: 'BOM file found'
+        };
       }
 
-      // Get all items in project folder
-      const items = await fs.readdir(projectFolderPath, { withFileTypes: true });
-      const rfaFolders = items.filter(item => 
-        item.isDirectory() && item.name.toUpperCase().includes('RFA')
-      );
-
-      if (rfaFolders.length === 0) {
-        return { found: false, reason: 'No RFA folders found in project' };
-      }
-
-      // If specific RFA number provided, prioritize matching folder
-      let searchOrder = rfaFolders;
-      if (rfaNumber) {
-        const normalizedRFA = rfaNumber.replace(/[#\-_\s]/g, '').toLowerCase();
-        searchOrder = rfaFolders.sort((a, b) => {
-          const aMatches = a.name.replace(/[#\-_\s]/g, '').toLowerCase().includes(normalizedRFA);
-          const bMatches = b.name.replace(/[#\-_\s]/g, '').toLowerCase().includes(normalizedRFA);
-          if (aMatches && !bMatches) return -1;
-          if (!aMatches && bMatches) return 1;
-          return 0;
-        });
-      }
-
-      // Search RFA folders for BOM CHECK
-      for (const rfaFolder of searchOrder) {
-        const rfaFolderPath = path.join(projectFolderPath, rfaFolder.name);
-        const bomCheckPath = path.join(rfaFolderPath, 'BOM CHECK');
-
-        if (await fs.pathExists(bomCheckPath)) {
-          // Found BOM CHECK folder, check for BOM files
-          const bomFile = await this.selectBOMFile(bomCheckPath);
-          
-          if (bomFile) {
-            return {
-              found: true,
-              bomCheckPath,
-              rfaFolderPath,
-              rfaFolderName: rfaFolder.name,
-              bomFile,
-              reason: 'BOM file found'
-            };
-          } else {
-            // BOM CHECK exists but no valid files
-            return {
-              found: false,
-              bomCheckPath,
-              rfaFolderPath,
-              rfaFolderName: rfaFolder.name,
-              reason: 'BOM CHECK folder exists but contains no valid BOM files'
-            };
-          }
-        }
-      }
-
-      // No BOM CHECK folder found, return the most recent RFA folder for manual selection
-      const mostRecentRFA = await this.getMostRecentRFAFolder(projectFolderPath, rfaFolders);
-      
+      // Not found -- provide the best suggested path for manual fallback
+      console.log(`❌ No BOM CHECK folder found under: ${projectFolderPath}`);
       return {
         found: false,
-        rfaFolderPath: mostRecentRFA ? path.join(projectFolderPath, mostRecentRFA.name) : projectFolderPath,
-        rfaFolderName: mostRecentRFA?.name,
-        reason: 'No BOM CHECK folder found in any RFA folder',
-        searchedFolders: rfaFolders.map(f => f.name)
+        rfaFolderPath: projectFolderPath,
+        reason: 'No BOM CHECK folder found in project directory tree'
       };
     } catch (error) {
       console.error('Error finding BOM CHECK folder:', error);
