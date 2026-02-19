@@ -900,8 +900,22 @@ function App() {
   };
 
   // Render main content based on current view
+  // Maps views to their required feature flags for dev-only gating
+  const viewFeatureFlags = {
+    'workload': 'workload-dashboard',
+    'agile-monitor': 'agile-workqueue',
+  };
+
   const renderMainContent = () => {
     console.log('🎯 App: renderMainContent called with currentView =', currentView);
+
+    // Generic guard: redirect to welcome if the view's feature flag is disabled
+    const requiredFlag = viewFeatureFlags[currentView];
+    if (requiredFlag && !featureFlagService.isEnabled(requiredFlag)) {
+      setCurrentView('welcome');
+      return null;
+    }
+
     try {
       switch (currentView) {
         case 'wizard':
@@ -1030,11 +1044,6 @@ function App() {
             />
           );
         case 'workload':
-          // Guard: redirect to welcome if workload dashboard is disabled
-          if (!featureFlagService.isWorkloadDashboardEnabled()) {
-            setCurrentView('welcome');
-            return null;
-          }
           return <WorkloadDashboard 
             onNavigateToProject={(project) => {
               setCurrentProject(project);

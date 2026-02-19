@@ -1457,13 +1457,15 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
       id: 'workload',
       label: 'Workload',
       icon: '📊',
-      fullLabel: 'Workload Dashboard Settings'
+      fullLabel: 'Workload Dashboard Settings',
+      featureFlag: 'workload-dashboard'
     },
     {
       id: 'agile',
       label: 'Agile Monitor',
       icon: '📥',
-      fullLabel: 'Agile Workqueue Monitor Settings'
+      fullLabel: 'Agile Workqueue Monitor Settings',
+      featureFlag: 'agile-workqueue'
     },
     {
       id: 'triage-calc',
@@ -1481,8 +1483,8 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
 
   // Filter tabs based on feature flags
   const tabs = allTabs.filter(tab => {
-    if (tab.id === 'workload') {
-      return featureFlagService.isWorkloadDashboardEnabled();
+    if (tab.featureFlag) {
+      return featureFlagService.isEnabled(tab.featureFlag);
     }
     return true;
   });
@@ -3284,8 +3286,7 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
         );
 
       case 'workload':
-        // Guard: return null if workload dashboard is disabled
-        if (!featureFlagService.isWorkloadDashboardEnabled()) {
+        if (!featureFlagService.isEnabled('workload-dashboard')) {
           return null;
         }
         return (
@@ -3297,6 +3298,9 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
         );
 
       case 'agile':
+        if (!featureFlagService.isEnabled('agile-workqueue')) {
+          return null;
+        }
         return (
           <AgileTab
             settings={settings}

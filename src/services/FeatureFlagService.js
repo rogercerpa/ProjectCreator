@@ -140,13 +140,23 @@ class FeatureFlagService {
       
       // Development-only features
       'workload-dashboard': {
-        enabled: false, // Disabled by default (production)
+        enabled: false,
         rolloutPercentage: 0,
         userGroups: ['admin', 'developers'],
         description: 'Enable Workload Dashboard (in development)',
         category: 'experimental',
         defaultValue: false,
-        devOnly: true // Auto-enable in development environment
+        devOnly: true
+      },
+      
+      'agile-workqueue': {
+        enabled: false,
+        rolloutPercentage: 0,
+        userGroups: ['admin', 'developers'],
+        description: 'Enable Agile Workqueue (in development)',
+        category: 'experimental',
+        defaultValue: false,
+        devOnly: true
       }
     };
 
@@ -494,11 +504,6 @@ class FeatureFlagService {
 
   shouldShowWizardTutorial() {
     return this.isEnabled('wizard-tutorial');
-  }
-
-  // Workload Dashboard feature flag
-  isWorkloadDashboardEnabled() {
-    return this.isEnabled('workload-dashboard');
   }
 
   // Migration strategy helpers

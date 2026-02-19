@@ -25,13 +25,15 @@ function Sidebar({ currentView, onViewChange, projectCount }) {
       id: 'workload',
       label: 'Workload Dashboard',
       icon: '📊',
-      description: 'Team workload'
+      description: 'Team workload',
+      featureFlag: 'workload-dashboard'
     },
     {
       id: 'agile-monitor',
       label: 'Agile Workqueue',
       icon: '📥',
-      description: 'Monitor Agile queue'
+      description: 'Monitor Agile queue',
+      featureFlag: 'agile-workqueue'
     },
     {
       id: 'agencies',
@@ -55,8 +57,8 @@ function Sidebar({ currentView, onViewChange, projectCount }) {
 
   // Filter menu items based on feature flags
   const menuItems = allMenuItems.filter(item => {
-    if (item.id === 'workload') {
-      return featureFlagService.isWorkloadDashboardEnabled();
+    if (item.featureFlag) {
+      return featureFlagService.isEnabled(item.featureFlag);
     }
     return true;
   });
