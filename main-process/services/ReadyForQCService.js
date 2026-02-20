@@ -179,9 +179,8 @@ class ReadyForQCService {
         }
 
         // Find matching zip files (case-insensitive) - check both naming variations
-        // IMPORTANT: Must be EXACT match, not partial
+        // Uses "starts with" matching so Windows/OneDrive duplicate suffixes like (1) are tolerated
         const matchingZips = zipFiles.filter(zip => {
-          // Verify zip file actually exists on disk
           if (!fs.existsSync(zip.path)) {
             console.warn(`[ReadyForQC] ⚠️ Zip file path does not exist: ${zip.path}`);
             return false;
@@ -190,19 +189,17 @@ class ReadyForQCService {
           const zipNameLower = zip.nameWithoutExtension.toLowerCase().trim();
           const isMatch = projectFolderNames.some(folderName => {
             const folderNameLower = folderName.toLowerCase().trim();
-            // STRICT EXACT MATCH - no partial matching allowed
-            const matches = folderNameLower === zipNameLower;
+            const matches = zipNameLower.startsWith(folderNameLower);
             if (matches) {
-              console.log(`[ReadyForQC] ✓ MATCH FOUND: Project "${project.projectName}" (${project.projectContainer}) matches zip "${zip.name}"`);
+              const suffix = zipNameLower.slice(folderNameLower.length);
+              const matchType = suffix ? 'starts-with' : 'exact';
+              console.log(`[ReadyForQC] ✓ MATCH FOUND (${matchType}): Project "${project.projectName}" (${project.projectContainer}) matches zip "${zip.name}"`);
               console.log(`[ReadyForQC]   Project ID: ${project.id}`);
               console.log(`[ReadyForQC]   Project folder name: "${folderName}"`);
               console.log(`[ReadyForQC]   Zip file name: "${zip.nameWithoutExtension}"`);
               console.log(`[ReadyForQC]   Zip file path: "${zip.path}"`);
-              console.log(`[ReadyForQC]   Match verification: "${folderNameLower}" === "${zipNameLower}" = ${matches}`);
-              
-              // Additional verification: check character-by-character if needed
-              if (folderNameLower.length !== zipNameLower.length) {
-                console.error(`[ReadyForQC] ⚠️ LENGTH MISMATCH! Project name length: ${folderNameLower.length}, Zip name length: ${zipNameLower.length}`);
+              if (suffix) {
+                console.log(`[ReadyForQC]   Tolerated suffix: "${suffix}"`);
               }
             }
             return matches;
@@ -210,7 +207,7 @@ class ReadyForQCService {
           return isMatch;
         });
 
-        // Only add to matches if we have at least one EXACT match
+        // Only add to matches if we have at least one match
         if (matchingZips.length > 0) {
           matches[project.id] = {
             project: project,
@@ -255,11 +252,11 @@ class ReadyForQCService {
         return [];
       }
 
-      // Find matching zip files (case-insensitive) - check both naming variations
+      // Find matching zip files (case-insensitive, starts-with) - check both naming variations
       return zipFiles.filter(zip => {
-        const zipNameLower = zip.nameWithoutExtension.toLowerCase();
+        const zipNameLower = zip.nameWithoutExtension.toLowerCase().trim();
         return projectFolderNames.some(folderName => 
-          folderName.toLowerCase() === zipNameLower
+          zipNameLower.startsWith(folderName.toLowerCase().trim())
         );
       });
 
@@ -394,11 +391,11 @@ class ReadyForQCService {
             return false;
           }
           
-          // Re-verify the match
+          // Re-verify the match (starts-with to tolerate Windows duplicate suffixes)
           const projectFolderNames = this.getProjectFolderName(project);
           const zipNameLower = zip.nameWithoutExtension.toLowerCase().trim();
           const stillMatches = projectFolderNames.some(folderName => 
-            folderName.toLowerCase().trim() === zipNameLower
+            zipNameLower.startsWith(folderName.toLowerCase().trim())
           );
           
           if (!stillMatches) {

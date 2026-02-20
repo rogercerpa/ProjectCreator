@@ -223,6 +223,7 @@ function createWindow() {
       enableRemoteModule: false, // SECURITY: Disable deprecated remote module
       webSecurity: true, // SECURITY: Enable web security
       sandbox: false, // Required for file system access in Electron
+      backgroundThrottling: false, // Prevent IPC/timer throttling during idle periods
       preload: path.join(__dirname, 'preload.js') // SECURITY: Use preload script for secure IPC
     },
     icon: path.join(__dirname, 'assets/icons/favicon.ico'),

@@ -428,17 +428,17 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onNewProject,
   }
 
   return (
-    <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900 animate-fadeIn">
+    <div className="flex flex-col bg-white dark:bg-gray-800 animate-fadeIn min-h-full -mt-4">
       {/* Modern Hero Section */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-primary-600 via-primary-500 to-secondary-500 px-8 py-10 text-white shadow-lg">
+      <div className="relative overflow-hidden bg-gradient-to-br from-primary-600 via-primary-500 to-secondary-500 px-8 py-6 text-white shadow-lg rounded-2xl">
         {/* Background decorative elements */}
         <div className="absolute top-0 right-0 -mr-20 -mt-20 h-64 w-64 rounded-full bg-white/10 blur-3xl animate-pulse"></div>
         <div className="absolute bottom-0 left-0 -ml-20 -mb-20 h-64 w-64 rounded-full bg-secondary-400/20 blur-3xl animate-float"></div>
         
         <div className="relative z-10">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 mb-8">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-4">
             <div>
-              <h1 className="text-4xl font-extrabold tracking-tight mb-2">Project Repository</h1>
+              <h1 className="text-3xl font-extrabold tracking-tight mb-1">Project Repository</h1>
               <p className="text-lg text-primary-50 opacity-90 font-light">
                 Manage and organize your projects with precision.
               </p>
@@ -476,9 +476,9 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onNewProject,
           </div>
 
           {/* Integrated Glass Stats Bar */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl">
-            <div className="flex flex-col items-center justify-center rounded-2xl bg-white/10 p-4 backdrop-blur-lg border border-white/10 hover:bg-white/15 transition-colors group">
-              <span className="text-3xl font-bold group-hover:scale-110 transition-transform">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 max-w-5xl">
+            <div className="flex flex-col items-center justify-center rounded-2xl bg-white/10 p-3 backdrop-blur-lg border border-white/10 hover:bg-white/15 transition-colors group">
+              <span className="text-2xl font-bold group-hover:scale-110 transition-transform">
                 {safeProjects.filter(p => {
                   if (!p) return false;
                   const status = p.rfaStatus?.trim().toLowerCase();
@@ -488,14 +488,14 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onNewProject,
               </span>
               <span className="text-xs uppercase tracking-wider opacity-70 mt-1 font-bold">Active Projects</span>
             </div>
-            <div className="flex flex-col items-center justify-center rounded-2xl bg-white/10 p-4 backdrop-blur-lg border border-white/10 hover:bg-white/15 transition-colors group">
-              <span className="text-3xl font-bold group-hover:scale-110 transition-transform">
+            <div className="flex flex-col items-center justify-center rounded-2xl bg-white/10 p-3 backdrop-blur-lg border border-white/10 hover:bg-white/15 transition-colors group">
+              <span className="text-2xl font-bold group-hover:scale-110 transition-transform">
                 {safeProjects.filter(p => p && (p.rfaStatus?.trim().toLowerCase() === 'completed' || p.rfaStatus?.trim().toLowerCase() === 'complete')).length}
               </span>
               <span className="text-xs uppercase tracking-wider opacity-70 mt-1 font-bold">Completed Projects</span>
             </div>
-            <div className="flex flex-col items-center justify-center rounded-2xl bg-white/10 p-4 backdrop-blur-lg border border-white/10 hover:bg-white/15 transition-colors group">
-              <span className="text-3xl font-bold group-hover:scale-110 transition-transform">
+            <div className="flex flex-col items-center justify-center rounded-2xl bg-white/10 p-3 backdrop-blur-lg border border-white/10 hover:bg-white/15 transition-colors group">
+              <span className="text-2xl font-bold group-hover:scale-110 transition-transform">
                 {safeProjects.filter(p => p && p.dasPaidServiceEnabled === true).length}
               </span>
               <span className="text-xs uppercase tracking-wider opacity-70 mt-1 font-bold">Paid Services</span>
@@ -518,8 +518,8 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onNewProject,
       )}
 
       {/* Search and Filters Hub */}
-      <div className="px-8 py-6 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm relative z-20">
-        <div className="max-w-7xl mx-auto space-y-6">
+      <div className="px-8 py-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm sticky top-0 z-20">
+        <div className="max-w-7xl mx-auto space-y-3">
           {/* Search Mode Toggle */}
           <div className="flex items-center gap-4">
             <span className="text-sm font-bold text-gray-500 dark:text-gray-400">Search in:</span>
@@ -625,7 +625,7 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onNewProject,
       </div>
 
       {/* Results Container */}
-      <div className="flex-1 overflow-y-auto bg-gray-50/50 dark:bg-gray-900/20 custom-scrollbar">
+      <div className="bg-gray-50/50 dark:bg-gray-900/20">
         <div className="max-w-7xl mx-auto p-8 pt-4">
           {/* DAS Drive Search Results (shown when mode is 'das' or 'both') */}
           {(searchMode === 'das' || searchMode === 'both') && searchTerm.trim().length >= 2 && (

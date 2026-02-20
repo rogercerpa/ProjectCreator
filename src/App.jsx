@@ -1395,7 +1395,7 @@ function App() {
           onViewChange={handleSmartViewChange}
           projectCount={projects.length}
         />
-        <main className="flex-1 p-8 overflow-y-auto bg-white dark:bg-gray-800 rounded-tl-lg shadow-lg custom-scrollbar">
+        <main className="flex-1 p-4 overflow-y-auto bg-white dark:bg-gray-800 shadow-lg custom-scrollbar">
           {renderMainContent()}
         </main>
       </div>

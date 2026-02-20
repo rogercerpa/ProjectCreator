@@ -26,6 +26,91 @@ const getProjectDraftService = () => {
 };
 
 /**
+ * Fire-and-forget: creates work task assignments via IPC.
+ * Runs after navigation so that slow/hung IPC calls never block the user.
+ */
+const createAssignmentsInBackground = async (savedProject, selectedAssignee) => {
+  console.log('ProjectWizard: Creating assignments in background...');
+
+  const findUserByName = async (userName) => {
+    if (!userName) return null;
+    try {
+      const usersResult = await window.electronAPI.workloadUsersLoadAll();
+      if (usersResult.success && usersResult.users) {
+        return usersResult.users.find(u => u.name === userName) || null;
+      }
+    } catch (error) {
+      console.error('Background assignment: Error finding user:', error);
+    }
+    return null;
+  };
+
+  const buildAssignment = (user, taskType) => ({
+    id: `assignment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    userId: user.id,
+    projectId: savedProject.id,
+    projectName: savedProject.projectName,
+    rfaNumber: savedProject.rfaNumber,
+    hoursAllocated: savedProject.totalTriage || 0,
+    hoursSpent: 0,
+    startDate: new Date().toISOString().split('T')[0],
+    dueDate: savedProject.dueDate ? new Date(savedProject.dueDate).toISOString().split('T')[0] : null,
+    status: 'ASSIGNED',
+    priority: savedProject.priority || 'medium',
+    taskType: taskType,
+    assignedBy: '',
+    notes: '',
+    metadata: {
+      createdAt: new Date().toISOString(),
+      lastModified: new Date().toISOString(),
+      assignedAt: new Date().toISOString()
+    }
+  });
+
+  const assignedUserIds = new Set();
+  const taskMappings = [
+    { field: 'triagedBy', taskType: 'TRIAGE' },
+    { field: 'designBy', taskType: 'DESIGN' },
+    { field: 'qcBy', taskType: 'QC' }
+  ];
+
+  for (const { field, taskType } of taskMappings) {
+    const userName = savedProject[field];
+    if (!userName) continue;
+    try {
+      const user = await findUserByName(userName);
+      if (!user) continue;
+      const assignment = buildAssignment(user, taskType);
+      const result = await window.electronAPI.workloadAssignmentSave(assignment);
+      if (result.success) {
+        console.log(`ProjectWizard: ${taskType} assignment created for ${userName}`);
+        assignedUserIds.add(user.id);
+      } else {
+        console.warn(`ProjectWizard: Failed to create ${taskType} assignment:`, result.error);
+      }
+    } catch (error) {
+      console.warn(`ProjectWizard: Error creating ${taskType} assignment:`, error);
+    }
+  }
+
+  if (selectedAssignee && !assignedUserIds.has(selectedAssignee.id)) {
+    try {
+      const assignment = buildAssignment(selectedAssignee, null);
+      const result = await window.electronAPI.workloadAssignmentSave(assignment);
+      if (result.success) {
+        console.log(`ProjectWizard: General assignment created for ${selectedAssignee.name}`);
+      } else {
+        console.warn('ProjectWizard: Failed to create general assignment:', result.error);
+      }
+    } catch (error) {
+      console.warn('ProjectWizard: Error creating general assignment:', error);
+    }
+  }
+
+  console.log('ProjectWizard: Background assignment creation complete');
+};
+
+/**
  * Main Project Creation Wizard Container
  * Manages the multi-step project creation process
  * Handles data persistence, validation, and step navigation
@@ -831,20 +916,31 @@ const ProjectWizard = ({
       // Special handling for Step 2 - Complete project creation and navigate to management
       if (wizard.currentStep === 2) {
         operationContext = 'step2-completion';
+
+        // SAFETY NET: unconditionally resets button after 15 seconds.
+        // Guards against ALL failure modes — hung IPC, throttled timers, stuck awaits.
+        const safetyTimer = setTimeout(() => {
+          console.warn('ProjectWizard: SAFETY TIMEOUT - forcing button reset after 15s');
+          isNavigatingAwayRef.current = false;
+          setIsLoading(false);
+          setNotification({
+            type: 'warning',
+            message: 'Operation took too long. Project may have been saved. Check the Projects list.'
+          });
+        }, 15000);
+
         try {
           setNotification({
             type: 'info',
             message: 'Completing project creation...'
           });
 
-          // Complete the project creation
           const completeProject = {
             ...formData,
             status: 'active',
             completionStep: 2,
             updatedAt: new Date().toISOString(),
             sourceType: 'wizard',
-            // Add the physical folder paths to the project (already created in Step 1)
             projectPath: formData.projectPath,
             rfaPath: formData.rfaPath,
             agentFilesPath: formData.agentFilesPath
@@ -852,350 +948,128 @@ const ProjectWizard = ({
 
           console.log('ProjectWizard: Created complete project object:', completeProject);
 
-          // CRITICAL FIX: Save project to persistent storage first
+          // Wrap IPC calls with timeout to prevent hanging after idle
+          const withIpcTimeout = (promise, ms, label) => {
+            return Promise.race([
+              promise,
+              new Promise((_, reject) =>
+                setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)
+              )
+            ]);
+          };
+
+          // Save project with 5-second timeout protection
           setNotification({
             type: 'info',
             message: 'Saving project to database...'
           });
 
-          const saveResult = await window.electronAPI.projectSave(completeProject);
-          
+          const saveResult = await withIpcTimeout(
+            window.electronAPI.projectSave(completeProject),
+            5000,
+            'Project save'
+          );
+
           if (!saveResult.success) {
             throw new Error(`Failed to save project: ${saveResult.error}`);
           }
 
           console.log('ProjectWizard: Project saved successfully:', saveResult);
-
-          // Use the saved project with proper ID and timestamps
           const savedProject = saveResult.project;
 
-          // Create assignments for work tasks (Triage, Design, QC)
-          const workTaskAssignments = [];
-          
-          // Helper function to find user by name
-          const findUserByName = async (userName) => {
-            if (!userName) return null;
-            try {
-              const usersResult = await window.electronAPI.workloadUsersLoadAll();
-              if (usersResult.success && usersResult.users) {
-                return usersResult.users.find(u => u.name === userName) || null;
-              }
-            } catch (error) {
-              console.error('Error finding user:', error);
-            }
-            return null;
-          };
-
-          // Helper function to create assignment
-          const createAssignment = async (user, taskType, taskName) => {
-            if (!user) return null;
-            
-            try {
-              const assignment = {
-                id: `assignment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                userId: user.id,
-                projectId: savedProject.id,
-                projectName: savedProject.projectName,
-                rfaNumber: savedProject.rfaNumber,
-                hoursAllocated: savedProject.totalTriage || 0,
-                hoursSpent: 0,
-                startDate: new Date().toISOString().split('T')[0],
-                dueDate: savedProject.dueDate ? new Date(savedProject.dueDate).toISOString().split('T')[0] : null,
-                status: 'ASSIGNED',
-                priority: savedProject.priority || 'medium',
-                taskType: taskType,
-                assignedBy: '',
-                notes: '',
-                metadata: {
-                  createdAt: new Date().toISOString(),
-                  lastModified: new Date().toISOString(),
-                  assignedAt: new Date().toISOString()
-                }
-              };
-
-              const assignmentResult = await window.electronAPI.workloadAssignmentSave(assignment);
-              
-              if (assignmentResult.success) {
-                console.log(`ProjectWizard: ${taskName} assignment created successfully:`, assignment);
-                return { success: true, assignment, taskName, userName: user.name };
-              } else {
-                console.error(`ProjectWizard: Failed to create ${taskName} assignment:`, assignmentResult.error);
-                return { success: false, error: assignmentResult.error, taskName, userName: user.name };
-              }
-            } catch (error) {
-              console.error(`ProjectWizard: Error creating ${taskName} assignment:`, error);
-              return { success: false, error: error.message, taskName, userName: user.name };
-            }
-          };
-
-          // Create assignments for each work task type
-          if (savedProject.triagedBy) {
-            const triageUser = await findUserByName(savedProject.triagedBy);
-            if (triageUser) {
-              const result = await createAssignment(triageUser, 'TRIAGE', 'Triage');
-              workTaskAssignments.push(result);
-            }
-          }
-
-          if (savedProject.designBy) {
-            const designUser = await findUserByName(savedProject.designBy);
-            if (designUser) {
-              const result = await createAssignment(designUser, 'DESIGN', 'Design');
-              workTaskAssignments.push(result);
-            }
-          }
-
-          if (savedProject.qcBy) {
-            const qcUser = await findUserByName(savedProject.qcBy);
-            if (qcUser) {
-              const result = await createAssignment(qcUser, 'QC', 'QC');
-              workTaskAssignments.push(result);
-            }
-          }
-
-          // Show notification about assignment creation results
-          const successfulAssignments = workTaskAssignments.filter(a => a && a.success);
-          const failedAssignments = workTaskAssignments.filter(a => a && !a.success);
-
-          if (successfulAssignments.length > 0) {
-            const taskNames = successfulAssignments.map(a => a.taskName).join(', ');
-            setNotification({
-              type: 'success',
-              message: `✅ Created ${successfulAssignments.length} work task assignment(s): ${taskNames}`
-            });
-          }
-
-          if (failedAssignments.length > 0) {
-            const taskNames = failedAssignments.map(a => a.taskName).join(', ');
-            setNotification({
-              type: 'warning',
-              message: `⚠️ Failed to create ${failedAssignments.length} assignment(s): ${taskNames}. You can assign them manually from the Workload Dashboard.`
-            });
-          }
-
-          // Legacy: Create assignment for selected assignee if available (for backward compatibility)
-          if (selectedAssignee) {
-            try {
-              // Check if an assignment already exists for this user and project
-              const existingAssignments = workTaskAssignments.filter(a => a && a.success && a.assignment.userId === selectedAssignee.id);
-              
-              if (existingAssignments.length === 0) {
-                // Only create if no work task assignment was created for this user
-                setNotification({
-                  type: 'info',
-                  message: `Assigning project to ${selectedAssignee.name}...`
-                });
-
-                const assignment = {
-                  id: `assignment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                  userId: selectedAssignee.id,
-                  projectId: savedProject.id,
-                  projectName: savedProject.projectName,
-                  rfaNumber: savedProject.rfaNumber,
-                  hoursAllocated: savedProject.totalTriage || 0,
-                  hoursSpent: 0,
-                  startDate: new Date().toISOString().split('T')[0],
-                  dueDate: savedProject.dueDate ? new Date(savedProject.dueDate).toISOString().split('T')[0] : null,
-                  status: 'ASSIGNED',
-                  priority: savedProject.priority || 'medium',
-                  taskType: null, // General assignment (no specific task type)
-                  assignedBy: '',
-                  notes: '',
-                  metadata: {
-                    createdAt: new Date().toISOString(),
-                    lastModified: new Date().toISOString(),
-                    assignedAt: new Date().toISOString()
-                  }
-                };
-
-                const assignmentResult = await window.electronAPI.workloadAssignmentSave(assignment);
-                
-                if (assignmentResult.success) {
-                  console.log('ProjectWizard: General assignment created successfully:', assignment);
-                  setNotification({
-                    type: 'success',
-                    message: `✅ Project assigned to ${selectedAssignee.name}!`
-                  });
-                } else {
-                  console.error('ProjectWizard: Failed to create general assignment:', assignmentResult.error);
-                  setNotification({
-                    type: 'warning',
-                    message: '⚠️ Project saved, but assignment failed. You can assign it manually from the Workload Dashboard.'
-                  });
-                }
-              }
-            } catch (assignmentError) {
-              console.error('ProjectWizard: Error creating general assignment:', assignmentError);
-              // Don't fail the whole process if assignment fails
-              setNotification({
-                type: 'warning',
-                message: '⚠️ Project saved, but assignment failed. You can assign it manually from the Workload Dashboard.'
-              });
-            }
-          }
-
-          // Navigate to project management
+          // --- NAVIGATE IMMEDIATELY after save (assignments run in background) ---
           console.log('ProjectWizard: About to call navigation function');
-          console.log('ProjectWizard: mode =', mode);
-          console.log('ProjectWizard: onProjectCreated =', typeof onProjectCreated);
-          console.log('ProjectWizard: savedProject =', savedProject);
+          console.log('ProjectWizard: mode =', mode, ', onProjectCreated =', typeof onProjectCreated);
 
-          // Set flag to indicate navigation is in progress - prevents loading state reset
           isNavigatingAwayRef.current = true;
 
           let navigationSuccess = false;
-          let navigationError = null;
+          const NAVIGATION_TIMEOUT_MS = 8000;
 
-          // TIMEOUT FIX: Wrap navigation call with timeout to prevent infinite waits
-          const NAVIGATION_TIMEOUT_MS = 8000; // 8 seconds timeout for navigation
-          
-          // Helper function to create a timeout promise
-          const createTimeoutPromise = (ms) => {
-            return new Promise((_, reject) => {
-              setTimeout(() => {
-                reject(new Error(`Navigation timed out after ${ms / 1000} seconds`));
-              }, ms);
-            });
-          };
-
-          // Helper function to call navigation with timeout
           const callNavigationWithTimeout = async (navigationFn, project, handlerName) => {
             console.log(`ProjectWizard: Calling ${handlerName} with timeout protection`);
-            
             try {
-              // Race between navigation and timeout
               await Promise.race([
                 navigationFn(project),
-                createTimeoutPromise(NAVIGATION_TIMEOUT_MS)
+                new Promise((_, reject) =>
+                  setTimeout(() => reject(new Error(`Navigation timed out after ${NAVIGATION_TIMEOUT_MS / 1000}s`)), NAVIGATION_TIMEOUT_MS)
+                )
               ]);
-              
-              console.log(`ProjectWizard: ✅ ${handlerName} completed successfully`);
+              console.log(`ProjectWizard: ${handlerName} completed successfully`);
               return { success: true };
             } catch (error) {
               const isTimeout = error.message && error.message.includes('timed out');
-              console.error(`ProjectWizard: ❌ ${handlerName} failed:`, error);
-              return { 
-                success: false, 
-                error, 
-                isTimeout 
-              };
+              console.error(`ProjectWizard: ${handlerName} failed:`, error);
+              return { success: false, error, isTimeout };
             }
           };
 
-          // Determine which handler to use - prefer 'create' mode but fallback to 'edit' if needed
           const shouldUseCreateHandler = mode === 'create' && typeof onProjectCreated === 'function';
           const shouldUseUpdateHandler = !shouldUseCreateHandler && typeof onProjectUpdated === 'function';
 
           if (shouldUseCreateHandler) {
             const result = await callNavigationWithTimeout(onProjectCreated, savedProject, 'onProjectCreated');
-            
             if (result.success) {
               navigationSuccess = true;
-              setNotification({
-                type: 'success',
-                message: '🎉 Project saved and creation completed! Welcome to project management.'
-              });
             } else {
-              navigationError = result.error;
-              
-              if (result.isTimeout) {
-                // TIMEOUT RECOVERY: Project was saved but navigation timed out
-                console.warn('ProjectWizard: Navigation timed out - project was saved successfully');
-                setNotification({
-                  type: 'warning',
-                  message: '✅ Project saved successfully! Navigation took too long. Please click "Projects" in the sidebar to view your project.'
-                });
-              } else {
-                setNotification({
-                  type: 'warning',
-                  message: '✅ Project saved successfully, but navigation failed. Please check the Projects list.'
-                });
-              }
-              
-              // ALWAYS reset loading state on navigation failure
+              const msg = result.isTimeout
+                ? 'Project saved! Navigation took too long. Please click "Projects" in the sidebar.'
+                : 'Project saved, but navigation failed. Please check the Projects list.';
+              setNotification({ type: 'warning', message: msg });
               isNavigatingAwayRef.current = false;
               setIsLoading(false);
             }
           } else if (shouldUseUpdateHandler) {
             const result = await callNavigationWithTimeout(onProjectUpdated, savedProject, 'onProjectUpdated');
-            
             if (result.success) {
               navigationSuccess = true;
-              setNotification({
-                type: 'success',
-                message: '🎉 Project updated and saved successfully! Welcome to project management.'
-              });
             } else {
-              navigationError = result.error;
-              
-              if (result.isTimeout) {
-                // TIMEOUT RECOVERY: Project was saved but navigation timed out
-                console.warn('ProjectWizard: Navigation timed out - project was updated successfully');
-                setNotification({
-                  type: 'warning',
-                  message: '✅ Project updated successfully! Navigation took too long. Please click "Projects" in the sidebar to view your project.'
-                });
-              } else {
-                setNotification({
-                  type: 'warning',
-                  message: '✅ Project updated successfully, but navigation failed. Please check the Projects list.'
-                });
-              }
-              
-              // ALWAYS reset loading state on navigation failure
+              const msg = result.isTimeout
+                ? 'Project updated! Navigation took too long. Please click "Projects" in the sidebar.'
+                : 'Project updated, but navigation failed. Please check the Projects list.';
+              setNotification({ type: 'warning', message: msg });
               isNavigatingAwayRef.current = false;
               setIsLoading(false);
             }
           } else {
-            console.error('ProjectWizard: ❌ No valid navigation function available!');
-            console.error('ProjectWizard: mode =', mode);
-            console.error('ProjectWizard: onProjectCreated =', onProjectCreated);
-            console.error('ProjectWizard: onProjectUpdated =', onProjectUpdated);
-            
-            // No navigation handler available - reset flags
+            console.error('ProjectWizard: No valid navigation function available!');
             isNavigatingAwayRef.current = false;
             setIsLoading(false);
-            
             setNotification({
               type: 'warning',
-              message: '✅ Project saved successfully! Please navigate to the Projects list to view it.'
+              message: 'Project saved! Please navigate to the Projects list to view it.'
             });
           }
 
-          // If navigation succeeded, don't reset loading state - we're navigating away
-          // The component will unmount, so state reset is not needed
+          // Fire-and-forget: create assignments in background (non-blocking)
+          createAssignmentsInBackground(savedProject, selectedAssignee).catch(err => {
+            console.warn('ProjectWizard: Background assignment creation failed:', err);
+          });
+
+          clearTimeout(safetyTimer);
+
           if (navigationSuccess) {
             console.log('ProjectWizard: Navigation successful, keeping loading state until unmount');
             return;
           }
 
-          // If we get here, navigation failed - flags already reset above
-          // Log for debugging purposes
-          console.log('ProjectWizard: Navigation did not succeed, button should now be clickable again');
+          console.log('ProjectWizard: Navigation did not succeed, button should now be clickable');
           return;
 
         } catch (step2Error) {
+          clearTimeout(safetyTimer);
           console.error('Step 2 completion failed:', step2Error);
-          
-          // CRITICAL FIX: ALWAYS reset navigation flag and loading state on ANY error
+
           isNavigatingAwayRef.current = false;
           setIsLoading(false);
-          
-          // Distinguish between save errors, navigation errors, and timeout errors
+
           const errorMessage = step2Error.message || '';
-          
-          const isSaveError = 
+          const isSaveError =
             errorMessage.includes('Failed to save project') ||
             errorMessage.includes('database') ||
             errorMessage.includes('storage');
-          
           const isTimeoutError = errorMessage.includes('timed out');
-          
-          const isNavigationError = 
-            errorMessage.includes('navigation') ||
-            errorMessage.includes('No project provided') ||
-            errorMessage.includes('Project missing ID');
-          
+
           if (isSaveError) {
             setError('Failed to save project. Please check your connection and try again.');
             setNotification({
@@ -1203,17 +1077,10 @@ const ProjectWizard = ({
               message: 'Unable to save project to database. Please verify your connection and try again.'
             });
           } else if (isTimeoutError) {
-            // Timeout errors mean project likely saved but navigation hung
-            setError(null); // Clear error since project was likely saved
+            setError(null);
             setNotification({
               type: 'warning',
-              message: '✅ Project may have been saved. Navigation timed out. Please check the Projects list.'
-            });
-          } else if (isNavigationError) {
-            setError(null); // Clear error since project was saved
-            setNotification({
-              type: 'warning',
-              message: '✅ Project saved successfully, but navigation failed. Please navigate to the Projects list manually.'
+              message: 'Project may have been saved. Operation timed out. Please check the Projects list.'
             });
           } else {
             setError('Failed to complete project creation. Please try again.');
@@ -1222,9 +1089,9 @@ const ProjectWizard = ({
               message: 'Unable to complete project creation. Please verify your data and try again.'
             });
           }
-          
+
           console.log('ProjectWizard: Step 2 error handled, loading state reset, button should be clickable');
-          return; // Don't proceed if step 2 fails
+          return;
         }
       }
 

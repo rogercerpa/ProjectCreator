@@ -405,7 +405,11 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
             showToast(`📦 BOM imported: ${bomResult.stats?.totalDevices || 0} devices`, 'success');
             // Update project with BOM data
             if (bomResult.project) {
-              updatedProject = bomResult.project;
+              updatedProject = {
+                ...bomResult.project,
+                qcFolderDownloadedAt: updatedProject.qcFolderDownloadedAt,
+                qcFolderDownloadedPath: updatedProject.qcFolderDownloadedPath
+              };
             }
           }
           // If no BOM found, don't show error - it's optional
