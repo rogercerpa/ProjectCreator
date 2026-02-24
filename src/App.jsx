@@ -14,6 +14,7 @@ import DraftRecoveryModal from './components/wizard/components/DraftRecoveryModa
 import MigrationAssistant from './components/wizard/components/MigrationAssistant';
 import Settings from './components/Settings';
 import DASGeneralPage from './components/DASGeneralPage';
+import SpecReviewPage from './components/specreview/SpecReviewPage';
 import logoUrl from '/assets/images/logo.png';
 // Use simple services that work in both main and renderer processes
 import featureFlagService from './services/FeatureFlagService';
@@ -1084,6 +1085,8 @@ function App() {
           );
         case 'das-general':
           return <DASGeneralPage />;
+        case 'spec-review':
+          return <SpecReviewPage />;
         case 'settings':
           return <Settings 
             initialTab={settingsTab} 

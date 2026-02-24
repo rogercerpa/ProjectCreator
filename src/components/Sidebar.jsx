@@ -47,6 +47,13 @@ function Sidebar({ currentView, onViewChange, projectCount }) {
       icon: '📖',
       description: 'Team & product info'
     },
+    { id: 'divider-tools', divider: true, label: 'Tools' },
+    {
+      id: 'spec-review',
+      label: 'Spec Review',
+      icon: '🔍',
+      description: 'Analyze project specs'
+    },
     {
       id: 'settings',
       label: 'Settings',
@@ -74,52 +81,62 @@ function Sidebar({ currentView, onViewChange, projectCount }) {
       
       {/* Navigation Menu */}
       <nav className="flex-1 py-4">
-        {menuItems.map((item) => (
-          <button
-            key={item.id}
-            className={`
-              w-full px-6 py-4 flex items-center gap-4 
-              border-none bg-transparent text-left
-              transition-all duration-200 cursor-pointer
-              relative
-              ${currentView === item.id 
-                ? 'bg-gray-100 dark:bg-gray-700 border-r-4 border-primary-500' 
-                : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
-              }
-            `}
-            onClick={() => onViewChange(item.id)}
-          >
-            {/* Active indicator */}
-            {currentView === item.id && (
-              <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary-500 rounded-r" />
-            )}
-            
-            {/* Icon */}
-            <span className={`
-              text-2xl w-8 text-center flex-shrink-0
-              transition-transform duration-200
-              ${currentView === item.id ? 'scale-110' : 'hover:scale-110'}
-            `}>
-              {item.icon}
-            </span>
-            
-            {/* Label and Description */}
-            <div className="flex flex-col items-start flex-1">
-              <span className={`
-                text-sm font-medium leading-tight
+        {menuItems.map((item) => {
+          if (item.divider) {
+            return (
+              <div key={item.id} className="px-6 pt-5 pb-2">
+                <span className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                  {item.label}
+                </span>
+                <div className="mt-1 border-b border-gray-200 dark:border-gray-700" />
+              </div>
+            );
+          }
+
+          return (
+            <button
+              key={item.id}
+              className={`
+                w-full px-6 py-4 flex items-center gap-4 
+                border-none bg-transparent text-left
+                transition-all duration-200 cursor-pointer
+                relative
                 ${currentView === item.id 
-                  ? 'text-active font-semibold' 
-                  : 'text-gray-800 dark:text-gray-200'
+                  ? 'bg-gray-100 dark:bg-gray-700 border-r-4 border-primary-500' 
+                  : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
                 }
+              `}
+              onClick={() => onViewChange(item.id)}
+            >
+              {currentView === item.id && (
+                <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary-500 rounded-r" />
+              )}
+              
+              <span className={`
+                text-2xl w-8 text-center flex-shrink-0
+                transition-transform duration-200
+                ${currentView === item.id ? 'scale-110' : 'hover:scale-110'}
               `}>
-                {item.label}
+                {item.icon}
               </span>
-              <span className="text-xs text-gray-600 dark:text-gray-400 mt-1 leading-tight">
-                {item.description}
-              </span>
-            </div>
-          </button>
-        ))}
+              
+              <div className="flex flex-col items-start flex-1">
+                <span className={`
+                  text-sm font-medium leading-tight
+                  ${currentView === item.id 
+                    ? 'text-active font-semibold' 
+                    : 'text-gray-800 dark:text-gray-200'
+                  }
+                `}>
+                  {item.label}
+                </span>
+                <span className="text-xs text-gray-600 dark:text-gray-400 mt-1 leading-tight">
+                  {item.description}
+                </span>
+              </div>
+            </button>
+          );
+        })}
       </nav>
     </aside>
   );

@@ -422,7 +422,39 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onBomAutoImportComplete: (callback) => {
     ipcRenderer.on('bom:auto-import-complete', (event, data) => callback(data));
     return () => ipcRenderer.removeAllListeners('bom:auto-import-complete');
-  }
+  },
+
+  // ===== SPEC REVIEW APIs =====
+  specReviewAnalyze: (filePath) => ipcRenderer.invoke('spec-review:analyze', filePath),
+  specReviewSelectFile: () => ipcRenderer.invoke('spec-review:select-spec-file'),
+  specReviewSave: (reviewData) => ipcRenderer.invoke('spec-review:save', reviewData),
+  specReviewGet: (reviewId) => ipcRenderer.invoke('spec-review:get', reviewId),
+  specReviewList: () => ipcRenderer.invoke('spec-review:list'),
+  specReviewLinkProject: (reviewId, projectId, projectName) => ipcRenderer.invoke('spec-review:link-project', reviewId, projectId, projectName),
+  specReviewUnlinkProject: (reviewId) => ipcRenderer.invoke('spec-review:unlink-project', reviewId),
+  specReviewGetForProject: (projectId) => ipcRenderer.invoke('spec-review:get-for-project', projectId),
+  specReviewDelete: (reviewId) => ipcRenderer.invoke('spec-review:delete', reviewId),
+  onSpecReviewProgress: (callback) => {
+    ipcRenderer.on('spec-review:progress', (event, data) => callback(data));
+    return () => ipcRenderer.removeAllListeners('spec-review:progress');
+  },
+
+  // ===== PRODUCT KNOWLEDGE BASE APIs =====
+  kbLoad: (forceRefresh) => ipcRenderer.invoke('kb:load', forceRefresh),
+  kbGetProducts: () => ipcRenderer.invoke('kb:get-products'),
+  kbGetSpecRules: () => ipcRenderer.invoke('kb:get-spec-rules'),
+  kbGetAlternatives: () => ipcRenderer.invoke('kb:get-alternatives'),
+  kbGetSummary: () => ipcRenderer.invoke('kb:get-summary'),
+  kbAddProduct: (product) => ipcRenderer.invoke('kb:add-product', product),
+  kbUpdateProduct: (catalogNumber, updates) => ipcRenderer.invoke('kb:update-product', catalogNumber, updates),
+  kbDeleteProduct: (catalogNumber) => ipcRenderer.invoke('kb:delete-product', catalogNumber),
+  kbAddSpecRule: (rule) => ipcRenderer.invoke('kb:add-spec-rule', rule),
+  kbUpdateSpecRule: (ruleId, updates) => ipcRenderer.invoke('kb:update-spec-rule', ruleId, updates),
+  kbDeleteSpecRule: (ruleId) => ipcRenderer.invoke('kb:delete-spec-rule', ruleId),
+  kbAddAlternative: (alt) => ipcRenderer.invoke('kb:add-alternative', alt),
+  kbUpdateAlternative: (index, updates) => ipcRenderer.invoke('kb:update-alternative', index, updates),
+  kbDeleteAlternative: (index) => ipcRenderer.invoke('kb:delete-alternative', index),
+  kbGetFilePath: () => ipcRenderer.invoke('kb:get-file-path')
 });
 
 // SECURITY: Prevent access to Node.js APIs

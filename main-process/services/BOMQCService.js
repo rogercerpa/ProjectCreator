@@ -189,10 +189,12 @@ class BOMQCService {
       let text;
 
       if (ext === '.pdf') {
-        const pdfParse = require('pdf-parse');
+        const { PDFParse } = require('pdf-parse');
         const dataBuffer = await fs.readFile(filePath);
-        const pdfData = await pdfParse(dataBuffer);
-        text = pdfData.text;
+        const parser = new PDFParse({ data: dataBuffer });
+        await parser.load();
+        const pdfResult = await parser.getText();
+        text = pdfResult.text;
       } else if (ext === '.docx' || ext === '.doc') {
         const mammoth = require('mammoth');
         const result = await mammoth.extractRawText({ path: filePath });

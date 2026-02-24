@@ -21,6 +21,8 @@ const BOMDetailsSection = ({ project, onProjectUpdate, isExpanded: controlledExp
   const [notification, setNotification] = useState(null);
   const [suggestedPath, setSuggestedPath] = useState(null);
   const [qcScore, setQcScore] = useState(null);
+  const [specReviews, setSpecReviews] = useState([]);
+  const [showSpecRecommendations, setShowSpecRecommendations] = useState(false);
 
   // Load QC status for header indicator
   useEffect(() => {
@@ -30,6 +32,20 @@ const BOMDetailsSection = ({ project, onProjectUpdate, isExpanded: controlledExp
       setQcScore(null);
     }
   }, [project?.qcAnalysis]);
+
+  // Load linked spec reviews for this project
+  useEffect(() => {
+    const loadSpecReviews = async () => {
+      if (!project?.id) return;
+      try {
+        const result = await window.electronAPI.specReviewGetForProject(project.id);
+        if (result.success) {
+          setSpecReviews(result.reviews || []);
+        }
+      } catch { /* ignore */ }
+    };
+    loadSpecReviews();
+  }, [project?.id]);
 
   // Load BOM data when project changes
   useEffect(() => {
@@ -294,6 +310,11 @@ const BOMDetailsSection = ({ project, onProjectUpdate, isExpanded: controlledExp
           QC {qcScore}%
         </span>
       )}
+      {specReviews.length > 0 && (
+        <span className="ml-2 px-2 py-0.5 text-xs font-medium rounded bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+          Spec Review
+        </span>
+      )}
     </span>
   ) : !isLoading ? (
     <span className="text-sm text-gray-400 dark:text-gray-500 italic">
@@ -358,6 +379,34 @@ const BOMDetailsSection = ({ project, onProjectUpdate, isExpanded: controlledExp
             : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800'
         }`}>
           {notification.message}
+        </div>
+      )}
+
+      {/* Spec Review Recommendations Banner */}
+      {specReviews.length > 0 && bomData && (
+        <div className="mt-4 mb-2">
+          <button
+            onClick={() => setShowSpecRecommendations(!showSpecRecommendations)}
+            className="w-full px-4 py-3 flex items-center justify-between bg-purple-50 dark:bg-purple-900/10 border border-purple-200 dark:border-purple-800 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/20 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-purple-600 dark:text-purple-400">🔍</span>
+              <span className="text-sm font-medium text-purple-800 dark:text-purple-300">
+                Spec Review: {specReviews[0].complianceScore != null ? `${specReviews[0].complianceScore}% compliance` : 'Linked'}
+              </span>
+              <span className="text-xs text-purple-600 dark:text-purple-400">
+                ({specReviews[0].requirementCount || 0} requirements | {specReviews[0].gapCount || 0} gaps)
+              </span>
+            </div>
+            <span className="text-purple-400">{showSpecRecommendations ? '▼' : '▶'}</span>
+          </button>
+
+          {showSpecRecommendations && (
+            <SpecRecommendationsPanel
+              reviewSummary={specReviews[0]}
+              bomDevices={bomData?.devices || []}
+            />
+          )}
         </div>
       )}
 
@@ -633,6 +682,78 @@ const BOMDetailsSection = ({ project, onProjectUpdate, isExpanded: controlledExp
           )}
         </div>
     </CollapsibleSection>
+  );
+};
+
+/**
+ * Inline panel showing spec review recommendations vs actual BOM.
+ * Highlights devices that are recommended but missing from the BOM.
+ */
+const SpecRecommendationsPanel = ({ reviewSummary, bomDevices }) => {
+  const [fullReview, setFullReview] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const result = await window.electronAPI.specReviewGet(reviewSummary.reviewId);
+        if (result.success) setFullReview(result.review);
+      } catch { /* ignore */ }
+      setLoading(false);
+    };
+    load();
+  }, [reviewSummary.reviewId]);
+
+  if (loading) {
+    return <div className="p-4 text-sm text-gray-500">Loading spec review details...</div>;
+  }
+
+  if (!fullReview) {
+    return <div className="p-4 text-sm text-gray-500">Could not load spec review details.</div>;
+  }
+
+  const bomCatalogNumbers = new Set((bomDevices || []).map(d => (d.catalogNumber || '').toUpperCase().trim()));
+
+  const prelimBOM = fullReview.preliminaryBOM || [];
+  const inBOM = prelimBOM.filter(item => bomCatalogNumbers.has(item.catalogNumber.toUpperCase().trim()));
+  const missing = prelimBOM.filter(item => !bomCatalogNumbers.has(item.catalogNumber.toUpperCase().trim()));
+
+  return (
+    <div className="mt-2 border border-purple-100 dark:border-purple-800 rounded-lg p-4 bg-white dark:bg-gray-800">
+      <div className="flex gap-4 mb-3 text-xs">
+        <span className="text-green-600">{inBOM.length} recommended devices in BOM</span>
+        <span className="text-red-600">{missing.length} recommended devices missing</span>
+      </div>
+
+      {missing.length > 0 && (
+        <div className="mb-3">
+          <h4 className="text-xs font-semibold uppercase text-red-600 mb-2">Missing from BOM</h4>
+          <div className="space-y-1">
+            {missing.map((item, i) => (
+              <div key={i} className="flex items-center gap-3 text-xs bg-red-50 dark:bg-red-900/10 rounded px-3 py-2">
+                <span className="font-mono font-medium text-gray-800 dark:text-gray-200">{item.catalogNumber}</span>
+                <span className="text-gray-500 dark:text-gray-400 flex-1">{item.description}</span>
+                <span className="text-gray-400">{item.suggestedQuantity}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {inBOM.length > 0 && (
+        <div>
+          <h4 className="text-xs font-semibold uppercase text-green-600 mb-2">Already in BOM</h4>
+          <div className="space-y-1">
+            {inBOM.map((item, i) => (
+              <div key={i} className="flex items-center gap-3 text-xs bg-green-50 dark:bg-green-900/10 rounded px-3 py-2">
+                <span className="font-mono font-medium text-gray-800 dark:text-gray-200">{item.catalogNumber}</span>
+                <span className="text-gray-500 dark:text-gray-400 flex-1">{item.description}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 
