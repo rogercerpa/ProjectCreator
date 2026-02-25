@@ -13,26 +13,28 @@ const PROVIDERS = {
   openai: {
     name: 'OpenAI',
     models: [
-      { id: 'gpt-4o', label: 'GPT-4o', description: 'Best structured output' },
-      { id: 'gpt-4o-mini', label: 'GPT-4o Mini', description: 'Faster and cheaper' }
+      { id: 'gpt-4.1', label: 'GPT-4.1', description: 'Best for structured output and instruction following' },
+      { id: 'gpt-4.1-mini', label: 'GPT-4.1 Mini', description: 'Fast and cost-effective' },
+      { id: 'gpt-4.1-nano', label: 'GPT-4.1 Nano', description: 'Fastest, lowest cost' }
     ],
-    defaultModel: 'gpt-4o'
+    defaultModel: 'gpt-4.1'
   },
   gemini: {
     name: 'Google Gemini',
     models: [
-      { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash', description: 'Fast and cost-effective' },
-      { id: 'gemini-2.0-pro', label: 'Gemini 2.0 Pro', description: 'More capable' }
+      { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', description: 'Best reasoning and accuracy' },
+      { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', description: 'Fast and cost-effective' }
     ],
-    defaultModel: 'gemini-2.0-flash'
+    defaultModel: 'gemini-2.5-pro'
   },
   anthropic: {
     name: 'Anthropic Claude',
     models: [
-      { id: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4', description: 'Best balance of speed and quality' },
-      { id: 'claude-haiku-3-5-20241022', label: 'Claude 3.5 Haiku', description: 'Fastest and cheapest' }
+      { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6', description: 'Best balance of speed and quality' },
+      { id: 'claude-opus-4-6', label: 'Claude Opus 4.6', description: 'Most capable, best for complex analysis' },
+      { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5', description: 'Fastest and cheapest' }
     ],
-    defaultModel: 'claude-sonnet-4-20250514'
+    defaultModel: 'claude-sonnet-4-6'
   }
 };
 
@@ -209,6 +211,8 @@ class AIService {
 
     const requestParams = {
       model,
+      temperature: 0,
+      seed: 42,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
@@ -229,7 +233,8 @@ class AIService {
     const genAI = new GoogleGenerativeAI(apiKey);
 
     const generationConfig = {
-      maxOutputTokens: options.maxTokens
+      maxOutputTokens: options.maxTokens,
+      temperature: 0
     };
 
     if (options.jsonMode) {
@@ -252,6 +257,7 @@ class AIService {
 
     const requestParams = {
       model,
+      temperature: 0,
       max_tokens: options.maxTokens,
       system: systemPrompt,
       messages: [

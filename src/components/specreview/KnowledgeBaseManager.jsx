@@ -19,6 +19,8 @@ const KnowledgeBaseManager = ({ onRefresh }) => {
   const [editingItem, setEditingItem] = useState(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [kbFilePath, setKbFilePath] = useState('');
+  const [enriching, setEnriching] = useState(false);
+  const [enrichProgress, setEnrichProgress] = useState(null);
 
   const loadData = useCallback(async (forceRefresh = false) => {
     setLoading(true);
@@ -117,6 +119,40 @@ const KnowledgeBaseManager = ({ onRefresh }) => {
     }
   };
 
+  // ===== BOM Enrichment =====
+  const handleEnrichFromBOMs = async (forceRescan = false) => {
+    setEnriching(true);
+    setEnrichProgress(null);
+
+    let cleanupListener = null;
+    if (electronAPI.onKBEnrichmentProgress) {
+      cleanupListener = electronAPI.onKBEnrichmentProgress((data) => {
+        setEnrichProgress(data);
+      });
+    }
+
+    try {
+      const result = await electronAPI.kbEnrichFromBOMs({ forceRescan });
+      if (result.success) {
+        const msg = result.added.length > 0
+          ? `Added ${result.added.length} new products from BOM data (${result.totalScanned} scanned, ${result.alreadyReviewed} already reviewed, ${result.skipped.length} skipped)`
+          : `No new products found (${result.totalScanned} scanned, ${result.alreadyReviewed} already reviewed)`;
+        notify(msg, result.added.length > 0 ? 'success' : 'info');
+        if (result.added.length > 0) {
+          loadData(true);
+        }
+      } else {
+        notify(result.error || 'Enrichment failed', 'error');
+      }
+    } catch (err) {
+      notify(err.message, 'error');
+    } finally {
+      if (cleanupListener) cleanupListener();
+      setEnriching(false);
+      setEnrichProgress(null);
+    }
+  };
+
   // ===== Filtering =====
   const filteredProducts = products.filter(p =>
     (p.catalogNumber || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -158,6 +194,14 @@ const KnowledgeBaseManager = ({ onRefresh }) => {
 
         <div className="flex items-center gap-2">
           <button
+            onClick={() => handleEnrichFromBOMs(false)}
+            disabled={enriching}
+            className="px-3 py-1.5 text-xs border border-amber-400 dark:border-amber-600 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 text-amber-700 dark:text-amber-400 disabled:opacity-50"
+            title="Scan BOM catalog and add new products to the Knowledge Base"
+          >
+            {enriching ? 'Enriching...' : 'Enrich from BOMs'}
+          </button>
+          <button
             onClick={() => loadData(true)}
             className="px-3 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400"
           >
@@ -185,6 +229,44 @@ const KnowledgeBaseManager = ({ onRefresh }) => {
           'bg-blue-50 text-blue-700'
         }`}>
           {notification.message}
+        </div>
+      )}
+
+      {/* Enrichment Progress Panel */}
+      {enriching && enrichProgress && (
+        <div className="mb-4 p-4 border border-amber-200 dark:border-amber-700 rounded-lg bg-amber-50/50 dark:bg-amber-900/10">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium text-amber-800 dark:text-amber-300">
+              {enrichProgress.phase === 'scanning' && 'Scanning BOM catalog...'}
+              {enrichProgress.phase === 'writing' && 'Writing to Knowledge Base...'}
+              {enrichProgress.phase === 'saving' && 'Saving enrichment log...'}
+              {enrichProgress.phase === 'complete' && 'Enrichment complete'}
+            </span>
+            {enrichProgress.total > 0 && (
+              <span className="text-xs text-amber-600 dark:text-amber-400">
+                {enrichProgress.current} / {enrichProgress.total}
+              </span>
+            )}
+          </div>
+          <div className="w-full bg-amber-200/50 dark:bg-amber-800/30 rounded-full h-2 mb-2">
+            <div
+              className="bg-amber-500 dark:bg-amber-400 h-2 rounded-full transition-all duration-300"
+              style={{ width: enrichProgress.total > 0 ? `${Math.min(100, Math.round((enrichProgress.current / enrichProgress.total) * 100))}%` : '0%' }}
+            />
+          </div>
+          <div className="flex items-center justify-between text-[11px] text-amber-700 dark:text-amber-400">
+            <span className="truncate mr-2">
+              {enrichProgress.currentItem && enrichProgress.phase === 'scanning' && `Checking: ${enrichProgress.currentItem}`}
+              {enrichProgress.phase === 'writing' && 'Batch writing products to Excel...'}
+              {enrichProgress.phase === 'saving' && 'Finalizing...'}
+              {enrichProgress.phase === 'complete' && 'Done'}
+            </span>
+            <span className="flex-shrink-0">
+              {enrichProgress.added > 0 && <span className="text-green-600 dark:text-green-400 mr-2">{enrichProgress.added} new</span>}
+              {enrichProgress.skipped > 0 && <span className="text-gray-500 mr-2">{enrichProgress.skipped} skipped</span>}
+              {enrichProgress.alreadyReviewed > 0 && <span className="text-gray-400">{enrichProgress.alreadyReviewed} already reviewed</span>}
+            </span>
+          </div>
         </div>
       )}
 

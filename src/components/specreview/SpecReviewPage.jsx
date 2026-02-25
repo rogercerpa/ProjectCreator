@@ -11,6 +11,8 @@ const TABS = [
   { id: 'knowledge-base', label: 'Knowledge Base', icon: '📚' }
 ];
 
+const ALLOWED_EXTENSIONS = ['.pdf', '.docx', '.doc', '.txt'];
+
 const SpecReviewPage = () => {
   const [activeTab, setActiveTab] = useState('analyze');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -20,6 +22,7 @@ const SpecReviewPage = () => {
   const [hasAIKey, setHasAIKey] = useState(false);
   const [notification, setNotification] = useState(null);
   const [kbSummary, setKbSummary] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
     checkAIKey();
@@ -63,6 +66,51 @@ const SpecReviewPage = () => {
     } catch (error) {
       showNotification(`Error selecting file: ${error.message}`, 'error');
     }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDragEnter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.currentTarget.contains(e.relatedTarget)) return;
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = e.dataTransfer?.files;
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+    const filePath = window.electronAPI.getPathForFile
+      ? window.electronAPI.getPathForFile(file)
+      : file.path;
+    if (!filePath) {
+      showNotification('Could not read file path', 'error');
+      return;
+    }
+
+    const ext = '.' + filePath.split('.').pop().toLowerCase();
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+      showNotification(`Unsupported file type: ${ext}. Use PDF, DOCX, or TXT files.`, 'error');
+      return;
+    }
+
+    setSelectedFile(filePath);
+    setAnalysisResult(null);
   };
 
   const handleAnalyze = async () => {
@@ -190,16 +238,27 @@ const SpecReviewPage = () => {
               <div className="max-w-2xl mx-auto">
                 <div
                   onClick={handleSelectFile}
-                  className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-12 text-center cursor-pointer hover:border-primary-400 hover:bg-primary-50/50 dark:hover:bg-primary-900/10 transition-all"
+                  onDragOver={handleDragOver}
+                  onDragEnter={handleDragEnter}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all ${
+                    isDragging
+                      ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 scale-[1.02]'
+                      : 'border-gray-300 dark:border-gray-600 hover:border-primary-400 hover:bg-primary-50/50 dark:hover:bg-primary-900/10'
+                  }`}
                 >
-                  <div className="text-5xl mb-4">📄</div>
+                  <div className="text-5xl mb-4">{isDragging ? '📥' : '📄'}</div>
                   <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                    {fileName ? fileName : 'Select Specification Document'}
+                    {isDragging
+                      ? 'Drop file here'
+                      : fileName ? fileName : 'Select Specification Document'
+                    }
                   </h3>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
                     {fileName
-                      ? 'Click to change file'
-                      : 'Supports PDF, DOCX, and TXT files'
+                      ? 'Click or drag a new file to change'
+                      : 'Drag and drop or click to browse — PDF, DOCX, TXT'
                     }
                   </p>
                 </div>

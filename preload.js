@@ -1,7 +1,10 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 // SECURITY: Only expose specific, validated APIs to renderer process
 contextBridge.exposeInMainWorld('electronAPI', {
+  // Drag-and-drop file path resolution (contextIsolation-safe)
+  getPathForFile: (file) => webUtils.getPathForFile(file),
+
   // File system operations (with validation)
   selectDirectory: () => ipcRenderer.invoke('select-directory'),
   selectFolder: () => ipcRenderer.invoke('select-folder'),
@@ -434,6 +437,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   specReviewUnlinkProject: (reviewId) => ipcRenderer.invoke('spec-review:unlink-project', reviewId),
   specReviewGetForProject: (projectId) => ipcRenderer.invoke('spec-review:get-for-project', projectId),
   specReviewDelete: (reviewId) => ipcRenderer.invoke('spec-review:delete', reviewId),
+  specReviewUpdateReview: (reviewId, updates) => ipcRenderer.invoke('spec-review:update-review', reviewId, updates),
   onSpecReviewProgress: (callback) => {
     ipcRenderer.on('spec-review:progress', (event, data) => callback(data));
     return () => ipcRenderer.removeAllListeners('spec-review:progress');
@@ -454,7 +458,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   kbAddAlternative: (alt) => ipcRenderer.invoke('kb:add-alternative', alt),
   kbUpdateAlternative: (index, updates) => ipcRenderer.invoke('kb:update-alternative', index, updates),
   kbDeleteAlternative: (index) => ipcRenderer.invoke('kb:delete-alternative', index),
-  kbGetFilePath: () => ipcRenderer.invoke('kb:get-file-path')
+  kbGetFilePath: () => ipcRenderer.invoke('kb:get-file-path'),
+  kbEnrichFromBOMs: (options) => ipcRenderer.invoke('kb:enrich-from-boms', options),
+  onKBEnrichmentProgress: (callback) => {
+    ipcRenderer.on('kb:enrichment-progress', (event, data) => callback(data));
+    return () => ipcRenderer.removeAllListeners('kb:enrichment-progress');
+  }
 });
 
 // SECURITY: Prevent access to Node.js APIs

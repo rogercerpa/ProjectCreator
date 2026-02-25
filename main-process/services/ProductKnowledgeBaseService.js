@@ -146,7 +146,8 @@ class ProductKnowledgeBaseService {
         const keywords = (rule.keywords || '').split(',').map(k => k.trim().toLowerCase()).filter(Boolean);
         const keywordHits = keywords.filter(kw => reqText.includes(kw));
 
-        if (keywordHits.length > 0) {
+        const minHitsRequired = keywords.length <= 1 ? 1 : 2;
+        if (keywordHits.length >= minHitsRequired) {
           const primaryDevices = this._resolveDevices(rule.primaryDevices, products);
           const alternativeDevices = this._resolveDevices(rule.alternativeDevices, products);
           const relatedAlts = this._findAlternatives(rule.requirementName, alternatives);
@@ -156,7 +157,7 @@ class ProductKnowledgeBaseService {
             ruleName: rule.requirementName,
             category: rule.category,
             keywordHits,
-            matchStrength: keywordHits.length >= 2 ? 'strong' : 'moderate',
+            matchStrength: keywordHits.length >= 3 ? 'strong' : 'moderate',
             primaryDevices,
             alternativeDevices,
             quantityGuidance: rule.quantityGuidance || '',
@@ -242,6 +243,193 @@ class ProductKnowledgeBaseService {
 
   async deleteAlternative(index) {
     return this._deleteRowByIndex('Alternatives', index);
+  }
+
+  // ===== BOM Enrichment =====
+
+  /**
+   * Enrich the KB with products discovered in the BOM catalog.
+   * Reads bom-catalog.json, compares against existing KB products,
+   * filters, maps, and adds new products. Tracks reviewed items
+   * in kb-enrichment-log.json to avoid redundant processing.
+   */
+  async enrichFromBOMCatalog(catalogPath, options = {}) {
+    const { forceRescan = false, onProgress } = options;
+    const logPath = path.join(LOCAL_FALLBACK_DIR, 'kb-enrichment-log.json');
+    const YIELD_EVERY = 50;
+
+    const emitProgress = (data) => {
+      if (typeof onProgress === 'function') {
+        try { onProgress(data); } catch { /* ignore callback errors */ }
+      }
+    };
+
+    try {
+      emitProgress({ phase: 'scanning', current: 0, total: 0, currentItem: 'Loading BOM catalog...', added: 0, skipped: 0, alreadyReviewed: 0 });
+
+      if (!(await fs.pathExists(catalogPath))) {
+        return { success: false, error: 'BOM catalog file not found', added: [], skipped: [], alreadyReviewed: 0, totalScanned: 0 };
+      }
+
+      const catalog = await fs.readJson(catalogPath);
+      const catalogEntries = Object.entries(catalog);
+      const total = catalogEntries.length;
+
+      emitProgress({ phase: 'scanning', current: 0, total, currentItem: 'Loading enrichment log...', added: 0, skipped: 0, alreadyReviewed: 0 });
+
+      const enrichmentLog = await this._loadEnrichmentLog(logPath);
+      const reviewed = enrichmentLog.reviewedCatalogNumbers || {};
+
+      await this.load(true);
+      const existingProducts = this._cache?.products || [];
+      const existingCNs = new Set(existingProducts.map(p => (p.catalogNumber || '').toUpperCase().trim()));
+
+      const added = [];
+      const skipped = [];
+      const productsToAdd = [];
+      let alreadyReviewed = 0;
+
+      for (let i = 0; i < catalogEntries.length; i++) {
+        const [catalogNumber, entry] = catalogEntries[i];
+        const cnUpper = catalogNumber.toUpperCase().trim();
+
+        if (i > 0 && i % YIELD_EVERY === 0) {
+          await new Promise(r => setImmediate(r));
+          emitProgress({ phase: 'scanning', current: i, total, currentItem: catalogNumber, added: productsToAdd.length, skipped: skipped.length, alreadyReviewed });
+        }
+
+        if (!forceRescan && reviewed[cnUpper]) {
+          alreadyReviewed++;
+          continue;
+        }
+
+        if (existingCNs.has(cnUpper)) {
+          reviewed[cnUpper] = { reviewedAt: new Date().toISOString(), addedToKB: false, reason: 'already in KB' };
+          skipped.push({ catalogNumber, reason: 'already in KB' });
+          continue;
+        }
+
+        if (!this._isEnrichmentCandidate(catalogNumber, entry)) {
+          reviewed[cnUpper] = { reviewedAt: new Date().toISOString(), addedToKB: false, reason: 'filtered out' };
+          skipped.push({ catalogNumber, reason: 'filtered out' });
+          continue;
+        }
+
+        const product = this._mapCatalogEntryToProduct(catalogNumber, entry);
+        productsToAdd.push(product);
+        existingCNs.add(cnUpper);
+        reviewed[cnUpper] = { reviewedAt: new Date().toISOString(), addedToKB: true };
+        added.push({ catalogNumber, productFamily: product.productFamily, description: product.description });
+      }
+
+      emitProgress({ phase: 'scanning', current: total, total, currentItem: 'Scan complete', added: productsToAdd.length, skipped: skipped.length, alreadyReviewed });
+
+      if (productsToAdd.length > 0) {
+        emitProgress({ phase: 'writing', current: 0, total: productsToAdd.length, currentItem: 'Writing to Knowledge Base...', added: productsToAdd.length, skipped: skipped.length, alreadyReviewed });
+
+        const writeResult = await this._addProductsBatch(productsToAdd);
+        if (!writeResult.success) {
+          return { success: false, error: writeResult.error, added: [], skipped, alreadyReviewed, totalScanned: total };
+        }
+
+        emitProgress({ phase: 'writing', current: productsToAdd.length, total: productsToAdd.length, currentItem: 'Write complete', added: productsToAdd.length, skipped: skipped.length, alreadyReviewed });
+      }
+
+      emitProgress({ phase: 'saving', current: 0, total: 1, currentItem: 'Saving enrichment log...', added: added.length, skipped: skipped.length, alreadyReviewed });
+
+      enrichmentLog.reviewedCatalogNumbers = reviewed;
+      enrichmentLog.lastEnrichmentRun = new Date().toISOString();
+      enrichmentLog.totalEnrichmentRuns = (enrichmentLog.totalEnrichmentRuns || 0) + 1;
+      await fs.writeJson(logPath, enrichmentLog, { spaces: 2 });
+
+      if (added.length > 0) {
+        await this.load(true);
+        console.log(`KB enrichment: added ${added.length} products, skipped ${skipped.length}, already reviewed ${alreadyReviewed}`);
+      }
+
+      emitProgress({ phase: 'complete', current: total, total, currentItem: '', added: added.length, skipped: skipped.length, alreadyReviewed });
+
+      return { success: true, added, skipped, alreadyReviewed, totalScanned: total };
+    } catch (error) {
+      console.error('KB enrichment failed:', error);
+      return { success: false, error: error.message, added: [], skipped: [], alreadyReviewed: 0, totalScanned: 0 };
+    }
+  }
+
+  async _loadEnrichmentLog(logPath) {
+    try {
+      if (await fs.pathExists(logPath)) {
+        return await fs.readJson(logPath);
+      }
+    } catch { /* start fresh */ }
+    return { reviewedCatalogNumbers: {}, lastEnrichmentRun: null, totalEnrichmentRuns: 0 };
+  }
+
+  _isEnrichmentCandidate(catalogNumber, entry) {
+    if (!catalogNumber || catalogNumber.trim().length < 3) return false;
+
+    const family = (entry.productFamily || '').toLowerCase();
+    const excludedFamilies = ['wire/cable', 'wire', 'cable', 'misc', 'unknown', ''];
+    if (excludedFamilies.includes(family)) return false;
+
+    const type = (entry.type || '').toLowerCase();
+    if (type === 'wire' || type === 'w') return false;
+
+    return true;
+  }
+
+  _mapCatalogEntryToProduct(catalogNumber, entry) {
+    const ai = entry.aiCapabilities || {};
+    const capabilities = Array.isArray(ai.capabilities) ? ai.capabilities.join(', ') : '';
+    const category = Array.isArray(ai.deviceCategories) && ai.deviceCategories.length > 0
+      ? ai.deviceCategories[0]
+      : '';
+
+    return {
+      catalogNumber: catalogNumber.trim(),
+      productFamily: entry.productFamily || '',
+      category: category || '',
+      description: ai.deviceFunction || entry.description || '',
+      capabilities: capabilities,
+      mountingType: '',
+      voltage: '',
+      platform: entry.productFamily || '',
+      notes: `Auto-added from BOM data. Seen in ${entry.projectCount || 1} project(s).`,
+      active: 'Yes',
+      updatedBy: 'BOM Auto-Enrich'
+    };
+  }
+
+  /**
+   * Batch-add multiple products in a single Excel read/write cycle.
+   * Avoids the N read/write overhead of calling addProduct() per item.
+   */
+  async _addProductsBatch(products) {
+    try {
+      const filePath = await this.getFilePath();
+      const workbook = XLSX.readFile(filePath);
+      const sheet = workbook.Sheets['Products'];
+      if (!sheet) return { success: false, error: 'Products sheet not found' };
+
+      const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+      for (const product of products) {
+        const newRow = {};
+        for (const col of PRODUCT_COLUMNS) {
+          newRow[col.header] = product[col.key] ?? '';
+        }
+        if (!newRow['Last Updated']) newRow['Last Updated'] = new Date().toLocaleDateString();
+        if (!newRow['Active']) newRow['Active'] = 'Yes';
+        rows.push(newRow);
+      }
+
+      workbook.Sheets['Products'] = XLSX.utils.json_to_sheet(rows);
+      XLSX.writeFile(workbook, filePath);
+      this._cache = null;
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
   }
 
   // ===== Internal Methods =====

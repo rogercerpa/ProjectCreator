@@ -148,6 +148,42 @@ class SpecReviewPersistenceService {
   }
 
   /**
+   * Update a saved spec review with edited requirements, compliance score, etc.
+   */
+  async updateReview(reviewId, updates) {
+    try {
+      const filePath = path.join(REVIEWS_DIR, `${reviewId}.json`);
+      if (!(await fs.pathExists(filePath))) {
+        return { success: false, error: 'Review not found' };
+      }
+
+      const review = await fs.readJson(filePath);
+
+      if (updates.requirements) {
+        review.requirements = updates.requirements;
+        review.gapAnalysis = updates.requirements.filter(r => r.status === 'gap' || r.status === 'alternative');
+      }
+      if (updates.complianceScore) {
+        review.complianceScore = updates.complianceScore;
+      }
+      if (updates.preliminaryBOM) {
+        review.preliminaryBOM = updates.preliminaryBOM;
+      }
+
+      review.lastEditedAt = new Date().toISOString();
+
+      await fs.writeJson(filePath, review, { spaces: 2 });
+      await this._updateIndex(review);
+
+      console.log(`✏️ Spec review updated: ${reviewId}`);
+      return { success: true, reviewId };
+    } catch (error) {
+      console.error('Error updating spec review:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * Delete a spec review.
    */
   async deleteReview(reviewId) {

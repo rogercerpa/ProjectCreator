@@ -85,8 +85,10 @@ const bomQCService = new BOMQCService(aiService, bomPersistenceService, projectP
 const ProductKnowledgeBaseService = require("./main-process/services/ProductKnowledgeBaseService");
 const SpecReviewService = require("./main-process/services/SpecReviewService");
 const SpecReviewPersistenceService = require("./main-process/services/SpecReviewPersistenceService");
+const SpecReviewLearningService = require("./main-process/services/SpecReviewLearningService");
 const productKBService = new ProductKnowledgeBaseService(settingsService);
-const specReviewService = new SpecReviewService(aiService, productKBService);
+const specReviewLearningService = new SpecReviewLearningService(settingsService);
+const specReviewService = new SpecReviewService(aiService, productKBService, specReviewLearningService);
 const specReviewPersistenceService = new SpecReviewPersistenceService();
 const EdgeConnectionManager = require("./main-process/services/EdgeConnectionManager");
 const AgileScrapingService = require("./main-process/services/AgileScrapingService");
@@ -2440,6 +2442,14 @@ ipcMain.handle("bom:parse-file", async (event, filePath) => {
 ipcMain.handle("bom:save-to-project", async (event, projectId, bomData) => {
   try {
     const result = await bomPersistenceService.saveBOMToProject(projectId, bomData);
+    if (result.success) {
+      const catalogPath = path.join(os.homedir(), ".project-creator", "bom-catalog.json");
+      productKBService.enrichFromBOMCatalog(catalogPath).then((enrichResult) => {
+        if (enrichResult.added && enrichResult.added.length > 0) {
+          console.log(`KB auto-enrichment: added ${enrichResult.added.length} new products from BOM upload`);
+        }
+      }).catch((e) => console.warn("KB auto-enrichment failed:", e.message));
+    }
     return result;
   } catch (error) {
     console.error("Error saving BOM to project:", error);
@@ -2930,6 +2940,25 @@ ipcMain.handle("spec-review:delete", async (event, reviewId) => {
     return { success: false, error: error.message };
   }
 });
+ipcMain.handle("spec-review:update-review", async (event, reviewId, updates) => {
+  var _a;
+  try {
+    const result = await specReviewPersistenceService.updateReview(reviewId, updates);
+    if (result.success && updates.requirements) {
+      const overridden = updates.requirements.filter((r) => r.isOverridden);
+      if (overridden.length > 0) {
+        const review = await specReviewPersistenceService.getReview(reviewId);
+        const sourceFile = ((_a = review == null ? void 0 : review.review) == null ? void 0 : _a.sourceFile) || "";
+        specReviewLearningService.captureFromOverrides(updates.requirements, sourceFile).catch(
+          (e) => console.warn("Learning capture failed:", e.message)
+        );
+      }
+    }
+    return result;
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
 ipcMain.handle("kb:load", async (event, forceRefresh) => {
   try {
     return await productKBService.load(forceRefresh);
@@ -3034,6 +3063,22 @@ ipcMain.handle("kb:get-file-path", async () => {
     return { success: true, filePath };
   } catch (error) {
     return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("kb:enrich-from-boms", async (event, options = {}) => {
+  try {
+    const catalogPath = path.join(os.homedir(), ".project-creator", "bom-catalog.json");
+    const onProgress = (data) => {
+      try {
+        event.sender.send("kb:enrichment-progress", data);
+      } catch {
+      }
+    };
+    const result = await productKBService.enrichFromBOMCatalog(catalogPath, { ...options, onProgress });
+    return result;
+  } catch (error) {
+    console.error("KB enrichment from BOMs failed:", error);
+    return { success: false, error: error.message, added: [], skipped: [], alreadyReviewed: 0, totalScanned: 0 };
   }
 });
 process.on("uncaughtException", (error) => {
