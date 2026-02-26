@@ -194,9 +194,17 @@ class AIService {
       } catch {
         const jsonMatch = responseText.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-          return JSON.parse(jsonMatch[0]);
+          try {
+            return JSON.parse(jsonMatch[0]);
+          } catch (innerErr) {
+            const err = new Error(`AI response was not valid JSON: ${innerErr.message}`);
+            err.rawResponse = responseText;
+            throw err;
+          }
         }
-        throw new Error('AI response was not valid JSON');
+        const err = new Error('AI response was not valid JSON');
+        err.rawResponse = responseText;
+        throw err;
       }
     }
 

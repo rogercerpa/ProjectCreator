@@ -5,7 +5,8 @@ const { electronAPI } = window;
 const STATUS_CONFIG = {
   met: { label: 'Met', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300', icon: '✅' },
   alternative: { label: 'Alternative', color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300', icon: '🔄' },
-  gap: { label: 'Gap', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300', icon: '❌' }
+  gap: { label: 'Gap', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300', icon: '❌' },
+  acknowledged: { label: 'Noted', color: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400', icon: '📋' }
 };
 
 const STATUS_OPTIONS = ['met', 'alternative', 'gap'];
@@ -58,22 +59,64 @@ const SpecReviewResults = ({ result, onNewAnalysis, onSaved }) => {
   };
 
   const requirements = editedRequirements;
-  const { preliminaryBOM = [], projectSummary = '' } = result || {};
+  const { preliminaryBOM = [], projectSummary = '', sectionInfo, coverage } = result || {};
 
   const complianceScore = useMemo(() => {
-    if (requirements.length === 0) return { score: 0, met: 0, alternative: 0, gap: 0, total: 0 };
+    if (requirements.length === 0) return { score: 0, met: 0, alternative: 0, gap: 0, acknowledged: 0, total: 0, actionableTotal: 0 };
     const met = requirements.filter(r => r.status === 'met').length;
     const alternative = requirements.filter(r => r.status === 'alternative').length;
     const gap = requirements.filter(r => r.status === 'gap').length;
+    const acknowledged = requirements.filter(r => r.status === 'acknowledged').length;
     const total = requirements.length;
-    const score = Math.round(((met * 1.0 + alternative * 0.5) / total) * 100);
-    return { score, met, alternative, gap, total };
+    const actionableTotal = met + alternative + gap;
+    const score = actionableTotal > 0 ? Math.round(((met * 1.0 + alternative * 0.5) / actionableTotal) * 100) : 100;
+    return { score, met, alternative, gap, acknowledged, total, actionableTotal };
   }, [requirements]);
 
   const gapAnalysis = useMemo(() =>
     requirements.filter(r => r.status === 'gap' || r.status === 'alternative'),
     [requirements]
   );
+
+  const groupedRequirements = useMemo(() => {
+    const groups = [];
+    const partMap = new Map();
+
+    for (const req of requirements) {
+      const partKey = req.partNumber ?? 0;
+      if (!partMap.has(partKey)) {
+        const partEntry = {
+          partNumber: req.partNumber ?? 0,
+          partTitle: req.partTitle || 'GENERAL',
+          subSections: new Map()
+        };
+        partMap.set(partKey, partEntry);
+        groups.push(partEntry);
+      }
+      const partEntry = partMap.get(partKey);
+      const subKey = req.subSection || '_none';
+      if (!partEntry.subSections.has(subKey)) {
+        partEntry.subSections.set(subKey, {
+          ref: req.subSection || '',
+          title: req.subSectionTitle || '',
+          items: []
+        });
+      }
+      partEntry.subSections.get(subKey).items.push(req);
+    }
+
+    groups.sort((a, b) => a.partNumber - b.partNumber);
+    return groups;
+  }, [requirements]);
+
+  const [collapsedParts, setCollapsedParts] = useState(new Set());
+  const togglePart = (partNumber) => {
+    setCollapsedParts(prev => {
+      const next = new Set(prev);
+      next.has(partNumber) ? next.delete(partNumber) : next.add(partNumber);
+      return next;
+    });
+  };
 
   const sections = [
     { id: 'requirements', label: 'Requirements', count: requirements.length },
@@ -366,9 +409,14 @@ const SpecReviewResults = ({ result, onNewAnalysis, onSaved }) => {
       <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-6 mb-6">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-1">
               Analysis Results: {result.sourceFile}
             </h2>
+            {sectionInfo && sectionInfo.sectionNumber !== 'Unknown' && (
+              <p className="text-xs font-medium text-primary-600 dark:text-primary-400 mb-2">
+                Section {sectionInfo.sectionNumber} — {sectionInfo.sectionTitle}
+              </p>
+            )}
             {projectSummary && (
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{projectSummary}</p>
             )}
@@ -398,6 +446,12 @@ const SpecReviewResults = ({ result, onNewAnalysis, onSaved }) => {
                   <span className="w-3 h-3 rounded-full bg-red-500 inline-block" />
                   {complianceScore.gap || 0} gaps
                 </span>
+                {complianceScore.acknowledged > 0 && (
+                  <span className="flex items-center gap-1">
+                    <span className="w-3 h-3 rounded-full bg-gray-400 inline-block" />
+                    {complianceScore.acknowledged} informational
+                  </span>
+                )}
               </div>
 
               {(() => {
@@ -414,6 +468,12 @@ const SpecReviewResults = ({ result, onNewAnalysis, onSaved }) => {
                 ) : null;
               })()}
             </div>
+
+            {coverage && coverage.missedSections && coverage.missedSections.length > 0 && (
+              <div className="mt-3 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg text-xs text-amber-700 dark:text-amber-300">
+                Coverage: {coverage.coveragePercent}% — {coverage.missedSections.length} sub-section(s) may not have been fully extracted.
+              </div>
+            )}
           </div>
 
           {/* Actions */}
@@ -478,238 +538,282 @@ const SpecReviewResults = ({ result, onNewAnalysis, onSaved }) => {
         ))}
       </div>
 
-      {/* Requirements Section */}
+      {/* Requirements Section — Grouped by Part / Sub-section */}
       {activeSection === 'requirements' && (
-        <div className="space-y-2">
-          {requirements.map(req => {
-            const config = STATUS_CONFIG[req.status] || STATUS_CONFIG.gap;
-            const isExpanded = expandedReqs.has(req.id);
-            const isEditing = editingReqId === req.id;
+        <div className="space-y-4">
+          {groupedRequirements.map(part => {
+            const isPartCollapsed = collapsedParts.has(part.partNumber);
+            const partReqs = [...part.subSections.values()].flatMap(s => s.items);
+            const partMet = partReqs.filter(r => r.status === 'met').length;
+            const partAlt = partReqs.filter(r => r.status === 'alternative').length;
+            const partGap = partReqs.filter(r => r.status === 'gap').length;
+            const partAck = partReqs.filter(r => r.status === 'acknowledged').length;
 
             return (
-              <div key={req.id} className={`border rounded-lg overflow-hidden ${
-                req.isOverridden
-                  ? 'border-blue-300 dark:border-blue-700'
-                  : 'border-gray-200 dark:border-gray-700'
-              }`}>
+              <div key={part.partNumber} className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+                {/* Part Header */}
                 <button
-                  onClick={() => toggleReq(req.id)}
-                  className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                  onClick={() => togglePart(part.partNumber)}
+                  className="w-full px-5 py-3 flex items-center gap-3 bg-primary-50 dark:bg-primary-900/20 hover:bg-primary-100 dark:hover:bg-primary-900/30 transition-colors text-left"
                 >
-                  <span className="text-lg">{config.icon}</span>
-                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${config.color}`}>
-                    {config.label}
+                  <span className="text-sm font-bold text-primary-700 dark:text-primary-300">
+                    PART {part.partNumber} — {part.partTitle}
                   </span>
-                  {req.confidence && CONFIDENCE_CONFIG[req.confidence] && (
-                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${CONFIDENCE_CONFIG[req.confidence].color}`} title={`AI Confidence: ${req.confidence}`}>
-                      {CONFIDENCE_CONFIG[req.confidence].icon} {CONFIDENCE_CONFIG[req.confidence].label}
-                    </span>
-                  )}
-                  {req.isOverridden && (
-                    <span className="px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
-                      Edited
-                    </span>
-                  )}
-                  <span className="flex-1 text-sm font-medium text-gray-800 dark:text-gray-200">{req.name}</span>
-                  <span className="text-xs text-gray-400">{req.category}</span>
-                  <span className="text-gray-400">{isExpanded ? '▼' : '▶'}</span>
+                  <div className="flex gap-3 ml-auto text-xs">
+                    {partMet > 0 && <span className="text-green-600 font-medium">{partMet} met</span>}
+                    {partAlt > 0 && <span className="text-amber-600 font-medium">{partAlt} alt</span>}
+                    {partGap > 0 && <span className="text-red-600 font-medium">{partGap} gap</span>}
+                    {partAck > 0 && <span className="text-gray-500 font-medium">{partAck} noted</span>}
+                  </div>
+                  <span className="text-gray-400 ml-2">{isPartCollapsed ? '▶' : '▼'}</span>
                 </button>
 
-                {isExpanded && (
-                  <div className="px-4 pb-4 pt-1 border-t border-gray-100 dark:border-gray-800">
-                    {/* Spec Excerpt Blockquote */}
-                    {req.specExcerpt && (
-                      <div className="mb-3 pl-3 border-l-4 border-blue-400 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/10 rounded-r-lg py-2 pr-3">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs font-semibold uppercase text-blue-600 dark:text-blue-400">Spec Reference</span>
-                          {req.sourceSection && (
-                            <span className="text-xs text-blue-500 dark:text-blue-400">— {req.sourceSection}</span>
-                          )}
-                        </div>
-                        <p className="text-sm text-gray-700 dark:text-gray-300 italic leading-relaxed">
-                          "{req.specExcerpt}"
-                        </p>
-                      </div>
-                    )}
-
-                    {!req.specExcerpt && req.sourceSection && (
-                      <p className="text-xs text-gray-400 mb-3">Source: {req.sourceSection}</p>
-                    )}
-
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">{req.description}</p>
-
-                    {req.confidence === 'low' && !req.isOverridden && (
-                      <div className="mb-3 px-3 py-2 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded text-xs text-red-700 dark:text-red-300">
-                        Low confidence — The spec language for this requirement is ambiguous. Please verify this classification manually.
-                      </div>
-                    )}
-
-                    {/* Override info */}
-                    {req.isOverridden && req.originalStatus && (
-                      <div className="mb-3 px-3 py-2 bg-blue-50 dark:bg-blue-900/10 rounded text-xs text-blue-700 dark:text-blue-300">
-                        Originally classified as <strong>{STATUS_CONFIG[req.originalStatus]?.label || req.originalStatus}</strong> by AI analysis
-                      </div>
-                    )}
-
-                    {/* Recommended Devices (read mode) */}
-                    {!isEditing && req.recommendedDevices && req.recommendedDevices.length > 0 && (
-                      <div className="mb-3">
-                        <h4 className="text-xs font-semibold uppercase text-gray-500 mb-2">Recommended Devices</h4>
-                        <div className="space-y-1">
-                          {req.recommendedDevices.map((dev, i) => (
-                            <div key={i} className="flex items-center gap-3 text-sm bg-gray-50 dark:bg-gray-800 rounded px-3 py-2">
-                              <span className={`px-2 py-0.5 rounded text-xs ${
-                                dev.role === 'primary'
-                                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                                  : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
-                              }`}>
-                                {dev.role}
-                              </span>
-                              <span className="font-mono font-medium text-gray-800 dark:text-gray-200">{dev.catalogNumber}</span>
-                              <span className="text-gray-500 dark:text-gray-400 flex-1">{dev.description}</span>
-                              {dev.quantity && (
-                                <span className="text-xs text-gray-400">{dev.quantity}</span>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* User Note (read mode) */}
-                    {!isEditing && req.userNote && (
-                      <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/10 rounded text-sm text-blue-800 dark:text-blue-300">
-                        <span className="font-semibold text-xs uppercase text-blue-600 dark:text-blue-400 block mb-1">User Note</span>
-                        {req.userNote}
-                      </div>
-                    )}
-
-                    {req.gapNote && !isEditing && (
-                      <div className="p-3 bg-amber-50 dark:bg-amber-900/10 rounded text-sm text-amber-800 dark:text-amber-300 mb-3">
-                        {req.gapNote}
-                      </div>
-                    )}
-
-                    {/* Edit Panel */}
-                    {isEditing && (
-                      <div className="mt-3 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 space-y-4">
-                        {/* Status Override */}
-                        <div>
-                          <label className="block text-xs font-semibold uppercase text-gray-500 mb-2">Status</label>
-                          <div className="flex gap-2">
-                            {STATUS_OPTIONS.map(s => {
-                              const sc = STATUS_CONFIG[s];
-                              return (
-                                <button
-                                  key={s}
-                                  onClick={() => updateRequirement(req.id, { status: s })}
-                                  className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-                                    req.status === s
-                                      ? sc.color + ' ring-2 ring-offset-1 ring-gray-400'
-                                      : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
-                                  }`}
-                                >
-                                  {sc.icon} {sc.label}
-                                </button>
-                              );
-                            })}
+                {!isPartCollapsed && (
+                  <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                    {[...part.subSections.values()].map(sub => (
+                      <div key={sub.ref || '_none'}>
+                        {/* Sub-section header */}
+                        {sub.ref && (
+                          <div className="px-5 py-2 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
+                            <span className="text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                              {sub.ref} {sub.title}
+                            </span>
                           </div>
-                        </div>
+                        )}
 
-                        {/* Device Editing */}
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <label className="text-xs font-semibold uppercase text-gray-500">Recommended Devices</label>
-                            <button
-                              onClick={() => addDevice(req.id)}
-                              className="text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400 font-medium"
-                            >
-                              + Add Device
-                            </button>
-                          </div>
-                          <div className="space-y-2">
-                            {(req.recommendedDevices || []).map((dev, i) => (
-                              <div key={i} className="flex items-center gap-2 bg-white dark:bg-gray-800 rounded p-2 border border-gray-200 dark:border-gray-700">
-                                <select
-                                  value={dev.role}
-                                  onChange={e => updateDevice(req.id, i, 'role', e.target.value)}
-                                  className="text-xs border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
-                                >
-                                  <option value="primary">Primary</option>
-                                  <option value="alternative">Alternative</option>
-                                </select>
-                                <input
-                                  type="text"
-                                  value={dev.catalogNumber}
-                                  onChange={e => updateDevice(req.id, i, 'catalogNumber', e.target.value)}
-                                  placeholder="Catalog #"
-                                  className="flex-1 text-xs font-mono border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
-                                />
-                                <input
-                                  type="text"
-                                  value={dev.description}
-                                  onChange={e => updateDevice(req.id, i, 'description', e.target.value)}
-                                  placeholder="Description"
-                                  className="flex-1 text-xs border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
-                                />
+                        {/* Requirement items */}
+                        <div className="space-y-0 divide-y divide-gray-50 dark:divide-gray-800/50">
+                          {sub.items.map(req => {
+                            const config = STATUS_CONFIG[req.status] || STATUS_CONFIG.gap;
+                            const isExpanded = expandedReqs.has(req.id);
+                            const isEditing = editingReqId === req.id;
+                            const isInformational = req.status === 'acknowledged';
+
+                            return (
+                              <div key={req.id} className={req.isOverridden ? 'border-l-2 border-blue-400' : ''}>
                                 <button
-                                  onClick={() => removeDevice(req.id, i)}
-                                  className="text-red-500 hover:text-red-700 text-xs px-1"
-                                  title="Remove device"
+                                  onClick={() => toggleReq(req.id)}
+                                  className="w-full px-5 py-2.5 flex items-center gap-3 text-left hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
                                 >
-                                  ✕
+                                  <span className="text-sm w-5 text-center">{config.icon}</span>
+                                  <span className={`px-2 py-0.5 rounded text-xs font-medium shrink-0 ${config.color}`}>
+                                    {config.label}
+                                  </span>
+                                  {req.confidence && CONFIDENCE_CONFIG[req.confidence] && !isInformational && (
+                                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0 ${CONFIDENCE_CONFIG[req.confidence].color}`} title={`AI Confidence: ${req.confidence}`}>
+                                      {CONFIDENCE_CONFIG[req.confidence].icon} {CONFIDENCE_CONFIG[req.confidence].label}
+                                    </span>
+                                  )}
+                                  {req.isOverridden && (
+                                    <span className="px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 shrink-0">
+                                      Edited
+                                    </span>
+                                  )}
+                                  {req.itemRef && (
+                                    <span className="text-xs font-mono font-bold text-gray-400 dark:text-gray-500 shrink-0 w-6">
+                                      {req.itemRef}
+                                    </span>
+                                  )}
+                                  <span className={`flex-1 text-sm font-medium ${isInformational ? 'text-gray-500 dark:text-gray-400' : 'text-gray-800 dark:text-gray-200'}`}>
+                                    {req.name}
+                                  </span>
+                                  <span className="text-xs text-gray-400 shrink-0">{req.category}</span>
+                                  <span className="text-gray-400">{isExpanded ? '▼' : '▶'}</span>
                                 </button>
+
+                                {isExpanded && (
+                                  <div className="px-5 pb-4 pt-1 border-t border-gray-100 dark:border-gray-800">
+                                    {req.specExcerpt && (
+                                      <div className="mb-3 pl-3 border-l-4 border-blue-400 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/10 rounded-r-lg py-2 pr-3">
+                                        <div className="flex items-center gap-2 mb-1">
+                                          <span className="text-xs font-semibold uppercase text-blue-600 dark:text-blue-400">Spec Reference</span>
+                                          {req.sourceSection && (
+                                            <span className="text-xs text-blue-500 dark:text-blue-400">— {req.sourceSection}</span>
+                                          )}
+                                        </div>
+                                        <p className="text-sm text-gray-700 dark:text-gray-300 italic leading-relaxed">
+                                          "{req.specExcerpt}"
+                                        </p>
+                                      </div>
+                                    )}
+
+                                    {!req.specExcerpt && req.sourceSection && (
+                                      <p className="text-xs text-gray-400 mb-3">Source: {req.sourceSection}</p>
+                                    )}
+
+                                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">{req.description}</p>
+
+                                    {req.confidence === 'low' && !req.isOverridden && !isInformational && (
+                                      <div className="mb-3 px-3 py-2 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded text-xs text-red-700 dark:text-red-300">
+                                        Low confidence — The spec language for this requirement is ambiguous. Please verify this classification manually.
+                                      </div>
+                                    )}
+
+                                    {req.isOverridden && req.originalStatus && (
+                                      <div className="mb-3 px-3 py-2 bg-blue-50 dark:bg-blue-900/10 rounded text-xs text-blue-700 dark:text-blue-300">
+                                        Originally classified as <strong>{STATUS_CONFIG[req.originalStatus]?.label || req.originalStatus}</strong> by AI analysis
+                                      </div>
+                                    )}
+
+                                    {!isEditing && req.recommendedDevices && req.recommendedDevices.length > 0 && (
+                                      <div className="mb-3">
+                                        <h4 className="text-xs font-semibold uppercase text-gray-500 mb-2">Recommended Devices</h4>
+                                        <div className="space-y-1">
+                                          {req.recommendedDevices.map((dev, i) => (
+                                            <div key={i} className="flex items-center gap-3 text-sm bg-gray-50 dark:bg-gray-800 rounded px-3 py-2">
+                                              <span className={`px-2 py-0.5 rounded text-xs ${
+                                                dev.role === 'primary'
+                                                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                                                  : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                                              }`}>
+                                                {dev.role}
+                                              </span>
+                                              <span className="font-mono font-medium text-gray-800 dark:text-gray-200">{dev.catalogNumber}</span>
+                                              <span className="text-gray-500 dark:text-gray-400 flex-1">{dev.description}</span>
+                                              {dev.quantity && (
+                                                <span className="text-xs text-gray-400">{dev.quantity}</span>
+                                              )}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {!isEditing && req.userNote && (
+                                      <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/10 rounded text-sm text-blue-800 dark:text-blue-300">
+                                        <span className="font-semibold text-xs uppercase text-blue-600 dark:text-blue-400 block mb-1">User Note</span>
+                                        {req.userNote}
+                                      </div>
+                                    )}
+
+                                    {req.gapNote && !isEditing && (
+                                      <div className="p-3 bg-amber-50 dark:bg-amber-900/10 rounded text-sm text-amber-800 dark:text-amber-300 mb-3">
+                                        {req.gapNote}
+                                      </div>
+                                    )}
+
+                                    {isEditing && (
+                                      <div className="mt-3 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 space-y-4">
+                                        <div>
+                                          <label className="block text-xs font-semibold uppercase text-gray-500 mb-2">Status</label>
+                                          <div className="flex gap-2">
+                                            {STATUS_OPTIONS.map(s => {
+                                              const sc = STATUS_CONFIG[s];
+                                              return (
+                                                <button
+                                                  key={s}
+                                                  onClick={() => updateRequirement(req.id, { status: s })}
+                                                  className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                                                    req.status === s
+                                                      ? sc.color + ' ring-2 ring-offset-1 ring-gray-400'
+                                                      : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                                  }`}
+                                                >
+                                                  {sc.icon} {sc.label}
+                                                </button>
+                                              );
+                                            })}
+                                          </div>
+                                        </div>
+
+                                        <div>
+                                          <div className="flex items-center justify-between mb-2">
+                                            <label className="text-xs font-semibold uppercase text-gray-500">Recommended Devices</label>
+                                            <button
+                                              onClick={() => addDevice(req.id)}
+                                              className="text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400 font-medium"
+                                            >
+                                              + Add Device
+                                            </button>
+                                          </div>
+                                          <div className="space-y-2">
+                                            {(req.recommendedDevices || []).map((dev, i) => (
+                                              <div key={i} className="flex items-center gap-2 bg-white dark:bg-gray-800 rounded p-2 border border-gray-200 dark:border-gray-700">
+                                                <select
+                                                  value={dev.role}
+                                                  onChange={e => updateDevice(req.id, i, 'role', e.target.value)}
+                                                  className="text-xs border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+                                                >
+                                                  <option value="primary">Primary</option>
+                                                  <option value="alternative">Alternative</option>
+                                                </select>
+                                                <input
+                                                  type="text"
+                                                  value={dev.catalogNumber}
+                                                  onChange={e => updateDevice(req.id, i, 'catalogNumber', e.target.value)}
+                                                  placeholder="Catalog #"
+                                                  className="flex-1 text-xs font-mono border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+                                                />
+                                                <input
+                                                  type="text"
+                                                  value={dev.description}
+                                                  onChange={e => updateDevice(req.id, i, 'description', e.target.value)}
+                                                  placeholder="Description"
+                                                  className="flex-1 text-xs border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+                                                />
+                                                <button
+                                                  onClick={() => removeDevice(req.id, i)}
+                                                  className="text-red-500 hover:text-red-700 text-xs px-1"
+                                                  title="Remove device"
+                                                >
+                                                  ✕
+                                                </button>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+
+                                        <div>
+                                          <label className="block text-xs font-semibold uppercase text-gray-500 mb-2">Your Note</label>
+                                          <textarea
+                                            value={req.userNote || ''}
+                                            onChange={e => updateRequirement(req.id, { userNote: e.target.value })}
+                                            rows={2}
+                                            placeholder="Add a note explaining why you changed this, or what Acuity product/service actually meets this requirement..."
+                                            className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-800 dark:text-white resize-none"
+                                          />
+                                        </div>
+
+                                        <div>
+                                          <label className="block text-xs font-semibold uppercase text-gray-500 mb-2">Gap / Alternative Note</label>
+                                          <textarea
+                                            value={req.gapNote || ''}
+                                            onChange={e => updateRequirement(req.id, { gapNote: e.target.value })}
+                                            rows={2}
+                                            placeholder="Explanation for gap or alternative status..."
+                                            className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-800 dark:text-white resize-none"
+                                          />
+                                        </div>
+
+                                        <div className="flex justify-end">
+                                          <button
+                                            onClick={() => setEditingReqId(null)}
+                                            className="px-3 py-1.5 text-xs text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+                                          >
+                                            Done Editing
+                                          </button>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {!isEditing && (
+                                      <div className="flex justify-end mt-2">
+                                        <button
+                                          onClick={(e) => { e.stopPropagation(); setEditingReqId(req.id); }}
+                                          className="flex items-center gap-1 px-3 py-1.5 text-xs text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-primary-300 dark:hover:border-primary-600 transition-colors"
+                                        >
+                                          <span>✏️</span> Edit
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* User Note */}
-                        <div>
-                          <label className="block text-xs font-semibold uppercase text-gray-500 mb-2">Your Note</label>
-                          <textarea
-                            value={req.userNote || ''}
-                            onChange={e => updateRequirement(req.id, { userNote: e.target.value })}
-                            rows={2}
-                            placeholder="Add a note explaining why you changed this, or what Acuity product/service actually meets this requirement..."
-                            className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-800 dark:text-white resize-none"
-                          />
-                        </div>
-
-                        {/* Gap Note */}
-                        <div>
-                          <label className="block text-xs font-semibold uppercase text-gray-500 mb-2">Gap / Alternative Note</label>
-                          <textarea
-                            value={req.gapNote || ''}
-                            onChange={e => updateRequirement(req.id, { gapNote: e.target.value })}
-                            rows={2}
-                            placeholder="Explanation for gap or alternative status..."
-                            className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-800 dark:text-white resize-none"
-                          />
-                        </div>
-
-                        <div className="flex justify-end">
-                          <button
-                            onClick={() => setEditingReqId(null)}
-                            className="px-3 py-1.5 text-xs text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
-                          >
-                            Done Editing
-                          </button>
+                            );
+                          })}
                         </div>
                       </div>
-                    )}
-
-                    {/* Edit toggle button */}
-                    {!isEditing && (
-                      <div className="flex justify-end mt-2">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setEditingReqId(req.id); }}
-                          className="flex items-center gap-1 px-3 py-1.5 text-xs text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-primary-300 dark:hover:border-primary-600 transition-colors"
-                        >
-                          <span>✏️</span> Edit
-                        </button>
-                      </div>
-                    )}
+                    ))}
                   </div>
                 )}
               </div>
@@ -926,6 +1030,11 @@ const SpecReviewResults = ({ result, onNewAnalysis, onSaved }) => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <h1 style={{ fontSize: '22px', fontWeight: 'bold', color: '#1e40af', margin: '0 0 6px 0' }}>Specification Compliance Review</h1>
+              {sectionInfo && sectionInfo.sectionNumber !== 'Unknown' && (
+                <p style={{ fontSize: '12px', fontWeight: '600', color: '#1e40af', margin: '0 0 4px 0' }}>
+                  Section {sectionInfo.sectionNumber} — {sectionInfo.sectionTitle}
+                </p>
+              )}
               <p style={{ fontSize: '13px', color: '#555', margin: '0 0 3px 0' }}>
                 {result.sourceFile}{exportSettings.agencyName ? ` | ${exportSettings.agencyName}` : ''}
               </p>
@@ -978,6 +1087,12 @@ const SpecReviewResults = ({ result, onNewAnalysis, onSaved }) => {
               <span style={{ color: '#d97706', fontWeight: '600' }}>{complianceScore.alternative}</span> alternatives
               <span style={{ margin: '0 6px', color: '#ccc' }}>|</span>
               <span style={{ color: '#dc2626', fontWeight: '600' }}>{complianceScore.gap}</span> gaps
+              {complianceScore.acknowledged > 0 && (
+                <>
+                  <span style={{ margin: '0 6px', color: '#ccc' }}>|</span>
+                  <span style={{ color: '#6b7280', fontWeight: '600' }}>{complianceScore.acknowledged}</span> informational
+                </>
+              )}
               <span style={{ margin: '0 6px', color: '#ccc' }}>|</span>
               <span style={{ fontWeight: '600' }}>{editedRequirements.length}</span> total
             </div>
@@ -1001,77 +1116,108 @@ const SpecReviewResults = ({ result, onNewAnalysis, onSaved }) => {
           );
         })()}
 
-        {/* Requirements Analysis */}
+        {/* Requirements Analysis — Grouped by Part / Sub-section */}
         <h2 style={{ fontSize: '15px', fontWeight: 'bold', marginBottom: '10px', color: '#1e40af', borderBottom: '1px solid #dbeafe', paddingBottom: '6px' }}>Requirements Analysis</h2>
-        {editedRequirements.map((req, i) => (
-          <div key={i} style={{ marginBottom: '10px', border: '1px solid #e5e7eb', borderRadius: '6px', overflow: 'hidden', breakInside: 'avoid', pageBreakInside: 'avoid' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 10px', backgroundColor: req.status === 'met' ? '#f0fdf4' : req.status === 'alternative' ? '#fffbeb' : '#fef2f2' }}>
-              <span style={{
-                fontSize: '9px', fontWeight: 'bold', padding: '2px 7px', borderRadius: '3px', textTransform: 'uppercase', letterSpacing: '0.5px',
-                color: req.status === 'met' ? '#15803d' : req.status === 'alternative' ? '#b45309' : '#b91c1c',
-                backgroundColor: req.status === 'met' ? '#bbf7d0' : req.status === 'alternative' ? '#fde68a' : '#fecaca'
-              }}>
-                {req.status === 'met' ? 'MET' : req.status === 'alternative' ? 'ALT' : 'GAP'}
+
+        {groupedRequirements.map(part => (
+          <div key={part.partNumber} style={{ marginBottom: '16px' }}>
+            {/* Part Header */}
+            <div style={{ padding: '8px 12px', backgroundColor: '#1e40af', borderRadius: '6px 6px 0 0', marginBottom: '0' }}>
+              <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Part {part.partNumber} — {part.partTitle}
               </span>
-              {req.confidence && (
-                <span style={{
-                  fontSize: '8px', fontWeight: 'bold', padding: '2px 5px', borderRadius: '3px',
-                  color: req.confidence === 'high' ? '#15803d' : req.confidence === 'medium' ? '#b45309' : '#b91c1c',
-                  backgroundColor: req.confidence === 'high' ? '#dcfce7' : req.confidence === 'medium' ? '#fef3c7' : '#fee2e2'
-                }}>
-                  {req.confidence === 'high' ? 'HIGH' : req.confidence === 'medium' ? 'MED' : 'LOW'}
-                </span>
-              )}
-              {req.isOverridden && (
-                <span style={{ fontSize: '8px', fontWeight: 'bold', padding: '2px 5px', borderRadius: '3px', color: '#1d4ed8', backgroundColor: '#dbeafe' }}>EDITED</span>
-              )}
-              <span style={{ fontSize: '11px', fontWeight: 'bold', flex: 1, color: '#1f2937' }}>{req.name}</span>
-              {req.category && <span style={{ fontSize: '9px', color: '#9ca3af', fontWeight: '500' }}>{req.category}</span>}
             </div>
 
-            <div style={{ padding: '8px 10px' }}>
-              {req.specExcerpt && (
-                <div style={{ marginBottom: '6px', paddingLeft: '8px', borderLeft: '3px solid #93c5fd', backgroundColor: '#eff6ff', padding: '6px 10px', borderRadius: '0 4px 4px 0' }}>
-                  <div style={{ fontSize: '8px', fontWeight: 'bold', color: '#2563eb', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    Spec Reference{req.sourceSection ? `: ${req.sourceSection}` : ''}
+            {[...part.subSections.values()].map(sub => (
+              <div key={sub.ref || '_none'} style={{ marginBottom: '2px' }}>
+                {/* Sub-section header */}
+                {sub.ref && (
+                  <div style={{ padding: '5px 12px', backgroundColor: '#eff6ff', borderLeft: '3px solid #1e40af', fontSize: '10px', fontWeight: 'bold', color: '#1e40af', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                    {sub.ref} {sub.title}
                   </div>
-                  <div style={{ fontSize: '10px', color: '#374151', fontStyle: 'italic', lineHeight: '1.5' }}>
-                    &ldquo;{req.specExcerpt}&rdquo;
-                  </div>
-                </div>
-              )}
+                )}
 
-              <p style={{ fontSize: '10px', color: '#555', margin: '0 0 4px 0' }}>{req.description}</p>
+                {/* Individual requirement items */}
+                {sub.items.map((req, i) => {
+                  const isInformational = req.status === 'acknowledged';
+                  const statusLabel = isInformational ? 'NOTED' : req.status === 'met' ? 'MET' : req.status === 'alternative' ? 'ALT' : 'GAP';
+                  const statusColor = isInformational ? '#6b7280' : req.status === 'met' ? '#15803d' : req.status === 'alternative' ? '#b45309' : '#b91c1c';
+                  const statusBg = isInformational ? '#e5e7eb' : req.status === 'met' ? '#bbf7d0' : req.status === 'alternative' ? '#fde68a' : '#fecaca';
+                  const headerBg = isInformational ? '#f9fafb' : req.status === 'met' ? '#f0fdf4' : req.status === 'alternative' ? '#fffbeb' : '#fef2f2';
 
-              {req.recommendedDevices && req.recommendedDevices.length > 0 && (
-                <div style={{ marginBottom: '4px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px' }}>
-                  <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#4b5563', textTransform: 'uppercase', lineHeight: '20px' }}>Devices: </span>
-                  {req.recommendedDevices.filter(d => d.catalogNumber).map((d, j) => (
-                    <span key={j} style={{ display: 'inline-block', fontSize: '9px', fontFamily: 'Consolas, monospace', backgroundColor: '#e5e7eb', color: '#1f2937', padding: '2px 6px', borderRadius: '3px', lineHeight: '16px', verticalAlign: 'middle' }}>
-                      {d.catalogNumber}{d.role === 'alternative' ? ' (alt)' : ''}
-                    </span>
-                  ))}
-                </div>
-              )}
+                  return (
+                    <div key={i} style={{ marginBottom: '6px', border: '1px solid #e5e7eb', borderRadius: '4px', overflow: 'hidden', breakInside: 'avoid', pageBreakInside: 'avoid' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '5px 10px', backgroundColor: headerBg }}>
+                        <span style={{ fontSize: '9px', fontWeight: 'bold', padding: '2px 7px', borderRadius: '3px', textTransform: 'uppercase', letterSpacing: '0.5px', color: statusColor, backgroundColor: statusBg }}>
+                          {statusLabel}
+                        </span>
+                        {!isInformational && req.confidence && (
+                          <span style={{
+                            fontSize: '8px', fontWeight: 'bold', padding: '2px 5px', borderRadius: '3px',
+                            color: req.confidence === 'high' ? '#15803d' : req.confidence === 'medium' ? '#b45309' : '#b91c1c',
+                            backgroundColor: req.confidence === 'high' ? '#dcfce7' : req.confidence === 'medium' ? '#fef3c7' : '#fee2e2'
+                          }}>
+                            {req.confidence === 'high' ? 'HIGH' : req.confidence === 'medium' ? 'MED' : 'LOW'}
+                          </span>
+                        )}
+                        {req.isOverridden && (
+                          <span style={{ fontSize: '8px', fontWeight: 'bold', padding: '2px 5px', borderRadius: '3px', color: '#1d4ed8', backgroundColor: '#dbeafe' }}>EDITED</span>
+                        )}
+                        {req.itemRef && (
+                          <span style={{ fontSize: '9px', fontFamily: 'Consolas, monospace', fontWeight: 'bold', color: '#6b7280' }}>{req.itemRef}</span>
+                        )}
+                        <span style={{ fontSize: '11px', fontWeight: 'bold', flex: 1, color: isInformational ? '#6b7280' : '#1f2937' }}>{req.name}</span>
+                        {req.category && <span style={{ fontSize: '9px', color: '#9ca3af', fontWeight: '500' }}>{req.category}</span>}
+                      </div>
 
-              {req.gapNote && (
-                <div style={{ fontSize: '10px', color: '#92400e', backgroundColor: '#fef3c7', padding: '5px 8px', borderRadius: '3px', marginBottom: '4px', borderLeft: '3px solid #f59e0b' }}>
-                  {req.gapNote}
-                </div>
-              )}
+                      <div style={{ padding: '6px 10px' }}>
+                        {req.specExcerpt && (
+                          <div style={{ marginBottom: '6px', paddingLeft: '8px', borderLeft: '3px solid #93c5fd', backgroundColor: '#eff6ff', padding: '6px 10px', borderRadius: '0 4px 4px 0' }}>
+                            <div style={{ fontSize: '8px', fontWeight: 'bold', color: '#2563eb', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                              Spec Reference{req.sourceSection ? `: ${req.sourceSection}` : ''}
+                            </div>
+                            <div style={{ fontSize: '10px', color: '#374151', fontStyle: 'italic', lineHeight: '1.5' }}>
+                              &ldquo;{req.specExcerpt}&rdquo;
+                            </div>
+                          </div>
+                        )}
 
-              {req.userNote && (
-                <div style={{ fontSize: '10px', color: '#1e40af', backgroundColor: '#dbeafe', padding: '5px 8px', borderRadius: '3px', marginBottom: '4px', borderLeft: '3px solid #3b82f6' }}>
-                  <strong style={{ fontSize: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>User Note:</strong> {req.userNote}
-                </div>
-              )}
+                        <p style={{ fontSize: '10px', color: '#555', margin: '0 0 4px 0' }}>{req.description}</p>
 
-              {req.isOverridden && req.originalStatus && (
-                <div style={{ fontSize: '9px', color: '#6b7280', fontStyle: 'italic' }}>
-                  AI originally classified as &ldquo;{req.originalStatus}&rdquo;
-                </div>
-              )}
-            </div>
+                        {req.recommendedDevices && req.recommendedDevices.length > 0 && (
+                          <div style={{ marginBottom: '4px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px' }}>
+                            <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#4b5563', textTransform: 'uppercase', lineHeight: '20px' }}>Devices: </span>
+                            {req.recommendedDevices.filter(d => d.catalogNumber).map((d, j) => (
+                              <span key={j} style={{ display: 'inline-block', fontSize: '9px', fontFamily: 'Consolas, monospace', backgroundColor: '#e5e7eb', color: '#1f2937', padding: '2px 6px', borderRadius: '3px', lineHeight: '16px', verticalAlign: 'middle' }}>
+                                {d.catalogNumber}{d.role === 'alternative' ? ' (alt)' : ''}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {req.gapNote && (
+                          <div style={{ fontSize: '10px', color: '#92400e', backgroundColor: '#fef3c7', padding: '5px 8px', borderRadius: '3px', marginBottom: '4px', borderLeft: '3px solid #f59e0b' }}>
+                            {req.gapNote}
+                          </div>
+                        )}
+
+                        {req.userNote && (
+                          <div style={{ fontSize: '10px', color: '#1e40af', backgroundColor: '#dbeafe', padding: '5px 8px', borderRadius: '3px', marginBottom: '4px', borderLeft: '3px solid #3b82f6' }}>
+                            <strong style={{ fontSize: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>User Note:</strong> {req.userNote}
+                          </div>
+                        )}
+
+                        {req.isOverridden && req.originalStatus && (
+                          <div style={{ fontSize: '9px', color: '#6b7280', fontStyle: 'italic' }}>
+                            AI originally classified as &ldquo;{req.originalStatus}&rdquo;
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
           </div>
         ))}
 
