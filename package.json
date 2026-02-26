@@ -38,9 +38,11 @@
     "version:minor": "npm version minor --no-git-tag-version",
     "version:major": "npm version major --no-git-tag-version",
     "version:show": "node -p \"require('./package.json').version\"",
+    "readme:update": "node scripts/update-readme.js",
     "safety-check": "node scripts/safety-check.js",
     "lint": "echo 'Install ESLint: npm install --save-dev eslint' && exit 0",
-    "format": "echo 'Install Prettier: npm install --save-dev prettier' && exit 0"
+    "format": "echo 'Install Prettier: npm install --save-dev prettier' && exit 0",
+    "prepare": "husky"
   },
   "keywords": [
     "electron",
@@ -70,6 +72,7 @@
     "electron-builder": "^26.0.12",
     "electron-mock-ipc": "^0.3.12",
     "electron-updater": "^6.6.2",
+    "husky": "^9.1.7",
     "identity-obj-proxy": "^3.0.0",
     "jest": "^30.1.3",
     "jest-environment-jsdom": "^30.1.2",

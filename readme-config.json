@@ -1,0 +1,118 @@
+{
+  "features": {
+    "core": {
+      "title": "Core Project Management",
+      "items": [
+        { "name": "Project Wizard", "description": "Multi-step guided project creation with auto-save, draft recovery, and duplicate detection", "status": "production" },
+        { "name": "Revision Detection", "description": "Automatically detects existing projects and copies files from previous RFA revisions", "status": "production" },
+        { "name": "Project Search & Analytics", "description": "Full-text search, filtering, and project statistics", "status": "production" },
+        { "name": "Template Validation", "description": "Validates templates and manages selection based on National Account and Agent preferences", "status": "production" },
+        { "name": "Document Generation", "description": "Automated Word document generation from templates with variable substitution", "status": "production" }
+      ]
+    },
+    "specAndBom": {
+      "title": "Spec Review & BOM Analysis",
+      "items": [
+        { "name": "Spec Review", "description": "AI-powered specification analysis with file upload, review history, and knowledge base management", "status": "production" },
+        { "name": "BOM Data Analysis", "description": "Smart BOM upload with auto-detection, device breakdown, startup cost calculations, and product family analysis", "status": "production" },
+        { "name": "BOM QC Review", "description": "Building code compliance scoring, anomaly detection, and device capability analysis", "status": "production" }
+      ]
+    },
+    "dashboards": {
+      "title": "Dashboards",
+      "items": [
+        { "name": "Agency Dashboard", "description": "8-tab dashboard with Overview, Projects, Contacts, Playbook, Email Templates, Analytics, Tasks, and Settings", "status": "production" },
+        { "name": "Performance Dashboard", "description": "Real-time metrics for response times, memory usage, and system health", "status": "production" },
+        { "name": "DAS General", "description": "Team member directory, training materials, and product information management", "status": "production" },
+        { "name": "Workload Dashboard", "description": "Team capacity management, assignments, and Excel bidirectional sync", "status": "development" },
+        { "name": "Agile Workqueue", "description": "Monitor and manage agile work queue items", "status": "development" }
+      ]
+    },
+    "ms365": {
+      "title": "Microsoft 365 Integration",
+      "items": [
+        { "name": "SharePoint Upload", "description": "Hybrid upload via Microsoft Graph API and OneDrive sync folder", "status": "development" },
+        { "name": "OneDrive Sync", "description": "Automatic detection of sync folders with status monitoring", "status": "development" },
+        { "name": "MS Lists Integration", "description": "Workload management synchronized with Microsoft Lists", "status": "development" },
+        { "name": "Power Automate", "description": "Excel synchronization via Power Automate flows for team collaboration", "status": "development" }
+      ]
+    },
+    "analytics": {
+      "title": "Analytics & Reporting",
+      "items": [
+        { "name": "Monthly Analytics Reports", "description": "Interactive charts powered by Recharts", "status": "production" },
+        { "name": "KPIs", "description": "Total Projects, Completed, RFA Value, DAS Revenue, Turnaround Time, On-Time Rate", "status": "production" },
+        { "name": "Chart Types", "description": "Pie charts, bar charts, area charts for trends and distributions", "status": "production" },
+        { "name": "Export Options", "description": "PDF export, print mode, and multi-dimensional filtering", "status": "production" }
+      ]
+    },
+    "email": {
+      "title": "Email & Communication",
+      "items": [
+        { "name": "Email Template Library", "description": "Create, manage, and organize email templates by category", "status": "production" },
+        { "name": "Variable Substitution", "description": "Dynamic placeholders for personalized emails", "status": "production" },
+        { "name": "Outlook Integration", "description": "Open emails directly in Outlook with pre-filled content", "status": "production" },
+        { "name": "Batch Operations", "description": "Send to multiple recipients efficiently", "status": "production" }
+      ]
+    },
+    "fileOps": {
+      "title": "File Operations",
+      "items": [
+        { "name": "DAS Drive Upload", "description": "Upload projects to network DAS Drive (Z:) with progress tracking", "status": "production" },
+        { "name": "Ready for QC Workflow", "description": "Scan SharePoint folders for QC zip files, download and extract", "status": "production" },
+        { "name": "ZIP Creation", "description": "Compress project folders with intelligent file filtering", "status": "production" },
+        { "name": "File Watching", "description": "Real-time monitoring of shared directories for changes", "status": "production" }
+      ]
+    },
+    "additional": {
+      "title": "Additional Features",
+      "items": [
+        { "name": "Auto-Update", "description": "Automatic application updates via electron-updater", "status": "production" },
+        { "name": "Crash Reporting", "description": "Error tracking with Sentry integration", "status": "production" },
+        { "name": "Feature Flags", "description": "Gradual feature rollouts with percentage-based targeting", "status": "production" },
+        { "name": "Smart Defaults", "description": "Intelligent form field suggestions based on user history", "status": "production" },
+        { "name": "Migration Assistant", "description": "Seamless migration from legacy HTA version (v4.2.5)", "status": "production" },
+        { "name": "Security Logging", "description": "Comprehensive audit trail for all file and security operations", "status": "production" },
+        { "name": "Theme Support", "description": "Dark and light mode toggle", "status": "production" }
+      ]
+    }
+  },
+  "versionHistory": [
+    {
+      "version": "5.0.233",
+      "label": "Current",
+      "description": "BOM Analysis and Spec Review release",
+      "changes": [
+        "AI-powered Spec Review with knowledge base and review history",
+        "BOM data analysis with device breakdown and cost calculations",
+        "BOM QC Review with compliance scoring and anomaly detection",
+        "Agency Dashboard with 8-tab interface",
+        "Monthly Analytics Reports with Recharts",
+        "Email Template system with Outlook integration",
+        "Performance Dashboard with real-time metrics",
+        "Auto-update and crash reporting"
+      ]
+    },
+    {
+      "version": "5.0.84",
+      "label": null,
+      "description": "Major enhancement release",
+      "changes": [
+        "Enhanced security features",
+        "Project wizard with guided workflow",
+        "Draft recovery system",
+        "Migration assistant",
+        "Comprehensive settings management"
+      ]
+    },
+    {
+      "version": "4.2.5",
+      "label": "Legacy",
+      "description": "Previous HTA version",
+      "changes": [
+        "Original implementation",
+        "Basic project creation"
+      ]
+    }
+  ]
+}

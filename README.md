@@ -1,16 +1,19 @@
 # Project Creator
 
-[![Version](https://img.shields.io/badge/version-5.0.197-blue.svg)](package.json)
+<!-- AUTO:BADGES:START -->
+[![Version](https://img.shields.io/badge/version-5.0.233-blue.svg)](package.json)
 [![License](https://img.shields.io/badge/license-ISC-green.svg)](LICENSE)
 [![Electron](https://img.shields.io/badge/Electron-38.0.0-47848F.svg)](https://www.electronjs.org/)
 [![React](https://img.shields.io/badge/React-19.1.1-61DAFB.svg)](https://reactjs.org/)
 [![Vite](https://img.shields.io/badge/Vite-5.4.21-646CFF.svg)](https://vitejs.dev/)
 [![Tailwind](https://img.shields.io/badge/Tailwind-3.4.15-38B2AC.svg)](https://tailwindcss.com/)
+<!-- AUTO:BADGES:END -->
 
 A modern Electron-based desktop application for creating and managing DAS projects, developed for Acuity Brands. This application provides a streamlined workflow for project creation, document generation, agency management, workload tracking, and Microsoft 365 integration.
 
 ![Project Creator](assets/images/ProjectCreatorWelcomeScreen.png)
 
+<!-- AUTO:FEATURES:START -->
 ## Features
 
 ### Core Project Management
@@ -20,15 +23,13 @@ A modern Electron-based desktop application for creating and managing DAS projec
 - **Template Validation**: Validates templates and manages selection based on National Account and Agent preferences
 - **Document Generation**: Automated Word document generation from templates with variable substitution
 
-### Microsoft 365 Integration
-- **SharePoint Upload**: Hybrid upload via Microsoft Graph API and OneDrive sync folder
-- **OneDrive Sync**: Automatic detection of sync folders with status monitoring
-- **MS Lists Integration**: Workload management synchronized with Microsoft Lists
-- **Power Automate**: Excel synchronization via Power Automate flows for team collaboration
+### Spec Review & BOM Analysis
+- **Spec Review**: AI-powered specification analysis with file upload, review history, and knowledge base management
+- **BOM Data Analysis**: Smart BOM upload with auto-detection, device breakdown, startup cost calculations, and product family analysis
+- **BOM QC Review**: Building code compliance scoring, anomaly detection, and device capability analysis
 
 ### Dashboards
 - **Agency Dashboard**: 8-tab dashboard with Overview, Projects, Contacts, Playbook, Email Templates, Analytics, Tasks, and Settings
-- **Workload Dashboard**: Team capacity management, assignments, and Excel bidirectional sync
 - **Performance Dashboard**: Real-time metrics for response times, memory usage, and system health
 - **DAS General**: Team member directory, training materials, and product information management
 
@@ -58,6 +59,7 @@ A modern Electron-based desktop application for creating and managing DAS projec
 - **Migration Assistant**: Seamless migration from legacy HTA version (v4.2.5)
 - **Security Logging**: Comprehensive audit trail for all file and security operations
 - **Theme Support**: Dark and light mode toggle
+<!-- AUTO:FEATURES:END -->
 
 ## Prerequisites
 
@@ -144,10 +146,12 @@ npm run dist:signed:linux
 
 ### Version Management
 
-- `npm run version:patch` - Increment patch version (5.0.197 → 5.0.198)
-- `npm run version:minor` - Increment minor version (5.0.197 → 5.1.0)
-- `npm run version:major` - Increment major version (5.0.197 → 6.0.0)
+<!-- AUTO:VERSION_SCRIPTS:START -->
+- `npm run version:patch` - Increment patch version (5.0.233 → 5.0.234)
+- `npm run version:minor` - Increment minor version (5.0.233 → 5.1.0)
+- `npm run version:major` - Increment major version (5.0.233 → 6.0.0)
 - `npm run version:show` - Display current version
+<!-- AUTO:VERSION_SCRIPTS:END -->
 
 ## Project Structure
 
@@ -375,17 +379,18 @@ We welcome contributions! Please follow these steps:
 
 This project is licensed under the ISC License. See the [LICENSE](LICENSE) file for details.
 
+<!-- AUTO:VERSION_HISTORY:START -->
 ## Version History
 
-- **v5.0.197** (Current) - Feature-complete release
-  - Microsoft 365 integration (SharePoint, OneDrive, MS Lists)
-  - Workload Dashboard with Excel bidirectional sync
+- **v5.0.233** (Current) - BOM Analysis and Spec Review release
+  - AI-powered Spec Review with knowledge base and review history
+  - BOM data analysis with device breakdown and cost calculations
+  - BOM QC Review with compliance scoring and anomaly detection
   - Agency Dashboard with 8-tab interface
   - Monthly Analytics Reports with Recharts
   - Email Template system with Outlook integration
   - Performance Dashboard with real-time metrics
   - Auto-update and crash reporting
-  - Vite build system (replaced Webpack)
 
 - **v5.0.84** - Major enhancement release
   - Enhanced security features
@@ -397,6 +402,7 @@ This project is licensed under the ISC License. See the [LICENSE](LICENSE) file 
 - **v4.2.5** (Legacy) - Previous HTA version
   - Original implementation
   - Basic project creation
+<!-- AUTO:VERSION_HISTORY:END -->
 
 ## Acknowledgments
 
@@ -410,6 +416,8 @@ Built with amazing open-source technologies:
 
 ---
 
-**Last Updated**: January 26, 2026  
-**Current Version**: 5.0.197  
+<!-- AUTO:FOOTER:START -->
+**Last Updated**: February 26, 2026  
+**Current Version**: 5.0.233  
 **Maintained by**: Roger Cerpa
+<!-- AUTO:FOOTER:END -->

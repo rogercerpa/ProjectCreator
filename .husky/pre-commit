@@ -1,0 +1,2 @@
+node scripts/update-readme.js
+git add README.md
