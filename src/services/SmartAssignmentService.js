@@ -15,9 +15,10 @@ import {
   calculateSeniorityGap,
   getComplexityValue
 } from '../constants/Products';
+import workloadPersistenceAdapter from './WorkloadPersistenceAdapter';
 
 class SmartAssignmentService {
-  constructor(workloadPersistenceService) {
+  constructor(workloadPersistenceService = workloadPersistenceAdapter) {
     this.workloadPersistence = workloadPersistenceService;
     
     // Scoring weights (must sum to 1.0)

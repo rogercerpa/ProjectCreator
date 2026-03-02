@@ -108,7 +108,11 @@ const WorkloadTab = forwardRef(({ settings, setSettings }, ref) => {
         setSyncStatus({ type: 'loading', message: 'Syncing from Excel...' });
         const result = await window.electronAPI.workloadExcelSyncFromExcel(excelSettings.filePath);
         if (result.success) {
-          setSyncStatus({ type: 'success', message: `Successfully synced: ${result.data.projects.length} projects, ${result.data.assignments.length} assignments, ${result.data.users.length} users` });
+          const data = result.data || {};
+          setSyncStatus({
+            type: 'success',
+            message: `Successfully synced: ${(data.projects || []).length} projects, ${(data.assignments || []).length} assignments, ${(data.users || []).length} users`
+          });
           await loadExcelSyncSettings(); // Reload settings to get updated lastSync time
         } else {
           setSyncStatus({ type: 'error', message: result.error || 'Sync failed' });

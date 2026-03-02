@@ -3,9 +3,9 @@
  */
 
 import React from 'react';
-import ProjectAssignmentCard from './ProjectAssignmentCard';
-import CapacityBar from './CapacityBar';
-import UserPresenceIndicator from './UserPresenceIndicator';
+import ProjectAssignmentCard from '../ProjectAssignmentCard';
+import CapacityBar from '../CapacityBar';
+import UserPresenceIndicator from '../UserPresenceIndicator';
 
 const UserWorkloadRow = ({
   user,
@@ -157,4 +157,3 @@ const UserWorkloadRow = ({
 };
 
 export default UserWorkloadRow;
-

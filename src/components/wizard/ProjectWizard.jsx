@@ -32,13 +32,57 @@ const getProjectDraftService = () => {
 const createAssignmentsInBackground = async (savedProject, selectedAssignee) => {
   console.log('ProjectWizard: Creating assignments in background...');
 
+  const loadUsers = async () => {
+    try {
+      const usersResult = await window.electronAPI.workloadUsersLoadAll();
+      if (usersResult.success && Array.isArray(usersResult.users)) {
+        return usersResult.users;
+      }
+    } catch (error) {
+      console.error('Background assignment: Error loading users:', error);
+    }
+    return [];
+  };
+
+  const createUserIfMissing = async (userName) => {
+    if (!userName) return null;
+
+    const normalizedName = userName.trim();
+    if (!normalizedName) return null;
+
+    try {
+      const user = {
+        id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        name: normalizedName,
+        email: `${normalizedName.replace(/\s/g, '').toLowerCase()}@workload.local`,
+        weeklyCapacity: 40,
+        isActive: true,
+        productKnowledge: {},
+        metadata: {
+          createdAt: new Date().toISOString(),
+          lastModified: new Date().toISOString()
+        }
+      };
+
+      const saveResult = await window.electronAPI.workloadUserSave(user);
+      if (!saveResult?.success) {
+        console.warn(`ProjectWizard: Failed to auto-create user "${normalizedName}":`, saveResult?.error);
+        return null;
+      }
+
+      return saveResult.user || user;
+    } catch (error) {
+      console.error(`ProjectWizard: Error auto-creating user "${normalizedName}":`, error);
+      return null;
+    }
+  };
+
   const findUserByName = async (userName) => {
     if (!userName) return null;
     try {
-      const usersResult = await window.electronAPI.workloadUsersLoadAll();
-      if (usersResult.success && usersResult.users) {
-        return usersResult.users.find(u => u.name === userName) || null;
-      }
+      const normalizedName = userName.trim().toLowerCase();
+      const users = await loadUsers();
+      return users.find(u => u.name?.trim().toLowerCase() === normalizedName) || null;
     } catch (error) {
       console.error('Background assignment: Error finding user:', error);
     }
@@ -78,7 +122,10 @@ const createAssignmentsInBackground = async (savedProject, selectedAssignee) => 
     const userName = savedProject[field];
     if (!userName) continue;
     try {
-      const user = await findUserByName(userName);
+      let user = await findUserByName(userName);
+      if (!user) {
+        user = await createUserIfMissing(userName);
+      }
       if (!user) continue;
       const assignment = buildAssignment(user, taskType);
       const result = await window.electronAPI.workloadAssignmentSave(assignment);

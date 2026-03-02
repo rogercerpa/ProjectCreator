@@ -3,6 +3,7 @@ import WizardLayout from '../components/WizardLayout';
 import dropdownOptionsService from '../../../services/DropdownOptionsService';
 import triageCalculationService from '../../../services/TriageCalculationService';
 import SmartAssignmentService from '../../../services/SmartAssignmentService';
+import workloadPersistenceAdapter from '../../../services/WorkloadPersistenceAdapter';
 import { getUserTimezone } from '../../../utils/dateUtils';
 
 // Tooltip Component
@@ -186,7 +187,7 @@ const ProjectWizardStep2 = ({
   const loadRecommendations = async (triageData) => {
     setLoadingRecommendations(true);
     try {
-      const smartAssignmentService = new SmartAssignmentService();
+      const smartAssignmentService = new SmartAssignmentService(workloadPersistenceAdapter);
       
       // Build project details from formData and triage results
       const projectDetails = {

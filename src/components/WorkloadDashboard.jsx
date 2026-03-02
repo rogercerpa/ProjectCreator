@@ -249,9 +249,10 @@ const WorkloadDashboard = ({ onNavigateToProject, onNavigateToSettings }) => {
       const result = await window.electronAPI.workloadExcelSyncFromExcel(excelSettings.filePath);
       
       if (result.success) {
+        const data = result.data || {};
         setSyncStatus({ 
           type: 'success', 
-          message: `Synced: ${result.data.projects.length} projects, ${result.data.assignments.length} assignments`
+          message: `Synced: ${(data.projects || []).length} projects, ${(data.assignments || []).length} assignments, ${(data.users || []).length} users`
         });
         await loadUsers();
         await loadStats();
@@ -392,6 +393,14 @@ const WorkloadDashboard = ({ onNavigateToProject, onNavigateToSettings }) => {
             </p>
           </div>
         )}
+
+        {users.length === 0 && (
+          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <p className="text-sm text-blue-800 dark:text-blue-200">
+              <strong>ℹ️ No team members yet:</strong> Add users in Settings → Workload, or run an Excel sync to import them.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Quick Stats */}
@@ -430,7 +439,14 @@ const WorkloadDashboard = ({ onNavigateToProject, onNavigateToSettings }) => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Avg Capacity</p>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">{stats.capacityUtilization}%</p>
+              <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
+                {stats.teamMembers === 0 ? 'N/A' : `${stats.capacityUtilization}%`}
+              </p>
+              {stats.teamMembers === 0 && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Import users from Excel or add users in Settings.
+                </p>
+              )}
             </div>
             <div className="text-4xl">⚡</div>
           </div>

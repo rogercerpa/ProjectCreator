@@ -191,4 +191,3 @@ const WorkloadFilters = ({
 };
 
 export default WorkloadFilters;
-

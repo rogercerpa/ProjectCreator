@@ -171,7 +171,8 @@ class FeatureFlagService {
       });
     });
     
-    // Auto-enable devOnly flags in development environment
+    // Auto-enable devOnly flags in development environment.
+    // For local testing, run with Vite dev mode (`import.meta.env.DEV`) or set `NODE_ENV=development`.
     const isDevelopment = typeof import.meta !== 'undefined' 
       ? (import.meta.env?.MODE === 'development' || import.meta.env?.DEV)
       : (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development');

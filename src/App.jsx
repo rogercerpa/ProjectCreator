@@ -471,15 +471,59 @@ function App() {
       
       const allAssignments = assignmentsResult.assignments || [];
       const projectAssignments = allAssignments.filter(a => a.projectId === project.id);
-      
+
+      const loadUsers = async () => {
+        try {
+          const usersResult = await window.electronAPI.workloadUsersLoadAll();
+          if (usersResult.success && Array.isArray(usersResult.users)) {
+            return usersResult.users;
+          }
+        } catch (error) {
+          console.error('Error loading users:', error);
+        }
+        return [];
+      };
+
+      const createUserIfMissing = async (userName) => {
+        if (!userName) return null;
+
+        const normalizedName = userName.trim();
+        if (!normalizedName) return null;
+
+        try {
+          const newUser = {
+            id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            name: normalizedName,
+            email: `${normalizedName.replace(/\s/g, '').toLowerCase()}@workload.local`,
+            weeklyCapacity: 40,
+            isActive: true,
+            productKnowledge: {},
+            metadata: {
+              createdAt: new Date().toISOString(),
+              lastModified: new Date().toISOString()
+            }
+          };
+
+          const saveResult = await window.electronAPI.workloadUserSave(newUser);
+          if (!saveResult?.success) {
+            console.warn(`Unable to auto-create user "${normalizedName}":`, saveResult?.error);
+            return null;
+          }
+
+          return saveResult.user || newUser;
+        } catch (error) {
+          console.error(`Error auto-creating user "${normalizedName}":`, error);
+          return null;
+        }
+      };
+
       // Helper to find user by name
       const findUserByName = async (userName) => {
         if (!userName) return null;
         try {
-          const usersResult = await window.electronAPI.workloadUsersLoadAll();
-          if (usersResult.success && usersResult.users) {
-            return usersResult.users.find(u => u.name === userName) || null;
-          }
+          const normalizedName = userName.trim().toLowerCase();
+          const users = await loadUsers();
+          return users.find(u => u.name?.trim().toLowerCase() === normalizedName) || null;
         } catch (error) {
           console.error('Error finding user:', error);
         }
@@ -563,7 +607,10 @@ function App() {
       // Sync TRIAGE assignment
       const triageResults = [];
       if (project.triagedBy) {
-        const triageUser = await findUserByName(project.triagedBy);
+        let triageUser = await findUserByName(project.triagedBy);
+        if (!triageUser) {
+          triageUser = await createUserIfMissing(project.triagedBy);
+        }
         if (triageUser) {
           const result = await createOrUpdateAssignment(triageUser, 'TRIAGE', 'Triage');
           triageResults.push(result);
@@ -578,7 +625,10 @@ function App() {
 
       // Sync DESIGN assignment
       if (project.designBy) {
-        const designUser = await findUserByName(project.designBy);
+        let designUser = await findUserByName(project.designBy);
+        if (!designUser) {
+          designUser = await createUserIfMissing(project.designBy);
+        }
         if (designUser) {
           const result = await createOrUpdateAssignment(designUser, 'DESIGN', 'Design');
           triageResults.push(result);
@@ -593,7 +643,10 @@ function App() {
 
       // Sync QC assignment
       if (project.qcBy) {
-        const qcUser = await findUserByName(project.qcBy);
+        let qcUser = await findUserByName(project.qcBy);
+        if (!qcUser) {
+          qcUser = await createUserIfMissing(project.qcBy);
+        }
         if (qcUser) {
           const result = await createOrUpdateAssignment(qcUser, 'QC', 'QC');
           triageResults.push(result);

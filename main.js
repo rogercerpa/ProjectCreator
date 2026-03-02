@@ -2785,6 +2785,31 @@ ipcMain.handle('workload-excel:sync-stop-auto', async () => {
 ipcMain.handle('workload-excel:sync-from-excel', async (event, filePath) => {
   try {
     const result = await workloadExcelSyncService.syncFromExcel(filePath);
+
+    // If sync import successful, update local persistence for all data types
+    if (result.success && result.data) {
+      // Update projects
+      if (result.data.projects) {
+        for (const project of result.data.projects) {
+          await projectPersistenceService.saveProject(project);
+        }
+      }
+
+      // Update assignments
+      if (result.data.assignments) {
+        for (const assignment of result.data.assignments) {
+          await workloadPersistenceService.saveAssignment(assignment);
+        }
+      }
+
+      // Update users
+      if (result.data.users) {
+        for (const user of result.data.users) {
+          await workloadPersistenceService.saveUser(user);
+        }
+      }
+    }
+
     return result;
   } catch (error) {
     console.error('Error syncing from Excel:', error);
