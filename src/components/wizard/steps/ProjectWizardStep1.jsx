@@ -1756,6 +1756,20 @@ const ProjectWizardStep1 = ({
         // Skip validation if fee is waived
         if (allFormData.dasCostOption === 'waive' || allFormData.dasStatus === 'Fee Waived') return true;
         return value && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+      case 'dasWaiverReasons': {
+        if (!allFormData.dasPaidServiceEnabled) return true;
+        const isFeeWaived = allFormData.dasCostOption === 'waive' || allFormData.dasStatus === 'Fee Waived';
+        if (!isFeeWaived) return true;
+        return Array.isArray(value) && value.length > 0;
+      }
+      case 'dasWaiverOtherNote': {
+        if (!allFormData.dasPaidServiceEnabled) return true;
+        const isFeeWaived = allFormData.dasCostOption === 'waive' || allFormData.dasStatus === 'Fee Waived';
+        if (!isFeeWaived) return true;
+        const reasons = Array.isArray(allFormData.dasWaiverReasons) ? allFormData.dasWaiverReasons : [];
+        if (!reasons.includes('other')) return true;
+        return typeof value === 'string' && value.trim().length > 0;
+      }
       default:
         return true; // Non-required fields are always valid
     }
@@ -1861,8 +1875,16 @@ const ProjectWizardStep1 = ({
   // Progress calculation for validation feedback
   const getValidationProgress = () => {
     const baseRequiredFields = ['projectName', 'rfaNumber', 'agentNumber', 'projectContainer', 'rfaType', 'regionalTeam'];
+    const isFeeWaived = formData.dasCostOption === 'waive' || formData.dasStatus === 'Fee Waived';
     const paidServiceFields = formData.dasPaidServiceEnabled
-      ? ['dasCostPerPage', 'dasLightingPages', 'dasFee', 'dasRepEmail']
+      ? (isFeeWaived
+        ? [
+            'dasWaiverReasons',
+            ...((Array.isArray(formData.dasWaiverReasons) ? formData.dasWaiverReasons : []).includes('other')
+              ? ['dasWaiverOtherNote']
+              : [])
+          ]
+        : ['dasCostPerPage', 'dasLightingPages', 'dasFee', 'dasRepEmail'])
       : [];
     const requiredFields = [...baseRequiredFields, ...paidServiceFields];
 

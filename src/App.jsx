@@ -110,7 +110,10 @@ const createDefaultFormData = () => ({
   dasFeeManual: false,
   dasStatus: 'Waiting on Order',
   dasRepEmail: '',
-  dasRepEmailList: []
+  dasRepEmailList: [],
+  dasWaiverReasons: [],
+  dasWaiverOtherNote: '',
+  dasWaiverDescription: ''
 });
 
 function App() {

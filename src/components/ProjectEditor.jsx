@@ -269,6 +269,14 @@ const ProjectEditor = ({
         } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.dasRepEmail.trim())) {
           newErrors.dasRepEmail = 'Rep email is invalid';
         }
+      } else {
+        const waiverReasons = Array.isArray(formData.dasWaiverReasons) ? formData.dasWaiverReasons : [];
+        if (waiverReasons.length === 0) {
+          newErrors.dasWaiverReasons = 'Select at least one fee waiver reason';
+        }
+        if (waiverReasons.includes('other') && (!formData.dasWaiverOtherNote || formData.dasWaiverOtherNote.trim() === '')) {
+          newErrors.dasWaiverOtherNote = 'Provide details when "Other" is selected';
+        }
       }
     }
     

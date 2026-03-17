@@ -77,6 +77,26 @@ const useStepValidation = () => {
           }
           return null;
         },
+        dasWaiverReasons: (value, formData) => {
+          if (!formData.dasPaidServiceEnabled) return null;
+          const isFeeWaived = formData.dasCostOption === 'waive' || formData.dasStatus === 'Fee Waived';
+          if (!isFeeWaived) return null;
+          if (!Array.isArray(value) || value.length === 0) {
+            return 'Select at least one fee waiver reason';
+          }
+          return null;
+        },
+        dasWaiverOtherNote: (value, formData) => {
+          if (!formData.dasPaidServiceEnabled) return null;
+          const isFeeWaived = formData.dasCostOption === 'waive' || formData.dasStatus === 'Fee Waived';
+          if (!isFeeWaived) return null;
+          const reasons = Array.isArray(formData.dasWaiverReasons) ? formData.dasWaiverReasons : [];
+          if (!reasons.includes('other')) return null;
+          if (!value || value.trim() === '') {
+            return 'Provide details when "Other" is selected';
+          }
+          return null;
+        },
         revision: (value, formData) => {
           // Revision-specific validation
           if (formData.isRevision) {
@@ -147,6 +167,12 @@ const useStepValidation = () => {
       const isFeeWaived = allFormData.dasCostOption === 'waive' || allFormData.dasStatus === 'Fee Waived';
       if (!isFeeWaived) {
         ['dasCostPerPage', 'dasLightingPages', 'dasFee', 'dasRepEmail'].forEach(field => requiredSet.add(field));
+      } else {
+        requiredSet.add('dasWaiverReasons');
+        const reasons = Array.isArray(allFormData.dasWaiverReasons) ? allFormData.dasWaiverReasons : [];
+        if (reasons.includes('other')) {
+          requiredSet.add('dasWaiverOtherNote');
+        }
       }
     }
 
@@ -188,6 +214,13 @@ const useStepValidation = () => {
       const isFeeWaived = formData.dasCostOption === 'waive' || formData.dasStatus === 'Fee Waived';
       if (!isFeeWaived) {
         requiredFields = [...new Set([...requiredFields, 'dasCostPerPage', 'dasLightingPages', 'dasFee', 'dasRepEmail'])];
+      } else {
+        const waivedFields = ['dasWaiverReasons'];
+        const reasons = Array.isArray(formData.dasWaiverReasons) ? formData.dasWaiverReasons : [];
+        if (reasons.includes('other')) {
+          waivedFields.push('dasWaiverOtherNote');
+        }
+        requiredFields = [...new Set([...requiredFields, ...waivedFields])];
       }
     }
 

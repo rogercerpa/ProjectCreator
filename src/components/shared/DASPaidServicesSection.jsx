@@ -21,6 +21,13 @@ const COST_OPTIONS = [
   { value: 'waive', label: 'Waive Fee' },
   { value: 'other', label: 'Other' }
 ];
+const WAIVER_REASON_OPTIONS = [
+  { value: 'acuitySpecRequirement', label: 'Acuity specification requirement' },
+  { value: 'projectAwarded', label: 'Project awarded' },
+  { value: 'purchaseOrderReceived', label: 'Purchase order received' },
+  { value: 'projectValueExceeds250k', label: 'Project value exceeds $250K' },
+  { value: 'other', label: 'Other' }
+];
 
 const getRateForOption = (option) => {
   switch (option) {
@@ -228,7 +235,10 @@ const DASPaidServicesSection = ({
     dasFeeManual = false,
     dasStatus = STATUS_OPTIONS[0],
     dasRepEmail = '',
-    dasRepEmailList = []
+    dasRepEmailList = [],
+    dasWaiverReasons = [],
+    dasWaiverOtherNote = '',
+    dasWaiverDescription = ''
   } = formData;
   const resolvedRepEmailList = repEmailList ?? dasRepEmailList ?? [];
 
@@ -242,6 +252,7 @@ const DASPaidServicesSection = ({
     .join(' ');
 
   const resolvedCostOption = dasCostOption || (isRevision ? 'revision' : 'new');
+  const isFeeWaived = resolvedCostOption === 'waive' || dasStatus === 'Fee Waived';
 
   // Automatically align cost per page when not manually overridden
   useEffect(() => {
@@ -250,7 +261,7 @@ const DASPaidServicesSection = ({
     }
 
     // Don't auto-update if fee is waived
-    if (resolvedCostOption === 'waive' || dasStatus === 'Fee Waived') {
+    if (isFeeWaived) {
       return;
     }
 
@@ -283,7 +294,7 @@ const DASPaidServicesSection = ({
     resolvedCostOption,
     dasCostOption,
     dasCostPerPage,
-    dasStatus,
+    isFeeWaived,
     readOnly,
     onChange,
     formData
@@ -296,7 +307,7 @@ const DASPaidServicesSection = ({
     }
 
     // Don't auto-calculate if fee is waived
-    if (resolvedCostOption === 'waive' || dasStatus === 'Fee Waived') {
+    if (isFeeWaived) {
       return;
     }
 
@@ -313,8 +324,7 @@ const DASPaidServicesSection = ({
     dasLightingPages,
     dasFeeManual,
     dasFee,
-    dasStatus,
-    resolvedCostOption,
+    isFeeWaived,
     readOnly,
     onChange,
     formData
@@ -353,7 +363,8 @@ const DASPaidServicesSection = ({
     if (value === 'other') {
       handleUpdate({
         dasCostOption: value,
-        dasCostPerPageManual: true
+        dasCostPerPageManual: true,
+        dasStatus: dasStatus === 'Fee Waived' ? 'Waiting on Order' : dasStatus
       });
       return;
     }
@@ -361,8 +372,21 @@ const DASPaidServicesSection = ({
     handleUpdate({
       dasCostOption: value,
       dasCostPerPage: getRateForOption(value),
-      dasCostPerPageManual: false
+      dasCostPerPageManual: false,
+      dasStatus: dasStatus === 'Fee Waived' ? 'Waiting on Order' : dasStatus
     });
+  };
+
+  const handleWaiverReasonToggle = (reasonValue, checked) => {
+    const current = Array.isArray(dasWaiverReasons) ? dasWaiverReasons : [];
+    const next = checked
+      ? [...new Set([...current, reasonValue])]
+      : current.filter((item) => item !== reasonValue);
+    const updates = { dasWaiverReasons: next };
+    if (!checked && reasonValue === 'other') {
+      updates.dasWaiverOtherNote = '';
+    }
+    handleUpdate(updates);
   };
 
   const handleCostPerPageChange = (event) => {
@@ -393,12 +417,13 @@ const DASPaidServicesSection = ({
 
   const canSendEmail = useMemo(() => {
     if (!dasPaidServiceEnabled) return false;
+    if (isFeeWaived) return false;
     const hasExplicitEmails = Array.isArray(resolvedRepEmailList) && resolvedRepEmailList.length > 0;
     if (!hasExplicitEmails && !dasRepEmail) return false;
     if (!dasLightingPages || !dasCostPerPage) return false;
     if (!dasFee) return false;
     return true;
-  }, [dasPaidServiceEnabled, dasRepEmail, resolvedRepEmailList, dasLightingPages, dasCostPerPage, dasFee]);
+  }, [dasPaidServiceEnabled, isFeeWaived, dasRepEmail, resolvedRepEmailList, dasLightingPages, dasCostPerPage, dasFee]);
 
   const [selectedServiceType, setSelectedServiceType] = useState('');
   const [copySuccess, setCopySuccess] = useState({ bom: false, serviceType: false });
@@ -539,101 +564,164 @@ const DASPaidServicesSection = ({
                 </label>
               ))}
             </div>
-            <div className="mt-3 grid grid-cols-3 md:grid-cols-1 gap-3 items-end">
-              <div className="flex flex-col">
-                <label className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                  Cost per page
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  name="dasCostPerPage"
-                  disabled={readOnly}
-                  value={dasCostPerPage}
-                  onChange={handleCostPerPageChange}
-                  className={`input ${fieldError(errors, 'dasCostPerPage') ? 'error' : ''}`}
-                />
-                {fieldError(errors, 'dasCostPerPage') && (
-                  <span className="text-xs text-error-600 mt-1">{fieldError(errors, 'dasCostPerPage')}</span>
-                )}
-                {dasCostPerPageManual && (
-                  <button
-                    type="button"
-                    className="text-xs text-primary-600 hover:underline mt-1 self-start"
-                    disabled={readOnly}
-                    onClick={() =>
-                      handleUpdate({
-                        dasCostPerPageManual: false,
-                        dasCostOption: isRevision ? 'revision' : 'new',
-                        dasCostPerPage: getRateForOption(isRevision ? 'revision' : 'new')
-                      })
-                    }
-                  >
-                    Reset to recommended
-                  </button>
-                )}
-              </div>
-              <div className="flex flex-col">
-                <label className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                  Lighting pages
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  name="dasLightingPages"
-                  disabled={readOnly}
-                  value={dasLightingPages}
-                  onChange={handleLightingPagesChange}
-                  className={`input ${fieldError(errors, 'dasLightingPages') ? 'error' : ''}`}
-                />
-                {fieldError(errors, 'dasLightingPages') && (
-                  <span className="text-xs text-error-600 mt-1">{fieldError(errors, 'dasLightingPages')}</span>
-                )}
-              </div>
-              <div className="flex flex-col">
-                <div className="flex items-center justify-between">
+            {!isFeeWaived ? (
+              <div className="mt-3 grid grid-cols-3 md:grid-cols-1 gap-3 items-end">
+                <div className="flex flex-col">
                   <label className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                    Fee value
+                    Cost per page
                   </label>
-                  <label className="inline-flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300">
-                    <input
-                      type="checkbox"
-                      className="form-checkbox h-3.5 w-3.5 text-primary-600"
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    name="dasCostPerPage"
+                    disabled={readOnly}
+                    value={dasCostPerPage}
+                    onChange={handleCostPerPageChange}
+                    className={`input ${fieldError(errors, 'dasCostPerPage') ? 'error' : ''}`}
+                  />
+                  {fieldError(errors, 'dasCostPerPage') && (
+                    <span className="text-xs text-error-600 mt-1">{fieldError(errors, 'dasCostPerPage')}</span>
+                  )}
+                  {dasCostPerPageManual && (
+                    <button
+                      type="button"
+                      className="text-xs text-primary-600 hover:underline mt-1 self-start"
                       disabled={readOnly}
-                      checked={dasFeeManual}
-                      onChange={(e) =>
+                      onClick={() =>
                         handleUpdate({
-                          dasFeeManual: e.target.checked
+                          dasCostPerPageManual: false,
+                          dasCostOption: isRevision ? 'revision' : 'new',
+                          dasCostPerPage: getRateForOption(isRevision ? 'revision' : 'new')
                         })
                       }
-                    />
-                    Manual
-                  </label>
+                    >
+                      Reset to recommended
+                    </button>
+                  )}
                 </div>
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  name="dasFee"
-                  disabled={readOnly || !dasFeeManual}
-                  value={dasFee}
-                  onChange={handleFeeChange}
-                  className={`input ${fieldError(errors, 'dasFee') ? 'error' : ''} ${
-                    !dasFeeManual ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : ''
-                  }`}
-                />
-                {fieldError(errors, 'dasFee') && (
-                  <span className="text-xs text-error-600 mt-1">{fieldError(errors, 'dasFee')}</span>
-                )}
-                {!dasFeeManual && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Auto: {formatCurrency(dasCostPerPage)} × {dasLightingPages || 0} = {formatCurrency(dasFee)}
-                  </p>
-                )}
+                <div className="flex flex-col">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                    Lighting pages
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    name="dasLightingPages"
+                    disabled={readOnly}
+                    value={dasLightingPages}
+                    onChange={handleLightingPagesChange}
+                    className={`input ${fieldError(errors, 'dasLightingPages') ? 'error' : ''}`}
+                  />
+                  {fieldError(errors, 'dasLightingPages') && (
+                    <span className="text-xs text-error-600 mt-1">{fieldError(errors, 'dasLightingPages')}</span>
+                  )}
+                </div>
+                <div className="flex flex-col">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                      Fee value
+                    </label>
+                    <label className="inline-flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300">
+                      <input
+                        type="checkbox"
+                        className="form-checkbox h-3.5 w-3.5 text-primary-600"
+                        disabled={readOnly}
+                        checked={dasFeeManual}
+                        onChange={(e) =>
+                          handleUpdate({
+                            dasFeeManual: e.target.checked
+                          })
+                        }
+                      />
+                      Manual
+                    </label>
+                  </div>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    name="dasFee"
+                    disabled={readOnly || !dasFeeManual}
+                    value={dasFee}
+                    onChange={handleFeeChange}
+                    className={`input ${fieldError(errors, 'dasFee') ? 'error' : ''} ${
+                      !dasFeeManual ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : ''
+                    }`}
+                  />
+                  {fieldError(errors, 'dasFee') && (
+                    <span className="text-xs text-error-600 mt-1">{fieldError(errors, 'dasFee')}</span>
+                  )}
+                  {!dasFeeManual && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Auto: {formatCurrency(dasCostPerPage)} × {dasLightingPages || 0} = {formatCurrency(dasFee)}
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 space-y-3">
+                <div>
+                  <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">Fee Waiver Reason</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Select the applicable reason(s) for waiving this service fee.
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-1 gap-2">
+                  {WAIVER_REASON_OPTIONS.map((option) => (
+                    <label key={option.value} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                      <input
+                        type="checkbox"
+                        className="form-checkbox h-4 w-4 text-primary-600"
+                        disabled={readOnly}
+                        checked={(Array.isArray(dasWaiverReasons) ? dasWaiverReasons : []).includes(option.value)}
+                        onChange={(e) => handleWaiverReasonToggle(option.value, e.target.checked)}
+                      />
+                      {option.label}
+                    </label>
+                  ))}
+                </div>
+                {fieldError(errors, 'dasWaiverReasons') && (
+                  <span className="text-xs text-error-600">{fieldError(errors, 'dasWaiverReasons')}</span>
+                )}
+                {(Array.isArray(dasWaiverReasons) ? dasWaiverReasons : []).includes('other') && (
+                  <div className="flex flex-col">
+                    <label className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                      Other reason
+                    </label>
+                    <input
+                      type="text"
+                      name="dasWaiverOtherNote"
+                      disabled={readOnly}
+                      value={dasWaiverOtherNote}
+                      onChange={(e) => handleUpdate({ dasWaiverOtherNote: e.target.value })}
+                      maxLength={120}
+                      className={`input ${fieldError(errors, 'dasWaiverOtherNote') ? 'error' : ''}`}
+                      placeholder="Add the specific reason"
+                    />
+                    {fieldError(errors, 'dasWaiverOtherNote') && (
+                      <span className="text-xs text-error-600 mt-1">{fieldError(errors, 'dasWaiverOtherNote')}</span>
+                    )}
+                  </div>
+                )}
+                <div className="flex flex-col">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                    Short description (optional)
+                  </label>
+                  <input
+                    type="text"
+                    name="dasWaiverDescription"
+                    disabled={readOnly}
+                    value={dasWaiverDescription}
+                    onChange={(e) => handleUpdate({ dasWaiverDescription: e.target.value })}
+                    maxLength={200}
+                    className="input"
+                    placeholder="Add context for internal tracking"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-3 md:grid-cols-1 gap-3">
@@ -655,44 +743,46 @@ const DASPaidServicesSection = ({
                 ))}
               </select>
             </div>
-            <div className="flex flex-col gap-2">
-              <label className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                Rep contact email
-              </label>
-              {typeof onRepEmailListChange === 'function' ? (
-                <RepEmailSelector
-                  selected={resolvedRepEmailList}
-                  onChange={onRepEmailListChange}
-                  options={repEmailOptions}
-                  onSearch={onRepEmailSearch}
-                  status={repEmailStatus}
-                  readOnly={readOnly}
-                />
-              ) : (
-                <>
-                  <input
-                    type="email"
-                    name="dasRepEmail"
-                    disabled={readOnly}
-                    value={dasRepEmail}
-                    onChange={(e) => handleUpdate({ dasRepEmail: e.target.value })}
-                    className={`input ${fieldError(errors, 'dasRepEmail') ? 'error' : ''}`}
+            {!isFeeWaived && (
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                  Rep contact email
+                </label>
+                {typeof onRepEmailListChange === 'function' ? (
+                  <RepEmailSelector
+                    selected={resolvedRepEmailList}
+                    onChange={onRepEmailListChange}
+                    options={repEmailOptions}
+                    onSearch={onRepEmailSearch}
+                    status={repEmailStatus}
+                    readOnly={readOnly}
                   />
-                  {repEmailStatus?.state === 'searching' && (
-                    <span className="text-xs text-warning-600 mt-1">{repEmailStatus.message}</span>
-                  )}
-                  {repEmailStatus?.state === 'notFound' && (
-                    <span className="text-xs text-warning-600 mt-1">{repEmailStatus.message}</span>
-                  )}
-                  {repEmailStatus?.state === 'error' && (
-                    <span className="text-xs text-error-600 mt-1">{repEmailStatus.message}</span>
-                  )}
-                </>
-              )}
-              {fieldError(errors, 'dasRepEmail') && (
-                <span className="text-xs text-error-600 mt-1">{fieldError(errors, 'dasRepEmail')}</span>
-              )}
-            </div>
+                ) : (
+                  <>
+                    <input
+                      type="email"
+                      name="dasRepEmail"
+                      disabled={readOnly}
+                      value={dasRepEmail}
+                      onChange={(e) => handleUpdate({ dasRepEmail: e.target.value })}
+                      className={`input ${fieldError(errors, 'dasRepEmail') ? 'error' : ''}`}
+                    />
+                    {repEmailStatus?.state === 'searching' && (
+                      <span className="text-xs text-warning-600 mt-1">{repEmailStatus.message}</span>
+                    )}
+                    {repEmailStatus?.state === 'notFound' && (
+                      <span className="text-xs text-warning-600 mt-1">{repEmailStatus.message}</span>
+                    )}
+                    {repEmailStatus?.state === 'error' && (
+                      <span className="text-xs text-error-600 mt-1">{repEmailStatus.message}</span>
+                    )}
+                  </>
+                )}
+                {fieldError(errors, 'dasRepEmail') && (
+                  <span className="text-xs text-error-600 mt-1">{fieldError(errors, 'dasRepEmail')}</span>
+                )}
+              </div>
+            )}
             <div className="flex flex-col justify-end gap-2">
               {showEmailButton && (
                 <>

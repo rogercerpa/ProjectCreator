@@ -30,7 +30,10 @@ const ProjectWizardStep1Test = () => {
     dasFee: 0,
     dasFeeManual: false,
     dasStatus: 'Waiting on Order',
-    dasRepEmail: ''
+    dasRepEmail: '',
+    dasWaiverReasons: [],
+    dasWaiverOtherNote: '',
+    dasWaiverDescription: ''
   });
   const [errors, setErrors] = React.useState({});
 
@@ -75,7 +78,8 @@ const ProjectWizardStep1Test = () => {
       const expectedFields = [
         'projectName', 'rfaNumber', 'agentNumber', 'projectContainer', 
         'rfaType', 'regionalTeam', 'nationalAccount', 'saveLocation', 'projectType',
-        'dasPaidServiceEnabled', 'dasCostPerPage', 'dasLightingPages', 'dasFee', 'dasRepEmail'
+        'dasPaidServiceEnabled', 'dasCostPerPage', 'dasLightingPages', 'dasFee', 'dasRepEmail',
+        'dasWaiverReasons', 'dasWaiverOtherNote', 'dasWaiverDescription'
       ];
       
       const missingFields = expectedFields.filter(field => !(field in formData));
@@ -367,6 +371,15 @@ Complexity: Level 2`;
       const paidServiceValidationTest = () => {
         const validate = (data) => {
           if (!data.dasPaidServiceEnabled) return true;
+          const isFeeWaived = data.dasCostOption === 'waive' || data.dasStatus === 'Fee Waived';
+          if (isFeeWaived) {
+            const waiverReasons = Array.isArray(data.dasWaiverReasons) ? data.dasWaiverReasons : [];
+            if (waiverReasons.length === 0) return false;
+            if (waiverReasons.includes('other')) {
+              return !!(data.dasWaiverOtherNote && data.dasWaiverOtherNote.trim());
+            }
+            return true;
+          }
           const hasLightingPages = Number(data.dasLightingPages) > 0;
           const hasCost = Number(data.dasCostPerPage) > 0;
           const hasFee = Number(data.dasFee) > 0;
@@ -398,6 +411,65 @@ Complexity: Level 2`;
         'Paid Services Validation',
         paidServiceValidationTest(),
         'Paid services validation ensures required fields are present when enabled'
+      );
+
+      // Test 15: Fee Waiver Validation Rules
+      const feeWaiverValidationTest = () => {
+        const validateWaiver = (data) => {
+          if (!data.dasPaidServiceEnabled) return true;
+          const isFeeWaived = data.dasCostOption === 'waive' || data.dasStatus === 'Fee Waived';
+          if (!isFeeWaived) return true;
+          const reasons = Array.isArray(data.dasWaiverReasons) ? data.dasWaiverReasons : [];
+          if (reasons.length === 0) return false;
+          if (reasons.includes('other')) {
+            return !!(data.dasWaiverOtherNote && data.dasWaiverOtherNote.trim());
+          }
+          return true;
+        };
+
+        const validWaived = {
+          ...formData,
+          dasPaidServiceEnabled: true,
+          dasCostOption: 'waive',
+          dasStatus: 'Fee Waived',
+          dasWaiverReasons: ['projectAwarded']
+        };
+
+        const invalidWaivedNoReason = {
+          ...formData,
+          dasPaidServiceEnabled: true,
+          dasCostOption: 'waive',
+          dasStatus: 'Fee Waived',
+          dasWaiverReasons: []
+        };
+
+        const invalidWaivedOtherNoNote = {
+          ...formData,
+          dasPaidServiceEnabled: true,
+          dasCostOption: 'waive',
+          dasStatus: 'Fee Waived',
+          dasWaiverReasons: ['other'],
+          dasWaiverOtherNote: ''
+        };
+
+        const validWaivedOtherWithNote = {
+          ...formData,
+          dasPaidServiceEnabled: true,
+          dasCostOption: 'waive',
+          dasStatus: 'Fee Waived',
+          dasWaiverReasons: ['other'],
+          dasWaiverOtherNote: 'Legacy account courtesy waiver'
+        };
+
+        return validateWaiver(validWaived) &&
+          !validateWaiver(invalidWaivedNoReason) &&
+          !validateWaiver(invalidWaivedOtherNoNote) &&
+          validateWaiver(validWaivedOtherWithNote);
+      };
+      addTestResult(
+        'Fee Waiver Validation Rules',
+        feeWaiverValidationTest(),
+        'Waived fee requires reason; "Other" additionally requires detail'
       );
 
     } catch (error) {

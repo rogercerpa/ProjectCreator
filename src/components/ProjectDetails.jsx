@@ -9,6 +9,14 @@ import BOMDetailsSection from './bom/BOMDetailsSection';
 import { openPaidServicesEmail } from '../utils/emailTemplates';
 import { useUploadContext, UPLOAD_TYPES } from '../contexts/UploadContext';
 
+const WAIVER_REASON_LABELS = {
+  acuitySpecRequirement: 'Acuity specification requirement',
+  projectAwarded: 'Project awarded',
+  purchaseOrderReceived: 'Purchase order received',
+  projectValueExceeds250k: 'Project value exceeds $250K',
+  other: 'Other'
+};
+
 /**
  * ProjectDetails - Read-only display of project information
  * Shows all project details in a well-organized, read-only format
@@ -68,7 +76,11 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
   const isUploading = isProjectUploading(project?.id);
   
   const hasPaidServices = !!project?.dasPaidServiceEnabled;
+  const isFeeWaived = project?.dasCostOption === 'waive' || project?.dasStatus === 'Fee Waived';
+  const waiverReasons = (Array.isArray(project?.dasWaiverReasons) ? project.dasWaiverReasons : [])
+    .map((reason) => WAIVER_REASON_LABELS[reason] || reason);
   const canSendPaidServiceEmail = hasPaidServices &&
+    !isFeeWaived &&
     project?.dasRepEmail &&
     project?.dasCostPerPage &&
     project?.dasLightingPages &&
@@ -868,24 +880,57 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
         <div className="pt-4">
           {hasPaidServices ? (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 md:grid-cols-1 gap-4">
-                <div className="flex flex-col gap-1 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-                  <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Lighting Pages</span>
-                  <span className="text-lg font-bold text-gray-900 dark:text-white">{project.dasLightingPages || 0}</span>
+              {!isFeeWaived ? (
+                <div className="grid grid-cols-2 md:grid-cols-1 gap-4">
+                  <div className="flex flex-col gap-1 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Lighting Pages</span>
+                    <span className="text-lg font-bold text-gray-900 dark:text-white">{project.dasLightingPages || 0}</span>
+                  </div>
+                  <div className="flex flex-col gap-1 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Cost per Page</span>
+                    <span className="text-lg font-bold text-gray-900 dark:text-white">{formatCurrency(project.dasCostPerPage)}</span>
+                  </div>
+                  <div className="flex flex-col gap-1 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Fee</span>
+                    <span className="text-lg font-bold text-primary-700 dark:text-primary-300">{formatCurrency(project.dasFee)}</span>
+                  </div>
+                  <div className="flex flex-col gap-1 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Rep Email</span>
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">{project.dasRepEmail || 'Not set'}</span>
+                  </div>
                 </div>
-                <div className="flex flex-col gap-1 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-                  <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Cost per Page</span>
-                  <span className="text-lg font-bold text-gray-900 dark:text-white">{formatCurrency(project.dasCostPerPage)}</span>
+              ) : (
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Fee Waiver Reasons</span>
+                    <div className="flex flex-wrap gap-2">
+                      {waiverReasons.length > 0 ? waiverReasons.map((reason) => (
+                        <span
+                          key={reason}
+                          className="px-2 py-1 rounded-full text-xs font-medium bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-200"
+                        >
+                          {reason}
+                        </span>
+                      )) : (
+                        <span className="text-sm text-gray-600 dark:text-gray-300">No waiver reason provided</span>
+                      )}
+                    </div>
+                  </div>
+                  {(project?.dasWaiverDescription || project?.dasWaiverOtherNote) && (
+                    <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                      <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Waiver Notes</span>
+                      {project?.dasWaiverDescription && (
+                        <span className="text-sm text-gray-900 dark:text-white">{project.dasWaiverDescription}</span>
+                      )}
+                      {project?.dasWaiverOtherNote && (
+                        <span className="text-sm text-gray-700 dark:text-gray-200">
+                          Other reason detail: {project.dasWaiverOtherNote}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <div className="flex flex-col gap-1 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-                  <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Fee</span>
-                  <span className="text-lg font-bold text-primary-700 dark:text-primary-300">{formatCurrency(project.dasFee)}</span>
-                </div>
-                <div className="flex flex-col gap-1 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-                  <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Rep Email</span>
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">{project.dasRepEmail || 'Not set'}</span>
-                </div>
-              </div>
+              )}
               <div className="flex flex-wrap gap-3 justify-end">
                 <button
                   type="button"
