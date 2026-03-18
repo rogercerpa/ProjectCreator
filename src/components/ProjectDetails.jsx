@@ -179,6 +179,23 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
     });
   };
 
+  const formatDateOnly = (dateString) => {
+    if (!dateString) return 'Not set';
+    let date;
+    if (typeof dateString === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      const [year, month, day] = dateString.split('-').map(Number);
+      date = new Date(year, month - 1, day);
+    } else {
+      date = new Date(dateString);
+    }
+    if (Number.isNaN(date.getTime())) return 'Not set';
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
   const formatCurrency = (value) => {
     if (!value) return 'Not specified';
     return new Intl.NumberFormat('en-US', {
@@ -836,10 +853,17 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
           <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
             <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Design By</label>
             <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.designBy || 'Not assigned'}</span>
+            <span className="text-xs font-semibold text-primary-700 dark:text-primary-300 mt-1">
+              Total Triage: {Number(project.totalTriage || 0).toFixed(1)} hours
+            </span>
           </div>
           <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
             <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">QC By</label>
             <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{project.qcBy || 'Not assigned'}</span>
+          </div>
+          <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Expected Ready for QC Date</label>
+            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{formatDateOnly(project.engineerExpectedCompleteDate)}</span>
           </div>
         </div>
       </CollapsibleSection>
@@ -991,10 +1015,6 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
           <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
             <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">ECD</label>
             <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{formatDate(project.ecd)}</span>
-          </div>
-          <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Expected Ready for QC</label>
-            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{formatDate(project.engineerExpectedCompleteDate)}</span>
           </div>
           <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
             <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Submitted Date</label>

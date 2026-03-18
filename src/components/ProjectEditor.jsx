@@ -158,6 +158,24 @@ const ProjectEditor = ({
     }
   };
 
+  // Helper for date-only inputs while supporting legacy ISO datetime values
+  const isoToDateInput = (value) => {
+    if (!value) return '';
+    try {
+      if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        return value;
+      }
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '';
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    } catch {
+      return '';
+    }
+  };
+
   // Handle input changes
   const handleInputChange = (e) => {
     const { name, value, type } = e.target;
@@ -672,6 +690,15 @@ const ProjectEditor = ({
                   <option key={person} value={person}>{person}</option>
                 ))}
               </select>
+              <div className="mt-2 px-3 py-2 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-700 rounded-lg">
+                <div className="text-[11px] uppercase tracking-wide font-semibold text-primary-700 dark:text-primary-300">
+                  Total Triage Time
+                </div>
+                <div className="text-sm font-bold text-primary-800 dark:text-primary-200">
+                  {Number(formData.totalTriage || 0).toFixed(1)} hours
+                </div>
+              </div>
+              <small className="field-hint">Auto-populated from Triage Calculation</small>
             </div>
 
             <div className="flex flex-col gap-1.5">
@@ -687,6 +714,17 @@ const ProjectEditor = ({
                   <option key={person} value={person}>{person}</option>
                 ))}
               </select>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="engineerExpectedCompleteDate">Expected Ready for QC Date</label>
+              <input
+                type="date"
+                id="engineerExpectedCompleteDate"
+                name="engineerExpectedCompleteDate"
+                value={isoToDateInput(formData.engineerExpectedCompleteDate)}
+                onChange={handleInputChange}
+              />
             </div>
           </div>
         </div>
@@ -713,17 +751,6 @@ const ProjectEditor = ({
                 id="ecd"
                 name="ecd"
                 value={isoToDateTimeInput(formData.ecd)}
-                onChange={handleInputChange}
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="engineerExpectedCompleteDate">Expected Ready for QC Date & Time</label>
-              <input
-                type="datetime-local"
-                id="engineerExpectedCompleteDate"
-                name="engineerExpectedCompleteDate"
-                value={isoToDateTimeInput(formData.engineerExpectedCompleteDate)}
                 onChange={handleInputChange}
               />
             </div>

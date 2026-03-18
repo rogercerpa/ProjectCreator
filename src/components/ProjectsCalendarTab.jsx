@@ -37,9 +37,24 @@ function formatDayLabel(dateLike) {
 
 function toDateOrNull(value) {
   if (!value) return null;
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split('-').map(Number);
+    const dateOnly = new Date(year, month - 1, day, WORKDAY_START_HOUR, 0, 0, 0);
+    if (Number.isNaN(dateOnly.getTime())) return null;
+    return dateOnly;
+  }
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
   return date;
+}
+
+function formatDateOnlyISO(dateLike) {
+  const date = new Date(dateLike);
+  if (Number.isNaN(date.getTime())) return '';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function clampWorkday(dateLike) {
@@ -196,7 +211,7 @@ function ProjectsCalendarTab({
   const updateProjectExpectedDate = async (project, targetDate) => {
     if (!project?.id || !targetDate || typeof onProjectUpdate !== 'function') return;
 
-    const safeDate = clampWorkday(targetDate).toISOString();
+    const safeDate = formatDateOnlyISO(clampWorkday(targetDate));
     setSaveError('');
 
     try {
@@ -216,13 +231,8 @@ function ProjectsCalendarTab({
     setActiveDragProjectId(null);
     if (!project) return;
 
-    const existingDate = toDateOrNull(project.engineerExpectedCompleteDate);
     const target = addDays(weekStart, dayIndex);
-    if (existingDate) {
-      target.setHours(existingDate.getHours(), existingDate.getMinutes(), 0, 0);
-    } else {
-      target.setHours(WORKDAY_START_HOUR, 0, 0, 0);
-    }
+    target.setHours(WORKDAY_START_HOUR, 0, 0, 0);
 
     await updateProjectExpectedDate(project, target);
   };
@@ -376,7 +386,7 @@ function ProjectsCalendarTab({
                         {calendarEventTitle(project)}
                       </div>
                       <div className="text-[11px] text-gray-500 dark:text-gray-400">
-                        {start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} - {durationHours.toFixed(1)}h
+                        {start.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })} - {durationHours.toFixed(1)}h
                       </div>
                     </button>
                   ))}
