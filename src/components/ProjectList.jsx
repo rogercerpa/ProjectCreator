@@ -3,8 +3,9 @@ import ViewToolbar from './ViewToolbar';
 import ProjectTableView from './ProjectTableView';
 import ProjectGroupView from './ProjectGroupView';
 import DASSearchResults from './DASSearchResults';
+import ProjectsCalendarTab from './ProjectsCalendarTab';
 
-function ProjectList({ projects, onProjectSelect, onProjectDelete, onNewProject, onRefresh }) {
+function ProjectList({ projects, onProjectSelect, onProjectDelete, onNewProject, onRefresh, onCalendarProjectUpdate }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [isScanning, setIsScanning] = useState(false);
   const [scanNotification, setScanNotification] = useState(null);
@@ -19,6 +20,10 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onNewProject,
   const [viewMode, setViewMode] = useState(() => {
     const saved = localStorage.getItem('projectListViewMode');
     return saved || 'table';
+  });
+  const [projectsTab, setProjectsTab] = useState(() => {
+    const saved = localStorage.getItem('projectListTab');
+    return saved || 'repository';
   });
   const [groupBy, setGroupBy] = useState(() => {
     const saved = localStorage.getItem('projectListGroupBy');
@@ -286,6 +291,11 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onNewProject,
     localStorage.setItem('projectListViewMode', newViewMode);
   };
 
+  const handleProjectsTabChange = (newTab) => {
+    setProjectsTab(newTab);
+    localStorage.setItem('projectListTab', newTab);
+  };
+
   const handleGroupByChange = (newGroupBy) => {
     setGroupBy(newGroupBy);
     localStorage.setItem('projectListGroupBy', newGroupBy);
@@ -517,118 +527,159 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onNewProject,
         </div>
       )}
 
-      {/* Search and Filters Hub */}
+      {/* Projects tabs + filters */}
       <div className="px-8 py-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm sticky top-0 z-20">
         <div className="max-w-7xl mx-auto space-y-3">
-          {/* Search Mode Toggle */}
-          <div className="flex items-center gap-4">
-            <span className="text-sm font-bold text-gray-500 dark:text-gray-400">Search in:</span>
-            <div className="inline-flex rounded-xl bg-gray-100 dark:bg-gray-700 p-1">
-              <button
-                onClick={() => handleSearchModeChange('database')}
-                className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${
-                  searchMode === 'database'
-                    ? 'bg-white dark:bg-gray-500 text-primary-600 dark:text-white shadow-sm'
-                    : 'text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white'
-                }`}
-              >
-                <span className="flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/>
-                  </svg>
-                  Database
-                </span>
-              </button>
-              <button
-                onClick={() => handleSearchModeChange('das')}
-                className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${
-                  searchMode === 'das'
-                    ? 'bg-white dark:bg-gray-500 text-primary-600 dark:text-white shadow-sm'
-                    : 'text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white'
-                }`}
-              >
-                <span className="flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z"/>
-                  </svg>
-                  DAS Drive
-                </span>
-              </button>
-              <button
-                onClick={() => handleSearchModeChange('both')}
-                className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${
-                  searchMode === 'both'
-                    ? 'bg-white dark:bg-gray-500 text-primary-600 dark:text-white shadow-sm'
-                    : 'text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white'
-                }`}
-              >
-                <span className="flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
-                  </svg>
-                  Both
-                </span>
-              </button>
-            </div>
-            {searchMode !== 'database' && (
-              <span className="text-xs text-gray-400 dark:text-gray-500 italic">
-                Tip: Enter container (24-16071), RFA number (12345-0), or project name
-              </span>
-            )}
+          {/* Primary page tabs (match DAS General / Spec Review pattern) */}
+          <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700 pb-2">
+            <button
+              onClick={() => handleProjectsTabChange('repository')}
+              className={`
+                flex items-center gap-2 px-4 py-2 rounded-t-lg font-medium text-sm transition-all
+                ${projectsTab === 'repository'
+                  ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 border-b-2 border-primary-600'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                }
+              `}
+            >
+              <span className="text-base">📁</span>
+              <span>Project Repository</span>
+            </button>
+            <button
+              onClick={() => handleProjectsTabChange('calendar')}
+              className={`
+                flex items-center gap-2 px-4 py-2 rounded-t-lg font-medium text-sm transition-all
+                ${projectsTab === 'calendar'
+                  ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 border-b-2 border-primary-600'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                }
+              `}
+            >
+              <span className="text-base">📅</span>
+              <span>Calendar</span>
+            </button>
           </div>
 
-          {/* Search Input */}
-          <div className="relative group">
-            {/* Loading indicator only shown when searching DAS Drive */}
-            {dasSearchLoading && (
-              <div className="absolute left-4 top-1/2 -translate-y-1/2">
-                <div className="w-5 h-5 border-2 border-gray-300 border-t-primary-500 rounded-full animate-spin"></div>
+          {projectsTab === 'repository' && (
+            <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-900/30 p-4 space-y-3">
+              <div className="flex flex-wrap items-center gap-4">
+                <span className="text-sm font-bold text-gray-500 dark:text-gray-400">Search source:</span>
+                <div className="inline-flex rounded-xl bg-gray-100 dark:bg-gray-700 p-1">
+                  <button
+                    onClick={() => handleSearchModeChange('database')}
+                    className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${
+                      searchMode === 'database'
+                        ? 'bg-white dark:bg-gray-500 text-primary-600 dark:text-white shadow-sm'
+                        : 'text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/>
+                      </svg>
+                      Database
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => handleSearchModeChange('das')}
+                    className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${
+                      searchMode === 'das'
+                        ? 'bg-white dark:bg-gray-500 text-primary-600 dark:text-white shadow-sm'
+                        : 'text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z"/>
+                      </svg>
+                      DAS Drive
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => handleSearchModeChange('both')}
+                    className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${
+                      searchMode === 'both'
+                        ? 'bg-white dark:bg-gray-500 text-primary-600 dark:text-white shadow-sm'
+                        : 'text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+                      </svg>
+                      Both
+                    </span>
+                  </button>
+                </div>
+                {searchMode !== 'database' && (
+                  <span className="text-xs text-gray-400 dark:text-gray-500 italic">
+                    Tip: Enter container (24-16071), RFA number (12345-0), or project name
+                  </span>
+                )}
               </div>
-            )}
-            <input
-              type="text"
-              placeholder={getSearchPlaceholder()}
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className={`w-full ${dasSearchLoading ? 'pl-12' : 'pl-5'} pr-12 py-4 bg-gray-50 dark:bg-gray-900/50 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/5 transition-all shadow-inner`}
-            />
-            {searchTerm && (
-              <button 
-                className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-all"
-                onClick={() => {
-                  setSearchTerm('');
-                  setDasSearchResults([]);
-                  setDasSearchError(null);
-                  setDasSearchInfo(null);
-                }}
-                title="Clear search"
-              >
-                ✕
-              </button>
-            )}
-          </div>
 
-          <ViewToolbar
-            viewMode={viewMode}
-            onViewModeChange={handleViewModeChange}
-            groupBy={groupBy}
-            onGroupByChange={handleGroupByChange}
-            sortBy={sortBy}
-            sortOrder={sortOrder}
-            onSortChange={(field) => {
-              setSortBy(field);
-              localStorage.setItem('projectListSortBy', field);
-            }}
-            onSortOrderToggle={handleSortOrderToggle}
-          />
+              {/* Search Input */}
+              <div className="relative group">
+                {/* Loading indicator only shown when searching DAS Drive */}
+                {dasSearchLoading && (
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2">
+                    <div className="w-5 h-5 border-2 border-gray-300 border-t-primary-500 rounded-full animate-spin"></div>
+                  </div>
+                )}
+                <input
+                  type="text"
+                  placeholder={getSearchPlaceholder()}
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                  className={`w-full ${dasSearchLoading ? 'pl-12' : 'pl-5'} pr-12 py-4 bg-white dark:bg-gray-900/50 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/5 transition-all shadow-inner`}
+                />
+                {searchTerm && (
+                  <button
+                    className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-all"
+                    onClick={() => {
+                      setSearchTerm('');
+                      setDasSearchResults([]);
+                      setDasSearchError(null);
+                      setDasSearchInfo(null);
+                    }}
+                    title="Clear search"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              <ViewToolbar
+                viewMode={viewMode}
+                onViewModeChange={handleViewModeChange}
+                groupBy={groupBy}
+                onGroupByChange={handleGroupByChange}
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                onSortChange={(field) => {
+                  setSortBy(field);
+                  localStorage.setItem('projectListSortBy', field);
+                }}
+                onSortOrderToggle={handleSortOrderToggle}
+              />
+            </div>
+          )}
         </div>
       </div>
 
       {/* Results Container */}
       <div className="bg-gray-50/50 dark:bg-gray-900/20">
         <div className="max-w-7xl mx-auto p-8 pt-4">
+          {projectsTab === 'calendar' && (
+            <ProjectsCalendarTab
+              projects={safeProjects}
+              onProjectSelect={onProjectSelect}
+              onProjectUpdate={onCalendarProjectUpdate}
+            />
+          )}
+
           {/* DAS Drive Search Results (shown when mode is 'das' or 'both') */}
-          {(searchMode === 'das' || searchMode === 'both') && searchTerm.trim().length >= 2 && (
+          {projectsTab === 'repository' && (searchMode === 'das' || searchMode === 'both') && searchTerm.trim().length >= 2 && (
             <div className="mb-8">
               <DASSearchResults
                 results={dasSearchResults}
@@ -642,7 +693,7 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onNewProject,
           )}
 
           {/* Database Results Header (shown when mode is 'database' or 'both') */}
-          {(searchMode === 'database' || searchMode === 'both') && (
+          {projectsTab === 'repository' && (searchMode === 'database' || searchMode === 'both') && (
             <>
               <div className="flex items-center gap-3 mb-6">
                 <div className="h-2 w-2 rounded-full bg-primary-500 animate-pulse"></div>
@@ -703,7 +754,7 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onNewProject,
           )}
 
           {/* DAS-only mode empty state */}
-          {searchMode === 'das' && searchTerm.trim().length < 2 && (
+          {projectsTab === 'repository' && searchMode === 'das' && searchTerm.trim().length < 2 && (
             <div className="flex flex-col items-center justify-center p-20 text-center bg-white dark:bg-gray-800 rounded-3xl border-2 border-dashed border-gray-200 dark:border-gray-700 animate-fadeIn">
               <div className="w-20 h-20 rounded-2xl bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center mb-6">
                 <svg className="w-10 h-10 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">

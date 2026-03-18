@@ -55,6 +55,7 @@ const createDefaultFormData = () => ({
   agencyName: '',
   rfaStatus: '',
   rfaComplexity: '',
+  engineerExpectedCompleteDate: '',
   neededByDate: '',
   bidDate: '',
   // Unified Triage Control Fields
@@ -136,6 +137,15 @@ function App() {
   const [userInterfacePreference, setUserInterfacePreference] = useState(null);
   const [isFirstVisit, setIsFirstVisit] = useState(false);
   const [formData, setFormData] = useState(() => createDefaultFormData());
+
+  const syncSharedCalendarEntry = async (project) => {
+    try {
+      if (!window.electronAPI?.sharedCalendarUpsert || !project?.id) return;
+      await window.electronAPI.sharedCalendarUpsert(project, 'project-creator-user');
+    } catch (error) {
+      console.warn('Shared calendar sync failed:', error);
+    }
+  };
 
   // Initialize monitoring services
   const initializeMonitoringServices = async () => {
@@ -711,6 +721,7 @@ function App() {
       );
       setCurrentProject(projectToUse);
       console.log('✅ App.jsx: currentProject updated, ECD:', projectToUse.ecd);
+      await syncSharedCalendarEntry(projectToUse);
       
     } catch (error) {
       console.error('Error updating project:', error);
@@ -720,6 +731,36 @@ function App() {
       );
       setCurrentProject(updatedProject);
     }
+  };
+
+  const handleCalendarProjectUpdate = async (projectId, updates) => {
+    const existingProject = projects.find((project) => project.id === projectId);
+    if (!existingProject) {
+      throw new Error('Project not found for calendar update');
+    }
+
+    const projectToSave = {
+      ...existingProject,
+      ...updates,
+      updatedAt: new Date().toISOString()
+    };
+
+    const saveResult = await window.electronAPI.projectSave(projectToSave);
+    if (!saveResult?.success) {
+      throw new Error(saveResult?.error || 'Failed to save calendar update');
+    }
+
+    const savedProject = saveResult.project;
+    setProjects((prev) => prev.map((project) => (
+      project.id === savedProject.id ? savedProject : project
+    )));
+
+    if (currentProject?.id === savedProject.id) {
+      setCurrentProject(savedProject);
+    }
+
+    await syncSharedCalendarEntry(savedProject);
+    return savedProject;
   };
 
   const handleFormDataChange = (newFormData) => {
@@ -1031,6 +1072,7 @@ function App() {
               }}
               onProjectDelete={handleProjectDelete}
               onNewProject={() => handleSmartViewChange('wizard')}
+              onCalendarProjectUpdate={handleCalendarProjectUpdate}
               onRefresh={async () => {
                 console.log('🔄 Manual refresh triggered');
                 try {

@@ -20,6 +20,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   projectSearch: (searchCriteria) => ipcRenderer.invoke('project-search', searchCriteria),
   projectStats: () => ipcRenderer.invoke('project-stats'),
   projectsLoadAll: () => ipcRenderer.invoke('projects-load-all'), // CRITICAL FIX for data persistence
+  sharedCalendarLoad: () => ipcRenderer.invoke('shared-calendar:load'),
+  sharedCalendarUpsert: (project, actor) => ipcRenderer.invoke('shared-calendar:upsert', project, actor),
+  sharedCalendarSetDirectory: (directoryPath) => ipcRenderer.invoke('shared-calendar:set-directory', directoryPath),
   
   // Status tracking operations
   projectBackfillStatus: (projectId, statusDates) => ipcRenderer.invoke('project-backfill-status', projectId, statusDates),
@@ -301,6 +304,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onWorkloadFileChanged: (callback) => {
     ipcRenderer.on('workload:file-changed', (event, data) => callback(data));
     return () => ipcRenderer.removeAllListeners('workload:file-changed');
+  },
+  onSharedCalendarChanged: (callback) => {
+    ipcRenderer.on('shared-calendar:changed', (event, data) => callback(data));
+    return () => ipcRenderer.removeAllListeners('shared-calendar:changed');
   },
   onWorkloadUsersFileChanged: (callback) => {
     ipcRenderer.on('workload:users-file-changed', (event, data) => callback(data));

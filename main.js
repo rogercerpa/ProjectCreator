@@ -51,6 +51,7 @@ const OneDriveSyncService = require('./main-process/services/OneDriveSyncService
 // Import workload services
 const WorkloadPersistenceService = require('./main-process/services/WorkloadPersistenceService');
 const FileWatcherService = require('./main-process/services/FileWatcherService');
+const SharedCalendarService = require('./main-process/services/SharedCalendarService');
 const FieldMappingService = require('./main-process/services/FieldMappingService');
 const WorkloadExcelService = require('./main-process/services/WorkloadExcelService');
 const WorkloadExcelSyncService = require('./main-process/services/WorkloadExcelSyncService');
@@ -101,6 +102,9 @@ const dasSearchService = new DASSearchService();
 // Initialize workload services
 const workloadPersistenceService = new WorkloadPersistenceService();
 let fileWatcherService = null; // Initialized when user configures shared folder
+const sharedCalendarService = new SharedCalendarService({
+  dataDirectory: 'Z:\\DAS References\\ProjectCreatorV5'
+});
 const fieldMappingService = new FieldMappingService();
 const workloadExcelService = new WorkloadExcelService(fieldMappingService);
 const workloadExcelSyncService = new WorkloadExcelSyncService(workloadExcelService, fieldMappingService, settingsService);
@@ -220,6 +224,12 @@ workloadExcelSyncService.on('settingsUpdated', (settings) => {
   }
 });
 
+sharedCalendarService.on('changed', (data) => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('shared-calendar:changed', data);
+  }
+});
+
 function createWindow() {
   // Create the browser window
   mainWindow = new BrowserWindow({
@@ -319,6 +329,18 @@ app.whenReady().then(async () => {
   } catch (error) {
     console.error('❌ Error initializing workload Excel sync service:', error);
   }
+
+  // Initialize shared calendar watcher (multi-user overlay JSON)
+  try {
+    const sharedCalendarWatchResult = await sharedCalendarService.startWatching();
+    if (sharedCalendarWatchResult.success) {
+      console.log('✅ Shared calendar watcher initialized');
+    } else {
+      console.warn('⚠️ Shared calendar watcher initialization failed:', sharedCalendarWatchResult.error);
+    }
+  } catch (error) {
+    console.error('❌ Error initializing shared calendar watcher:', error);
+  }
   
   createWindow();
 
@@ -415,6 +437,14 @@ app.whenReady().then(async () => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
+  }
+});
+
+app.on('before-quit', async () => {
+  try {
+    await sharedCalendarService.stopWatching();
+  } catch (error) {
+    console.warn('Failed to stop shared calendar watcher:', error?.message || error);
   }
 });
 
@@ -589,6 +619,31 @@ ipcMain.handle('projects-load-all', async () => {
       error: error.message,
       projects: []
     };
+  }
+});
+
+// Shared calendar JSON handlers (multi-user calendar overlay)
+ipcMain.handle('shared-calendar:load', async () => {
+  try {
+    return await sharedCalendarService.loadCalendar();
+  } catch (error) {
+    return { success: false, error: error.message, entries: {} };
+  }
+});
+
+ipcMain.handle('shared-calendar:upsert', async (event, project, actor) => {
+  try {
+    return await sharedCalendarService.upsertProjectEntry(project, actor);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('shared-calendar:set-directory', async (event, directoryPath) => {
+  try {
+    return await sharedCalendarService.setDataDirectory(directoryPath);
+  } catch (error) {
+    return { success: false, error: error.message };
   }
 });
 

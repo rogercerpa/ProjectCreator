@@ -993,6 +993,10 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
             <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{formatDate(project.ecd)}</span>
           </div>
           <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Expected Ready for QC</label>
+            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{formatDate(project.engineerExpectedCompleteDate)}</span>
+          </div>
+          <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
             <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Submitted Date</label>
             <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{formatDate(project.submittedDate)}</span>
           </div>

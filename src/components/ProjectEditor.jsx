@@ -718,6 +718,17 @@ const ProjectEditor = ({
             </div>
 
             <div className="flex flex-col gap-1.5">
+              <label htmlFor="engineerExpectedCompleteDate">Expected Ready for QC Date & Time</label>
+              <input
+                type="datetime-local"
+                id="engineerExpectedCompleteDate"
+                name="engineerExpectedCompleteDate"
+                value={isoToDateTimeInput(formData.engineerExpectedCompleteDate)}
+                onChange={handleInputChange}
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
               <label htmlFor="submittedDate">Submitted Date & Time</label>
               <input
                 type="datetime-local"
