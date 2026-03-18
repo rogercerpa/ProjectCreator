@@ -1,2 +1,3 @@
+npm version patch --no-git-tag-version
 node scripts/update-readme.js
-git add README.md
+git add package.json package-lock.json README.md
