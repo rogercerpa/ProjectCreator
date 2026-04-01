@@ -112,6 +112,7 @@ const createAssignmentsInBackground = async (savedProject, selectedAssignee) => 
   });
 
   const assignedUserIds = new Set();
+  const assignedUserNames = new Set();
   const taskMappings = [
     { field: 'triagedBy', taskType: 'TRIAGE' },
     { field: 'designBy', taskType: 'DESIGN' },
@@ -132,6 +133,7 @@ const createAssignmentsInBackground = async (savedProject, selectedAssignee) => 
       if (result.success) {
         console.log(`ProjectWizard: ${taskType} assignment created for ${userName}`);
         assignedUserIds.add(user.id);
+        assignedUserNames.add(user.name?.trim().toLowerCase());
       } else {
         console.warn(`ProjectWizard: Failed to create ${taskType} assignment:`, result.error);
       }
@@ -140,17 +142,21 @@ const createAssignmentsInBackground = async (savedProject, selectedAssignee) => 
     }
   }
 
-  if (selectedAssignee && !assignedUserIds.has(selectedAssignee.id)) {
+  const normalizedSelectedAssigneeName = selectedAssignee?.name?.trim().toLowerCase();
+  const alreadyAssignedFromTaskMappings = assignedUserIds.has(selectedAssignee?.id) ||
+    (normalizedSelectedAssigneeName && assignedUserNames.has(normalizedSelectedAssigneeName));
+
+  if (selectedAssignee && !alreadyAssignedFromTaskMappings) {
     try {
-      const assignment = buildAssignment(selectedAssignee, null);
+      const assignment = buildAssignment(selectedAssignee, 'DESIGN');
       const result = await window.electronAPI.workloadAssignmentSave(assignment);
       if (result.success) {
-        console.log(`ProjectWizard: General assignment created for ${selectedAssignee.name}`);
+        console.log(`ProjectWizard: DESIGN assignment created for selected assignee ${selectedAssignee.name}`);
       } else {
-        console.warn('ProjectWizard: Failed to create general assignment:', result.error);
+        console.warn('ProjectWizard: Failed to create DESIGN assignment for selected assignee:', result.error);
       }
     } catch (error) {
-      console.warn('ProjectWizard: Error creating general assignment:', error);
+      console.warn('ProjectWizard: Error creating DESIGN assignment for selected assignee:', error);
     }
   }
 
@@ -984,6 +990,7 @@ const ProjectWizard = ({
 
           const completeProject = {
             ...formData,
+            designBy: selectedAssignee?.name || formData.designBy || '',
             status: 'active',
             completionStep: 2,
             updatedAt: new Date().toISOString(),
@@ -1247,7 +1254,7 @@ const ProjectWizard = ({
       // End performance timer
       performanceMonitoringService.endTimer(timerId);
     }
-  }, [formData, wizard, stepValidation, projectDraft]); // Remove circular dependencies
+  }, [formData, wizard, stepValidation, projectDraft, selectedAssignee]); // Remove circular dependencies
 
   // Save partial project draft using new service
   const savePartialDraft = useCallback(async (currentStep, metadata = {}) => {

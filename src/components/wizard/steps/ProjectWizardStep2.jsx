@@ -117,6 +117,7 @@ const ProjectWizardStep2 = ({
   const [selectedAssignee, setSelectedAssignee] = useState(null);
   const [loadingRecommendations, setLoadingRecommendations] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const formDataRef = useRef(formData);
 
   const getAverageProductKnowledge = (user) => {
     if (user && typeof user.getAverageProductKnowledge === 'function') {
@@ -148,6 +149,21 @@ const ProjectWizardStep2 = ({
     }
   };
 
+  const handleAssigneeSelection = (user, sourceFormData = formDataRef.current) => {
+    if (!user) return;
+
+    setSelectedAssignee(user);
+    if (onAssigneeSelected) {
+      onAssigneeSelected(user);
+    }
+
+    // Keep Design By synchronized with the active recommendation choice.
+    onFormDataChange({
+      ...sourceFormData,
+      designBy: user.name || ''
+    });
+  };
+
   // Load dropdown options (simple version)
   useEffect(() => {
     const loadOptions = async () => {
@@ -164,6 +180,10 @@ const ProjectWizardStep2 = ({
     
     return unsubscribe;
   }, []);
+
+  useEffect(() => {
+    formDataRef.current = formData;
+  }, [formData]);
 
   // Watch for changes in formData.totalTriage and update triageResults accordingly
   useEffect(() => {
@@ -215,7 +235,7 @@ const ProjectWizardStep2 = ({
   }, [triageResults, onValidationChange]);
 
   // Load smart assignment recommendations
-  const loadRecommendations = async (triageData) => {
+  const loadRecommendations = async (triageData, sourceFormData = formDataRef.current) => {
     setLoadingRecommendations(true);
     try {
       const smartAssignmentService = new SmartAssignmentService(workloadPersistenceAdapter);
@@ -223,12 +243,12 @@ const ProjectWizardStep2 = ({
       // Build project details from formData and triage results
       const projectDetails = {
         totalHours: triageData.totalTriage || 0,
-        complexity: formData.complexity || 'medium',
-        products: formData.products || [],
-        dueDate: formData.dueDate,
-        priority: formData.priority || 'medium',
-        rfaType: formData.rfaType,
-        regionalTeam: formData.regionalTeam
+        complexity: sourceFormData.complexity || 'medium',
+        products: sourceFormData.products || [],
+        dueDate: sourceFormData.dueDate,
+        priority: sourceFormData.priority || 'medium',
+        rfaType: sourceFormData.rfaType,
+        regionalTeam: sourceFormData.regionalTeam
       };
 
       const topRecommendations = await smartAssignmentService.getRecommendations(projectDetails, 3);
@@ -237,10 +257,7 @@ const ProjectWizardStep2 = ({
       // Auto-select the top recommendation if available
       if (topRecommendations.length > 0) {
         const topUser = topRecommendations[0].user;
-        setSelectedAssignee(topUser);
-        if (onAssigneeSelected) {
-          onAssigneeSelected(topUser);
-        }
+        handleAssigneeSelection(topUser, sourceFormData);
         
         // Trigger confetti celebration for finding perfect match
         if (topRecommendations[0].matchLevel === 'excellent') {
@@ -316,7 +333,7 @@ const ProjectWizardStep2 = ({
     });
     
     // Load smart assignment recommendations after triage calculation
-    await loadRecommendations(triageCalculationResults);
+    await loadRecommendations(triageCalculationResults, updatedFormData);
     
     // Mark Step 2 as completed and valid after successful triage calculation
     // CRITICAL: Explicitly set validation to ensure button enablement
@@ -985,10 +1002,7 @@ const ProjectWizardStep2 = ({
                         : ''
                     }`}
                     onClick={() => {
-                      setSelectedAssignee(rec.user);
-                      if (onAssigneeSelected) {
-                        onAssigneeSelected(rec.user);
-                      }
+                      handleAssigneeSelection(rec.user);
                       // Trigger confetti for top pick selection
                       if (index === 0) {
                         setShowConfetti(true);
