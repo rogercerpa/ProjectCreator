@@ -1,6 +1,6 @@
 const fs = require('fs-extra');
 const path = require('path');
-const { exec } = require('child_process');
+const { exec, execFile } = require('child_process');
 const { app } = require('electron');
 const PathResolutionService = require('./PathResolutionService');
 const ValidationOrchestrator = require('./ValidationOrchestrator');
@@ -496,15 +496,21 @@ class ProjectCreationService {
    */
   async openAgentFilesFolder(agentFilesPath) {
     try {
-      // Open folder using system command
-      const command = process.platform === 'win32' ? `explorer "${agentFilesPath}"` : `open "${agentFilesPath}"`;
-      exec(command, (error) => {
+      if (!await fs.pathExists(agentFilesPath)) {
+        console.warn(`Agent Files folder not found, skipping auto-open: ${agentFilesPath}`);
+        return;
+      }
+
+      // Use execFile to avoid shell parsing issues with characters like "!" in folder names.
+      const opener = process.platform === 'win32' ? 'explorer.exe' : 'open';
+      execFile(opener, [agentFilesPath], (error) => {
         if (error) {
-          console.error('Error opening Agent Files folder:', error);
+          // Non-blocking UX enhancement; project creation already succeeded.
+          console.warn(`Unable to open Agent Files folder automatically: ${agentFilesPath}`, error.message);
         }
       });
     } catch (error) {
-      console.error('Error opening Agent Files folder:', error);
+      console.warn(`Failed to open Agent Files folder: ${agentFilesPath}`, error.message);
     }
   }
 
@@ -601,15 +607,19 @@ class ProjectCreationService {
         folderToOpen = path.join(projectStructure.rfaFolder, '!Agent Files');
       }
       
-      // Open folder using system command
-      const command = process.platform === 'win32' ? `explorer "${folderToOpen}"` : `open "${folderToOpen}"`;
-      exec(command, (error) => {
+      if (!await fs.pathExists(folderToOpen)) {
+        console.warn(`Project folder not found, skipping auto-open: ${folderToOpen}`);
+        return;
+      }
+
+      const opener = process.platform === 'win32' ? 'explorer.exe' : 'open';
+      execFile(opener, [folderToOpen], (error) => {
         if (error) {
-          console.error('Error opening project folder:', error);
+          console.warn(`Unable to open project folder automatically: ${folderToOpen}`, error.message);
         }
       });
     } catch (error) {
-      console.error('Error opening project folder:', error);
+      console.warn('Error opening project folder:', error.message);
     }
   }
 

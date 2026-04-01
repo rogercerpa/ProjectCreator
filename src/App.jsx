@@ -21,6 +21,7 @@ import featureFlagService from './services/FeatureFlagService';
 import crashReportingService from './services/SimpleCrashReportingService';
 import analyticsService from './services/SimpleAnalyticsService';
 import performanceMonitoringService from './services/SimplePerformanceMonitoringService';
+import triageCalculationService from './services/TriageCalculationService';
 import { getFullVersionInfo, getVersionDisplay } from './utils/version';
 
 // Import draft service for enhanced recovery
@@ -212,6 +213,7 @@ function App() {
             const settingsResult = await window.electronAPI.settingsLoad();
             if (settingsResult?.success) {
               setSettings(settingsResult.data);
+              triageCalculationService.updateSettings(settingsResult.data);
               console.log('✅ Settings loaded successfully');
             }
           }

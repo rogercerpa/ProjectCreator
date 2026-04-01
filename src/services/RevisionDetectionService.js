@@ -34,13 +34,19 @@ class RevisionDetectionService {
       
       // Use the existing detectExistingProject method
       const detectionResult = await this.detectExistingProject(projectData);
+      const recommendations = detectionResult.shouldPromptRevision
+        ? [{
+            type: 'info',
+            message: 'Existing project detected. Consider creating a revision instead of a new project.',
+            action: 'consider_revision_workflow',
+            priority: 'low'
+          }]
+        : [];
       
       return {
         success: true,
         result: detectionResult,
-        recommendations: detectionResult.shouldPromptRevision ? 
-          ['Consider creating a revision instead of a new project'] : 
-          ['Safe to create new project'],
+        recommendations,
         validationPassed: true
       };
     } catch (error) {

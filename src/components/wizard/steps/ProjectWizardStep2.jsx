@@ -8,9 +8,11 @@ import { getUserTimezone } from '../../../utils/dateUtils';
 
 // Tooltip Component
 const Tooltip = ({ text, children }) => (
-  <span className="tooltip-container">
+  <span className="group relative inline-flex">
     {children}
-    <span className="tooltip-text">{text}</span>
+    <span className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 w-max max-w-xs -translate-x-1/2 rounded-md bg-gray-900 px-2 py-1 text-[11px] font-medium leading-snug text-white opacity-0 shadow-lg transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100 dark:bg-gray-100 dark:text-gray-900">
+      {text}
+    </span>
   </span>
 );
 
@@ -116,6 +118,36 @@ const ProjectWizardStep2 = ({
   const [loadingRecommendations, setLoadingRecommendations] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
 
+  const getAverageProductKnowledge = (user) => {
+    if (user && typeof user.getAverageProductKnowledge === 'function') {
+      return user.getAverageProductKnowledge();
+    }
+
+    const productKnowledge = user?.productKnowledge;
+    if (productKnowledge && typeof productKnowledge === 'object') {
+      const knowledgeValues = Object.values(productKnowledge).filter((value) => Number.isFinite(Number(value)));
+      const averageKnowledge = knowledgeValues.length > 0
+        ? knowledgeValues.reduce((sum, value) => sum + Number(value), 0) / knowledgeValues.length
+        : 0;
+      return averageKnowledge;
+    }
+
+    return 0;
+  };
+
+  const getCardMatchClasses = (matchLevel) => {
+    switch (matchLevel) {
+      case 'excellent':
+        return 'border-success-300 bg-success-50/70 hover:border-success-400 dark:border-success-700 dark:bg-success-900/20 dark:hover:border-success-600';
+      case 'good':
+        return 'border-info-300 bg-info-50/70 hover:border-info-400 dark:border-info-700 dark:bg-info-900/20 dark:hover:border-info-600';
+      case 'fair':
+        return 'border-warning-300 bg-warning-50/70 hover:border-warning-400 dark:border-warning-700 dark:bg-warning-900/20 dark:hover:border-warning-600';
+      default:
+        return 'border-gray-300 bg-gray-50/70 hover:border-gray-400 dark:border-gray-600 dark:bg-gray-800/70 dark:hover:border-gray-500';
+    }
+  };
+
   // Load dropdown options (simple version)
   useEffect(() => {
     const loadOptions = async () => {
@@ -152,17 +184,16 @@ const ProjectWizardStep2 = ({
 
   // Auto-validate step when formData changes or triageResults are calculated
   useEffect(() => {
-    // Step 2 is valid if either:
-    // 1. Triage calculation has been completed (triageResults exists and totalTriage > 0)
-    // 2. OR basic project data is present (allowing manual completion)
-    const hasTriageResults = triageResults && triageResults.totalTriage > 0;
-    const hasBasicProjectData = formData.projectName && formData.rfaNumber;
-    
-    const isValid = hasTriageResults || hasBasicProjectData;
+    // Step 2 is valid only after triage has been calculated.
+    const hasCalculatedTriage = Boolean(
+      (triageResults && triageResults.totalTriage > 0) ||
+      (formData.totalTriage && formData.totalTriage > 0)
+    );
+    const isValid = hasCalculatedTriage;
     
     if (onValidationChange) {
       onValidationChange(isValid, isValid ? {} : { 
-        step2: ['Please complete triage calculation or ensure project data is valid'] 
+        step2: ['Please calculate triage time before continuing'] 
       });
     }
   }, [formData, triageResults, onValidationChange]);
@@ -921,32 +952,38 @@ const ProjectWizardStep2 = ({
 
             {loadingRecommendations ? (
               <>
-                <p style={{ textAlign: 'center', color: '#6c757d', marginBottom: '20px' }}>
-                  <span style={{ fontSize: '20px', marginRight: '8px' }}>🔍</span>
+                <p className="mb-5 flex items-center justify-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-300">
+                  <span className="text-lg">🔍</span>
                   Analyzing team availability and expertise...
                 </p>
-                <div className="loading-skeleton">
+                <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="skeleton-card">
-                      <div className="skeleton-header">
-                        <div className="skeleton-name"></div>
-                        <div className="skeleton-score"></div>
+                    <div key={i} className="animate-pulse rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/70">
+                      <div className="mb-3 flex items-center justify-between">
+                        <div className="h-4 w-28 rounded bg-gray-200 dark:bg-gray-700"></div>
+                        <div className="h-9 w-14 rounded-lg bg-gray-200 dark:bg-gray-700"></div>
                       </div>
-                      <div className="skeleton-detail"></div>
-                      <div className="skeleton-detail"></div>
-                      <div className="skeleton-detail"></div>
+                      <div className="space-y-2">
+                        <div className="h-3 rounded bg-gray-200 dark:bg-gray-700"></div>
+                        <div className="h-3 rounded bg-gray-200 dark:bg-gray-700"></div>
+                        <div className="h-3 w-11/12 rounded bg-gray-200 dark:bg-gray-700"></div>
+                      </div>
                     </div>
                   ))}
                 </div>
               </>
             ) : recommendations.length > 0 ? (
-              <div className="recommendations-grid">
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
                 {recommendations.map((rec, index) => (
                   <div
                     key={rec.user.id}
-                    className={`recommendation-card ${
-                      selectedAssignee?.id === rec.user.id ? 'selected' : ''
-                    } match-${rec.matchLevel}`}
+                    className={`relative cursor-pointer rounded-lg border p-3 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+                      getCardMatchClasses(rec.matchLevel)
+                    } ${
+                      selectedAssignee?.id === rec.user.id
+                        ? 'ring-2 ring-primary-500 border-primary-500 dark:ring-primary-400 dark:border-primary-500'
+                        : ''
+                    }`}
                     onClick={() => {
                       setSelectedAssignee(rec.user);
                       if (onAssigneeSelected) {
@@ -959,64 +996,68 @@ const ProjectWizardStep2 = ({
                       }
                     }}
                   >
-                    <div className="recommendation-header">
-                      <div className="user-info">
-                        <div className="user-name">
-                          {index === 0 && <span className="badge-top">⭐ Top Pick</span>}
+                    <div className="mb-3 flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="mb-1 flex flex-wrap items-center gap-2 text-sm font-bold text-gray-900 dark:text-white">
+                          {index === 0 && (
+                            <span className="inline-flex items-center rounded-full border border-warning-300 bg-warning-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-warning-800 dark:border-warning-700 dark:bg-warning-900/40 dark:text-warning-200">
+                              ⭐ Top Pick
+                            </span>
+                          )}
                           {rec.user.name}
                         </div>
-                        <div className="user-position">{rec.user.position}</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">{rec.user.position}</div>
                       </div>
                       <Tooltip text="Overall match score based on availability, experience, and product knowledge">
-                        <div className="score-badge animating">
+                        <div className="flex min-w-[56px] flex-col items-center rounded-lg border border-primary-200 bg-primary-100 px-2 py-1 text-primary-800 shadow-sm dark:border-primary-700 dark:bg-primary-900/30 dark:text-primary-200">
                           <AnimatedCounter value={Math.round(rec.score)} duration={800} />
-                          <span className="score-label">Score</span>
+                          <span className="text-[10px] font-semibold uppercase tracking-wide">Score</span>
                         </div>
                       </Tooltip>
                     </div>
 
-                    <div className="recommendation-details">
+                    <div className="space-y-2">
                       <Tooltip text="Available hours this week (40% of total score)">
-                        <div className="detail-row">
-                          <span className="detail-icon">📊</span>
-                          <span className="detail-text">
+                        <div className="flex items-center justify-between gap-2 rounded-md border border-gray-200 bg-white/80 px-2 py-1.5 text-xs dark:border-gray-700 dark:bg-gray-800/80">
+                          <span className="text-sm">📊</span>
+                          <span className="flex-1 text-gray-700 dark:text-gray-300">
                             Availability: {rec.availableHours.toFixed(0)}h available
                           </span>
-                          <span className="detail-score">
+                          <span className="font-semibold text-gray-900 dark:text-white">
                             {rec.breakdown.availability.toFixed(0)}%
                           </span>
                         </div>
                       </Tooltip>
                       <Tooltip text="Experience level matched to project complexity (30% of total score)">
-                        <div className="detail-row">
-                          <span className="detail-icon">🎓</span>
-                          <span className="detail-text">
+                        <div className="flex items-center justify-between gap-2 rounded-md border border-gray-200 bg-white/80 px-2 py-1.5 text-xs dark:border-gray-700 dark:bg-gray-800/80">
+                          <span className="text-sm">🎓</span>
+                          <span className="flex-1 text-gray-700 dark:text-gray-300">
                             Experience: {rec.user.position.includes('Senior') ? 'Senior' : rec.user.position.includes('Lead') ? 'Lead' : 'Junior'}
                           </span>
-                          <span className="detail-score">
+                          <span className="font-semibold text-gray-900 dark:text-white">
                             {rec.breakdown.seniority.toFixed(0)}%
                           </span>
                         </div>
                       </Tooltip>
                       <Tooltip text="Expertise in required products (30% of total score)">
-                        <div className="detail-row">
-                          <span className="detail-icon">🔧</span>
-                          <span className="detail-text">
-                            Product Knowledge: {rec.user.getAverageProductKnowledge().toFixed(1)}/5
+                        <div className="flex items-center justify-between gap-2 rounded-md border border-gray-200 bg-white/80 px-2 py-1.5 text-xs dark:border-gray-700 dark:bg-gray-800/80">
+                          <span className="text-sm">🔧</span>
+                          <span className="flex-1 text-gray-700 dark:text-gray-300">
+                            Product Knowledge: {getAverageProductKnowledge(rec.user).toFixed(1)}/5
                           </span>
-                          <span className="detail-score">
+                          <span className="font-semibold text-gray-900 dark:text-white">
                             {rec.breakdown.productKnowledge.toFixed(0)}%
                           </span>
                         </div>
                       </Tooltip>
                     </div>
 
-                    <div className="recommendation-reasoning">
+                    <div className="mt-3 rounded-md border border-gray-200 bg-white/70 p-2 text-xs text-gray-700 dark:border-gray-700 dark:bg-gray-900/30 dark:text-gray-300">
                       <p>{rec.reasoning}</p>
                     </div>
 
                     {selectedAssignee?.id === rec.user.id && (
-                      <div className="selected-indicator">
+                      <div className="mt-3 inline-flex items-center gap-1 rounded-md border border-success-300 bg-success-100 px-2 py-1 text-xs font-semibold text-success-800 dark:border-success-700 dark:bg-success-900/30 dark:text-success-200">
                         ✓ Selected
                       </div>
                     )}
@@ -1024,10 +1065,10 @@ const ProjectWizardStep2 = ({
                 ))}
               </div>
             ) : (
-              <div className="no-recommendations">
-                <div className="no-recommendations-icon">🤷‍♂️</div>
-                <p><strong>No team members available at this time</strong></p>
-                <p className="hint">
+              <div className="rounded-lg border border-warning-200 bg-warning-50 px-4 py-5 text-center text-warning-800 dark:border-warning-700 dark:bg-warning-900/20 dark:text-warning-200">
+                <div className="mb-2 text-2xl">🤷‍♂️</div>
+                <p className="font-semibold">No team members available at this time</p>
+                <p className="mt-2 text-xs">
                   💡 <strong>Tip:</strong> Make sure users have set up their profiles in<br />
                   Settings → Workload Dashboard → User Profile
                 </p>
@@ -1035,8 +1076,8 @@ const ProjectWizardStep2 = ({
             )}
 
             {selectedAssignee && (
-              <div className="assignment-confirmation">
-                <p>
+              <div className="mt-3 rounded-lg border border-success-200 bg-success-50 px-3 py-2 text-sm text-success-800 dark:border-success-700 dark:bg-success-900/20 dark:text-success-200">
+                <p className="font-medium">
                   <strong>{selectedAssignee.name}</strong> will be assigned to this project upon creation.
                 </p>
               </div>

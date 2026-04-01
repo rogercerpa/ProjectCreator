@@ -107,3 +107,6 @@ temp/
 REFACTORING-*.md
 .refactoring-*.md
 .git-workflow.md
+
+# Loading Board 
+LoadingBoardGS/

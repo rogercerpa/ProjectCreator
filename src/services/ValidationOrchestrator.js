@@ -213,7 +213,8 @@ class ValidationOrchestrator {
       warnings: [],
       recommendations: [],
       errors: [],
-      summary: {}
+      summary: {},
+      stepDetails: {}
     };
 
     // Analyze each pipeline step
@@ -231,10 +232,22 @@ class ValidationOrchestrator {
         analysis.warnings.push(...stepResult.warnings.map(warning => `${stepName}: ${warning}`));
       }
       if (stepResult.recommendations) {
-        analysis.recommendations.push(...stepResult.recommendations.map(rec => ({
-          ...rec,
-          source: stepName
-        })));
+        analysis.recommendations.push(...stepResult.recommendations.map(rec => {
+          if (typeof rec === 'string') {
+            return {
+              type: 'info',
+              message: rec,
+              action: 'review_recommendation',
+              priority: 'low',
+              source: stepName
+            };
+          }
+
+          return {
+            ...rec,
+            source: stepName
+          };
+        }));
       }
 
       // Generate step summary
@@ -244,6 +257,7 @@ class ValidationOrchestrator {
         hasWarnings: stepResult.warnings && stepResult.warnings.length > 0,
         hasRecommendations: stepResult.recommendations && stepResult.recommendations.length > 0
       };
+      analysis.stepDetails[stepName] = stepResult;
     }
 
     // Generate overall recommendations based on analysis
@@ -279,7 +293,12 @@ class ValidationOrchestrator {
     }
 
     // Revision detection recommendations
-    if (analysis.summary.revision_detection && analysis.summary.revision_detection.hasRecommendations) {
+    const revisionDetectionResult = analysis.stepDetails.revision_detection?.result;
+    const hasExistingProjects = Boolean(
+      revisionDetectionResult &&
+      (revisionDetectionResult.exists || revisionDetectionResult.shouldPromptRevision)
+    );
+    if (hasExistingProjects) {
       recommendations.push({
         type: 'info',
         message: 'Revision detection found existing projects. Consider revision workflow.',

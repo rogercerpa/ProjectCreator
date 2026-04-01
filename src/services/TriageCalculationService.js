@@ -129,33 +129,35 @@ class TriageCalculationService {
 
   // Initialize default values (matching HTA logic)
   initializeDefaults(formData) {
+    const data = formData || {};
+
     return {
       // Unified Triage Control Fields
-      hasPanelSchedules: formData.hasPanelSchedules || false,
-      hasSubmittals: formData.hasSubmittals || false,
-      needsLayoutBOM: formData.needsLayoutBOM || false,
+      hasPanelSchedules: this.normalizeBoolean(data.hasPanelSchedules, false),
+      hasSubmittals: this.normalizeBoolean(data.hasSubmittals, false),
+      needsLayoutBOM: this.normalizeBoolean(data.needsLayoutBOM, false),
       // Layout Fields
-      specReview: formData.specReview || 0,
-      reviewSetup: formData.reviewSetup || this.currentSettings.defaultReviewSetup,
-      numOfPages: formData.numOfPages || this.currentSettings.defaultNumOfPages,
-      roomMultiplier: formData.roomMultiplier || this.currentSettings.roomMultiplier,
-      numOfRooms: formData.numOfRooms || 0,
-      overrideRooms: formData.overrideRooms || 0,
+      specReview: this.normalizeNumber(data.specReview, 0),
+      reviewSetup: this.normalizeNumber(data.reviewSetup, this.currentSettings.defaultReviewSetup),
+      numOfPages: this.normalizeNumber(data.numOfPages, this.currentSettings.defaultNumOfPages),
+      roomMultiplier: this.normalizeNumber(data.roomMultiplier, this.currentSettings.roomMultiplier),
+      numOfRooms: this.normalizeNumber(data.numOfRooms, 0),
+      overrideRooms: this.normalizeNumber(data.overrideRooms, 0),
       // Submittal Fields
-      soo: formData.soo || this.currentSettings.defaultSOO,
-      riserMultiplier: formData.riserMultiplier || this.currentSettings.riserMultiplier,
-      numOfSubRooms: formData.numOfSubRooms || 0,
-      overrideSubRooms: formData.overrideSubRooms || 0,
+      soo: this.normalizeNumber(data.soo, this.currentSettings.defaultSOO),
+      riserMultiplier: this.normalizeNumber(data.riserMultiplier, this.currentSettings.riserMultiplier),
+      numOfSubRooms: this.normalizeNumber(data.numOfSubRooms, 0),
+      overrideSubRooms: this.normalizeNumber(data.overrideSubRooms, 0),
       // Panel Fields
-      largeLMPs: formData.largeLMPs || 0,
-      mediumLMPs: formData.mediumLMPs || 0,
-      smallLMPs: formData.smallLMPs || 0,
-      arp8: formData.arp8 || 0,
-      arp16: formData.arp16 || 0,
-      arp32: formData.arp32 || 0,
-      arp48: formData.arp48 || 0,
-      esheetsSchedules: formData.esheetsSchedules || 2,
-      showPanelSchedules: formData.showPanelSchedules || false // Keep for backward compatibility
+      largeLMPs: this.normalizeNumber(data.largeLMPs, 0),
+      mediumLMPs: this.normalizeNumber(data.mediumLMPs, 0),
+      smallLMPs: this.normalizeNumber(data.smallLMPs, 0),
+      arp8: this.normalizeNumber(data.arp8, 0),
+      arp16: this.normalizeNumber(data.arp16, 0),
+      arp32: this.normalizeNumber(data.arp32, 0),
+      arp48: this.normalizeNumber(data.arp48, 0),
+      esheetsSchedules: this.normalizeNumber(data.esheetsSchedules, 2),
+      showPanelSchedules: this.normalizeBoolean(data.showPanelSchedules, false) // Keep for backward compatibility
     };
   }
 
@@ -245,13 +247,46 @@ class TriageCalculationService {
     }
   }
 
-  // Round to nearest 0.25 hours (matching HTA RoundMe function)
+  normalizeNumber(value, fallbackValue) {
+    if (value === null || value === undefined || value === '') {
+      return fallbackValue;
+    }
+
+    const normalizedValue = Number(value);
+    return Number.isFinite(normalizedValue) ? normalizedValue : fallbackValue;
+  }
+
+  normalizeBoolean(value, fallbackValue = false) {
+    if (value === null || value === undefined) {
+      return fallbackValue;
+    }
+
+    if (typeof value === 'boolean') {
+      return value;
+    }
+
+    if (typeof value === 'string') {
+      const normalizedValue = value.trim().toLowerCase();
+      if (normalizedValue === 'true') {
+        return true;
+      }
+      if (normalizedValue === 'false') {
+        return false;
+      }
+    }
+
+    return Boolean(value);
+  }
+
+  // Round to nearest 0.25 hours while preserving exact zero.
   roundToQuarterHours(num) {
-    // Subtract 0.1 to handle rounding edge cases
-    const adjustedNum = num - 0.1;
-    const roundTo = 1 / 0.25; // 4
-    const rounded = Math.round(adjustedNum * roundTo) / roundTo;
-    return rounded + 0.25; // Add 0.25 to match HTA behavior
+    const normalizedValue = this.normalizeNumber(num, 0);
+    if (normalizedValue <= 0) {
+      return 0;
+    }
+
+    const rounded = Math.round(normalizedValue * 4) / 4;
+    return rounded === 0 ? 0 : rounded;
   }
 
   // Calculate panel triage separately (matching HTA PanelTriage function)
