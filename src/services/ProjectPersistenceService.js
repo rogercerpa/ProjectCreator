@@ -238,15 +238,19 @@ class ProjectPersistenceService {
       const projects = await this.loadProjects();
       const results = projects.filter(project => {
         const searchTerm = searchCriteria.toLowerCase();
+        const productsText = Array.isArray(project.products) ? project.products.join(' ') : (project.products || '');
+        const sharedFileTypesText = Array.isArray(project.sharedFileTypes) ? project.sharedFileTypes.join(' ') : '';
         return (
           project.projectName?.toLowerCase().includes(searchTerm) ||
           project.rfaNumber?.toLowerCase().includes(searchTerm) ||
           project.agentNumber?.toLowerCase().includes(searchTerm) ||
           project.rfaType?.toLowerCase().includes(searchTerm) ||
           project.projectType?.toLowerCase().includes(searchTerm) ||
-          project.products?.toLowerCase().includes(searchTerm) ||
+          productsText.toLowerCase().includes(searchTerm) ||
           project.projectContainer?.toLowerCase().includes(searchTerm) ||
-          project.regionalTeam?.toLowerCase().includes(searchTerm)
+          project.regionalTeam?.toLowerCase().includes(searchTerm) ||
+          sharedFileTypesText.toLowerCase().includes(searchTerm) ||
+          project.sharedFileTypesOther?.toLowerCase().includes(searchTerm)
         );
       });
       

@@ -8,6 +8,10 @@ import EditableProductTags from '../../EditableProductTags';
 import { parseAgileDate, getUserTimezone, formatDateTimeLocal } from '../../../utils/dateUtils';
 import { openPaidServicesEmail } from '../../../utils/emailTemplates';
 import DASPaidServicesSection from '../../shared/DASPaidServicesSection';
+import {
+  PROJECT_FILE_TYPE_OTHER,
+  sanitizeProjectFileTypes
+} from '../../../constants/projectFileTypes';
 
 const REP_EMAIL_REGEX = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
 const ZERO_WIDTH_REGEX = /[\u200B-\u200D\uFEFF]/g;
@@ -149,6 +153,17 @@ const ProjectWizardStep1 = ({
       ...formData,
       dasRepEmailList: sanitizedList,
       dasRepEmail: sanitizedList.map((entry) => entry.email).join('; ')
+    });
+  }, [formData, onFormDataChange]);
+
+  const handleSharedFileTypesChange = useCallback((nextTypes) => {
+    const sanitizedTypes = sanitizeProjectFileTypes(nextTypes);
+    const includesOther = sanitizedTypes.includes(PROJECT_FILE_TYPE_OTHER);
+
+    onFormDataChange({
+      ...formData,
+      sharedFileTypes: sanitizedTypes,
+      sharedFileTypesOther: includesOther ? sanitizeTextValue(formData.sharedFileTypesOther || '') : ''
     });
   }, [formData, onFormDataChange]);
 
@@ -1024,6 +1039,8 @@ const ProjectWizardStep1 = ({
             rfaValue: '',
             status: '',
             products: '',
+            sharedFileTypes: [],
+            sharedFileTypesOther: '',
             triagedBy: '',
             designBy: '',
             qcBy: '',
@@ -2278,6 +2295,36 @@ const ProjectWizardStep1 = ({
               />
               <small className="field-hint">Hover over products to remove them. Use the dropdown to add products.</small>
             </div>
+
+            <div className={`form-group ${isFieldImported('sharedFileTypes') ? 'imported-field' : ''}`}>
+              <EditableProductTags
+                label="Shared File Types"
+                options={dropdownOptions.sharedFileTypesOptions || []}
+                selectedValues={sanitizeProjectFileTypes(formData.sharedFileTypes)}
+                onChange={handleSharedFileTypesChange}
+                isFieldImported={isFieldImported('sharedFileTypes')}
+              />
+              <small className="field-hint">Select all file types provided by the customer for budget, layout, BOM, and submittal work.</small>
+              {isFieldImported('sharedFileTypes') && <span className="import-indicator">📋 Imported</span>}
+            </div>
+
+            {sanitizeProjectFileTypes(formData.sharedFileTypes).includes(PROJECT_FILE_TYPE_OTHER) && (
+              <div className={`form-group ${isFieldImported('sharedFileTypesOther') ? 'imported-field' : ''}`}>
+                <label htmlFor="sharedFileTypesOther">Other File Type Details</label>
+                <input
+                  type="text"
+                  id="sharedFileTypesOther"
+                  name="sharedFileTypesOther"
+                  value={formData.sharedFileTypesOther || ''}
+                  onChange={(e) => onFormDataChange({
+                    ...formData,
+                    sharedFileTypesOther: sanitizeTextValue(e.target.value)
+                  })}
+                  placeholder="Enter additional file type(s)"
+                />
+                {isFieldImported('sharedFileTypesOther') && <span className="import-indicator">📋 Imported</span>}
+              </div>
+            )}
 
             <div className={`form-group ${isFieldImported('projectStage') ? 'imported-field' : ''}`}>
               <label htmlFor="projectStage">Project Stage</label>

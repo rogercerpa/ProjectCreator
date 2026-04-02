@@ -4,6 +4,7 @@ import ProjectTableView from './ProjectTableView';
 import ProjectGroupView from './ProjectGroupView';
 import DASSearchResults from './DASSearchResults';
 import ProjectsCalendarTab from './ProjectsCalendarTab';
+import { PROJECT_FILE_TYPE_OPTIONS, sanitizeProjectFileTypes } from '../constants/projectFileTypes';
 
 function ProjectList({ projects, onProjectSelect, onProjectDelete, onNewProject, onRefresh, onCalendarProjectUpdate }) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -40,6 +41,14 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onNewProject,
   const [dasSearchError, setDasSearchError] = useState(null);
   const [dasSearchInfo, setDasSearchInfo] = useState(null);
   const [dasSearchDebounceTimer, setDasSearchDebounceTimer] = useState(null);
+  const [selectedFileTypes, setSelectedFileTypes] = useState(() => {
+    try {
+      const saved = localStorage.getItem('projectListFileTypeFilters');
+      return saved ? sanitizeProjectFileTypes(JSON.parse(saved)) : [];
+    } catch {
+      return [];
+    }
+  });
 
   // Get placeholder text based on search mode
   const getSearchPlaceholder = () => {
@@ -144,6 +153,20 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onNewProject,
     console.log('Path copied:', path);
   };
 
+  const toggleFileTypeFilter = (fileType) => {
+    setSelectedFileTypes((prev) => {
+      const exists = prev.includes(fileType);
+      const next = exists ? prev.filter((type) => type !== fileType) : [...prev, fileType];
+      localStorage.setItem('projectListFileTypeFilters', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const clearFileTypeFilters = () => {
+    setSelectedFileTypes([]);
+    localStorage.setItem('projectListFileTypeFilters', JSON.stringify([]));
+  };
+
   // Ensure projects is an array
   const safeProjects = Array.isArray(projects) ? projects : [];
 
@@ -185,8 +208,13 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onNewProject,
 
   const filteredProjects = safeProjects.filter(project => {
     try {
-      if (!searchTerm) return true;
       if (!project) return false;
+
+      const projectFileTypes = sanitizeProjectFileTypes(project.sharedFileTypes);
+      const fileTypeFilterMatches = selectedFileTypes.length === 0 ||
+        selectedFileTypes.some((selectedType) => projectFileTypes.includes(selectedType));
+      if (!fileTypeFilterMatches) return false;
+      if (!searchTerm) return true;
       
       const search = searchTerm.toLowerCase();
       
@@ -206,7 +234,9 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onNewProject,
         project.projectContainer,
         project.dasStatus,
         project.dasPaidServiceEnabled ? 'DAS Paid Services' : '',
-        project.dasStatus === 'Fee Waived' ? 'Fee Waived' : ''
+        project.dasStatus === 'Fee Waived' ? 'Fee Waived' : '',
+        projectFileTypes.join(' '),
+        project.sharedFileTypesOther
       ];
       
       return searchableFields.some(field => 
@@ -645,6 +675,36 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onNewProject,
                     title="Clear search"
                   >
                     ✕
+                  </button>
+                )}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">File Types:</span>
+                {PROJECT_FILE_TYPE_OPTIONS.map((fileType) => {
+                  const isSelected = selectedFileTypes.includes(fileType);
+                  return (
+                    <button
+                      key={fileType}
+                      type="button"
+                      onClick={() => toggleFileTypeFilter(fileType)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                        isSelected
+                          ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 border-primary-400 dark:border-primary-600'
+                          : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-primary-400 dark:hover:border-primary-600'
+                      }`}
+                    >
+                      {fileType}
+                    </button>
+                  );
+                })}
+                {selectedFileTypes.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={clearFileTypeFilters}
+                    className="px-3 py-1.5 rounded-full text-xs font-semibold border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    Clear Filters
                   </button>
                 )}
               </div>

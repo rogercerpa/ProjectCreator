@@ -8,6 +8,7 @@ import CollapsibleSection from './shared/CollapsibleSection';
 import BOMDetailsSection from './bom/BOMDetailsSection';
 import { openPaidServicesEmail } from '../utils/emailTemplates';
 import { useUploadContext, UPLOAD_TYPES } from '../contexts/UploadContext';
+import { PROJECT_FILE_TYPE_OTHER, sanitizeProjectFileTypes } from '../constants/projectFileTypes';
 
 const WAIVER_REASON_LABELS = {
   acuitySpecRequirement: 'Acuity specification requirement',
@@ -722,6 +723,30 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
                 <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
                   {typeof project.products === 'string' && project.products ? project.products : 'Not specified'}
                 </span>
+              )}
+            </div>
+          </div>
+          <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+            <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Shared File Types</label>
+            <div className="flex flex-wrap gap-2">
+              {sanitizeProjectFileTypes(project.sharedFileTypes).length > 0 ? (
+                <>
+                  {sanitizeProjectFileTypes(project.sharedFileTypes).map((fileType, index) => (
+                    <span
+                      key={`${fileType}-${index}`}
+                      className="inline-flex items-center px-2.5 py-1 text-xs font-medium bg-info-100 dark:bg-info-900/30 text-info-800 dark:text-info-300 rounded-md border border-info-200 dark:border-info-700"
+                    >
+                      {fileType}
+                    </span>
+                  ))}
+                  {sanitizeProjectFileTypes(project.sharedFileTypes).includes(PROJECT_FILE_TYPE_OTHER) && project.sharedFileTypesOther && (
+                    <span className="inline-flex items-center px-2.5 py-1 text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-md border border-gray-300 dark:border-gray-600">
+                      Other: {project.sharedFileTypesOther}
+                    </span>
+                  )}
+                </>
+              ) : (
+                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Not specified</span>
               )}
             </div>
           </div>

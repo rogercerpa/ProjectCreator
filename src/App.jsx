@@ -52,6 +52,8 @@ const createDefaultFormData = () => ({
   projectAddress: '',
   projectStage: '',
   designProcessPhase: '',
+  sharedFileTypes: [],
+  sharedFileTypesOther: '',
   buyAmericanOrBaba: false,
   agencyName: '',
   rfaStatus: '',

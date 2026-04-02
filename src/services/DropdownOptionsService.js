@@ -1,4 +1,6 @@
 // DropdownOptionsService - Manages dropdown options for form fields
+import { PROJECT_FILE_TYPE_OPTIONS } from '../constants/projectFileTypes';
+
 class DropdownOptionsService {
   constructor() {
     this.defaultOptions = {
@@ -40,7 +42,8 @@ class DropdownOptionsService {
       projectStages: ['None', 'Postponed', 'Prospecting', 'Engagement', 'Solution', 'Commitment', 'Order Won', 'Order Lost', 'Dormant'],
       designProcessPhases: ['None', 'Schematic Design', 'Design Development', 'Construction Documents', 'Bid & Negotiation', 'Construction Phase'],
       rfaStatuses: ['None', 'Pending', 'In Progress', 'Ready for QC', 'Completed', 'On Hold', 'Cancelled'],
-      rfaComplexityLevels: ['Level 1', 'Level 2', 'Level 3', 'Level 4']
+      rfaComplexityLevels: ['Level 1', 'Level 2', 'Level 3', 'Level 4'],
+      sharedFileTypesOptions: PROJECT_FILE_TYPE_OPTIONS
     };
     
     this.options = { ...this.defaultOptions };

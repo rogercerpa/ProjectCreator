@@ -4,6 +4,10 @@ import triageCalculationService from '../services/TriageCalculationService';
 import EditableProductTags from './EditableProductTags';
 import DASPaidServicesSection from './shared/DASPaidServicesSection';
 import { openPaidServicesEmail } from '../utils/emailTemplates';
+import {
+  PROJECT_FILE_TYPE_OTHER,
+  sanitizeProjectFileTypes
+} from '../constants/projectFileTypes';
 
 /**
  * ProjectEditor - Edit mode for project information
@@ -49,6 +53,19 @@ const ProjectEditor = ({
     } else if (result.missingFields?.length) {
       window.alert(`Add ${result.missingFields.join(', ')} to draft the email.`);
     }
+  };
+
+  const handleSharedFileTypesChange = (nextTypes) => {
+    const sanitizedTypes = sanitizeProjectFileTypes(nextTypes);
+    const includesOther = sanitizedTypes.includes(PROJECT_FILE_TYPE_OTHER);
+    const updatedData = {
+      ...formData,
+      sharedFileTypes: sanitizedTypes,
+      sharedFileTypesOther: includesOther ? (formData.sharedFileTypesOther || '').trim() : ''
+    };
+
+    setFormData(updatedData);
+    onProjectDataChange(updatedData);
   };
 
   // Load dropdown options
@@ -413,6 +430,37 @@ const ProjectEditor = ({
               />
               <small className="field-hint">Click on a product tag to remove it. Use the dropdown to add products.</small>
             </div>
+
+            <div className="flex flex-col gap-1.5">
+              <EditableProductTags
+                label="Shared File Types"
+                options={dropdownOptions.sharedFileTypesOptions || []}
+                selectedValues={sanitizeProjectFileTypes(formData.sharedFileTypes)}
+                onChange={handleSharedFileTypesChange}
+              />
+              <small className="field-hint">Track which customer files were provided to support budget, layout, BOM, and submittal work.</small>
+            </div>
+
+            {sanitizeProjectFileTypes(formData.sharedFileTypes).includes(PROJECT_FILE_TYPE_OTHER) && (
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="sharedFileTypesOther">Other File Type Details</label>
+                <input
+                  type="text"
+                  id="sharedFileTypesOther"
+                  name="sharedFileTypesOther"
+                  value={formData.sharedFileTypesOther || ''}
+                  onChange={(e) => {
+                    const updatedData = {
+                      ...formData,
+                      sharedFileTypesOther: e.target.value
+                    };
+                    setFormData(updatedData);
+                    onProjectDataChange(updatedData);
+                  }}
+                  placeholder="Enter additional file type(s)"
+                />
+              </div>
+            )}
 
             <div className="flex flex-col gap-1.5">
               <label htmlFor="projectStage">Project Stage</label>
