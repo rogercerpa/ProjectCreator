@@ -318,14 +318,13 @@ class AIService {
   async _callOpenAI(apiKey, model, systemPrompt, userPrompt, options) {
     const OpenAI = require('openai');
     const client = new OpenAI({ apiKey, timeout: options.timeout });
+    const preparedPrompts = this._prepareOpenAIJsonPrompts(systemPrompt, userPrompt, options.jsonMode);
 
     const requestParams = {
       model,
-      temperature: 0,
-      seed: 42,
       messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
+        { role: 'system', content: preparedPrompts.systemPrompt },
+        { role: 'user', content: preparedPrompts.userPrompt }
       ],
       // Newer OpenAI models reject max_tokens and require max_completion_tokens.
       max_completion_tokens: options.maxTokens
@@ -459,12 +458,11 @@ class AIService {
     }));
 
     const models = response?.data?.data || [];
-    const candidateIds = models
-      .map((m) => m.id)
-      .filter((id) => /^(gpt-|o[1-9]|chatgpt-)/i.test(id))
-      .sort((a, b) => a.localeCompare(b));
+    const candidateRecords = models
+      .map((m) => ({ id: m.id, created: m.created || 0 }))
+      .filter((m) => typeof m.id === 'string' && /^(gpt-|o[1-9]|chatgpt-)/i.test(m.id));
 
-    const prioritizedIds = this._prioritizeOpenAIModels(candidateIds);
+    const prioritizedIds = this._prioritizeOpenAIModels(candidateRecords);
     return prioritizedIds.map((id) => ({
         id,
         label: this._prettifyModelLabel(id),
@@ -543,8 +541,10 @@ class AIService {
 
     for (const [providerId, providerData] of Object.entries(dynamicCatalog)) {
       if (!providerData?.models?.length || !merged[providerId]) continue;
-      merged[providerId].models = providerData.models;
-      merged[providerId].defaultModel = providerData.defaultModel || providerData.models[0].id;
+      const normalizedModels = this._normalizeDiscoveredModels(providerId, providerData.models);
+      if (!normalizedModels.length) continue;
+      merged[providerId].models = normalizedModels;
+      merged[providerId].defaultModel = providerData.defaultModel || normalizedModels[0].id;
     }
 
     return merged;
@@ -614,21 +614,93 @@ class AIService {
     return models[0]?.id || fallbackDefault || null;
   }
 
-  _prioritizeOpenAIModels(modelIds) {
-    const preferredPatterns = [
-      /^gpt-5$/i,
-      /^gpt-5-mini$/i,
-      /^gpt-5-nano$/i,
-      /^o3$/i,
-      /^o4-mini$/i,
-      /^gpt-4\.1$/i,
-      /^gpt-4\.1-mini$/i,
-      /^gpt-4\.1-nano$/i,
-      /^gpt-4o$/i,
-      /^gpt-4o-mini$/i
+  _normalizeDiscoveredModels(providerId, models) {
+    if (!Array.isArray(models) || !models.length) return [];
+
+    if (providerId === 'openai') {
+      const records = models
+        .map((entry) => ({
+          id: entry?.id,
+          created: entry?.created || 0
+        }))
+        .filter((entry) => typeof entry.id === 'string');
+
+      const shortlistedIds = this._prioritizeOpenAIModels(records);
+      const byId = new Map(models.map((entry) => [entry.id, entry]));
+      return shortlistedIds.map((id) => byId.get(id)).filter(Boolean);
+    }
+
+    return models;
+  }
+
+  _prioritizeOpenAIModels(modelRecords) {
+    const preferredFamilies = [
+      'gpt-5',
+      'gpt-5-mini',
+      'gpt-5-nano',
+      'o3',
+      'o4-mini',
+      'gpt-4.1',
+      'gpt-4.1-mini',
+      'gpt-4.1-nano',
+      'gpt-4o',
+      'gpt-4o-mini'
     ];
 
-    return this._selectPreferredModels(modelIds, preferredPatterns, 6);
+    const preferredMatches = preferredFamilies
+      .map((family) => this._pickLatestOpenAIModelForFamily(modelRecords, family))
+      .filter(Boolean);
+    if (preferredMatches.length > 0) {
+      return preferredMatches;
+    }
+
+    const unsupportedPatterns = [
+      /preview/i,
+      /realtime/i,
+      /audio/i,
+      /transcribe/i,
+      /embedding/i,
+      /moderation/i,
+      /image/i,
+      /whisper/i,
+      /tts/i,
+      /instruct/i
+    ];
+
+    const fallbackCandidates = modelRecords
+      .filter((entry) => !unsupportedPatterns.some((pattern) => pattern.test(entry.id)))
+      .sort((a, b) => (b.created || 0) - (a.created || 0))
+      .map((entry) => entry.id);
+
+    return fallbackCandidates.slice(0, 6);
+  }
+
+  _pickLatestOpenAIModelForFamily(modelRecords, family) {
+    const familyRegex = new RegExp(`^${this._escapeRegex(family)}(?:-|$)`, 'i');
+    const matches = modelRecords
+      .filter((entry) => familyRegex.test(entry.id))
+      .sort((a, b) => (b.created || 0) - (a.created || 0));
+    return matches[0]?.id || null;
+  }
+
+  _prepareOpenAIJsonPrompts(systemPrompt, userPrompt, jsonMode) {
+    if (!jsonMode) {
+      return { systemPrompt, userPrompt };
+    }
+
+    const joined = `${systemPrompt || ''} ${userPrompt || ''}`.toLowerCase();
+    if (joined.includes('json')) {
+      return { systemPrompt, userPrompt };
+    }
+
+    return {
+      systemPrompt: `${systemPrompt || ''}\nAlways respond with valid JSON only.`.trim(),
+      userPrompt
+    };
+  }
+
+  _escapeRegex(value) {
+    return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
   _prioritizeGeminiModels(modelIds) {
