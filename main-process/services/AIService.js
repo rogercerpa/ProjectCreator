@@ -8,6 +8,10 @@ const { safeStorage } = require('electron');
 const fs = require('fs-extra');
 const path = require('path');
 const os = require('os');
+const axios = require('axios');
+
+const MODEL_CATALOG_VERSION = 1;
+const DEFAULT_MODEL_CATALOG_TTL_MS = 24 * 60 * 60 * 1000;
 
 const PROVIDERS = {
   openai: {
@@ -45,13 +49,92 @@ class AIService {
     this._providerInstance = null;
     this._cachedProvider = null;
     this._cachedModel = null;
+    this.modelCatalogTtlMs = DEFAULT_MODEL_CATALOG_TTL_MS;
+    this._catalogCache = null;
+    this._catalogFetchedAt = null;
+    this._catalogRefreshPromise = null;
   }
 
   /**
    * Get available providers and their models
    */
-  getProviders() {
-    return PROVIDERS;
+  async getProviders(options = {}) {
+    const { forceRefresh = false } = options;
+    const staticProviders = this._cloneProviders(PROVIDERS);
+    const config = await this._loadConfigFile();
+    const selectedProvider = config.provider || null;
+
+    let source = 'static';
+    let fetchedAt = null;
+    let dynamicCatalog = null;
+
+    if (selectedProvider && config.apiKeyEncrypted) {
+      const memoryCatalog = this._readCachedCatalog();
+      if (!forceRefresh && memoryCatalog) {
+        dynamicCatalog = memoryCatalog.providers;
+        fetchedAt = memoryCatalog.fetchedAt;
+        source = 'cached';
+      } else {
+        const persistedCatalog = this._getPersistedCatalog(config);
+        if (!forceRefresh && this._isCatalogFresh(persistedCatalog?.fetchedAt)) {
+          this._setCatalogCache(persistedCatalog.providers, persistedCatalog.fetchedAt);
+          dynamicCatalog = persistedCatalog.providers;
+          fetchedAt = persistedCatalog.fetchedAt;
+          source = 'cached';
+        } else {
+          const refreshed = await this._refreshCatalogFromProviders(config);
+          if (refreshed?.providers) {
+            dynamicCatalog = refreshed.providers;
+            fetchedAt = refreshed.fetchedAt;
+            source = 'live';
+          } else if (persistedCatalog?.providers) {
+            this._setCatalogCache(persistedCatalog.providers, persistedCatalog.fetchedAt);
+            dynamicCatalog = persistedCatalog.providers;
+            fetchedAt = persistedCatalog.fetchedAt;
+            source = 'cached';
+          }
+        }
+      }
+    }
+
+    const mergedProviders = this._mergeProviders(staticProviders, dynamicCatalog);
+
+    return {
+      providers: mergedProviders,
+      source,
+      fetchedAt
+    };
+  }
+
+  /**
+   * Force refresh model catalog from provider API
+   */
+  async refreshModelCatalog() {
+    const config = await this._loadConfigFile();
+    if (!config.provider || !config.apiKeyEncrypted) {
+      return {
+        success: true,
+        refreshed: false,
+        reason: 'missing-config',
+        source: 'static'
+      };
+    }
+
+    const refreshed = await this._refreshCatalogFromProviders(config);
+    if (!refreshed) {
+      return { success: false, refreshed: false, error: 'Failed to refresh model catalog.' };
+    }
+
+    return { success: true, refreshed: true, fetchedAt: refreshed.fetchedAt, source: 'live' };
+  }
+
+  /**
+   * Trigger a background refresh without blocking startup
+   */
+  refreshModelCatalogInBackground() {
+    this.refreshModelCatalog().catch((error) => {
+      console.warn('AI model catalog background refresh failed:', error.message);
+    });
   }
 
   /**
@@ -60,9 +143,16 @@ class AIService {
   async saveConfig({ provider, model, apiKey }) {
     try {
       const config = await this._loadConfigFile();
+      const hasIncomingModel = typeof model === 'string' && model.trim().length > 0;
 
       if (provider) config.provider = provider;
       if (model) config.model = model;
+      if (config.provider && !PROVIDERS[config.provider]) {
+        throw new Error(`Unsupported AI provider: ${config.provider}`);
+      }
+      if (config.provider && !hasIncomingModel) {
+        config.model = this._resolveModel(config.provider, config.model, PROVIDERS);
+      }
 
       if (apiKey) {
         if (!safeStorage.isEncryptionAvailable()) {
@@ -79,6 +169,11 @@ class AIService {
       this._providerInstance = null;
       this._cachedProvider = null;
       this._cachedModel = null;
+      if (provider || apiKey) {
+        this._catalogCache = null;
+        this._catalogFetchedAt = null;
+        this.refreshModelCatalogInBackground();
+      }
 
       return { success: true };
     } catch (error) {
@@ -93,12 +188,18 @@ class AIService {
   async getConfig() {
     try {
       const config = await this._loadConfigFile();
+      const provider = config.provider || null;
+      const providersResult = await this.getProviders();
+      const resolvedModel = this._resolveModel(provider, config.model, providersResult.providers);
+
       return {
         success: true,
-        provider: config.provider || null,
-        model: config.model || null,
+        provider,
+        model: resolvedModel,
         hasApiKey: !!config.apiKeyEncrypted,
-        updatedAt: config.updatedAt || null
+        updatedAt: config.updatedAt || null,
+        modelCatalogSource: providersResult.source || 'static',
+        modelCatalogFetchedAt: providersResult.fetchedAt || null
       };
     } catch (error) {
       return { success: true, provider: null, model: null, hasApiKey: false, updatedAt: null };
@@ -164,7 +265,8 @@ class AIService {
 
     const config = await this._loadConfigFile();
     const provider = config.provider;
-    const model = config.model || PROVIDERS[provider]?.defaultModel;
+    const providersResult = await this.getProviders();
+    const model = this._resolveModel(provider, config.model, providersResult.providers);
 
     if (!provider || !config.apiKeyEncrypted) {
       throw new Error('AI not configured. Please set up your AI provider in Settings.');
@@ -277,6 +379,217 @@ class AIService {
 
     const textBlock = response.content.find(b => b.type === 'text');
     return textBlock ? textBlock.text : '';
+  }
+
+  async _refreshCatalogFromProviders(config) {
+    if (this._catalogRefreshPromise) {
+      return this._catalogRefreshPromise;
+    }
+
+    this._catalogRefreshPromise = (async () => {
+      try {
+        const providerId = config.provider;
+        const apiKey = this._decryptKey(config.apiKeyEncrypted);
+        let discoveredModels = [];
+
+        switch (providerId) {
+          case 'openai':
+            discoveredModels = await this._fetchOpenAIModels(apiKey);
+            break;
+          case 'gemini':
+            discoveredModels = await this._fetchGeminiModels(apiKey);
+            break;
+          case 'anthropic':
+            discoveredModels = await this._fetchAnthropicModels(apiKey);
+            break;
+          default:
+            return null;
+        }
+
+        if (!Array.isArray(discoveredModels) || discoveredModels.length === 0) {
+          return null;
+        }
+
+        const providersCatalog = {
+          [providerId]: {
+            models: discoveredModels,
+            defaultModel: this._pickDefaultModel(providerId, discoveredModels)
+          }
+        };
+
+        const fetchedAt = new Date().toISOString();
+        this._setCatalogCache(providersCatalog, fetchedAt);
+        await this._persistCatalog(providersCatalog, fetchedAt);
+
+        return { providers: providersCatalog, fetchedAt };
+      } catch (error) {
+        console.warn('Failed to refresh AI model catalog:', error.message);
+        return null;
+      } finally {
+        this._catalogRefreshPromise = null;
+      }
+    })();
+
+    return this._catalogRefreshPromise;
+  }
+
+  async _fetchOpenAIModels(apiKey) {
+    const response = await this._requestWithRetry(() => axios.get('https://api.openai.com/v1/models', {
+      timeout: 12000,
+      headers: { Authorization: `Bearer ${apiKey}` }
+    }));
+
+    const models = response?.data?.data || [];
+    return models
+      .map((m) => m.id)
+      .filter((id) => /^(gpt-|o[1-9]|chatgpt-)/i.test(id))
+      .sort((a, b) => a.localeCompare(b))
+      .map((id) => ({
+        id,
+        label: this._prettifyModelLabel(id),
+        description: 'Discovered from OpenAI API'
+      }));
+  }
+
+  async _fetchGeminiModels(apiKey) {
+    const response = await this._requestWithRetry(() => axios.get('https://generativelanguage.googleapis.com/v1beta/models', {
+      timeout: 12000,
+      params: { key: apiKey, pageSize: 1000 }
+    }));
+
+    const models = response?.data?.models || [];
+    return models
+      .filter((m) => Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes('generateContent'))
+      .map((m) => m.name?.replace(/^models\//, ''))
+      .filter((id) => id && /^gemini/i.test(id))
+      .sort((a, b) => a.localeCompare(b))
+      .map((id) => ({
+        id,
+        label: this._prettifyModelLabel(id),
+        description: 'Discovered from Gemini API'
+      }));
+  }
+
+  async _fetchAnthropicModels(apiKey) {
+    const response = await this._requestWithRetry(() => axios.get('https://api.anthropic.com/v1/models', {
+      timeout: 12000,
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01'
+      }
+    }));
+
+    const models = response?.data?.data || [];
+    return models
+      .map((m) => m.id)
+      .filter((id) => id && /^claude/i.test(id))
+      .sort((a, b) => a.localeCompare(b))
+      .map((id) => ({
+        id,
+        label: this._prettifyModelLabel(id),
+        description: 'Discovered from Anthropic API'
+      }));
+  }
+
+  async _requestWithRetry(requestFn, maxAttempts = 2) {
+    let lastError = null;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        return await requestFn();
+      } catch (error) {
+        lastError = error;
+        if (attempt < maxAttempts) {
+          await this._delay(600 * attempt);
+        }
+      }
+    }
+    throw lastError;
+  }
+
+  _delay(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  _mergeProviders(staticProviders, dynamicCatalog) {
+    const merged = this._cloneProviders(staticProviders);
+    if (!dynamicCatalog || typeof dynamicCatalog !== 'object') {
+      return merged;
+    }
+
+    for (const [providerId, providerData] of Object.entries(dynamicCatalog)) {
+      if (!providerData?.models?.length || !merged[providerId]) continue;
+      merged[providerId].models = providerData.models;
+      merged[providerId].defaultModel = providerData.defaultModel || providerData.models[0].id;
+    }
+
+    return merged;
+  }
+
+  _resolveModel(provider, model, providers) {
+    if (!provider || !providers || !providers[provider]) return model || null;
+
+    const providerModels = providers[provider].models || [];
+    const defaultModel = providers[provider].defaultModel || providerModels[0]?.id || null;
+    if (!providerModels.length) return defaultModel;
+
+    const isConfiguredModelValid = model && providerModels.some((entry) => entry.id === model);
+    return isConfiguredModelValid ? model : defaultModel;
+  }
+
+  _readCachedCatalog() {
+    if (!this._catalogCache || !this._catalogFetchedAt) return null;
+    if (!this._isCatalogFresh(this._catalogFetchedAt)) return null;
+    return { providers: this._cloneProviders(this._catalogCache), fetchedAt: this._catalogFetchedAt };
+  }
+
+  _setCatalogCache(providers, fetchedAt) {
+    this._catalogCache = this._cloneProviders(providers);
+    this._catalogFetchedAt = fetchedAt;
+  }
+
+  _isCatalogFresh(fetchedAt) {
+    if (!fetchedAt) return false;
+    const fetchedMs = Date.parse(fetchedAt);
+    if (Number.isNaN(fetchedMs)) return false;
+    return (Date.now() - fetchedMs) < this.modelCatalogTtlMs;
+  }
+
+  _getPersistedCatalog(config) {
+    const catalog = config?.modelCatalog;
+    if (!catalog || catalog.version !== MODEL_CATALOG_VERSION) return null;
+    if (!catalog.providers || typeof catalog.providers !== 'object') return null;
+    return { providers: catalog.providers, fetchedAt: catalog.fetchedAt || null };
+  }
+
+  async _persistCatalog(providers, fetchedAt) {
+    const config = await this._loadConfigFile();
+    config.modelCatalog = {
+      version: MODEL_CATALOG_VERSION,
+      fetchedAt,
+      providers
+    };
+    config.updatedAt = config.updatedAt || new Date().toISOString();
+    await fs.ensureDir(path.dirname(this.configPath));
+    await fs.writeJson(this.configPath, config, { spaces: 2 });
+  }
+
+  _cloneProviders(providers) {
+    return JSON.parse(JSON.stringify(providers || {}));
+  }
+
+  _prettifyModelLabel(modelId) {
+    return modelId
+      .split('-')
+      .map((part) => (part ? part[0].toUpperCase() + part.slice(1) : part))
+      .join(' ');
+  }
+
+  _pickDefaultModel(providerId, models) {
+    const fallbackDefault = PROVIDERS[providerId]?.defaultModel;
+    if (fallbackDefault && models.some((entry) => entry.id === fallbackDefault)) {
+      return fallbackDefault;
+    }
+    return models[0]?.id || fallbackDefault || null;
   }
 
   // ===== Internal Helpers =====

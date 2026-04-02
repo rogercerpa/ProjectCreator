@@ -419,6 +419,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   aiHasKey: () => ipcRenderer.invoke('ai:has-key'),
   aiClearKey: () => ipcRenderer.invoke('ai:clear-key'),
   aiGetProviders: () => ipcRenderer.invoke('ai:get-providers'),
+  aiRefreshModelCatalog: () => ipcRenderer.invoke('ai:refresh-model-catalog'),
 
   // ===== BOM QC REVIEW APIs =====
   bomQcRunAnalysis: (projectId, requirementsConfig) => ipcRenderer.invoke('bom-qc:run-analysis', projectId, requirementsConfig),

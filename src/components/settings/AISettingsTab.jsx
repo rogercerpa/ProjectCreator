@@ -14,6 +14,8 @@ const AISettingsTab = () => {
   const [testResult, setTestResult] = useState(null);
   const [notification, setNotification] = useState(null);
   const [configUpdatedAt, setConfigUpdatedAt] = useState(null);
+  const [catalogSource, setCatalogSource] = useState('static');
+  const [catalogFetchedAt, setCatalogFetchedAt] = useState(null);
 
   useEffect(() => {
     loadConfig();
@@ -27,15 +29,33 @@ const AISettingsTab = () => {
         electronAPI.aiGetConfig()
       ]);
 
+      let nextProviders = {};
       if (providersResult.success) {
-        setProviders(providersResult.providers);
+        nextProviders = providersResult.providers || {};
+        setProviders(nextProviders);
+        setCatalogSource(providersResult.source || 'static');
+        setCatalogFetchedAt(providersResult.fetchedAt || null);
       }
 
       if (configResult.success) {
-        setSelectedProvider(configResult.provider || '');
-        setSelectedModel(configResult.model || '');
+        const configuredProvider = configResult.provider || '';
+        const validatedModel = getValidModel(
+          configuredProvider,
+          configResult.model,
+          nextProviders
+        );
+
+        setSelectedProvider(configuredProvider);
+        setSelectedModel(validatedModel || '');
         setHasExistingKey(configResult.hasApiKey || false);
         setConfigUpdatedAt(configResult.updatedAt);
+
+        if (configuredProvider && configResult.model && validatedModel !== configResult.model) {
+          setNotification({
+            type: 'info',
+            message: `Saved model "${configResult.model}" is no longer available. Switched to "${validatedModel}".`
+          });
+        }
       }
     } catch (error) {
       console.error('Error loading AI config:', error);
@@ -44,13 +64,40 @@ const AISettingsTab = () => {
     }
   };
 
+  const getValidModel = (providerId, desiredModel, providerMap) => {
+    const providerConfig = providerMap[providerId];
+    if (!providerConfig) return '';
+
+    const models = providerConfig.models || [];
+    if (!models.length) return '';
+    if (desiredModel && models.some((entry) => entry.id === desiredModel)) {
+      return desiredModel;
+    }
+
+    return providerConfig.defaultModel || models[0].id;
+  };
+
   const handleProviderChange = (providerId) => {
     setSelectedProvider(providerId);
-    const providerConfig = providers[providerId];
-    if (providerConfig) {
-      setSelectedModel(providerConfig.defaultModel);
-    }
+    setSelectedModel(getValidModel(providerId, selectedModel, providers));
     setTestResult(null);
+  };
+
+  const handleRefreshModels = async () => {
+    try {
+      setIsTesting(true);
+      const result = await electronAPI.aiRefreshModelCatalog();
+      if (result.success) {
+        setNotification({ type: 'success', message: 'Model catalog refreshed.' });
+      } else {
+        setNotification({ type: 'error', message: result.error || 'Failed to refresh model catalog.' });
+      }
+      await loadConfig();
+    } catch (error) {
+      setNotification({ type: 'error', message: error.message });
+    } finally {
+      setIsTesting(false);
+    }
   };
 
   const handleSave = async () => {
@@ -195,7 +242,16 @@ const AISettingsTab = () => {
         {/* Model Selection */}
         {selectedProvider && (
           <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Model</label>
+            <div className="flex items-center justify-between mb-2 gap-3">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Model</label>
+              <button
+                onClick={handleRefreshModels}
+                disabled={isTesting || (!hasExistingKey && !apiKey)}
+                className="px-2 py-1 text-xs text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Refresh Models
+              </button>
+            </div>
             <select
               value={selectedModel}
               onChange={(e) => setSelectedModel(e.target.value)}
@@ -207,6 +263,10 @@ const AISettingsTab = () => {
                 </option>
               ))}
             </select>
+            <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+              Catalog source: {catalogSource}
+              {catalogFetchedAt ? ` • Last refresh: ${new Date(catalogFetchedAt).toLocaleString()}` : ''}
+            </div>
           </div>
         )}
 
