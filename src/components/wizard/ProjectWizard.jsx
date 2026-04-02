@@ -160,6 +160,22 @@ const createAssignmentsInBackground = async (savedProject, selectedAssignee) => 
     }
   }
 
+  try {
+    if (window.electronAPI?.workloadGoogleSyncSettingsGet && window.electronAPI?.workloadGoogleSyncPush) {
+      const settingsResult = await window.electronAPI.workloadGoogleSyncSettingsGet();
+      const settings = settingsResult?.success ? (settingsResult.settings || {}) : {};
+      if (settings.enabled && settings.autoSyncOnAssignmentChanges) {
+        window.electronAPI.workloadGoogleSyncPush({
+          dryRun: !!settings.dryRunDefault
+        }).catch((error) => {
+          console.warn('ProjectWizard: Google sync push failed:', error);
+        });
+      }
+    }
+  } catch (error) {
+    console.warn('ProjectWizard: Unable to trigger Google sync push:', error);
+  }
+
   console.log('ProjectWizard: Background assignment creation complete');
 };
 

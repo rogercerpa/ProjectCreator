@@ -21,6 +21,19 @@ const WorkloadDashboard = ({ onNavigateToProject, onNavigateToSettings }) => {
     lastSync: null,
     lastExport: null
   });
+  const [googleSyncSettings, setGoogleSyncSettings] = useState({
+    enabled: false,
+    provider: 'apps-script',
+    endpointUrl: '',
+    apiKey: '',
+    sharedSecret: '',
+    autoSyncOnAssignmentChanges: false,
+    dryRunDefault: true,
+    lastPushAt: null,
+    lastPullAt: null,
+    lastBidirectionalAt: null,
+    lastError: null
+  });
   const [recentActivity, setRecentActivity] = useState([]);
   const [allAssignments, setAllAssignments] = useState([]); // Store all assignments for filtering
   const [users, setUsers] = useState([]);
@@ -47,6 +60,7 @@ const WorkloadDashboard = ({ onNavigateToProject, onNavigateToSettings }) => {
       
       // Load Excel settings
       await loadExcelSettings();
+      await loadGoogleSyncSettings();
       
       // Load recent activity
       await loadRecentActivity();
@@ -153,6 +167,22 @@ const WorkloadDashboard = ({ onNavigateToProject, onNavigateToSettings }) => {
     } catch (error) {
       console.error('Error loading users:', error);
       return [];
+    }
+  };
+
+  const loadGoogleSyncSettings = async () => {
+    try {
+      if (window.electronAPI?.workloadGoogleSyncSettingsGet) {
+        const result = await window.electronAPI.workloadGoogleSyncSettingsGet();
+        if (result.success) {
+          setGoogleSyncSettings(prev => ({
+            ...prev,
+            ...(result.settings || {})
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Error loading Google sync settings:', error);
     }
   };
 
@@ -313,6 +343,67 @@ const WorkloadDashboard = ({ onNavigateToProject, onNavigateToSettings }) => {
 
   const clearNotification = () => {
     setNotification(null);
+  };
+
+  const handleGoogleSyncSettingsSave = async () => {
+    try {
+      if (!window.electronAPI?.workloadGoogleSyncSettingsUpdate) {
+        showNotification('error', 'Google sync APIs are not available in this build.');
+        return;
+      }
+
+      const result = await window.electronAPI.workloadGoogleSyncSettingsUpdate(googleSyncSettings);
+      if (result.success) {
+        setGoogleSyncSettings(prev => ({ ...prev, ...(result.settings || {}) }));
+        showNotification('success', 'Google sync settings saved.');
+      } else {
+        showNotification('error', result.error || 'Failed to save Google sync settings.');
+      }
+    } catch (error) {
+      console.error('Error saving Google sync settings:', error);
+      showNotification('error', error.message);
+    }
+  };
+
+  const handleGoogleSync = async (mode) => {
+    try {
+      if (!googleSyncSettings.enabled) {
+        showNotification('error', 'Enable Google sync in settings first.');
+        return;
+      }
+
+      if (!googleSyncSettings.endpointUrl) {
+        showNotification('error', 'Apps Script endpoint URL is required.');
+        return;
+      }
+
+      setSyncStatus({ type: 'loading', message: `Running Google ${mode} sync...` });
+      let result = null;
+      const syncOptions = {
+        dryRun: !!googleSyncSettings.dryRunDefault
+      };
+
+      if (mode === 'push') {
+        result = await window.electronAPI.workloadGoogleSyncPush(syncOptions);
+      } else if (mode === 'pull') {
+        result = await window.electronAPI.workloadGoogleSyncPull(syncOptions);
+      } else {
+        result = await window.electronAPI.workloadGoogleSyncBidirectional(syncOptions);
+      }
+
+      if (result?.success) {
+        setSyncStatus({ type: 'success', message: `Google ${mode} sync completed successfully.` });
+        await loadGoogleSyncSettings();
+        await loadRecentActivity();
+      } else {
+        setSyncStatus({ type: 'error', message: result?.error || `Google ${mode} sync failed.` });
+      }
+
+      setTimeout(() => setSyncStatus(null), 6000);
+    } catch (error) {
+      console.error(`Error running Google ${mode} sync:`, error);
+      setSyncStatus({ type: 'error', message: error.message });
+    }
   };
 
   const getTimeAgo = (date) => {
@@ -671,6 +762,100 @@ const WorkloadDashboard = ({ onNavigateToProject, onNavigateToSettings }) => {
               >
                 ⚙️ Configure Settings
               </button>
+            </div>
+          </div>
+
+          {/* Google Sheets Sync */}
+          <div className="p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Google Sheets Sync</h2>
+            <div className="space-y-3">
+              <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                <input
+                  type="checkbox"
+                  checked={!!googleSyncSettings.enabled}
+                  onChange={(e) => setGoogleSyncSettings(prev => ({ ...prev, enabled: e.target.checked }))}
+                />
+                Enable Apps Script Sync
+              </label>
+
+              <input
+                type="text"
+                value={googleSyncSettings.endpointUrl || ''}
+                onChange={(e) => setGoogleSyncSettings(prev => ({ ...prev, endpointUrl: e.target.value }))}
+                placeholder="Apps Script endpoint URL"
+                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              />
+
+              <input
+                type="text"
+                value={googleSyncSettings.apiKey || ''}
+                onChange={(e) => setGoogleSyncSettings(prev => ({ ...prev, apiKey: e.target.value }))}
+                placeholder="API Key (optional)"
+                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              />
+
+              <input
+                type="password"
+                value={googleSyncSettings.sharedSecret || ''}
+                onChange={(e) => setGoogleSyncSettings(prev => ({ ...prev, sharedSecret: e.target.value }))}
+                placeholder="Shared Secret (optional HMAC)"
+                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              />
+
+              <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                <input
+                  type="checkbox"
+                  checked={!!googleSyncSettings.autoSyncOnAssignmentChanges}
+                  onChange={(e) => setGoogleSyncSettings(prev => ({ ...prev, autoSyncOnAssignmentChanges: e.target.checked }))}
+                />
+                Auto-push when assignments change
+              </label>
+
+              <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                <input
+                  type="checkbox"
+                  checked={!!googleSyncSettings.dryRunDefault}
+                  onChange={(e) => setGoogleSyncSettings(prev => ({ ...prev, dryRunDefault: e.target.checked }))}
+                />
+                Dry-run by default
+              </label>
+
+              <button
+                onClick={handleGoogleSyncSettingsSave}
+                className="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-all"
+              >
+                Save Google Sync Settings
+              </button>
+
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  onClick={() => handleGoogleSync('push')}
+                  className="px-3 py-2 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-all"
+                >
+                  Push
+                </button>
+                <button
+                  onClick={() => handleGoogleSync('pull')}
+                  className="px-3 py-2 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-all"
+                >
+                  Pull
+                </button>
+                <button
+                  onClick={() => handleGoogleSync('bidirectional')}
+                  className="px-3 py-2 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-all"
+                >
+                  Bi-Sync
+                </button>
+              </div>
+
+              <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                <p>Last Push: {googleSyncSettings.lastPushAt ? new Date(googleSyncSettings.lastPushAt).toLocaleString() : 'Never'}</p>
+                <p>Last Pull: {googleSyncSettings.lastPullAt ? new Date(googleSyncSettings.lastPullAt).toLocaleString() : 'Never'}</p>
+                <p>Last Bi-Sync: {googleSyncSettings.lastBidirectionalAt ? new Date(googleSyncSettings.lastBidirectionalAt).toLocaleString() : 'Never'}</p>
+                {googleSyncSettings.lastError && (
+                  <p className="text-red-600 dark:text-red-400">Last Error: {googleSyncSettings.lastError}</p>
+                )}
+              </div>
             </div>
           </div>
 

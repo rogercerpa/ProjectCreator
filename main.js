@@ -55,6 +55,7 @@ const SharedCalendarService = require('./main-process/services/SharedCalendarSer
 const FieldMappingService = require('./main-process/services/FieldMappingService');
 const WorkloadExcelService = require('./main-process/services/WorkloadExcelService');
 const WorkloadExcelSyncService = require('./main-process/services/WorkloadExcelSyncService');
+const GoogleSheetSyncService = require('./main-process/services/GoogleSheetSyncService');
 const DASGeneralService = require('./main-process/services/DASGeneralService');
 
 // Import package.json for version info
@@ -108,6 +109,7 @@ const sharedCalendarService = new SharedCalendarService({
 const fieldMappingService = new FieldMappingService();
 const workloadExcelService = new WorkloadExcelService(fieldMappingService);
 const workloadExcelSyncService = new WorkloadExcelSyncService(workloadExcelService, fieldMappingService, settingsService);
+const googleSheetSyncService = new GoogleSheetSyncService(workloadPersistenceService, projectPersistenceService);
 
 // Initialize DAS General service
 const dasGeneralService = new DASGeneralService(settingsService);
@@ -2898,6 +2900,82 @@ ipcMain.handle('workload-excel:sync-status', async () => {
     return { success: true, status };
   } catch (error) {
     console.error('Error getting sync status:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// ===== WORKLOAD GOOGLE SHEETS SYNC IPC HANDLERS =====
+ipcMain.handle('workload-google:sync-contract-get', async () => {
+  try {
+    return {
+      success: true,
+      contract: googleSheetSyncService.getSyncContract()
+    };
+  } catch (error) {
+    console.error('Error getting Google sync contract:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('workload-google:sync-settings-get', async () => {
+  try {
+    return await googleSheetSyncService.getSyncSettings();
+  } catch (error) {
+    console.error('Error getting Google sync settings:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('workload-google:sync-settings-update', async (event, settings) => {
+  try {
+    return await googleSheetSyncService.updateSyncSettings(settings);
+  } catch (error) {
+    console.error('Error updating Google sync settings:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('workload-google:sync-push', async (event, options = {}) => {
+  try {
+    return await googleSheetSyncService.pushAssignments(options);
+  } catch (error) {
+    console.error('Error pushing to Google Sheets:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('workload-google:sync-pull', async (event, options = {}) => {
+  try {
+    return await googleSheetSyncService.pullAssignmentUpdates(options);
+  } catch (error) {
+    console.error('Error pulling from Google Sheets:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('workload-google:sync-bidirectional', async (event, options = {}) => {
+  try {
+    return await googleSheetSyncService.performBidirectionalSync(options);
+  } catch (error) {
+    console.error('Error running bidirectional Google sync:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('workload-google:sync-status', async () => {
+  try {
+    return await googleSheetSyncService.getSyncStatus();
+  } catch (error) {
+    console.error('Error getting Google sync status:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('workload-google:sync-audit-get', async (event, limit = 100) => {
+  try {
+    return await workloadPersistenceService.loadGoogleSyncAudit(limit);
+  } catch (error) {
+    console.error('Error loading Google sync audit:', error);
     return { success: false, error: error.message };
   }
 });

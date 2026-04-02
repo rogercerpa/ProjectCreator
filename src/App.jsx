@@ -477,6 +477,29 @@ function App() {
     }
   };
 
+  const triggerGoogleSyncAfterAssignmentChanges = async () => {
+    try {
+      if (!window.electronAPI?.workloadGoogleSyncSettingsGet || !window.electronAPI?.workloadGoogleSyncPush) {
+        return;
+      }
+
+      const settingsResult = await window.electronAPI.workloadGoogleSyncSettingsGet();
+      if (!settingsResult?.success) return;
+
+      const settings = settingsResult.settings || {};
+      if (!settings.enabled || !settings.autoSyncOnAssignmentChanges) return;
+
+      // Fire-and-forget push so project updates are never blocked by network sync.
+      window.electronAPI.workloadGoogleSyncPush({
+        dryRun: !!settings.dryRunDefault
+      }).catch((error) => {
+        console.warn('Google sync push failed after assignment changes:', error);
+      });
+    } catch (error) {
+      console.warn('Unable to trigger Google sync after assignment changes:', error);
+    }
+  };
+
   // Helper function to sync work task assignments when project is updated
   const syncWorkTaskAssignments = async (project) => {
     try {
@@ -687,6 +710,8 @@ function App() {
       for (const assignment of assignmentsToRemove) {
         await deleteAssignment(assignment.id);
       }
+
+      await triggerGoogleSyncAfterAssignmentChanges();
 
     } catch (error) {
       console.error('Error syncing work task assignments:', error);

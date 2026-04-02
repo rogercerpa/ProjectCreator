@@ -18,7 +18,10 @@ class WorkloadPersistenceService {
       workloadFile: 'workload.json',
       usersFile: 'users.json',
       assignmentsFile: 'assignments.json',
-      configFile: 'workload-config.json'
+      configFile: 'workload-config.json',
+      googleSyncConfigFile: 'google-sync-config.json',
+      googleSyncStateFile: 'google-sync-state.json',
+      googleSyncAuditFile: 'google-sync-audit.json'
     };
     
     this.initializeDataDirectory();
@@ -36,6 +39,9 @@ class WorkloadPersistenceService {
       const usersPath = this.getDataFilePath(this.config.usersFile);
       const assignmentsPath = this.getDataFilePath(this.config.assignmentsFile);
       const configPath = this.getDataFilePath(this.config.configFile);
+      const googleSyncConfigPath = this.getDataFilePath(this.config.googleSyncConfigFile);
+      const googleSyncStatePath = this.getDataFilePath(this.config.googleSyncStateFile);
+      const googleSyncAuditPath = this.getDataFilePath(this.config.googleSyncAuditFile);
       
       if (!await fs.pathExists(workloadPath)) {
         await this.saveWorkloads([]);
@@ -59,6 +65,43 @@ class WorkloadPersistenceService {
             conflictResolution: 'last-write-wins'
           }
         });
+      }
+
+      if (!await fs.pathExists(googleSyncConfigPath)) {
+        await this.saveGoogleSyncConfig({
+          enabled: false,
+          provider: 'apps-script',
+          endpointUrl: '',
+          apiKey: '',
+          sharedSecret: '',
+          syncMode: 'manual',
+          autoSyncIntervalMinutes: 10,
+          autoSyncOnAssignmentChanges: false,
+          conflictResolution: 'ownership-with-latest',
+          timeoutMs: 20000,
+          dryRunDefault: true,
+          lastSyncToken: null
+        });
+      }
+
+      if (!await fs.pathExists(googleSyncStatePath)) {
+        await this.saveGoogleSyncState({
+          lastPushAt: null,
+          lastPullAt: null,
+          lastBidirectionalAt: null,
+          lastError: null
+        });
+      }
+
+      if (!await fs.pathExists(googleSyncAuditPath)) {
+        await fs.writeJson(googleSyncAuditPath, {
+          entries: [],
+          metadata: {
+            lastModified: new Date().toISOString(),
+            version: 1,
+            count: 0
+          }
+        }, { spaces: 2 });
       }
       
       console.log('✅ Workload data directory initialized:', this.config.dataDirectory);
@@ -458,6 +501,138 @@ class WorkloadPersistenceService {
   }
 
   /**
+   * Save Google sync configuration
+   */
+  async saveGoogleSyncConfig(config) {
+    try {
+      const filePath = this.getDataFilePath(this.config.googleSyncConfigFile);
+      await fs.writeJson(filePath, {
+        config,
+        metadata: {
+          lastModified: new Date().toISOString(),
+          version: 1
+        }
+      }, { spaces: 2 });
+      return { success: true, config };
+    } catch (error) {
+      console.error('Error saving Google sync config:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Load Google sync configuration
+   */
+  async loadGoogleSyncConfig() {
+    try {
+      const filePath = this.getDataFilePath(this.config.googleSyncConfigFile);
+      if (!await fs.pathExists(filePath)) {
+        return { success: true, config: {} };
+      }
+
+      const data = await fs.readJson(filePath);
+      return { success: true, config: data.config || {} };
+    } catch (error) {
+      console.error('Error loading Google sync config:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Save Google sync state
+   */
+  async saveGoogleSyncState(state) {
+    try {
+      const filePath = this.getDataFilePath(this.config.googleSyncStateFile);
+      await fs.writeJson(filePath, {
+        state,
+        metadata: {
+          lastModified: new Date().toISOString(),
+          version: 1
+        }
+      }, { spaces: 2 });
+      return { success: true, state };
+    } catch (error) {
+      console.error('Error saving Google sync state:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Load Google sync state
+   */
+  async loadGoogleSyncState() {
+    try {
+      const filePath = this.getDataFilePath(this.config.googleSyncStateFile);
+      if (!await fs.pathExists(filePath)) {
+        return { success: true, state: {} };
+      }
+
+      const data = await fs.readJson(filePath);
+      return { success: true, state: data.state || {} };
+    } catch (error) {
+      console.error('Error loading Google sync state:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Append entry to Google sync audit log
+   */
+  async appendGoogleSyncAuditLog(entry, maxEntries = 500) {
+    try {
+      const filePath = this.getDataFilePath(this.config.googleSyncAuditFile);
+      let entries = [];
+
+      if (await fs.pathExists(filePath)) {
+        const existing = await fs.readJson(filePath);
+        entries = existing.entries || [];
+      }
+
+      entries.push(entry);
+      if (entries.length > maxEntries) {
+        entries = entries.slice(entries.length - maxEntries);
+      }
+
+      await fs.writeJson(filePath, {
+        entries,
+        metadata: {
+          lastModified: new Date().toISOString(),
+          version: 1,
+          count: entries.length
+        }
+      }, { spaces: 2 });
+
+      return { success: true, count: entries.length };
+    } catch (error) {
+      console.error('Error appending Google sync audit log:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Load Google sync audit entries
+   */
+  async loadGoogleSyncAudit(limit = 100) {
+    try {
+      const filePath = this.getDataFilePath(this.config.googleSyncAuditFile);
+      if (!await fs.pathExists(filePath)) {
+        return { success: true, entries: [] };
+      }
+
+      const data = await fs.readJson(filePath);
+      const entries = data.entries || [];
+      return {
+        success: true,
+        entries: entries.slice(Math.max(0, entries.length - limit))
+      };
+    } catch (error) {
+      console.error('Error loading Google sync audit:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * Get statistics
    */
   async getStats() {
@@ -526,7 +701,10 @@ class WorkloadPersistenceService {
         this.config.workloadFile,
         this.config.usersFile,
         this.config.assignmentsFile,
-        this.config.configFile
+        this.config.configFile,
+        this.config.googleSyncConfigFile,
+        this.config.googleSyncStateFile,
+        this.config.googleSyncAuditFile
       ];
       
       for (const file of files) {

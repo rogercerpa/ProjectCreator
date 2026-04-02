@@ -299,6 +299,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   workloadExcelSyncToExcel: (data, filePath) => ipcRenderer.invoke('workload-excel:sync-to-excel', data, filePath),
   workloadExcelSyncBidirectional: (appData, filePath) => ipcRenderer.invoke('workload-excel:sync-bidirectional', appData, filePath),
   workloadExcelSyncStatus: () => ipcRenderer.invoke('workload-excel:sync-status'),
+
+  // Google Sheets sync operations
+  workloadGoogleSyncContractGet: () => ipcRenderer.invoke('workload-google:sync-contract-get'),
+  workloadGoogleSyncSettingsGet: () => ipcRenderer.invoke('workload-google:sync-settings-get'),
+  workloadGoogleSyncSettingsUpdate: (settings) => ipcRenderer.invoke('workload-google:sync-settings-update', settings),
+  workloadGoogleSyncPush: (options) => ipcRenderer.invoke('workload-google:sync-push', options),
+  workloadGoogleSyncPull: (options) => ipcRenderer.invoke('workload-google:sync-pull', options),
+  workloadGoogleSyncBidirectional: (options) => ipcRenderer.invoke('workload-google:sync-bidirectional', options),
+  workloadGoogleSyncStatus: () => ipcRenderer.invoke('workload-google:sync-status'),
+  workloadGoogleSyncAuditGet: (limit) => ipcRenderer.invoke('workload-google:sync-audit-get', limit),
   
   // Event listeners for real-time updates
   onWorkloadFileChanged: (callback) => {
