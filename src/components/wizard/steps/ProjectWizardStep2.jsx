@@ -85,6 +85,8 @@ const Confetti = ({ active }) => {
  */
 const ProjectWizardStep2 = ({
   formData,
+  existingProjects = [],
+  currentProjectId = null,
   onFormDataChange,
   errors = {},
   onFieldError,
@@ -117,6 +119,7 @@ const ProjectWizardStep2 = ({
   const [selectedAssignee, setSelectedAssignee] = useState(null);
   const [loadingRecommendations, setLoadingRecommendations] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [revisionDesignerSuggestion, setRevisionDesignerSuggestion] = useState('');
   const formDataRef = useRef(formData);
 
   const getAverageProductKnowledge = (user) => {
@@ -147,6 +150,57 @@ const ProjectWizardStep2 = ({
       default:
         return 'border-gray-300 bg-gray-50/70 hover:border-gray-400 dark:border-gray-600 dark:bg-gray-800/70 dark:hover:border-gray-500';
     }
+  };
+
+  const normalizeText = (value) => String(value || '').trim().toLowerCase();
+
+  const findPreviousRevisionDesigner = (projectData) => {
+    if (!projectData?.isRevision || !Array.isArray(existingProjects) || existingProjects.length === 0) {
+      return null;
+    }
+
+    const normalizedPrevPath = normalizeText(projectData.previousRevisionPath);
+    const normalizedProjectName = normalizeText(projectData.projectName);
+    const normalizedContainer = normalizeText(projectData.projectContainer);
+
+    const candidates = existingProjects.filter((project) =>
+      project &&
+      project.id !== currentProjectId &&
+      project.designBy &&
+      String(project.designBy).trim()
+    );
+
+    if (normalizedPrevPath) {
+      const directMatch = candidates.find((project) => normalizeText(project.rfaPath) === normalizedPrevPath);
+      if (directMatch) {
+        return {
+          designerName: directMatch.designBy.trim(),
+          source: 'previous_revision',
+          projectId: directMatch.id || ''
+        };
+      }
+    }
+
+    const related = candidates.filter((project) =>
+      normalizeText(project.projectName) === normalizedProjectName &&
+      normalizeText(project.projectContainer) === normalizedContainer
+    );
+
+    if (related.length === 0) {
+      return null;
+    }
+
+    related.sort((a, b) => {
+      const dateA = new Date(a.lastModified || a.updatedAt || a.createdAt || 0).getTime();
+      const dateB = new Date(b.lastModified || b.updatedAt || b.createdAt || 0).getTime();
+      return dateB - dateA;
+    });
+
+    return {
+      designerName: related[0].designBy.trim(),
+      source: 'previous_revision',
+      projectId: related[0].id || ''
+    };
   };
 
   const handleAssigneeSelection = (user, sourceFormData = formDataRef.current) => {
@@ -252,15 +306,58 @@ const ProjectWizardStep2 = ({
       };
 
       const topRecommendations = await smartAssignmentService.getRecommendations(projectDetails, 3);
-      setRecommendations(topRecommendations);
-      
-      // Auto-select the top recommendation if available
-      if (topRecommendations.length > 0) {
-        const topUser = topRecommendations[0].user;
-        handleAssigneeSelection(topUser, sourceFormData);
-        
+      const previousRevisionDesigner = findPreviousRevisionDesigner(sourceFormData);
+      const currentDesignBy = normalizeText(sourceFormData.designBy);
+
+      let prioritizedRecommendations = [...topRecommendations];
+      if (previousRevisionDesigner) {
+        setRevisionDesignerSuggestion(previousRevisionDesigner.designerName);
+        const preferredIndex = prioritizedRecommendations.findIndex(
+          (rec) => normalizeText(rec?.user?.name) === normalizeText(previousRevisionDesigner.designerName)
+        );
+        if (preferredIndex > 0) {
+          const [preferredRecommendation] = prioritizedRecommendations.splice(preferredIndex, 1);
+          prioritizedRecommendations.unshift(preferredRecommendation);
+        }
+      } else {
+        setRevisionDesignerSuggestion('');
+      }
+
+      setRecommendations(prioritizedRecommendations);
+
+      // Auto-select recommendation if Design By is still blank.
+      if (!currentDesignBy && prioritizedRecommendations.length > 0) {
+        const preferredRecommendation = previousRevisionDesigner
+          ? prioritizedRecommendations.find(
+              (rec) => normalizeText(rec?.user?.name) === normalizeText(previousRevisionDesigner.designerName)
+            )
+          : null;
+
+        if (preferredRecommendation) {
+          const nextFormData = {
+            ...sourceFormData,
+            recommendedDesignBy: previousRevisionDesigner.designerName,
+            recommendedDesignBySource: previousRevisionDesigner.source,
+            recommendedDesignByConfidence: 'high',
+            revisionSourceProjectId: previousRevisionDesigner.projectId
+          };
+          handleAssigneeSelection(preferredRecommendation.user, nextFormData);
+        } else if (previousRevisionDesigner) {
+          onFormDataChange({
+            ...sourceFormData,
+            designBy: previousRevisionDesigner.designerName,
+            recommendedDesignBy: previousRevisionDesigner.designerName,
+            recommendedDesignBySource: previousRevisionDesigner.source,
+            recommendedDesignByConfidence: 'medium',
+            revisionSourceProjectId: previousRevisionDesigner.projectId
+          });
+        } else {
+          const topUser = prioritizedRecommendations[0].user;
+          handleAssigneeSelection(topUser, sourceFormData);
+        }
+
         // Trigger confetti celebration for finding perfect match
-        if (topRecommendations[0].matchLevel === 'excellent') {
+        if (prioritizedRecommendations[0].matchLevel === 'excellent') {
           setTimeout(() => {
             setShowConfetti(true);
             setTimeout(() => setShowConfetti(false), 3000);
@@ -270,6 +367,7 @@ const ProjectWizardStep2 = ({
     } catch (error) {
       console.error('Failed to load recommendations:', error);
       setRecommendations([]);
+      setRevisionDesignerSuggestion('');
     } finally {
       setLoadingRecommendations(false);
     }
@@ -879,6 +977,11 @@ const ProjectWizardStep2 = ({
         {/* DIRECT COPY: Assignment section from ProjectForm.jsx lines 1272-1298 */}
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
           <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-3">Assignment:</h4>
+          {!formData.designBy && (
+            <div className="mb-3 rounded-lg border border-warning-300 bg-warning-50 px-3 py-2 text-sm text-warning-800 dark:border-warning-700 dark:bg-warning-900/20 dark:text-warning-200">
+              Assign <strong>Design By</strong> during triage so completion is not blocked later.
+            </div>
+          )}
           <div className="form-group">
             <label>
               <input
@@ -962,6 +1065,11 @@ const ProjectWizardStep2 = ({
               <h4 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
                 🎯 Recommended Assignees
               </h4>
+              {revisionDesignerSuggestion && (
+                <p className="mt-2 rounded-md border border-primary-200 bg-primary-50 px-2 py-1 text-xs text-primary-800 dark:border-primary-700 dark:bg-primary-900/20 dark:text-primary-200">
+                  Suggested from prior revision: <strong>{revisionDesignerSuggestion}</strong>
+                </p>
+              )}
               <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                 Based on availability, expertise, and project requirements
               </p>

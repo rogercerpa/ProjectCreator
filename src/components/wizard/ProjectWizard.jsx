@@ -193,6 +193,7 @@ const ProjectWizard = ({
   onWizardReset,
   onNavigateToSettings,
   existingProject = null,
+  existingProjects = [],
   mode = 'create' // 'create' or 'edit'
 }) => {
   // Use formData from props (managed by App.jsx) instead of internal state
@@ -1417,6 +1418,8 @@ const ProjectWizard = ({
           >
             <ProjectWizardStep2
               formData={formData}
+              existingProjects={existingProjects}
+              currentProjectId={existingProject?.id}
               onFormDataChange={handleFormDataChange}
               errors={stepValidation.validationErrors}
               onFieldError={handleFieldError}

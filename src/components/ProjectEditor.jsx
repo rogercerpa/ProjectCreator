@@ -204,8 +204,16 @@ const ProjectEditor = ({
       newFormData._statusChangeSource = 'manual';
     }
     
-    // Validate if status is changing to 'Completed'
-    if (name === 'status' && processedValue === 'Completed') {
+    // Validate if rfaStatus is changing to 'Completed'
+    if (name === 'rfaStatus' && processedValue === 'Completed') {
+      if (!newFormData.designBy || newFormData.designBy.trim() === '') {
+        setErrors(prev => ({
+          ...prev,
+          designBy: 'Design By is required when marking RFA Status as Completed'
+        }));
+        alert('Please assign Design By before marking RFA Status as Completed.');
+        return;
+      }
       if (!newFormData.projectNotes || newFormData.projectNotes.trim() === '') {
         setErrors(prev => ({ 
           ...prev, 
@@ -296,6 +304,10 @@ const ProjectEditor = ({
           newErrors.dasWaiverOtherNote = 'Provide details when "Other" is selected';
         }
       }
+    }
+
+    if (formData.rfaStatus === 'Completed' && (!formData.designBy || formData.designBy.trim() === '')) {
+      newErrors.designBy = 'Design By is required when RFA Status is Completed';
     }
     
     setErrors(newErrors);
@@ -661,6 +673,11 @@ const ProjectEditor = ({
         {/* WorkTask Section */}
         <div className="bg-white dark:bg-gray-800 rounded-lg mb-6 p-6 shadow-md md:p-4 md:mb-4 sm:p-3">
           <h3 className="form-section-header">👥 WorkTask</h3>
+          {!formData.designBy && (
+            <div className="mb-4 rounded-lg border border-warning-300 bg-warning-50 px-3 py-2 text-sm text-warning-800 dark:border-warning-700 dark:bg-warning-900/20 dark:text-warning-200">
+              Assign <strong>Design By</strong> during triage/QC so completion is not blocked later.
+            </div>
+          )}
           <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 2xl:gap-6 lg:grid-cols-2 lg:gap-4 md:grid-cols-1 md:gap-4">
             <div className="flex flex-col gap-1.5">
               <label htmlFor="triagedBy">Triaged By</label>
@@ -684,12 +701,14 @@ const ProjectEditor = ({
                 name="designBy"
                 value={formData.designBy || ''}
                 onChange={handleInputChange}
+                className={errors.designBy ? 'error' : ''}
               >
                 <option value="">Select Design By</option>
                 {dropdownOptions.assignedToOptions?.map(person => (
                   <option key={person} value={person}>{person}</option>
                 ))}
               </select>
+              {errors.designBy && <span className="error-message">{errors.designBy}</span>}
               <div className="mt-2 px-3 py-2 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-700 rounded-lg">
                 <div className="text-[11px] uppercase tracking-wide font-semibold text-primary-700 dark:text-primary-300">
                   Total Triage Time

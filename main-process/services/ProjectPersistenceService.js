@@ -38,6 +38,15 @@ class ProjectPersistenceService {
   // Save project data - FIXED VERSION with status tracking
   async saveProject(projectData) {
     try {
+      const isCompleted = String(projectData?.rfaStatus || '').trim().toLowerCase() === 'completed';
+      const hasDesignOwner = Boolean(projectData?.designBy && String(projectData.designBy).trim());
+      if (isCompleted && !hasDesignOwner) {
+        return {
+          success: false,
+          error: 'Design By is required before setting RFA Status to Completed.'
+        };
+      }
+
       const projects = await this.loadProjects();
       
       // Check if project already exists

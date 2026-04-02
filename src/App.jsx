@@ -1050,6 +1050,7 @@ function App() {
                 <ProjectWizard
                   mode={currentProject ? 'edit' : 'create'}
                   existingProject={currentProject}
+                  existingProjects={projects}
                   formData={formData}
                   onFormDataChange={handleFormDataChange}
                   onProjectCreated={handleProjectCreated}
