@@ -327,15 +327,34 @@ class AIService {
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
       ],
-      max_tokens: options.maxTokens
+      // Newer OpenAI models reject max_tokens and require max_completion_tokens.
+      max_completion_tokens: options.maxTokens
     };
 
     if (options.jsonMode) {
       requestParams.response_format = { type: 'json_object' };
     }
 
-    const response = await client.chat.completions.create(requestParams);
-    return response.choices[0].message.content;
+    try {
+      const response = await client.chat.completions.create(requestParams);
+      return response.choices[0].message.content;
+    } catch (error) {
+      const errorMessage = error?.message || '';
+      const usesUnsupportedMaxCompletionTokens = errorMessage.includes('max_completion_tokens');
+      if (!usesUnsupportedMaxCompletionTokens) {
+        throw error;
+      }
+
+      // Compatibility fallback for older models/endpoints.
+      const fallbackParams = {
+        ...requestParams,
+        max_tokens: options.maxTokens
+      };
+      delete fallbackParams.max_completion_tokens;
+
+      const fallbackResponse = await client.chat.completions.create(fallbackParams);
+      return fallbackResponse.choices[0].message.content;
+    }
   }
 
   async _callGemini(apiKey, model, systemPrompt, userPrompt, options) {
@@ -440,11 +459,13 @@ class AIService {
     }));
 
     const models = response?.data?.data || [];
-    return models
+    const candidateIds = models
       .map((m) => m.id)
       .filter((id) => /^(gpt-|o[1-9]|chatgpt-)/i.test(id))
-      .sort((a, b) => a.localeCompare(b))
-      .map((id) => ({
+      .sort((a, b) => a.localeCompare(b));
+
+    const prioritizedIds = this._prioritizeOpenAIModels(candidateIds);
+    return prioritizedIds.map((id) => ({
         id,
         label: this._prettifyModelLabel(id),
         description: 'Discovered from OpenAI API'
@@ -458,12 +479,14 @@ class AIService {
     }));
 
     const models = response?.data?.models || [];
-    return models
+    const candidateIds = models
       .filter((m) => Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes('generateContent'))
       .map((m) => m.name?.replace(/^models\//, ''))
       .filter((id) => id && /^gemini/i.test(id))
-      .sort((a, b) => a.localeCompare(b))
-      .map((id) => ({
+      .sort((a, b) => a.localeCompare(b));
+
+    const prioritizedIds = this._prioritizeGeminiModels(candidateIds);
+    return prioritizedIds.map((id) => ({
         id,
         label: this._prettifyModelLabel(id),
         description: 'Discovered from Gemini API'
@@ -480,11 +503,13 @@ class AIService {
     }));
 
     const models = response?.data?.data || [];
-    return models
+    const candidateIds = models
       .map((m) => m.id)
       .filter((id) => id && /^claude/i.test(id))
-      .sort((a, b) => a.localeCompare(b))
-      .map((id) => ({
+      .sort((a, b) => a.localeCompare(b));
+
+    const prioritizedIds = this._prioritizeAnthropicModels(candidateIds);
+    return prioritizedIds.map((id) => ({
         id,
         label: this._prettifyModelLabel(id),
         description: 'Discovered from Anthropic API'
@@ -586,10 +611,73 @@ class AIService {
 
   _pickDefaultModel(providerId, models) {
     const fallbackDefault = PROVIDERS[providerId]?.defaultModel;
-    if (fallbackDefault && models.some((entry) => entry.id === fallbackDefault)) {
-      return fallbackDefault;
-    }
     return models[0]?.id || fallbackDefault || null;
+  }
+
+  _prioritizeOpenAIModels(modelIds) {
+    const preferredPatterns = [
+      /^gpt-5$/i,
+      /^gpt-5-mini$/i,
+      /^gpt-5-nano$/i,
+      /^o3$/i,
+      /^o4-mini$/i,
+      /^gpt-4\.1$/i,
+      /^gpt-4\.1-mini$/i,
+      /^gpt-4\.1-nano$/i,
+      /^gpt-4o$/i,
+      /^gpt-4o-mini$/i
+    ];
+
+    return this._selectPreferredModels(modelIds, preferredPatterns, 6);
+  }
+
+  _prioritizeGeminiModels(modelIds) {
+    const preferredPatterns = [
+      /^gemini-2\.5-pro$/i,
+      /^gemini-2\.5-flash$/i,
+      /^gemini-2\.5-flash-lite$/i,
+      /^gemini-2\.0-flash$/i
+    ];
+
+    return this._selectPreferredModels(modelIds, preferredPatterns, 5);
+  }
+
+  _prioritizeAnthropicModels(modelIds) {
+    const latestByFamily = ['opus', 'sonnet', 'haiku']
+      .map((family) => this._pickLatestModelByFamily(modelIds, `claude-${family}`))
+      .filter(Boolean);
+
+    if (latestByFamily.length > 0) {
+      return latestByFamily;
+    }
+
+    return modelIds.slice(-5).reverse();
+  }
+
+  _pickLatestModelByFamily(modelIds, familyPrefix) {
+    const familyMatches = modelIds
+      .filter((id) => id.toLowerCase().startsWith(familyPrefix.toLowerCase()))
+      .sort((a, b) => a.localeCompare(b));
+    return familyMatches[familyMatches.length - 1] || null;
+  }
+
+  _selectPreferredModels(modelIds, preferredPatterns, fallbackLimit = 5) {
+    const selected = [];
+    const seen = new Set();
+
+    preferredPatterns.forEach((pattern) => {
+      const match = modelIds.find((id) => pattern.test(id));
+      if (match && !seen.has(match)) {
+        selected.push(match);
+        seen.add(match);
+      }
+    });
+
+    if (selected.length > 0) {
+      return selected;
+    }
+
+    return modelIds.slice(-fallbackLimit).reverse();
   }
 
   // ===== Internal Helpers =====

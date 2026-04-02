@@ -266,6 +266,7 @@ app.whenReady().then(async () => {
     console.error("❌ Error initializing shared calendar watcher:", error);
   }
   createWindow();
+  aiService.refreshModelCatalogInBackground();
   const template = [
     {
       label: "File",
@@ -2911,9 +2912,22 @@ ipcMain.handle("ai:clear-key", async () => {
 });
 ipcMain.handle("ai:get-providers", async () => {
   try {
-    return { success: true, providers: aiService.getProviders() };
+    const result = await aiService.getProviders();
+    return {
+      success: true,
+      providers: result.providers,
+      source: result.source,
+      fetchedAt: result.fetchedAt
+    };
   } catch (error) {
     return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("ai:refresh-model-catalog", async () => {
+  try {
+    return await aiService.refreshModelCatalog();
+  } catch (error) {
+    return { success: false, refreshed: false, error: error.message };
   }
 });
 ipcMain.handle("bom-qc:run-analysis", async (event, projectId, requirementsConfig) => {
