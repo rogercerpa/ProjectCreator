@@ -108,7 +108,7 @@ class ReadyForQCService {
 
   /**
    * Scan the Ready for QC folder for zip files
-   * Includes all zip files present in the folder
+   * Only includes zip files modified within the last 5 business days
    * @returns {Promise<Array>} Array of zip file info objects
    */
   async scanReadyForQCFolder() {
@@ -122,7 +122,10 @@ class ReadyForQCService {
       // Read directory contents
       const files = await fs.readdir(this.readyForQCFolderPath);
       const zipFiles = [];
-      console.log('[ReadyForQC] Scanning for zip files in Ready for QC folder');
+      const cutoffDate = this.getBusinessDaysAgo(5);
+      const cutoffDateStr = cutoffDate.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+
+      console.log(`[ReadyForQC] Scanning for zip files modified after ${cutoffDateStr} (5 business days ago)`);
 
       for (const file of files) {
         const filePath = path.join(this.readyForQCFolderPath, file);
@@ -131,18 +134,25 @@ class ReadyForQCService {
         // Check if it's a zip file
         if (stats.isFile() && file.toLowerCase().endsWith('.zip')) {
           const modifiedDate = stats.mtime;
-          zipFiles.push({
-            name: file,
-            path: filePath,
-            size: stats.size,
-            modifiedDate: modifiedDate,
-            // Remove .zip extension for matching
-            nameWithoutExtension: file.replace(/\.zip$/i, '')
-          });
+          const isRecent = this.isWithinBusinessDays(modifiedDate, 5);
+
+          if (isRecent) {
+            zipFiles.push({
+              name: file,
+              path: filePath,
+              size: stats.size,
+              modifiedDate: modifiedDate,
+              // Remove .zip extension for matching
+              nameWithoutExtension: file.replace(/\.zip$/i, '')
+            });
+          } else {
+            const fileDateStr = modifiedDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+            console.log(`[ReadyForQC] Skipping old zip file "${file}" (modified: ${fileDateStr}, cutoff: ${cutoffDateStr})`);
+          }
         }
       }
 
-      console.log(`[ReadyForQC] Found ${zipFiles.length} zip file(s) out of ${files.filter(f => f.toLowerCase().endsWith('.zip')).length} total zip files`);
+      console.log(`[ReadyForQC] Found ${zipFiles.length} recent zip files (within 5 business days) out of ${files.filter(f => f.toLowerCase().endsWith('.zip')).length} total zip files`);
       return zipFiles;
 
     } catch (error) {
