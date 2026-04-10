@@ -366,20 +366,20 @@ function App() {
 
   const handleProjectCreated = async (project) => {
     console.log('🎯 handleProjectCreated called with:', project);
-    
+
     // Validate project data
     if (!project) {
       console.error('❌ handleProjectCreated: No project provided!');
       throw new Error('No project provided to handleProjectCreated');
     }
-    
+
     if (!project.id) {
       console.error('❌ handleProjectCreated: Project missing ID!', project);
       throw new Error('Project missing ID');
     }
-    
+
     console.log('✅ handleProjectCreated: Project validation passed');
-    
+
     // IDLE FIX: Helper to wrap promises with timeout to prevent hanging after long idle
     // Returns fallbackValue if promise doesn't resolve within timeout
     const withTimeout = (promise, ms, fallbackValue) => {
@@ -391,7 +391,9 @@ function App() {
       });
       return Promise.race([promise, timeout]);
     };
-    
+
+    let navigationResult = { ok: false, navigated: false, reason: 'unknown' };
+
     try {
       // IDLE FIX: Reload projects with timeout protection
       // If app was idle for 30+ minutes, IPC may be slow - use 3 second timeout
@@ -401,16 +403,16 @@ function App() {
         3000, // 3 second timeout
         null  // Return null on timeout
       );
-      
+
       let projectToSet = project;
       let projectsList = null;
-      
+
       if (projectsResult && projectsResult.success && Array.isArray(projectsResult.projects)) {
         console.log('✅ handleProjectCreated: Successfully reloaded projects from storage');
         console.log(`🔄 handleProjectCreated: Found ${projectsResult.projects.length} projects in storage`);
-        
+
         projectsList = projectsResult.projects;
-        
+
         // Find the newly created project in the fresh data
         const freshProject = projectsList.find(p => p.id === project.id);
         if (freshProject) {
@@ -424,7 +426,7 @@ function App() {
         console.warn('⚠️ handleProjectCreated: Projects reload timed out or failed, using provided project');
         projectsList = null; // Will trigger fallback below
       }
-      
+
       // Update state with flushSync for synchronous updates
       console.log('🔄 handleProjectCreated: Updating state...');
       flushSync(() => {
@@ -445,22 +447,24 @@ function App() {
         }
         setCurrentProject(projectToSet);
       });
-      
+
       // Reset form data so wizard shows clean Step 1 when user returns
       console.log('🔄 handleProjectCreated: Resetting form data...');
       handleFormReset(); // Don't await - let it run async
-      
+
       // Navigate to project management view immediately
       console.log('🎯 handleProjectCreated: Navigating to project-management');
       flushSync(() => {
         setCurrentView('project-management');
       });
-      
+
       console.log('✅ handleProjectCreated: Navigation completed successfully');
-      
+      navigationResult = { ok: true, navigated: true, reason: 'primary-path' };
+
     } catch (error) {
       console.error('❌ handleProjectCreated: Error during state updates:', error);
-      
+      navigationResult = { ok: false, navigated: false, reason: `state-update-error:${error.message || 'unknown'}` };
+
       // Fallback: Use provided project and navigate anyway
       console.log('🔄 handleProjectCreated: Attempting fallback navigation...');
       try {
@@ -468,29 +472,33 @@ function App() {
           setProjects(prev => [project, ...prev]);
           setCurrentProject(project);
         });
-        
+
         // Reset form data (don't await)
         handleFormReset();
-        
+
         // Navigate to project management view
         flushSync(() => {
           setCurrentView('project-management');
         });
-        
+
         console.log('✅ handleProjectCreated: Fallback navigation completed');
+        navigationResult = { ok: true, navigated: true, reason: 'fallback-path' };
       } catch (fallbackError) {
         console.error('❌ handleProjectCreated: Fallback also failed:', fallbackError);
+        navigationResult = { ok: false, navigated: false, reason: `fallback-error:${fallbackError.message || 'unknown'}` };
+
         // Still try to navigate even if fallback failed
         try {
           setCurrentProject(project);
           setCurrentView('project-management');
+          navigationResult = { ok: true, navigated: true, reason: 'last-resort-path' };
         } catch (e) {
           console.error('❌ handleProjectCreated: Final navigation attempt failed:', e);
+          navigationResult = { ok: false, navigated: false, reason: `final-navigation-error:${e.message || 'unknown'}` };
         }
       }
-      // Don't re-throw - navigation should have completed
     }
-    
+
     // Track project creation in analytics (non-blocking)
     try {
       analyticsService.trackProjectCreation(project, {
@@ -503,6 +511,8 @@ function App() {
       console.warn('⚠️ handleProjectCreated: Analytics tracking failed:', analyticsError);
       // Don't throw - analytics failure shouldn't block navigation
     }
+
+    return navigationResult;
   };
 
   const triggerGoogleSyncAfterAssignmentChanges = async () => {
@@ -748,6 +758,7 @@ function App() {
   };
 
   const handleProjectUpdated = async (updatedProject, alreadySaved = false) => {
+    let updateResult = { ok: false, navigated: false, reason: 'unknown' };
     try {
       let projectToUse = updatedProject;
       
@@ -777,6 +788,7 @@ function App() {
       setCurrentProject(projectToUse);
       console.log('✅ App.jsx: currentProject updated, ECD:', projectToUse.ecd);
       await syncSharedCalendarEntry(projectToUse);
+      updateResult = { ok: true, navigated: true, reason: 'project-updated' };
       
     } catch (error) {
       console.error('Error updating project:', error);
@@ -785,7 +797,10 @@ function App() {
         prev.map(p => p.id === updatedProject.id ? updatedProject : p)
       );
       setCurrentProject(updatedProject);
+      updateResult = { ok: true, navigated: true, reason: 'project-updated-fallback' };
     }
+
+    return updateResult;
   };
 
   const handleCalendarProjectUpdate = async (projectId, updates) => {

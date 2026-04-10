@@ -1060,18 +1060,35 @@ const ProjectWizard = ({
           const callNavigationWithTimeout = async (navigationFn, project, handlerName) => {
             console.log(`ProjectWizard: Calling ${handlerName} with timeout protection`);
             try {
-              await Promise.race([
+              const navigationResponse = await Promise.race([
                 navigationFn(project),
                 new Promise((_, reject) =>
                   setTimeout(() => reject(new Error(`Navigation timed out after ${NAVIGATION_TIMEOUT_MS / 1000}s`)), NAVIGATION_TIMEOUT_MS)
                 )
               ]);
-              console.log(`ProjectWizard: ${handlerName} completed successfully`);
-              return { success: true };
+
+              const navigationConfirmed = Boolean(
+                navigationResponse &&
+                typeof navigationResponse === 'object' &&
+                navigationResponse.navigated === true
+              );
+
+              if (navigationConfirmed) {
+                console.log(`ProjectWizard: ${handlerName} completed with explicit navigation confirmation`);
+                return { success: true, navigationConfirmed: true };
+              }
+
+              console.warn(`ProjectWizard: ${handlerName} resolved without navigation confirmation`, navigationResponse);
+              return {
+                success: false,
+                navigationConfirmed: false,
+                error: new Error(`${handlerName} resolved without navigation confirmation`),
+                isTimeout: false
+              };
             } catch (error) {
               const isTimeout = error.message && error.message.includes('timed out');
               console.error(`ProjectWizard: ${handlerName} failed:`, error);
-              return { success: false, error, isTimeout };
+              return { success: false, navigationConfirmed: false, error, isTimeout };
             }
           };
 
@@ -1120,6 +1137,18 @@ const ProjectWizard = ({
           clearTimeout(safetyTimer);
 
           if (navigationSuccess) {
+            // Short watchdog: if navigation does not unmount promptly, release stuck loading state.
+            setTimeout(() => {
+              if (isNavigatingAwayRef.current) {
+                console.warn('ProjectWizard: Navigation watchdog triggered - releasing stuck loading state');
+                isNavigatingAwayRef.current = false;
+                setIsLoading(false);
+                setNotification({
+                  type: 'warning',
+                  message: 'Project was saved, but navigation did not complete. Please open it from Projects.'
+                });
+              }
+            }, 3500);
             console.log('ProjectWizard: Navigation successful, keeping loading state until unmount');
             return;
           }
