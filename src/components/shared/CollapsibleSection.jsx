@@ -71,24 +71,27 @@ function CollapsibleSection({
       {/* Header */}
       <div
         onClick={handleToggle}
-        className="flex items-center justify-between p-6 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150"
+        className="flex items-center justify-between p-4 sm:p-6 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150 gap-3"
       >
-        <div className="flex items-center gap-3">
+        <div className="relative z-10 flex items-center gap-3 shrink-0 bg-white dark:bg-gray-800 pr-1">
           {icon && <span className="text-xl">{icon}</span>}
-          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">{title}</h2>
+          <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 whitespace-nowrap">{title}</h2>
           {headerExtra && (
             <div onClick={handleActionsClick}>
               {headerExtra}
             </div>
           )}
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 flex-1 items-center justify-end gap-2 sm:gap-3">
           {headerActions && (
-            <div className="flex gap-2" onClick={handleActionsClick}>
+            <div
+              className="flex min-w-0 max-w-full items-center justify-start gap-1.5 overflow-x-auto whitespace-nowrap pb-1 pl-1 pr-1 custom-scrollbar [&>*]:shrink-0"
+              onClick={handleActionsClick}
+            >
               {headerActions}
             </div>
           )}
-          <div className="flex items-center gap-2 ml-2 pl-2 border-l border-gray-200 dark:border-gray-600">
+          <div className="flex items-center gap-2 ml-1 sm:ml-2 pl-2 border-l border-gray-200 dark:border-gray-600 shrink-0">
             <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden sm:inline">
               {isExpanded ? 'Collapse' : 'Expand'}
             </span>

@@ -611,26 +611,29 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
               <>
                 <button 
                   onClick={handleCopyDates}
-                  className="btn-outline-primary btn-sm"
+                  className="btn-outline-primary btn-sm h-8 px-2 text-xs justify-center sm:h-9 sm:px-2 sm:text-xs md:px-2.5 md:text-sm"
+                  aria-label="Copy Dates"
                   title="Copy ECD and Requested Date to clipboard"
                 >
-                  📅 Copy Dates
+                  Copy Dates
                 </button>
                 <button 
                   onClick={handleExportToDASBoard}
                   disabled={isExporting || !project.rfaNumber || !project.projectName}
-                  className="btn-outline-primary btn-sm"
+                  className="btn-outline-primary btn-sm h-8 px-2 text-xs justify-center sm:h-9 sm:px-2 sm:text-xs md:px-2.5 md:text-sm"
+                  aria-label="Copy to Board"
                   title="Export project data to DAS Board format"
                 >
-                  📊 Copy to DAS Board
+                  Copy to Board
                 </button>
                 <button 
                   onClick={handleExportToAgile}
                   disabled={isExporting}
-                  className="btn-outline-primary btn-sm"
+                  className="btn-outline-primary btn-sm h-8 px-2 text-xs justify-center sm:h-9 sm:px-2 sm:text-xs md:px-2.5 md:text-sm"
+                  aria-label="Copy to Agile"
                   title="Export triage breakdown to Agile format"
                 >
-                  📈 Copy to Agile
+                  Copy to Agile
                 </button>
               </>
             )}
@@ -638,39 +641,43 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
               <button 
                 onClick={handleDownloadFolder}
                 disabled={isDownloading}
-                className="btn-outline-primary btn-sm"
+                className="btn-outline-primary btn-sm h-8 px-2 text-xs justify-center sm:h-9 sm:px-2 sm:text-xs md:px-2.5 md:text-sm"
+                aria-label={isDownloading ? 'Downloading folder' : 'Download Folder'}
                 title="Download project folder from Ready for QC"
               >
-                {isDownloading ? '⏳ Downloading...' : '📥 Download Folder'}
+                {isDownloading ? 'Downloading...' : 'Download Folder'}
               </button>
             )}
             {showUploadButton && (
               hasAlreadyUploaded ? (
                 <button 
                   disabled
-                  className="btn-outline-success btn-sm opacity-75 cursor-not-allowed"
+                  className="btn-outline-success btn-sm h-8 px-2 text-xs justify-center opacity-75 cursor-not-allowed sm:h-9 sm:px-2 sm:text-xs md:px-2.5 md:text-sm"
+                  aria-label="Uploaded to DAS"
                   title={`Uploaded on ${new Date(project.dasUploadStatus.uploadedAt).toLocaleString()}`}
                 >
-                  ✅ Uploaded to DAS
+                  Uploaded to Drive
                 </button>
               ) : (
                 <button 
                   onClick={() => handleDasUpload(false)}
                   disabled={isUploading}
-                  className="btn-primary btn-sm"
+                  className="btn-primary btn-sm h-8 px-2 text-xs justify-center sm:h-9 sm:px-2 sm:text-xs md:px-2.5 md:text-sm"
+                  aria-label={isUploading ? 'Uploading to DAS Drive' : 'Upload to DAS Drive'}
                   title="Upload project folder to DAS Drive (Z:)"
                 >
-                  {isUploading ? '⏳ Uploading...' : '📤 Upload to DAS Drive'}
+                  {isUploading ? 'Uploading...' : 'Upload to Drive'}
                 </button>
               )
             )}
             {showOpenDasButton && (
               <button 
                 onClick={handleOpenDasFolder}
-                className="btn-outline-primary btn-sm"
+                className="btn-outline-primary btn-sm h-8 px-2 text-xs justify-center sm:h-9 sm:px-2 sm:text-xs md:px-2.5 md:text-sm"
+                aria-label="Open Drive Folder"
                 title="Open project folder on DAS Drive (Z:)"
               >
-                📂 Open DAS Folder
+                Open Drive Folder
               </button>
             )}
           </>
