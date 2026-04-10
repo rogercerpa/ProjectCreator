@@ -518,15 +518,16 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
   // Determine button visibility
   const hasDownloadedFolder = !!project?.qcFolderDownloadedAt;
   const hasAlreadyUploaded = !!project?.dasUploadStatus?.uploadedAt;
+  const isCompletedStatus = String(project?.rfaStatus || '').trim().toLowerCase() === 'completed';
   // Show Download button: has zip file available AND hasn't downloaded yet AND hasn't uploaded yet
   const showDownloadButton = hasReadyForQCZip && !hasDownloadedFolder && !hasAlreadyUploaded;
-  // Show Upload button: has downloaded the folder (regardless of RFA status)
-  const showUploadButton = hasDownloadedFolder;
+  // Show Upload button: folder downloaded OR project is completed
+  const showUploadButton = hasDownloadedFolder || isCompletedStatus;
   // Hide export buttons when RFA Status is Ready for QC, Completed, On Hold, or Cancelled
   const hideExportStatuses = ['Ready for QC', 'Completed', 'On Hold', 'Cancelled'];
   const showExportButtons = !hideExportStatuses.includes(project?.rfaStatus);
   // Show Open DAS Folder button only when project is Completed
-  const showOpenDasButton = project?.rfaStatus === 'Completed';
+  const showOpenDasButton = isCompletedStatus;
 
   // Handle opening DAS folder in File Explorer
   const handleOpenDasFolder = async () => {

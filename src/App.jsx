@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { flushSync } from 'react-dom';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
@@ -140,6 +140,39 @@ function App() {
   const [userInterfacePreference, setUserInterfacePreference] = useState(null);
   const [isFirstVisit, setIsFirstVisit] = useState(false);
   const [formData, setFormData] = useState(() => createDefaultFormData());
+  const isQcScanRunningRef = useRef(false);
+
+  const applyReadyForQCScanResult = useCallback((scanResult, source = 'scan') => {
+    if (!scanResult?.success) return;
+
+    if (scanResult.updatedProjects && scanResult.updatedProjects.length > 0) {
+      const updatedProjectsMap = new Map(scanResult.updatedProjects.map(p => [p.id, p]));
+      setProjects(prevProjects =>
+        prevProjects.map(p => {
+          const updated = updatedProjectsMap.get(p.id);
+          return updated || p;
+        })
+      );
+      console.log(`✅ ${source}: Updated ${scanResult.updateCount} project(s) to "Ready for QC"`);
+    } else if (scanResult.totalMatches > 0) {
+      console.log(`✅ ${source}: Found ${scanResult.totalMatches} match(es), but no status updates needed`);
+    }
+  }, []);
+
+  const runReadyForQCScan = useCallback(async (source = 'Auto-scan Ready for QC') => {
+    if (!window.electronAPI?.qcScanFolder) return;
+    if (isQcScanRunningRef.current) return;
+
+    isQcScanRunningRef.current = true;
+    try {
+      const scanResult = await window.electronAPI.qcScanFolder();
+      applyReadyForQCScanResult(scanResult, source);
+    } catch (scanError) {
+      console.warn(`⚠️ ${source} failed:`, scanError);
+    } finally {
+      isQcScanRunningRef.current = false;
+    }
+  }, [applyReadyForQCScanResult]);
 
   const syncSharedCalendarEntry = async (project) => {
     try {
@@ -231,27 +264,7 @@ function App() {
             console.log(`✅ Loaded ${projectsResult.projects.length} existing projects from storage`);
             
             // Auto-scan Ready for QC folder and update project statuses
-            try {
-              const scanResult = await window.electronAPI.qcScanFolder();
-              if (scanResult.success) {
-                if (scanResult.updatedProjects && scanResult.updatedProjects.length > 0) {
-                  // Update projects list with updated statuses
-                  const updatedProjectsMap = new Map(scanResult.updatedProjects.map(p => [p.id, p]));
-                  setProjects(prevProjects => 
-                    prevProjects.map(p => {
-                      const updated = updatedProjectsMap.get(p.id);
-                      return updated || p;
-                    })
-                  );
-                  console.log(`✅ Auto-scanned Ready for QC: Updated ${scanResult.updateCount} project(s) to "Ready for QC"`);
-                } else if (scanResult.totalMatches > 0) {
-                  console.log(`✅ Auto-scanned Ready for QC: Found ${scanResult.totalMatches} match(es), but no status updates needed`);
-                }
-              }
-            } catch (scanError) {
-              console.warn('⚠️ Auto-scan Ready for QC failed:', scanError);
-              // Don't block app startup if scan fails
-            }
+            await runReadyForQCScan('Auto-scanned Ready for QC');
           } else {
             console.warn('Failed to load projects:', projectsResult?.error || 'Unknown error');
             setProjects([]); // Ensure projects is always an array
@@ -326,7 +339,20 @@ function App() {
     };
 
     initializeApp();
-  }, [draftService]);
+  }, [draftService, runReadyForQCScan]);
+
+  // Periodic Ready-for-QC scan while the app stays open
+  useEffect(() => {
+    if (isLoading) return;
+    if (!window.electronAPI?.qcScanFolder) return;
+
+    const intervalMs = 5 * 60 * 1000; // 5 minutes
+    const intervalId = setInterval(() => {
+      runReadyForQCScan('Scheduled Ready for QC scan');
+    }, intervalMs);
+
+    return () => clearInterval(intervalId);
+  }, [isLoading, runReadyForQCScan]);
 
   // Cleanup monitoring services on unmount
   useEffect(() => {
@@ -1112,22 +1138,7 @@ function App() {
                     console.log(`✅ Manual refresh completed, found ${projectsResult.projects.length} projects`);
                     
                     // Also scan Ready for QC folder during refresh
-                    try {
-                      const scanResult = await window.electronAPI.qcScanFolder();
-                      if (scanResult.success && scanResult.updatedProjects && scanResult.updatedProjects.length > 0) {
-                        // Update projects list with updated statuses
-                        const updatedProjectsMap = new Map(scanResult.updatedProjects.map(p => [p.id, p]));
-                        setProjects(prevProjects => 
-                          prevProjects.map(p => {
-                            const updated = updatedProjectsMap.get(p.id);
-                            return updated || p;
-                          })
-                        );
-                        console.log(`✅ Refresh scan: Updated ${scanResult.updateCount} project(s) to "Ready for QC"`);
-                      }
-                    } catch (scanError) {
-                      console.warn('⚠️ Refresh scan failed:', scanError);
-                    }
+                    await runReadyForQCScan('Refresh scan');
                   }
                 } catch (error) {
                   console.warn('⚠️ Manual refresh failed:', error);

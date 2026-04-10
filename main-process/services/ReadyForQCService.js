@@ -39,6 +39,15 @@ class ReadyForQCService {
   }
 
   /**
+   * Check if a project status should be treated as "In Progress"
+   * @param {string} status - Project RFA status
+   * @returns {boolean} True when status is equivalent to "In Progress"
+   */
+  isInProgressStatus(status) {
+    return String(status || '').trim().toLowerCase() === 'in progress';
+  }
+
+  /**
    * Get expected project folder name from project data
    * Format: {sanitizedProjectName}_{projectContainer} or {sanitizedProjectName} _{projectContainer}
    * @param {Object} project - Project data
@@ -99,7 +108,7 @@ class ReadyForQCService {
 
   /**
    * Scan the Ready for QC folder for zip files
-   * Only includes zip files modified within the last 5 business days
+   * Includes all zip files present in the folder
    * @returns {Promise<Array>} Array of zip file info objects
    */
   async scanReadyForQCFolder() {
@@ -113,10 +122,7 @@ class ReadyForQCService {
       // Read directory contents
       const files = await fs.readdir(this.readyForQCFolderPath);
       const zipFiles = [];
-      const cutoffDate = this.getBusinessDaysAgo(5);
-      const cutoffDateStr = cutoffDate.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
-
-      console.log(`[ReadyForQC] Scanning for zip files modified after ${cutoffDateStr} (5 business days ago)`);
+      console.log('[ReadyForQC] Scanning for zip files in Ready for QC folder');
 
       for (const file of files) {
         const filePath = path.join(this.readyForQCFolderPath, file);
@@ -125,25 +131,18 @@ class ReadyForQCService {
         // Check if it's a zip file
         if (stats.isFile() && file.toLowerCase().endsWith('.zip')) {
           const modifiedDate = stats.mtime;
-          const isRecent = this.isWithinBusinessDays(modifiedDate, 5);
-
-          if (isRecent) {
-            zipFiles.push({
-              name: file,
-              path: filePath,
-              size: stats.size,
-              modifiedDate: modifiedDate,
-              // Remove .zip extension for matching
-              nameWithoutExtension: file.replace(/\.zip$/i, '')
-            });
-          } else {
-            const fileDateStr = modifiedDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-            console.log(`[ReadyForQC] Skipping old zip file "${file}" (modified: ${fileDateStr}, cutoff: ${cutoffDateStr})`);
-          }
+          zipFiles.push({
+            name: file,
+            path: filePath,
+            size: stats.size,
+            modifiedDate: modifiedDate,
+            // Remove .zip extension for matching
+            nameWithoutExtension: file.replace(/\.zip$/i, '')
+          });
         }
       }
 
-      console.log(`[ReadyForQC] Found ${zipFiles.length} recent zip files (within 5 business days) out of ${files.filter(f => f.toLowerCase().endsWith('.zip')).length} total zip files`);
+      console.log(`[ReadyForQC] Found ${zipFiles.length} zip file(s) out of ${files.filter(f => f.toLowerCase().endsWith('.zip')).length} total zip files`);
       return zipFiles;
 
     } catch (error) {
@@ -217,7 +216,7 @@ class ReadyForQCService {
         } else {
           // Log when a project is checked but doesn't match (for debugging)
           // Only log for "In Progress" projects to reduce noise
-          if (project.rfaStatus === 'In Progress') {
+          if (this.isInProgressStatus(project.rfaStatus)) {
             console.log(`[ReadyForQC] ✗ NO MATCH for project ${project.id}: "${project.projectName}" (${project.projectContainer})`);
             console.log(`[ReadyForQC]   Expected folder names: "${projectFolderNames.join('" or "')}"`);
             if (zipFiles.length > 0) {
@@ -332,7 +331,7 @@ class ReadyForQCService {
   async updateProjectStatus(project) {
     try {
       // Only update if status is "In Progress"
-      if (project.rfaStatus === 'In Progress') {
+      if (this.isInProgressStatus(project.rfaStatus)) {
         const updatedProject = {
           ...project,
           rfaStatus: 'Ready for QC',
@@ -413,7 +412,7 @@ class ReadyForQCService {
         }
         
         // Only update if status is "In Progress"
-        if (project.rfaStatus === 'In Progress') {
+        if (this.isInProgressStatus(project.rfaStatus)) {
           console.log(`[ReadyForQC] ✓ Updating project ${projectId} (${project.projectName}) from "In Progress" to "Ready for QC"`);
           console.log(`[ReadyForQC]   Matched zip file(s): ${validZipFiles.map(z => z.name).join(', ')}`);
           console.log(`[ReadyForQC]   Project folder name(s): ${this.getProjectFolderName(project).join(' or ')}`);
