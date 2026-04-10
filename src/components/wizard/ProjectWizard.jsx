@@ -1429,6 +1429,7 @@ const ProjectWizard = ({
               }}
               onNavigateToSettings={onNavigateToSettings}
               onAssigneeSelected={setSelectedAssignee}
+              onWizardReset={resetWizardState}
             />
           </WizardErrorBoundary>
         );

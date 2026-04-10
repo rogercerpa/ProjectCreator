@@ -93,7 +93,8 @@ const ProjectWizardStep2 = ({
   onFieldTouch,
   onValidationChange,
   onNavigateToSettings,
-  onAssigneeSelected // NEW: callback to pass selected assignee to parent
+  onAssigneeSelected, // NEW: callback to pass selected assignee to parent
+  onWizardReset
 }) => {
   // Simple state - no complex optimizations
   // Initialize triageResults from formData if totalTriage exists
@@ -441,12 +442,28 @@ const ProjectWizardStep2 = ({
     }
   };
 
+  const handleStartFresh = () => {
+    if (onWizardReset) {
+      onWizardReset();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   return (
     <WizardLayout
       title="Triage & Complete"
       subtitle="Configure calculations and complete project creation"
       step={2}
       totalSteps={2}
+      actions={
+        <button
+          type="button"
+          onClick={handleStartFresh}
+          className="px-3 py-1.5 text-sm font-medium bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white rounded-lg transition-all"
+        >
+          🗑️ Start Fresh
+        </button>
+      }
     >
       <Confetti active={showConfetti} />
       <div className="px-4 py-3 space-y-4">
