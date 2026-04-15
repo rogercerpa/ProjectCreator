@@ -126,11 +126,21 @@ const bomBulkImportService = new BOMBulkImportService(bomPersistenceService, pro
 
 // Import BOM QC and AI services
 const AIService = require('./main-process/services/AIService');
+const AppAssistantService = require('./main-process/services/AppAssistantService');
 const BOMQCService = require('./main-process/services/BOMQCService');
 const { getAllBuildingCodes, getManualRequirements } = require('./main-process/constants/BuildingCodes');
 
 // Initialize AI and BOM QC services
 const aiService = new AIService(settingsService);
+const appAssistantService = new AppAssistantService({
+  projectPersistenceService,
+  agencyService,
+  workloadPersistenceService,
+  bomPersistenceService,
+  specReviewPersistenceService,
+  productKBService,
+  aiService
+});
 const bomQCService = new BOMQCService(aiService, bomPersistenceService, projectPersistenceService);
 
 // Initialize Spec Review services
@@ -3589,6 +3599,40 @@ ipcMain.handle('ai:refresh-model-catalog', async () => {
     return await aiService.refreshModelCatalog();
   } catch (error) {
     return { success: false, refreshed: false, error: error.message };
+  }
+});
+
+ipcMain.handle('ai:get-runtime-status', async () => {
+  try {
+    return await aiService.getRuntimeStatus();
+  } catch (error) {
+    return { success: false, ready: false, modeLabel: 'Runtime status unavailable', error: error.message };
+  }
+});
+
+// ===== ASSISTANT IPC HANDLERS =====
+
+ipcMain.handle('assistant:get-status', async () => {
+  try {
+    return appAssistantService.getStatus();
+  } catch (error) {
+    return { success: false, status: 'error', error: error.message };
+  }
+});
+
+ipcMain.handle('assistant:reset-session', async () => {
+  try {
+    return appAssistantService.resetSession();
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('assistant:send-message', async (event, payload) => {
+  try {
+    return await appAssistantService.sendMessage(payload);
+  } catch (error) {
+    return { success: false, error: error.message };
   }
 });
 

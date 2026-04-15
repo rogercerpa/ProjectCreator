@@ -420,6 +420,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   aiClearKey: () => ipcRenderer.invoke('ai:clear-key'),
   aiGetProviders: () => ipcRenderer.invoke('ai:get-providers'),
   aiRefreshModelCatalog: () => ipcRenderer.invoke('ai:refresh-model-catalog'),
+  aiGetRuntimeStatus: () => ipcRenderer.invoke('ai:get-runtime-status'),
+
+  // ===== ASSISTANT APIs =====
+  assistantSendMessage: (payload) => ipcRenderer.invoke('assistant:send-message', payload),
+  assistantGetStatus: () => ipcRenderer.invoke('assistant:get-status'),
+  assistantResetSession: () => ipcRenderer.invoke('assistant:reset-session'),
 
   // ===== BOM QC REVIEW APIs =====
   bomQcRunAnalysis: (projectId, requirementsConfig) => ipcRenderer.invoke('bom-qc:run-analysis', projectId, requirementsConfig),

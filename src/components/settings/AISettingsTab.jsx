@@ -16,6 +16,13 @@ const AISettingsTab = () => {
   const [configUpdatedAt, setConfigUpdatedAt] = useState(null);
   const [catalogSource, setCatalogSource] = useState('static');
   const [catalogFetchedAt, setCatalogFetchedAt] = useState(null);
+  const [localRuntime, setLocalRuntime] = useState({
+    runtimeType: 'openai-compatible',
+    endpoint: 'http://127.0.0.1:11434/v1',
+    healthEndpoint: 'http://127.0.0.1:11434/api/tags',
+    model: 'local-default'
+  });
+  const [runtimeStatus, setRuntimeStatus] = useState(null);
 
   useEffect(() => {
     loadConfig();
@@ -24,9 +31,10 @@ const AISettingsTab = () => {
   const loadConfig = async () => {
     try {
       setIsLoading(true);
-      const [providersResult, configResult] = await Promise.all([
+      const [providersResult, configResult, runtimeStatusResult] = await Promise.all([
         electronAPI.aiGetProviders(),
-        electronAPI.aiGetConfig()
+        electronAPI.aiGetConfig(),
+        electronAPI.aiGetRuntimeStatus()
       ]);
 
       let nextProviders = {};
@@ -49,6 +57,8 @@ const AISettingsTab = () => {
         setSelectedModel(validatedModel || '');
         setHasExistingKey(configResult.hasApiKey || false);
         setConfigUpdatedAt(configResult.updatedAt);
+        setLocalRuntime(configResult.localRuntime || localRuntime);
+        setRuntimeStatus(configResult.runtimeStatus || runtimeStatusResult || null);
 
         if (configuredProvider && configResult.model && validatedModel !== configResult.model) {
           setNotification({
@@ -56,6 +66,8 @@ const AISettingsTab = () => {
             message: `Saved model "${configResult.model}" is no longer available. Switched to "${validatedModel}".`
           });
         }
+      } else {
+        setRuntimeStatus(runtimeStatusResult || null);
       }
     } catch (error) {
       console.error('Error loading AI config:', error);
@@ -79,7 +91,8 @@ const AISettingsTab = () => {
 
   const handleProviderChange = (providerId) => {
     setSelectedProvider(providerId);
-    setSelectedModel(getValidModel(providerId, selectedModel, providers));
+    const desiredModel = providerId === 'local' ? localRuntime.model : selectedModel;
+    setSelectedModel(getValidModel(providerId, desiredModel, providers));
     setTestResult(null);
   };
 
@@ -106,7 +119,12 @@ const AISettingsTab = () => {
       return;
     }
 
-    if (!apiKey && !hasExistingKey) {
+    if (selectedProvider === 'local' && !localRuntime.endpoint.trim()) {
+      setNotification({ type: 'error', message: 'Please enter a local runtime endpoint.' });
+      return;
+    }
+
+    if (selectedProvider !== 'local' && !apiKey && !hasExistingKey) {
       setNotification({ type: 'error', message: 'Please enter your API key.' });
       return;
     }
@@ -118,14 +136,25 @@ const AISettingsTab = () => {
         model: selectedModel
       };
 
-      if (apiKey) {
+      if (selectedProvider === 'local') {
+        config.localRuntime = {
+          ...localRuntime,
+          model: selectedModel || localRuntime.model
+        };
+      }
+
+      if (apiKey && selectedProvider !== 'local') {
         config.apiKey = apiKey;
       }
 
       const result = await electronAPI.aiSaveConfig(config);
       if (result.success) {
-        setApiKey('');
-        setHasExistingKey(true);
+        if (selectedProvider !== 'local') {
+          setApiKey('');
+          setHasExistingKey(true);
+        } else {
+          setHasExistingKey(false);
+        }
         setNotification({ type: 'success', message: 'AI configuration saved successfully.' });
         loadConfig();
       } else {
@@ -149,6 +178,10 @@ const AISettingsTab = () => {
 
       const result = await electronAPI.aiTestConnection();
       setTestResult(result);
+      if (selectedProvider === 'local') {
+        const nextRuntimeStatus = await electronAPI.aiGetRuntimeStatus();
+        setRuntimeStatus(nextRuntimeStatus);
+      }
     } catch (error) {
       setTestResult({ success: false, error: error.message });
     } finally {
@@ -201,8 +234,8 @@ const AISettingsTab = () => {
           <span>🤖</span> AI Configuration
         </h2>
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          Configure your AI provider for BOM QC Review, spec analysis, and smart device identification.
-          Your API key is encrypted using your operating system's secure storage (Windows DPAPI / macOS Keychain).
+          Configure either a cloud AI provider or a local runtime for BOM QC Review, spec analysis, and the embedded assistant.
+          Cloud API keys are encrypted using your operating system's secure storage (Windows DPAPI / macOS Keychain).
         </p>
       </div>
 
@@ -220,7 +253,7 @@ const AISettingsTab = () => {
       <div className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
         <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-4">AI Provider</h3>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mb-6">
           {providerEntries.map(([id, config]) => (
             <button
               key={id}
@@ -246,7 +279,7 @@ const AISettingsTab = () => {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Model</label>
               <button
                 onClick={handleRefreshModels}
-                disabled={isTesting || (!hasExistingKey && !apiKey)}
+                disabled={isTesting || (selectedProvider === 'local' ? !localRuntime.endpoint.trim() : (!hasExistingKey && !apiKey))}
                 className="px-2 py-1 text-xs text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Refresh Models
@@ -254,7 +287,12 @@ const AISettingsTab = () => {
             </div>
             <select
               value={selectedModel}
-              onChange={(e) => setSelectedModel(e.target.value)}
+                onChange={(e) => {
+                  setSelectedModel(e.target.value);
+                  if (selectedProvider === 'local') {
+                    setLocalRuntime((prev) => ({ ...prev, model: e.target.value }));
+                  }
+                }}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
               {currentProviderModels.map(model => (
@@ -270,8 +308,64 @@ const AISettingsTab = () => {
           </div>
         )}
 
+        {/* Local Runtime Settings */}
+        {selectedProvider === 'local' && (
+          <div className="mb-6 space-y-4 rounded-lg border border-primary-200 bg-primary-50/60 p-4 dark:border-primary-800 dark:bg-primary-900/10">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Runtime Type
+              </label>
+              <select
+                value={localRuntime.runtimeType}
+                onChange={(e) => setLocalRuntime((prev) => ({ ...prev, runtimeType: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="openai-compatible">OpenAI-compatible local API</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Local Endpoint
+              </label>
+              <input
+                type="text"
+                value={localRuntime.endpoint}
+                onChange={(e) => setLocalRuntime((prev) => ({ ...prev, endpoint: e.target.value }))}
+                placeholder="http://127.0.0.1:11434/v1"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Health Endpoint
+              </label>
+              <input
+                type="text"
+                value={localRuntime.healthEndpoint}
+                onChange={(e) => setLocalRuntime((prev) => ({ ...prev, healthEndpoint: e.target.value }))}
+                placeholder="http://127.0.0.1:11434/api/tags"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+              />
+            </div>
+
+            {runtimeStatus && (
+              <div className={`rounded-lg border px-3 py-3 text-sm ${
+                runtimeStatus.ready
+                  ? 'border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-300'
+                  : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300'
+              }`}>
+                <div className="font-semibold">{runtimeStatus.modeLabel || 'Local runtime status'}</div>
+                <div className="mt-1 text-xs">{runtimeStatus.message}</div>
+                {runtimeStatus.endpoint && <div className="mt-1 text-xs">Endpoint: {runtimeStatus.endpoint}</div>}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* API Key */}
-        {selectedProvider && (
+        {selectedProvider && selectedProvider !== 'local' && (
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               API Key
@@ -312,7 +406,7 @@ const AISettingsTab = () => {
           <div className="flex items-center gap-3">
             <button
               onClick={handleSave}
-              disabled={isSaving || (!apiKey && !hasExistingKey)}
+              disabled={isSaving || (selectedProvider === 'local' ? !localRuntime.endpoint.trim() : (!apiKey && !hasExistingKey))}
               className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-medium"
             >
               {isSaving ? (
@@ -327,7 +421,7 @@ const AISettingsTab = () => {
 
             <button
               onClick={handleTestConnection}
-              disabled={isTesting || (!hasExistingKey && !apiKey)}
+              disabled={isTesting || (selectedProvider === 'local' ? !localRuntime.endpoint.trim() : (!hasExistingKey && !apiKey))}
               className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
             >
               {isTesting ? (

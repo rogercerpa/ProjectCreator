@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { flushSync } from 'react-dom';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
+import AssistantPanel from './components/AssistantPanel';
 import ProjectForm from './components/ProjectForm';
 import ProjectWizard from './components/wizard/ProjectWizard';
 import ProjectManagement from './components/ProjectManagement';
@@ -28,6 +29,51 @@ import { getFullVersionInfo, getVersionDisplay } from './utils/version';
 const ProjectDraftService = window.electron ? 
   window.electron.require('./src/services/ProjectDraftService') : 
   null;
+
+const UI_STORAGE_KEYS = {
+  sidebarCollapsed: 'projectCreator.sidebarCollapsed',
+  assistantVisible: 'projectCreator.assistantVisible',
+  assistantScopeMode: 'projectCreator.assistantScopeMode'
+};
+
+const readBooleanPreference = (key, fallback) => {
+  try {
+    const storedValue = localStorage.getItem(key);
+    if (storedValue == null) return fallback;
+    return storedValue === 'true';
+  } catch (error) {
+    console.warn(`Unable to read preference ${key}:`, error);
+    return fallback;
+  }
+};
+
+const readStringPreference = (key, fallback) => {
+  try {
+    return localStorage.getItem(key) || fallback;
+  } catch (error) {
+    console.warn(`Unable to read preference ${key}:`, error);
+    return fallback;
+  }
+};
+
+const createAssistantTimestamp = () => new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+
+const createAssistantIntroMessage = () => ({
+  id: `assistant-intro-${Date.now()}`,
+  role: 'assistant',
+  timestamp: createAssistantTimestamp(),
+  sections: [
+    {
+      title: 'Ready',
+      content: 'Ask about projects, agencies, schedules, BOMs, or spec reviews. Answers stay grounded in app data and approved knowledge.'
+    },
+    {
+      title: 'Try asking',
+      content: 'What projects are overdue this week?\nShow active projects for this agency.\nSummarize this project and highlight risks.'
+    }
+  ],
+  sources: []
+});
 
 const createDefaultFormData = () => ({
   projectName: '',
@@ -126,6 +172,14 @@ function App() {
   const [currentView, setCurrentView] = useState('welcome');
   const [currentProject, setCurrentProject] = useState(null);
   const [currentAgency, setCurrentAgency] = useState(null);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => readBooleanPreference(UI_STORAGE_KEYS.sidebarCollapsed, false));
+  const [isAssistantVisible, setIsAssistantVisible] = useState(() => readBooleanPreference(UI_STORAGE_KEYS.assistantVisible, true));
+  const [assistantScopeMode, setAssistantScopeMode] = useState(() => readStringPreference(UI_STORAGE_KEYS.assistantScopeMode, 'page'));
+  const [assistantDraft, setAssistantDraft] = useState('');
+  const [assistantMessages, setAssistantMessages] = useState(() => [createAssistantIntroMessage()]);
+  const [assistantStatus, setAssistantStatus] = useState('ready');
+  const [assistantRuntimeLabel, setAssistantRuntimeLabel] = useState('Local mode');
+  const [assistantRuntimeReady, setAssistantRuntimeReady] = useState(true);
   const [projects, setProjects] = useState([]);
   const [settings, setSettings] = useState(null);
   const [settingsTab, setSettingsTab] = useState('app-info');
@@ -1067,6 +1121,160 @@ function App() {
     return `Good evening${nameStr}`;
   };
 
+  useEffect(() => {
+    localStorage.setItem(UI_STORAGE_KEYS.sidebarCollapsed, String(isSidebarCollapsed));
+  }, [isSidebarCollapsed]);
+
+  useEffect(() => {
+    localStorage.setItem(UI_STORAGE_KEYS.assistantVisible, String(isAssistantVisible));
+  }, [isAssistantVisible]);
+
+  useEffect(() => {
+    localStorage.setItem(UI_STORAGE_KEYS.assistantScopeMode, assistantScopeMode);
+  }, [assistantScopeMode]);
+
+  useEffect(() => {
+    const loadAssistantRuntimeStatus = async () => {
+      try {
+        const runtimeStatus = await window.electronAPI?.aiGetRuntimeStatus?.();
+        if (runtimeStatus) {
+          setAssistantRuntimeLabel(runtimeStatus.modeLabel || 'Local mode');
+          setAssistantRuntimeReady(runtimeStatus.ready !== false);
+        }
+      } catch (error) {
+        console.warn('Failed to load assistant runtime status:', error);
+        setAssistantRuntimeLabel('Local runtime unavailable');
+        setAssistantRuntimeReady(false);
+      }
+    };
+
+    loadAssistantRuntimeStatus();
+  }, [isAssistantVisible]);
+
+  const assistantContext = useMemo(() => {
+    const isAppWide = assistantScopeMode === 'app-wide';
+    if (isAppWide) {
+      return {
+        type: 'default',
+        label: 'All App Data',
+        detail: 'Projects, agencies, workload, BOMs, specs, and knowledge base'
+      };
+    }
+
+    switch (currentView) {
+      case 'project-management':
+        return {
+          type: 'project',
+          label: 'Project Context',
+          detail: currentProject?.projectName || currentProject?.rfaNumber || 'Current project',
+          entityId: currentProject?.id || null
+        };
+      case 'agency-dashboard':
+      case 'agencies':
+        return {
+          type: 'agency',
+          label: currentAgency ? 'Agency Context' : 'Agency Directory',
+          detail: currentAgency?.agencyName || currentAgency?.agencyNumber || 'Agencies and contacts',
+          entityId: currentAgency?.id || null
+        };
+      case 'workload':
+        return {
+          type: 'workload',
+          label: 'Workload Context',
+          detail: 'Assignments, capacity, and schedule data'
+        };
+      case 'spec-review':
+        return {
+          type: 'spec-review',
+          label: 'Spec Review Context',
+          detail: 'Specification reviews and product rules'
+        };
+      case 'welcome':
+      default:
+        return {
+          type: 'default',
+          label: 'All App Data',
+          detail: 'Projects, agencies, workload, BOMs, specs, and knowledge base'
+        };
+    }
+  }, [assistantScopeMode, currentAgency, currentProject, currentView]);
+
+  const handleToggleSidebar = useCallback(() => {
+    setIsSidebarCollapsed((previous) => !previous);
+  }, []);
+
+  const handleToggleAssistant = useCallback(() => {
+    setIsAssistantVisible((previous) => !previous);
+  }, []);
+
+  const handleNewAssistantChat = useCallback(() => {
+    setAssistantDraft('');
+    setAssistantMessages([createAssistantIntroMessage()]);
+    setAssistantStatus('ready');
+  }, []);
+
+  const handleAssistantPromptSelect = useCallback((prompt) => {
+    setAssistantDraft(prompt);
+  }, []);
+
+  const handleAssistantSubmit = useCallback(async () => {
+    const trimmedMessage = assistantDraft.trim();
+    if (!trimmedMessage) return;
+
+    const userMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: trimmedMessage,
+      timestamp: createAssistantTimestamp()
+    };
+
+    setAssistantMessages((previous) => [...previous, userMessage]);
+    setAssistantDraft('');
+    setAssistantStatus('loading');
+    setIsAssistantVisible(true);
+
+    try {
+      const result = await window.electronAPI?.assistantSendMessage?.({
+        message: trimmedMessage,
+        context: assistantContext,
+        scopeMode: assistantScopeMode
+      });
+
+      if (!result?.success) {
+        throw new Error(result?.error || 'Assistant request failed.');
+      }
+
+      const assistantMessage = {
+        id: result.message?.id || `assistant-${Date.now()}`,
+        role: 'assistant',
+        content: result.message?.content || '',
+        sections: result.message?.sections || [],
+        sources: result.message?.sources || [],
+        timestamp: createAssistantTimestamp()
+      };
+
+      setAssistantMessages((previous) => [...previous, assistantMessage]);
+      setAssistantStatus(result.status || 'ready');
+    } catch (error) {
+      setAssistantMessages((previous) => [
+        ...previous,
+        {
+          id: `assistant-error-${Date.now()}`,
+          role: 'assistant',
+          timestamp: createAssistantTimestamp(),
+          sections: [
+            {
+              title: 'Assistant unavailable',
+              content: error.message || 'The assistant could not complete this request.'
+            }
+          ],
+          sources: []
+        }
+      ]);
+      setAssistantStatus('ready');
+    }
+  }, [assistantContext, assistantDraft, assistantScopeMode]);
+
   // Render main content based on current view
   // Maps views to their required feature flags for dev-only gating
   const viewFeatureFlags = {
@@ -1543,18 +1751,44 @@ function App() {
     );
   }
 
-    return (
+  return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-      <Header />
+      <Header
+        isSidebarCollapsed={isSidebarCollapsed}
+        isAssistantVisible={isAssistantVisible}
+        onToggleSidebar={handleToggleSidebar}
+        onToggleAssistant={handleToggleAssistant}
+      />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
           currentView={currentView}
           onViewChange={handleSmartViewChange}
           projectCount={projects.length}
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={handleToggleSidebar}
         />
-        <main className="flex-1 p-4 overflow-y-auto bg-white dark:bg-gray-800 shadow-lg custom-scrollbar">
+        <main className="flex-1 overflow-y-auto bg-white p-4 shadow-lg custom-scrollbar dark:bg-gray-800">
           {renderMainContent()}
         </main>
+        {isAssistantVisible && (
+          <AssistantPanel
+            isWelcomeView={currentView === 'welcome'}
+            isLoading={assistantStatus === 'loading'}
+            status={assistantStatus}
+            runtimeLabel={assistantRuntimeLabel}
+            runtimeReady={assistantRuntimeReady}
+            context={assistantContext}
+            scopeMode={assistantScopeMode}
+            draftMessage={assistantDraft}
+            messages={assistantMessages}
+            onDraftChange={setAssistantDraft}
+            onSubmit={handleAssistantSubmit}
+            onNewChat={handleNewAssistantChat}
+            onClose={handleToggleAssistant}
+            onScopeChange={setAssistantScopeMode}
+            onPromptSelect={handleAssistantPromptSelect}
+          />
+        )}
       </div>
       
       {/* Draft Recovery Modal */}

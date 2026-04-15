@@ -1,7 +1,7 @@
 import React from 'react';
 import featureFlagService from '../services/FeatureFlagService';
 
-function Sidebar({ currentView, onViewChange, projectCount }) {
+function Sidebar({ currentView, onViewChange, projectCount, isCollapsed = false, onToggleCollapse }) {
   const allMenuItems = [
     {
       id: 'welcome',
@@ -71,12 +71,25 @@ function Sidebar({ currentView, onViewChange, projectCount }) {
   });
 
   return (
-    <aside className="w-70 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col shadow-lg">
+    <aside className={`${isCollapsed ? 'w-20' : 'w-72'} bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col shadow-lg transition-all duration-300`}>
       {/* Sidebar Header */}
-      <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
-          Navigation
-        </h3>
+      <div className={`border-b border-gray-200 dark:border-gray-700 ${isCollapsed ? 'px-3 py-4' : 'px-6 py-4'}`}>
+        <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between gap-3'}`}>
+          {!isCollapsed && (
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
+              Navigation
+            </h3>
+          )}
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-sm text-gray-700 transition-colors hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+            aria-label={isCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+            title={isCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+          >
+            {isCollapsed ? '☰' : '⇤'}
+          </button>
+        </div>
       </div>
       
       {/* Navigation Menu */}
@@ -84,11 +97,13 @@ function Sidebar({ currentView, onViewChange, projectCount }) {
         {menuItems.map((item) => {
           if (item.divider) {
             return (
-              <div key={item.id} className="px-6 pt-5 pb-2">
-                <span className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-                  {item.label}
-                </span>
-                <div className="mt-1 border-b border-gray-200 dark:border-gray-700" />
+              <div key={item.id} className={`${isCollapsed ? 'px-3 pt-5 pb-2' : 'px-6 pt-5 pb-2'}`}>
+                {!isCollapsed && (
+                  <span className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                    {item.label}
+                  </span>
+                )}
+                <div className={`${isCollapsed ? '' : 'mt-1 '}border-b border-gray-200 dark:border-gray-700`} />
               </div>
             );
           }
@@ -96,8 +111,9 @@ function Sidebar({ currentView, onViewChange, projectCount }) {
           return (
             <button
               key={item.id}
+              title={item.label}
               className={`
-                w-full px-6 py-4 flex items-center gap-4 
+                w-full ${isCollapsed ? 'px-3 py-3 justify-center' : 'px-6 py-4'} flex items-center ${isCollapsed ? '' : 'gap-4'} 
                 border-none bg-transparent text-left
                 transition-all duration-200 cursor-pointer
                 relative
@@ -120,20 +136,22 @@ function Sidebar({ currentView, onViewChange, projectCount }) {
                 {item.icon}
               </span>
               
-              <div className="flex flex-col items-start flex-1">
-                <span className={`
-                  text-sm font-medium leading-tight
-                  ${currentView === item.id 
-                    ? 'text-active font-semibold' 
-                    : 'text-gray-800 dark:text-gray-200'
-                  }
-                `}>
-                  {item.label}
-                </span>
-                <span className="text-xs text-gray-600 dark:text-gray-400 mt-1 leading-tight">
-                  {item.description}
-                </span>
-              </div>
+              {!isCollapsed && (
+                <div className="flex flex-col items-start flex-1">
+                  <span className={`
+                    text-sm font-medium leading-tight
+                    ${currentView === item.id 
+                      ? 'text-active font-semibold' 
+                      : 'text-gray-800 dark:text-gray-200'
+                    }
+                  `}>
+                    {item.label}
+                  </span>
+                  <span className="text-xs text-gray-600 dark:text-gray-400 mt-1 leading-tight">
+                    {item.description}
+                  </span>
+                </div>
+              )}
             </button>
           );
         })}

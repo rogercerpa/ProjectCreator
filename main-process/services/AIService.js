@@ -12,8 +12,21 @@ const axios = require('axios');
 
 const MODEL_CATALOG_VERSION = 1;
 const DEFAULT_MODEL_CATALOG_TTL_MS = 24 * 60 * 60 * 1000;
+const DEFAULT_LOCAL_RUNTIME = {
+  runtimeType: 'openai-compatible',
+  endpoint: 'http://127.0.0.1:11434/v1',
+  healthEndpoint: 'http://127.0.0.1:11434/api/tags',
+  model: 'local-default'
+};
 
 const PROVIDERS = {
+  local: {
+    name: 'Local Runtime',
+    models: [
+      { id: 'local-default', label: 'Local Default', description: 'Use the default model exposed by your local runtime' }
+    ],
+    defaultModel: 'local-default'
+  },
   openai: {
     name: 'OpenAI',
     models: [
@@ -68,7 +81,7 @@ class AIService {
     let fetchedAt = null;
     let dynamicCatalog = null;
 
-    if (selectedProvider && config.apiKeyEncrypted) {
+    if (selectedProvider && (config.apiKeyEncrypted || selectedProvider === 'local')) {
       const memoryCatalog = this._readCachedCatalog();
       if (!forceRefresh && memoryCatalog) {
         dynamicCatalog = memoryCatalog.providers;
@@ -111,7 +124,7 @@ class AIService {
    */
   async refreshModelCatalog() {
     const config = await this._loadConfigFile();
-    if (!config.provider || !config.apiKeyEncrypted) {
+    if (!config.provider || (!config.apiKeyEncrypted && config.provider !== 'local')) {
       return {
         success: true,
         refreshed: false,
@@ -140,7 +153,7 @@ class AIService {
   /**
    * Save AI configuration (provider, model, encrypted API key)
    */
-  async saveConfig({ provider, model, apiKey }) {
+  async saveConfig({ provider, model, apiKey, localRuntime }) {
     try {
       const config = await this._loadConfigFile();
       const hasIncomingModel = typeof model === 'string' && model.trim().length > 0;
@@ -152,6 +165,18 @@ class AIService {
       }
       if (config.provider && !hasIncomingModel) {
         config.model = this._resolveModel(config.provider, config.model, PROVIDERS);
+      }
+
+      if (provider === 'local' || localRuntime) {
+        config.localRuntime = {
+          ...DEFAULT_LOCAL_RUNTIME,
+          ...(config.localRuntime || {}),
+          ...(localRuntime || {})
+        };
+      }
+
+      if (provider === 'local') {
+        delete config.apiKeyEncrypted;
       }
 
       if (apiKey) {
@@ -169,13 +194,13 @@ class AIService {
       this._providerInstance = null;
       this._cachedProvider = null;
       this._cachedModel = null;
-      if (provider || apiKey) {
+      if (provider || apiKey || localRuntime) {
         this._catalogCache = null;
         this._catalogFetchedAt = null;
         this.refreshModelCatalogInBackground();
       }
 
-      return { success: true };
+      return { success: true, runtimeStatus: await this.getRuntimeStatus() };
     } catch (error) {
       console.error('Error saving AI config:', error);
       return { success: false, error: error.message };
@@ -191,18 +216,40 @@ class AIService {
       const provider = config.provider || null;
       const providersResult = await this.getProviders();
       const resolvedModel = this._resolveModel(provider, config.model, providersResult.providers);
+      const runtimeStatus = await this.getRuntimeStatus();
 
       return {
         success: true,
         provider,
         model: resolvedModel,
         hasApiKey: !!config.apiKeyEncrypted,
+        localRuntime: {
+          ...DEFAULT_LOCAL_RUNTIME,
+          ...(config.localRuntime || {}),
+          model: resolvedModel && provider === 'local'
+            ? resolvedModel
+            : (config.localRuntime?.model || DEFAULT_LOCAL_RUNTIME.model)
+        },
+        runtimeStatus,
         updatedAt: config.updatedAt || null,
         modelCatalogSource: providersResult.source || 'static',
         modelCatalogFetchedAt: providersResult.fetchedAt || null
       };
     } catch (error) {
-      return { success: true, provider: null, model: null, hasApiKey: false, updatedAt: null };
+      return {
+        success: true,
+        provider: null,
+        model: null,
+        hasApiKey: false,
+        localRuntime: { ...DEFAULT_LOCAL_RUNTIME },
+        runtimeStatus: {
+          success: true,
+          ready: false,
+          modeLabel: 'Local runtime not configured',
+          message: 'Set a local runtime endpoint to enable offline AI features.'
+        },
+        updatedAt: null
+      };
     }
   }
 
@@ -238,6 +285,14 @@ class AIService {
    */
   async testConnection() {
     try {
+      const config = await this._loadConfigFile();
+      if (config.provider === 'local') {
+        const runtimeStatus = await this.getRuntimeStatus();
+        if (!runtimeStatus.ready) {
+          return { success: false, error: runtimeStatus.message || 'Local runtime is not ready.' };
+        }
+      }
+
       const result = await this.chatCompletion(
         'You are a helpful assistant.',
         'Respond with exactly: {"status":"ok"}',
@@ -268,23 +323,36 @@ class AIService {
     const providersResult = await this.getProviders();
     const model = this._resolveModel(provider, config.model, providersResult.providers);
 
-    if (!provider || !config.apiKeyEncrypted) {
+    if (!provider) {
       throw new Error('AI not configured. Please set up your AI provider in Settings.');
     }
-
-    const apiKey = this._decryptKey(config.apiKeyEncrypted);
 
     let responseText;
 
     switch (provider) {
+      case 'local':
+        responseText = await this._callLocalRuntime(config, model, systemPrompt, userPrompt, { jsonMode, timeout, maxTokens });
+        break;
       case 'openai':
+        if (!config.apiKeyEncrypted) throw new Error('AI not configured. Please set up your AI provider in Settings.');
+        {
+          const apiKey = this._decryptKey(config.apiKeyEncrypted);
         responseText = await this._callOpenAI(apiKey, model, systemPrompt, userPrompt, { jsonMode, timeout, maxTokens });
+        }
         break;
       case 'gemini':
+        if (!config.apiKeyEncrypted) throw new Error('AI not configured. Please set up your AI provider in Settings.');
+        {
+          const apiKey = this._decryptKey(config.apiKeyEncrypted);
         responseText = await this._callGemini(apiKey, model, systemPrompt, userPrompt, { jsonMode, timeout, maxTokens });
+        }
         break;
       case 'anthropic':
+        if (!config.apiKeyEncrypted) throw new Error('AI not configured. Please set up your AI provider in Settings.');
+        {
+          const apiKey = this._decryptKey(config.apiKeyEncrypted);
         responseText = await this._callAnthropic(apiKey, model, systemPrompt, userPrompt, { jsonMode, timeout, maxTokens });
+        }
         break;
       default:
         throw new Error(`Unknown AI provider: ${provider}`);
@@ -311,6 +379,55 @@ class AIService {
     }
 
     return responseText;
+  }
+
+  async getRuntimeStatus() {
+    try {
+      const config = await this._loadConfigFile();
+      const localRuntime = this._getLocalRuntimeConfig(config);
+      const provider = config.provider || null;
+      const endpoint = localRuntime.endpoint;
+
+      if (!endpoint) {
+        return {
+          success: true,
+          provider,
+          ready: false,
+          modeLabel: 'Local runtime not configured',
+          message: 'Set a local runtime endpoint to enable offline AI features.'
+        };
+      }
+
+      try {
+        const modelCheck = await this._fetchLocalModels(localRuntime, 8000);
+        const discoveredModel = modelCheck[0]?.id || localRuntime.model || DEFAULT_LOCAL_RUNTIME.model;
+        return {
+          success: true,
+          provider,
+          ready: true,
+          modeLabel: provider === 'local' ? 'Local runtime ready' : 'Local runtime available',
+          endpoint,
+          model: discoveredModel,
+          message: 'Local runtime responded successfully.'
+        };
+      } catch (error) {
+        return {
+          success: true,
+          provider,
+          ready: false,
+          modeLabel: 'Local runtime unavailable',
+          endpoint,
+          message: error.message || 'Could not reach the local runtime.'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        ready: false,
+        modeLabel: 'Runtime status unavailable',
+        message: error.message
+      };
+    }
   }
 
   // ===== Provider Implementations =====
@@ -399,6 +516,37 @@ class AIService {
     return textBlock ? textBlock.text : '';
   }
 
+  async _callLocalRuntime(config, model, systemPrompt, userPrompt, options) {
+    const localRuntime = this._getLocalRuntimeConfig(config);
+    const runtimeStatus = await this.getRuntimeStatus();
+    if (!runtimeStatus.ready) {
+      throw new Error(runtimeStatus.message || 'Local runtime is not ready.');
+    }
+
+    const endpoint = this._normalizeLocalBaseUrl(localRuntime.endpoint);
+    const preparedPrompts = this._prepareOpenAIJsonPrompts(systemPrompt, userPrompt, options.jsonMode);
+    const requestBody = {
+      model: model === 'local-default' ? (runtimeStatus.model || localRuntime.model || DEFAULT_LOCAL_RUNTIME.model) : model,
+      messages: [
+        { role: 'system', content: preparedPrompts.systemPrompt },
+        { role: 'user', content: preparedPrompts.userPrompt }
+      ],
+      max_tokens: options.maxTokens,
+      temperature: 0
+    };
+
+    if (options.jsonMode) {
+      requestBody.response_format = { type: 'json_object' };
+    }
+
+    const response = await axios.post(`${endpoint}/chat/completions`, requestBody, {
+      timeout: options.timeout,
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    return response?.data?.choices?.[0]?.message?.content || '';
+  }
+
   async _refreshCatalogFromProviders(config) {
     if (this._catalogRefreshPromise) {
       return this._catalogRefreshPromise;
@@ -407,10 +555,15 @@ class AIService {
     this._catalogRefreshPromise = (async () => {
       try {
         const providerId = config.provider;
-        const apiKey = this._decryptKey(config.apiKeyEncrypted);
+        const apiKey = config.provider === 'local'
+          ? null
+          : this._decryptKey(config.apiKeyEncrypted);
         let discoveredModels = [];
 
         switch (providerId) {
+          case 'local':
+            discoveredModels = await this._fetchLocalModels(this._getLocalRuntimeConfig(config));
+            break;
           case 'openai':
             discoveredModels = await this._fetchOpenAIModels(apiKey);
             break;
@@ -512,6 +665,57 @@ class AIService {
         label: this._prettifyModelLabel(id),
         description: 'Discovered from Anthropic API'
       }));
+  }
+
+  async _fetchLocalModels(localRuntime, timeout = 12000) {
+    const endpoint = this._normalizeLocalBaseUrl(localRuntime.endpoint);
+
+    try {
+      const response = await this._requestWithRetry(() => axios.get(`${endpoint}/models`, {
+        timeout
+      }));
+
+      const models = response?.data?.data || [];
+      const candidateIds = models
+        .map((entry) => entry?.id)
+        .filter((id) => typeof id === 'string' && id.length > 0);
+
+      if (candidateIds.length > 0) {
+        return candidateIds.map((id) => ({
+          id,
+          label: this._prettifyModelLabel(id),
+          description: 'Discovered from local runtime'
+        }));
+      }
+    } catch (error) {
+      if (localRuntime.healthEndpoint) {
+        const tagsResponse = await this._requestWithRetry(() => axios.get(localRuntime.healthEndpoint, {
+          timeout
+        }));
+        const models = tagsResponse?.data?.models || [];
+        const candidateIds = models
+          .map((entry) => entry?.name || entry?.model)
+          .filter((id) => typeof id === 'string' && id.length > 0);
+
+        if (candidateIds.length > 0) {
+          return candidateIds.map((id) => ({
+            id,
+            label: this._prettifyModelLabel(id),
+            description: 'Discovered from local runtime'
+          }));
+        }
+      }
+
+      throw error;
+    }
+
+    return [
+      {
+        id: localRuntime.model || DEFAULT_LOCAL_RUNTIME.model,
+        label: this._prettifyModelLabel(localRuntime.model || DEFAULT_LOCAL_RUNTIME.model),
+        description: 'Configured local runtime model'
+      }
+    ];
   }
 
   async _requestWithRetry(requestFn, maxAttempts = 2) {
@@ -753,6 +957,19 @@ class AIService {
   }
 
   // ===== Internal Helpers =====
+
+  _getLocalRuntimeConfig(config) {
+    return {
+      ...DEFAULT_LOCAL_RUNTIME,
+      ...(config?.localRuntime || {})
+    };
+  }
+
+  _normalizeLocalBaseUrl(endpoint) {
+    const raw = String(endpoint || DEFAULT_LOCAL_RUNTIME.endpoint).trim();
+    const withoutTrailingSlash = raw.replace(/\/+$/, '');
+    return withoutTrailingSlash.endsWith('/v1') ? withoutTrailingSlash : `${withoutTrailingSlash}/v1`;
+  }
 
   _decryptKey(encryptedBase64) {
     if (!safeStorage.isEncryptionAvailable()) {
