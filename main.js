@@ -132,15 +132,6 @@ const { getAllBuildingCodes, getManualRequirements } = require('./main-process/c
 
 // Initialize AI and BOM QC services
 const aiService = new AIService(settingsService);
-const appAssistantService = new AppAssistantService({
-  projectPersistenceService,
-  agencyService,
-  workloadPersistenceService,
-  bomPersistenceService,
-  specReviewPersistenceService,
-  productKBService,
-  aiService
-});
 const bomQCService = new BOMQCService(aiService, bomPersistenceService, projectPersistenceService);
 
 // Initialize Spec Review services
@@ -152,6 +143,15 @@ const productKBService = new ProductKnowledgeBaseService(settingsService);
 const specReviewLearningService = new SpecReviewLearningService(settingsService);
 const specReviewService = new SpecReviewService(aiService, productKBService, specReviewLearningService);
 const specReviewPersistenceService = new SpecReviewPersistenceService();
+const appAssistantService = new AppAssistantService({
+  projectPersistenceService,
+  agencyService,
+  workloadPersistenceService,
+  bomPersistenceService,
+  specReviewPersistenceService,
+  productKBService,
+  aiService
+});
 
 // Agile workqueue scraping (Edge CDP + puppeteer-core)
 const EdgeConnectionManager = require('./main-process/services/EdgeConnectionManager');

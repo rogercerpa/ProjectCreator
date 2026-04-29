@@ -40,12 +40,30 @@ function formatSourceLabel(source) {
     .join(' ');
 }
 
+function getSourceActionLabel(source) {
+  const type = source?.action?.type;
+  if (type === 'open-project') return 'Open project';
+  if (type === 'open-agency') return 'Open agency';
+  if (type === 'open-view') return 'Open view';
+  return null;
+}
+
+function formatGenerationModeLabel(meta) {
+  const mode = meta?.generationMode;
+  if (mode === 'grounded-ai-polished') return 'AI rewrite';
+  if (mode === 'grounded-fallback') return 'Fallback';
+  if (mode === 'fallback-no-grounded-match') return 'No grounded match';
+  if (mode === 'fallback-error') return 'Error fallback';
+  return null;
+}
+
 function AssistantPanel({
   isWelcomeView = false,
   isLoading = false,
   status = 'ready',
   runtimeLabel = 'Local mode',
   runtimeReady = true,
+  runtimeMessage = '',
   context,
   scopeMode = 'page',
   draftMessage = '',
@@ -53,9 +71,9 @@ function AssistantPanel({
   onDraftChange,
   onSubmit,
   onNewChat,
-  onClose,
   onScopeChange,
-  onPromptSelect
+  onPromptSelect,
+  onSourceSelect
 }) {
   const starters = getStarters(context?.type);
   const showEmptyState = messages.length === 0;
@@ -69,44 +87,38 @@ function AssistantPanel({
     <aside className="w-[380px] shrink-0 border-l border-gray-200 bg-white shadow-xl transition-all duration-300 dark:border-gray-700 dark:bg-gray-800 xl:w-[420px]">
       <div className="flex h-full flex-col">
         <div className="border-b border-gray-200 px-4 py-4 dark:border-gray-700">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Project Creator AI
-                </h2>
-                <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${
-                  status === 'ready'
-                    ? (runtimeReady
-                      ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
-                      : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300')
-                    : status === 'loading'
-                      ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
-                      : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'
-                }`}>
-                  {status === 'ready' ? runtimeLabel : status}
-                </span>
-              </div>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                Answers from app data and approved knowledge only.
-              </p>
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Project Creator AI
+              </h2>
+              <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${
+                status === 'ready'
+                  ? (runtimeReady
+                    ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+                    : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300')
+                  : status === 'loading'
+                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
+                    : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'
+              }`}>
+                {status === 'ready' ? runtimeLabel : status}
+              </span>
             </div>
-            <div className="flex items-center gap-2">
+            <p className="text-sm leading-5 text-gray-500 dark:text-gray-400">
+              Answers from app data and approved knowledge only.
+            </p>
+            {runtimeMessage ? (
+              <p className="text-xs leading-5 text-gray-400 dark:text-gray-500">
+                Runtime status: {runtimeMessage}
+              </p>
+            ) : null}
+            <div className="flex justify-end">
               <button
                 type="button"
                 onClick={onNewChat}
                 className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
               >
                 New chat
-              </button>
-              <button
-                type="button"
-                onClick={onClose}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-700 transition-colors hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
-                aria-label="Hide assistant panel"
-                title="Hide assistant panel"
-              >
-                ⇥
               </button>
             </div>
           </div>
@@ -196,29 +208,52 @@ function AssistantPanel({
                   }`}
                 >
                   <div className="mb-2 flex items-center justify-between gap-3">
-                    <span className={`text-xs font-semibold uppercase tracking-wide ${
-                      message.role === 'user' ? 'text-primary-100' : 'text-gray-500 dark:text-gray-400'
-                    }`}>
-                      {message.role === 'user' ? 'You' : 'Project Creator AI'}
-                    </span>
-                    {message.timestamp && (
-                      <span className={`text-[11px] ${
-                        message.role === 'user' ? 'text-primary-100' : 'text-gray-400'
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-semibold uppercase tracking-wide ${
+                        message.role === 'user' ? 'text-primary-100' : 'text-gray-500 dark:text-gray-400'
                       }`}>
-                        {message.timestamp}
+                        {message.role === 'user' ? 'You' : 'Project Creator AI'}
                       </span>
-                    )}
+                      {message.role !== 'user' && formatGenerationModeLabel(message.meta) && (
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                            message.meta?.generationMode === 'grounded-ai-polished'
+                              ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+                              : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
+                          }`}
+                          title={message.meta?.reason || 'Assistant response mode'}
+                        >
+                          {formatGenerationModeLabel(message.meta)}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      {message.timestamp && (
+                        <span className={`text-[11px] ${
+                          message.role === 'user' ? 'text-primary-100' : 'text-gray-400'
+                        }`}>
+                          {message.timestamp}
+                        </span>
+                      )}
+                      {message.role !== 'user' && message.meta?.runtimeReason && (
+                        <p className="mt-0.5 text-[10px] text-gray-400 dark:text-gray-500">
+                          {message.meta.runtimeReason}
+                        </p>
+                      )}
+                    </div>
                   </div>
 
                   {Array.isArray(message.sections) && message.sections.length > 0 ? (
                     <div className="space-y-3">
-                      {message.sections.map((section) => (
-                        <section key={section.title}>
-                          <h4 className={`text-xs font-semibold uppercase tracking-wide ${
-                            message.role === 'user' ? 'text-primary-100' : 'text-gray-500 dark:text-gray-400'
-                          }`}>
-                            {section.title}
-                          </h4>
+                      {message.sections.map((section, sectionIndex) => (
+                        <section key={section.title || sectionIndex}>
+                          {section.title ? (
+                            <h4 className={`text-xs font-semibold uppercase tracking-wide ${
+                              message.role === 'user' ? 'text-primary-100' : 'text-gray-500 dark:text-gray-400'
+                            }`}>
+                              {section.title}
+                            </h4>
+                          ) : null}
                           <p className="mt-1 whitespace-pre-wrap text-sm leading-6">
                             {section.content}
                           </p>
@@ -227,6 +262,76 @@ function AssistantPanel({
                     </div>
                   ) : (
                     <p className="whitespace-pre-wrap text-sm leading-6">{message.content}</p>
+                  )}
+
+                  {message.role !== 'user' && (
+                    (Array.isArray(message.referencedProjects) && message.referencedProjects.length > 0) ||
+                    (Array.isArray(message.referencedAgencies) && message.referencedAgencies.length > 0)
+                  ) && (
+                    <div className="mt-4 rounded-xl border border-primary-100 bg-primary-50/60 p-3 dark:border-primary-800/60 dark:bg-primary-900/10">
+                      {Array.isArray(message.referencedProjects) && message.referencedProjects.length > 0 && (
+                        <>
+                          <h4 className="text-[11px] font-semibold uppercase tracking-wide text-primary-700 dark:text-primary-300">
+                            Open referenced projects
+                          </h4>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {message.referencedProjects.map((project) => (
+                              <button
+                                key={project.id}
+                                type="button"
+                                onClick={() => onSourceSelect?.({
+                                  type: 'project',
+                                  title: project.projectName,
+                                  action: { type: 'open-project', entityId: project.id, view: 'project-management' }
+                                })}
+                                title={project.rfaNumber ? `RFA ${project.rfaNumber}` : project.projectName}
+                                className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-primary-200 bg-white px-2.5 py-1.5 text-left text-xs font-medium text-primary-700 transition-colors hover:border-primary-400 hover:bg-primary-100 dark:border-primary-800 dark:bg-gray-800 dark:text-primary-300 dark:hover:bg-primary-900/40"
+                              >
+                                <svg className="h-3 w-3 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                  <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
+                                  <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
+                                </svg>
+                                <span className="truncate">{project.projectName}</span>
+                                {project.rfaNumber && (
+                                  <span className="shrink-0 text-[10px] font-normal text-primary-500 dark:text-primary-400">
+                                    · {project.rfaNumber}
+                                  </span>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+
+                      {Array.isArray(message.referencedAgencies) && message.referencedAgencies.length > 0 && (
+                        <div className={Array.isArray(message.referencedProjects) && message.referencedProjects.length > 0 ? 'mt-3' : ''}>
+                          <h4 className="text-[11px] font-semibold uppercase tracking-wide text-primary-700 dark:text-primary-300">
+                            Open referenced agencies
+                          </h4>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {message.referencedAgencies.map((agency) => (
+                              <button
+                                key={agency.id}
+                                type="button"
+                                onClick={() => onSourceSelect?.({
+                                  type: 'agency',
+                                  title: agency.agencyName,
+                                  action: { type: 'open-agency', entityId: agency.id, view: 'agency-dashboard' }
+                                })}
+                                title={agency.agencyNumber ? `Agency ${agency.agencyNumber}` : agency.agencyName}
+                                className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-primary-200 bg-white px-2.5 py-1.5 text-left text-xs font-medium text-primary-700 transition-colors hover:border-primary-400 hover:bg-primary-100 dark:border-primary-800 dark:bg-gray-800 dark:text-primary-300 dark:hover:bg-primary-900/40"
+                              >
+                                <svg className="h-3 w-3 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                  <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
+                                  <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
+                                </svg>
+                                <span className="truncate">{agency.agencyName}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   )}
 
                   {message.role !== 'user' && Array.isArray(message.sources) && message.sources.length > 0 && (
@@ -241,9 +346,20 @@ function AssistantPanel({
                               <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">
                                 {source.title}
                               </span>
-                              <span className="text-[11px] uppercase tracking-wide text-gray-400">
-                                {formatSourceLabel(source)}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[11px] uppercase tracking-wide text-gray-400">
+                                  {formatSourceLabel(source)}
+                                </span>
+                                {getSourceActionLabel(source) && (
+                                  <button
+                                    type="button"
+                                    onClick={() => onSourceSelect?.(source)}
+                                    className="rounded-md border border-gray-200 bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-primary-700 transition-colors hover:bg-primary-50 dark:border-gray-700 dark:bg-gray-800 dark:text-primary-300 dark:hover:bg-primary-900/30"
+                                  >
+                                    {getSourceActionLabel(source)}
+                                  </button>
+                                )}
+                              </div>
                             </div>
                             {source.snippet && (
                               <p className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">

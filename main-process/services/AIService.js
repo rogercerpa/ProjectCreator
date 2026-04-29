@@ -30,28 +30,36 @@ const PROVIDERS = {
   openai: {
     name: 'OpenAI',
     models: [
-      { id: 'gpt-4.1', label: 'GPT-4.1', description: 'Best for structured output and instruction following' },
-      { id: 'gpt-4.1-mini', label: 'GPT-4.1 Mini', description: 'Fast and cost-effective' },
-      { id: 'gpt-4.1-nano', label: 'GPT-4.1 Nano', description: 'Fastest, lowest cost' }
+      { id: 'gpt-5.4', label: 'GPT-5.4', description: 'Flagship — best reasoning, coding, and analysis (1M context)' },
+      { id: 'gpt-5.4-mini', label: 'GPT-5.4 Mini', description: 'Balanced cost and quality (400K context)' },
+      { id: 'gpt-5.4-nano', label: 'GPT-5.4 Nano', description: 'Fastest and lowest cost (400K context)' },
+      { id: 'gpt-5.4-pro', label: 'GPT-5.4 Pro', description: 'Maximum capability for the most complex tasks' },
+      { id: 'gpt-5-mini', label: 'GPT-5 Mini', description: 'Previous generation — fast and cost-effective' },
+      { id: 'gpt-4.1', label: 'GPT-4.1', description: 'Previous generation — structured output and instruction following' },
+      { id: 'gpt-4.1-mini', label: 'GPT-4.1 Mini', description: 'Previous generation — fast and lightweight' },
+      { id: 'o3', label: 'o3', description: 'Advanced reasoning model for complex multi-step problems' },
+      { id: 'o4-mini', label: 'o4-mini', description: 'Fast reasoning model — good balance of speed and depth' }
     ],
-    defaultModel: 'gpt-4.1'
+    defaultModel: 'gpt-5.4-mini'
   },
   gemini: {
     name: 'Google Gemini',
     models: [
       { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', description: 'Best reasoning and accuracy' },
-      { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', description: 'Fast and cost-effective' }
+      { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', description: 'Fast and cost-effective' },
+      { id: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite', description: 'Lightest and lowest cost' },
+      { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash', description: 'Previous generation — fast multimodal' }
     ],
     defaultModel: 'gemini-2.5-pro'
   },
   anthropic: {
     name: 'Anthropic Claude',
     models: [
-      { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6', description: 'Best balance of speed and quality' },
-      { id: 'claude-opus-4-6', label: 'Claude Opus 4.6', description: 'Most capable, best for complex analysis' },
-      { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5', description: 'Fastest and cheapest' }
+      { id: 'claude-opus-4-5', label: 'Claude Opus 4.5', description: 'Most capable — best for complex analysis and reasoning' },
+      { id: 'claude-sonnet-4-5', label: 'Claude Sonnet 4.5', description: 'Best balance of speed and quality' },
+      { id: 'claude-haiku-4-5', label: 'Claude Haiku 4.5', description: 'Fastest and most affordable' }
     ],
-    defaultModel: 'claude-sonnet-4-6'
+    defaultModel: 'claude-sonnet-4-5'
   }
 };
 
@@ -309,14 +317,15 @@ class AIService {
   }
 
   /**
-   * Core chat completion - routes to the configured provider
+   * Core chat completion - routes to the configured provider.
    * @param {string} systemPrompt - System message
-   * @param {string} userPrompt - User message
-   * @param {object} options - { jsonMode, timeout, maxTokens }
+   * @param {string} userPrompt - Current user turn content
+   * @param {object} options - { jsonMode, timeout, maxTokens, history }
+   *   history: optional [{role:'user'|'assistant', content:string}] of prior turns
    * @returns {object|string} Parsed JSON if jsonMode, otherwise string
    */
   async chatCompletion(systemPrompt, userPrompt, options = {}) {
-    const { jsonMode = false, timeout = 60000, maxTokens = 4096 } = options;
+    const { jsonMode = false, timeout = 60000, maxTokens = 4096, history = [] } = options;
 
     const config = await this._loadConfigFile();
     const provider = config.provider;
@@ -327,31 +336,35 @@ class AIService {
       throw new Error('AI not configured. Please set up your AI provider in Settings.');
     }
 
+    const safeHistory = Array.isArray(history)
+      ? history.filter((m) => (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim())
+      : [];
+
     let responseText;
 
     switch (provider) {
       case 'local':
-        responseText = await this._callLocalRuntime(config, model, systemPrompt, userPrompt, { jsonMode, timeout, maxTokens });
+        responseText = await this._callLocalRuntime(config, model, systemPrompt, userPrompt, { jsonMode, timeout, maxTokens, history: safeHistory });
         break;
       case 'openai':
         if (!config.apiKeyEncrypted) throw new Error('AI not configured. Please set up your AI provider in Settings.');
         {
           const apiKey = this._decryptKey(config.apiKeyEncrypted);
-        responseText = await this._callOpenAI(apiKey, model, systemPrompt, userPrompt, { jsonMode, timeout, maxTokens });
+          responseText = await this._callOpenAI(apiKey, model, systemPrompt, userPrompt, { jsonMode, timeout, maxTokens, history: safeHistory });
         }
         break;
       case 'gemini':
         if (!config.apiKeyEncrypted) throw new Error('AI not configured. Please set up your AI provider in Settings.');
         {
           const apiKey = this._decryptKey(config.apiKeyEncrypted);
-        responseText = await this._callGemini(apiKey, model, systemPrompt, userPrompt, { jsonMode, timeout, maxTokens });
+          responseText = await this._callGemini(apiKey, model, systemPrompt, userPrompt, { jsonMode, timeout, maxTokens, history: safeHistory });
         }
         break;
       case 'anthropic':
         if (!config.apiKeyEncrypted) throw new Error('AI not configured. Please set up your AI provider in Settings.');
         {
           const apiKey = this._decryptKey(config.apiKeyEncrypted);
-        responseText = await this._callAnthropic(apiKey, model, systemPrompt, userPrompt, { jsonMode, timeout, maxTokens });
+          responseText = await this._callAnthropic(apiKey, model, systemPrompt, userPrompt, { jsonMode, timeout, maxTokens, history: safeHistory });
         }
         break;
       default:
@@ -379,6 +392,25 @@ class AIService {
     }
 
     return responseText;
+  }
+
+  /**
+   * Check whether ANY configured AI provider is ready to answer requests.
+   * Cloud providers (openai, gemini, anthropic) are ready when an encrypted API
+   * key is present in config. Local provider requires the runtime to be reachable.
+   */
+  async isAssistantReady() {
+    try {
+      const config = await this._loadConfigFile();
+      if (!config.provider) return false;
+      if (config.provider === 'local') {
+        const status = await this.getRuntimeStatus();
+        return status.ready === true;
+      }
+      return !!config.apiKeyEncrypted;
+    } catch {
+      return false;
+    }
   }
 
   async getRuntimeStatus() {
@@ -441,6 +473,7 @@ class AIService {
       model,
       messages: [
         { role: 'system', content: preparedPrompts.systemPrompt },
+        ...(options.history || []),
         { role: 'user', content: preparedPrompts.userPrompt }
       ],
       // Newer OpenAI models reject max_tokens and require max_completion_tokens.
@@ -492,6 +525,17 @@ class AIService {
       generationConfig
     });
 
+    const history = (options.history || []).map((m) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }]
+    }));
+
+    if (history.length > 0) {
+      const chat = genModel.startChat({ history });
+      const result = await chat.sendMessage(userPrompt);
+      return result.response.text();
+    }
+
     const result = await genModel.generateContent(userPrompt);
     return result.response.text();
   }
@@ -506,6 +550,7 @@ class AIService {
       max_tokens: options.maxTokens,
       system: systemPrompt,
       messages: [
+        ...(options.history || []),
         { role: 'user', content: userPrompt }
       ]
     };
@@ -529,6 +574,7 @@ class AIService {
       model: model === 'local-default' ? (runtimeStatus.model || localRuntime.model || DEFAULT_LOCAL_RUNTIME.model) : model,
       messages: [
         { role: 'system', content: preparedPrompts.systemPrompt },
+        ...(options.history || []),
         { role: 'user', content: preparedPrompts.userPrompt }
       ],
       max_tokens: options.maxTokens,
@@ -839,11 +885,15 @@ class AIService {
 
   _prioritizeOpenAIModels(modelRecords) {
     const preferredFamilies = [
+      'gpt-5.4',
+      'gpt-5.4-mini',
+      'gpt-5.4-nano',
+      'gpt-5.4-pro',
       'gpt-5',
       'gpt-5-mini',
       'gpt-5-nano',
-      'o3',
       'o4-mini',
+      'o3',
       'gpt-4.1',
       'gpt-4.1-mini',
       'gpt-4.1-nano',
@@ -912,7 +962,10 @@ class AIService {
       /^gemini-2\.5-pro$/i,
       /^gemini-2\.5-flash$/i,
       /^gemini-2\.5-flash-lite$/i,
-      /^gemini-2\.0-flash$/i
+      /^gemini-2\.0-flash$/i,
+      /^gemini-2\.0-flash-lite$/i,
+      /^gemini-1\.5-pro$/i,
+      /^gemini-1\.5-flash$/i
     ];
 
     return this._selectPreferredModels(modelIds, preferredPatterns, 5);

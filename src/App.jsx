@@ -180,6 +180,7 @@ function App() {
   const [assistantStatus, setAssistantStatus] = useState('ready');
   const [assistantRuntimeLabel, setAssistantRuntimeLabel] = useState('Local mode');
   const [assistantRuntimeReady, setAssistantRuntimeReady] = useState(true);
+  const [assistantRuntimeMessage, setAssistantRuntimeMessage] = useState('');
   const [projects, setProjects] = useState([]);
   const [settings, setSettings] = useState(null);
   const [settingsTab, setSettingsTab] = useState('app-info');
@@ -1140,11 +1141,13 @@ function App() {
         if (runtimeStatus) {
           setAssistantRuntimeLabel(runtimeStatus.modeLabel || 'Local mode');
           setAssistantRuntimeReady(runtimeStatus.ready !== false);
+          setAssistantRuntimeMessage(runtimeStatus.message || '');
         }
       } catch (error) {
         console.warn('Failed to load assistant runtime status:', error);
         setAssistantRuntimeLabel('Local runtime unavailable');
         setAssistantRuntimeReady(false);
+        setAssistantRuntimeMessage(error.message || 'Could not get local runtime status.');
       }
     };
 
@@ -1217,6 +1220,53 @@ function App() {
     setAssistantDraft(prompt);
   }, []);
 
+  const handleAssistantSourceSelect = useCallback(async (source) => {
+    const action = source?.action;
+    if (!action?.type) return;
+
+    try {
+      if (action.type === 'open-project') {
+        let targetProject = projects.find((project) => project.id === action.entityId) || null;
+
+        if (!targetProject) {
+          const projectsResult = await window.electronAPI?.projectsLoadAll?.();
+          if (projectsResult?.success && Array.isArray(projectsResult.projects)) {
+            targetProject = projectsResult.projects.find((project) => project.id === action.entityId) || null;
+            setProjects(projectsResult.projects);
+          }
+        }
+
+        if (targetProject) {
+          setCurrentProject(targetProject);
+          setCurrentView(action.view || 'project-management');
+        }
+        return;
+      }
+
+      if (action.type === 'open-agency') {
+        const agenciesResult = await window.electronAPI?.agenciesLoadAll?.();
+        const agencies = agenciesResult?.success && Array.isArray(agenciesResult.agencies)
+          ? agenciesResult.agencies
+          : [];
+
+        const targetAgency = agencies.find((agency) => agency.id === action.entityId) || null;
+        if (targetAgency) {
+          setCurrentAgency(targetAgency);
+          setCurrentView(action.view || 'agency-dashboard');
+        } else {
+          setCurrentView('agencies');
+        }
+        return;
+      }
+
+      if (action.type === 'open-view' && action.view) {
+        setCurrentView(action.view);
+      }
+    } catch (error) {
+      console.warn('Failed to open assistant source:', error);
+    }
+  }, [projects]);
+
   const handleAssistantSubmit = useCallback(async () => {
     const trimmedMessage = assistantDraft.trim();
     if (!trimmedMessage) return;
@@ -1234,10 +1284,25 @@ function App() {
     setIsAssistantVisible(true);
 
     try {
+      // Build a serializable history of prior turns for multi-turn LLM context.
+      // We use the state snapshot at the time of submission (before the new user
+      // message is appended), so the current question is not included twice.
+      const historySnapshot = assistantMessages
+        .filter((m) => m.role === 'user' || m.role === 'assistant')
+        .slice(-12)
+        .map((m) => ({
+          role: m.role,
+          content: Array.isArray(m.sections) && m.sections.length > 0
+            ? m.sections.map((s) => (s.title ? `${s.title}: ${s.content}` : s.content)).join('\n')
+            : (m.content || '')
+        }))
+        .filter((m) => m.content.trim().length > 0);
+
       const result = await window.electronAPI?.assistantSendMessage?.({
         message: trimmedMessage,
         context: assistantContext,
-        scopeMode: assistantScopeMode
+        scopeMode: assistantScopeMode,
+        history: historySnapshot
       });
 
       if (!result?.success) {
@@ -1250,6 +1315,9 @@ function App() {
         content: result.message?.content || '',
         sections: result.message?.sections || [],
         sources: result.message?.sources || [],
+        referencedProjects: result.message?.referencedProjects || [],
+        referencedAgencies: result.message?.referencedAgencies || [],
+        meta: result.message?.meta || null,
         timestamp: createAssistantTimestamp()
       };
 
@@ -1268,7 +1336,12 @@ function App() {
               content: error.message || 'The assistant could not complete this request.'
             }
           ],
-          sources: []
+          sources: [],
+          meta: {
+            generationMode: 'fallback-error',
+            runtimeMode: 'deterministic',
+            reason: error.message || 'assistant-request-error'
+          }
         }
       ]);
       setAssistantStatus('ready');
@@ -1754,9 +1827,7 @@ function App() {
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       <Header
-        isSidebarCollapsed={isSidebarCollapsed}
         isAssistantVisible={isAssistantVisible}
-        onToggleSidebar={handleToggleSidebar}
         onToggleAssistant={handleToggleAssistant}
       />
       <div className="flex flex-1 overflow-hidden">
@@ -1777,6 +1848,7 @@ function App() {
             status={assistantStatus}
             runtimeLabel={assistantRuntimeLabel}
             runtimeReady={assistantRuntimeReady}
+            runtimeMessage={assistantRuntimeMessage}
             context={assistantContext}
             scopeMode={assistantScopeMode}
             draftMessage={assistantDraft}
@@ -1784,9 +1856,9 @@ function App() {
             onDraftChange={setAssistantDraft}
             onSubmit={handleAssistantSubmit}
             onNewChat={handleNewAssistantChat}
-            onClose={handleToggleAssistant}
             onScopeChange={setAssistantScopeMode}
             onPromptSelect={handleAssistantPromptSelect}
+            onSourceSelect={handleAssistantSourceSelect}
           />
         )}
       </div>

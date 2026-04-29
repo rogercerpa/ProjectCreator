@@ -72,6 +72,39 @@ describe('AIService local runtime support', () => {
     expect(runtimeStatus.model).toBe('llama3.1:8b');
   });
 
+  test('isAssistantReady returns true for cloud provider with saved key', async () => {
+    await fs.writeJson(tempConfigPath, {
+      provider: 'openai',
+      model: 'gpt-5-mini',
+      apiKeyEncrypted: 'ZmFrZS1rZXk='
+    });
+
+    const ready = await service.isAssistantReady();
+    expect(ready).toBe(true);
+  });
+
+  test('isAssistantReady returns false when no provider is configured', async () => {
+    const ready = await service.isAssistantReady();
+    expect(ready).toBe(false);
+  });
+
+  test('isAssistantReady for local provider checks runtime reachability', async () => {
+    await fs.writeJson(tempConfigPath, {
+      provider: 'local',
+      model: 'llama3.1:8b',
+      localRuntime: {
+        endpoint: 'http://127.0.0.1:11434/v1',
+        healthEndpoint: 'http://127.0.0.1:11434/api/tags'
+      }
+    });
+
+    // Both attempts (models endpoint and health endpoint) should fail
+    axios.get.mockRejectedValue(new Error('ECONNREFUSED'));
+
+    const ready = await service.isAssistantReady();
+    expect(ready).toBe(false);
+  });
+
   test('routes chat completion through local runtime endpoint', async () => {
     await service.saveConfig({
       provider: 'local',

@@ -5,9 +5,7 @@ import ThemeToggle from './ThemeToggle';
 import UploadStatusBar from './UploadStatusBar';
 
 function Header({
-  isSidebarCollapsed = false,
   isAssistantVisible = false,
-  onToggleSidebar,
   onToggleAssistant
 }) {
   return (
@@ -15,15 +13,6 @@ function Header({
       <div className="flex items-center justify-between px-8 py-4 max-w-screen-2xl mx-auto">
         {/* Left section - Logo and Title */}
         <div className="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={onToggleSidebar}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-lg text-gray-700 transition-colors hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-            aria-label={isSidebarCollapsed ? 'Expand navigation' : 'Collapse navigation'}
-            title={isSidebarCollapsed ? 'Expand navigation' : 'Collapse navigation'}
-          >
-            {isSidebarCollapsed ? '☰' : '⇤'}
-          </button>
           <img 
             src={logoUrl} 
             alt="Project Creator Logo" 

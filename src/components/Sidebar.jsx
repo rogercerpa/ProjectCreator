@@ -1,6 +1,22 @@
 import React from 'react';
 import featureFlagService from '../services/FeatureFlagService';
 
+function SidebarToggleIcon({ isCollapsed }) {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      width="16"
+      height="16"
+      aria-hidden="true"
+      className={`transition-transform duration-200 ${isCollapsed ? '' : 'scale-x-[-1]'}`}
+    >
+      <rect x="2.5" y="3.5" width="15" height="13" rx="2" fill="none" stroke="currentColor" strokeWidth="1.5" />
+      <rect x="4.5" y="5.5" width="2.5" height="9" rx="0.8" fill="currentColor" opacity="0.9" />
+      <path d="M11.5 8.2L9.2 10l2.3 1.8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function Sidebar({ currentView, onViewChange, projectCount, isCollapsed = false, onToggleCollapse }) {
   const allMenuItems = [
     {
@@ -87,7 +103,7 @@ function Sidebar({ currentView, onViewChange, projectCount, isCollapsed = false,
             aria-label={isCollapsed ? 'Expand navigation' : 'Collapse navigation'}
             title={isCollapsed ? 'Expand navigation' : 'Collapse navigation'}
           >
-            {isCollapsed ? '☰' : '⇤'}
+            <SidebarToggleIcon isCollapsed={isCollapsed} />
           </button>
         </div>
       </div>
