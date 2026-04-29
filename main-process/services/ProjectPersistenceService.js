@@ -380,6 +380,23 @@ class ProjectPersistenceService {
           selfQCDefault: 0.5,
           fluffPercentage: 10
         },
+        pathSettings: {
+          templates: {
+            primaryPath: 'Z:\\DAS References\\!!!Templates For Project Creator',
+            fallbackPath: '{userHome}\\Desktop\\1) Triage\\!!!Templates For Project Creator',
+            agentRequirementsPath: 'Z:\\Agent Requirements'
+          },
+          projectOutput: {
+            defaultLocation: 'desktop',
+            customPath: '{userHome}\\Desktop',
+            triagePath: '{userHome}\\Desktop\\1) Triage'
+          }
+        },
+        dasGeneralSettings: {
+          filePath: 'Z:\\DAS References\\ProjectCreatorV5\\DASGeneral.xlsx',
+          autoRefresh: false,
+          refreshInterval: 30000
+        },
         workloadSettings: {
           enableRealTimeSync: true,
           dataDirectory: '',
@@ -403,6 +420,22 @@ class ProjectPersistenceService {
           calculationSettings: {
             ...defaultSettings.calculationSettings,
             ...(savedSettings.calculationSettings || {})
+          },
+          pathSettings: {
+            ...defaultSettings.pathSettings,
+            ...(savedSettings.pathSettings || {}),
+            templates: {
+              ...defaultSettings.pathSettings.templates,
+              ...(savedSettings.pathSettings?.templates || {})
+            },
+            projectOutput: {
+              ...defaultSettings.pathSettings.projectOutput,
+              ...(savedSettings.pathSettings?.projectOutput || {})
+            }
+          },
+          dasGeneralSettings: {
+            ...defaultSettings.dasGeneralSettings,
+            ...(savedSettings.dasGeneralSettings || {})
           },
           workloadSettings: {
             ...defaultSettings.workloadSettings,

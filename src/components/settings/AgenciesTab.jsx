@@ -217,7 +217,7 @@ const AgenciesTab = ({
                   setSyncSettings(newSettings);
                   setFilePathValid(null);
                 }}
-                placeholder="Enter or browse to select Excel file path..."
+                placeholder="Z:\DAS References\ProjectCreatorV5\CnI-DAS-Agents.xlsx"
                 className={`flex-1 px-3 py-2 border rounded-lg text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 transition-all focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
                   filePathValid === false ? 'border-error-500 dark:border-error-500' :
                   filePathValid === true ? 'border-success-500 dark:border-success-500' :

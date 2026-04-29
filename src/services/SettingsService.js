@@ -10,7 +10,7 @@ class SettingsService {
       agencySync: {
         enabled: false,
         mode: 'manual', // 'auto' or 'manual'
-        filePath: '',
+        filePath: 'Z:\\DAS References\\ProjectCreatorV5\\CnI-DAS-Agents.xlsx',
         lastSync: null,
         lastExport: null,
         autoSyncInterval: 30, // seconds

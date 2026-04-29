@@ -47,7 +47,7 @@ class AgencySyncService extends EventEmitter {
       const defaultSettings = {
         enabled: false,
         mode: 'manual', // 'auto' or 'manual'
-        filePath: '',
+        filePath: 'Z:\\DAS References\\ProjectCreatorV5\\CnI-DAS-Agents.xlsx',
         lastSync: null,
         autoSyncInterval: 30 // seconds
       };

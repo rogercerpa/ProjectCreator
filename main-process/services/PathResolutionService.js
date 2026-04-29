@@ -16,9 +16,9 @@ class PathResolutionService {
     this.defaultSettings = {
       pathSettings: {
         templates: {
-          primaryPath: '\\\\10.3.10.30\\DAS\\DAS References\\!!!Templates For Project Creator',
+          primaryPath: 'Z:\\DAS References\\!!!Templates For Project Creator',
           fallbackPath: '{userHome}\\Desktop\\1) Triage\\!!!Templates For Project Creator',
-          agentRequirementsPath: '\\\\10.3.10.30\\DAS\\Agent Requirements'
+          agentRequirementsPath: 'Z:\\Agent Requirements'
         },
         projectOutput: {
           outputMappings: {

@@ -360,6 +360,10 @@ const AdvancedSettingsTab = ({ settings, setSettings }) => {
             
             <div className="space-y-3">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">OneDrive Sync Folder Path</label>
+              <div className="p-3 bg-warning-50 dark:bg-warning-900/20 rounded-lg border border-warning-200 dark:border-warning-800 text-xs text-gray-700 dark:text-gray-300">
+                Use the <strong>local synced folder path</strong>, not a SharePoint web URL. Expected format:
+                <code className="mx-1 px-1 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">C:\Users\YourName\OneDrive - Acuity Brands, Inc\...</code>
+              </div>
               <div className="space-y-2">
                 <input
                   type="text"
@@ -582,7 +586,11 @@ const AdvancedSettingsTab = ({ settings, setSettings }) => {
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-primary-600 dark:text-primary-400 mt-0.5">•</span>
-                      <span>OneDrive will create a local folder that automatically syncs to SharePoint</span>
+                      <span>Wait for OneDrive to finish creating the local synced folder on your PC</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-primary-600 dark:text-primary-400 mt-0.5">•</span>
+                      <span>Confirm the folder appears under <code className="px-1 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-xs">C:\Users\...\OneDrive - Acuity Brands, Inc\...</code></span>
                     </li>
                   </ul>
                 </div>
@@ -611,6 +619,10 @@ const AdvancedSettingsTab = ({ settings, setSettings }) => {
                     <li className="flex items-start gap-2">
                       <span className="text-primary-600 dark:text-primary-400 mt-0.5">•</span>
                       <span>The folder path will look like: <code className="px-1 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-xs">C:\Users\YourName\OneDrive - Acuity Brands, Inc\...</code></span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-primary-600 dark:text-primary-400 mt-0.5">•</span>
+                      <span>Do not paste SharePoint web links (for example, <code className="px-1 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-xs">https://...sharepoint.com/...</code>) into this field</span>
                     </li>
                   </ul>
                 </div>

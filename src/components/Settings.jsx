@@ -13,6 +13,7 @@ import TriageCalcTab from './settings/TriageCalcTab';
 import AgileTab from './settings/AgileTab';
 import AISettingsTab from './settings/AISettingsTab';
 import featureFlagService from '../services/FeatureFlagService';
+import { buildSetupChecklist } from '../utils/setupChecklist';
 
 // Access secure electron API through contextBridge
 const { electronAPI } = window;
@@ -48,9 +49,9 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
     },
     pathSettings: {
       templates: {
-        primaryPath: '\\\\10.3.10.30\\DAS\\DAS References\\!!!Templates For Project Creator',
+        primaryPath: 'Z:\\DAS References\\!!!Templates For Project Creator',
         fallbackPath: '{userHome}\\Desktop\\1) Triage\\!!!Templates For Project Creator',
-        agentRequirementsPath: '\\\\10.3.10.30\\DAS\\Agent Requirements'
+        agentRequirementsPath: 'Z:\\Agent Requirements'
       },
       projectOutput: {
         defaultLocation: 'desktop', // 'desktop', 'triage', 'custom'
@@ -167,7 +168,7 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
   const [syncSettings, setSyncSettings] = useState({
     enabled: false,
     mode: 'manual',
-    filePath: '',
+    filePath: 'Z:\\DAS References\\ProjectCreatorV5\\CnI-DAS-Agents.xlsx',
     lastSync: null,
     autoSyncInterval: 30
   });
@@ -640,7 +641,11 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
     try {
       const result = await window.electronAPI.syncGetSettings();
       if (result && result.success) {
-        setSyncSettings(result.settings);
+        setSyncSettings(prev => ({
+          ...prev,
+          ...(result.settings || {}),
+          filePath: result.settings?.filePath || 'Z:\\DAS References\\ProjectCreatorV5\\CnI-DAS-Agents.xlsx'
+        }));
       }
     } catch (error) {
       console.error('Error loading sync settings:', error);
@@ -3678,12 +3683,45 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
     }
   };
 
+  const setupChecklist = buildSetupChecklist(settings, setActiveTab);
+  const remainingSetupItems = setupChecklist.filter(item => !item.done);
+
   return (
     <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900 p-6 overflow-hidden">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Application Settings</h1>
         <p className="text-gray-600 dark:text-gray-400">Manage application configuration and form options</p>
+      </div>
+
+      <div className="mb-6 p-4 rounded-lg border border-info-200 dark:border-info-800 bg-info-50 dark:bg-info-900/20">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-base font-semibold text-gray-900 dark:text-white">First-Run Setup Checklist</h2>
+          <span className={`text-xs px-2 py-1 rounded-full ${remainingSetupItems.length === 0 ? 'bg-success-100 dark:bg-success-900/30 text-success-700 dark:text-success-300' : 'bg-warning-100 dark:bg-warning-900/30 text-warning-700 dark:text-warning-300'}`}>
+            {remainingSetupItems.length === 0 ? 'Ready to go' : `${remainingSetupItems.length} setup item${remainingSetupItems.length === 1 ? '' : 's'} left`}
+          </span>
+        </div>
+        <div className="space-y-2">
+          {setupChecklist.map(item => (
+            <div key={item.id} className="flex items-center justify-between gap-3 p-2 rounded-md bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+              <div>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  {item.done ? '✅' : '⚠️'} {item.label}
+                </p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">{item.help}</p>
+              </div>
+              {!item.done && (
+                <button
+                  type="button"
+                  onClick={item.action}
+                  className="px-3 py-1.5 text-xs bg-primary-600 hover:bg-primary-700 text-white rounded-md transition-all"
+                >
+                  {item.actionLabel}
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Tab Navigation */}
@@ -3747,9 +3785,9 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
               },
               pathSettings: {
                 templates: {
-                  primaryPath: '\\\\10.3.10.30\\DAS\\DAS References\\!!!Templates For Project Creator',
+                  primaryPath: 'Z:\\DAS References\\!!!Templates For Project Creator',
                   fallbackPath: '{userHome}\\Desktop\\1) Triage\\!!!Templates For Project Creator',
-                  agentRequirementsPath: '\\\\10.3.10.30\\DAS\\Agent Requirements'
+                  agentRequirementsPath: 'Z:\\Agent Requirements'
                 },
                 projectOutput: {
                   defaultLocation: 'desktop',
@@ -3770,6 +3808,11 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
                 syncFolderPath: '',
                 cleanupStrategy: 'manual', // Default to manual for safety
                 keepRecentCount: 10
+              },
+              dasGeneralSettings: {
+                filePath: 'Z:\\DAS References\\ProjectCreatorV5\\DASGeneral.xlsx',
+                autoRefresh: false,
+                refreshInterval: 30000
               }
             };
             setSettings(defaultSettings);
