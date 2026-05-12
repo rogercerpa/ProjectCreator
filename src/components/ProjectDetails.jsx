@@ -567,6 +567,84 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
     }
   };
 
+  const projectActionButtons = (
+    <>
+      {showExportButtons && (
+        <>
+          <button 
+            onClick={handleCopyDates}
+            className="btn-outline-primary btn-sm h-8 px-2 text-xs justify-center sm:h-9 sm:px-2 sm:text-xs md:px-2.5 md:text-sm"
+            aria-label="Copy Dates"
+            title="Copy ECD and Requested Date to clipboard"
+          >
+            Copy Dates
+          </button>
+          <button 
+            onClick={handleExportToDASBoard}
+            disabled={isExporting || !project.rfaNumber || !project.projectName}
+            className="btn-outline-primary btn-sm h-8 px-2 text-xs justify-center sm:h-9 sm:px-2 sm:text-xs md:px-2.5 md:text-sm"
+            aria-label="Copy to Board"
+            title="Export project data to DAS Board format"
+          >
+            Copy to Board
+          </button>
+          <button 
+            onClick={handleExportToAgile}
+            disabled={isExporting}
+            className="btn-outline-primary btn-sm h-8 px-2 text-xs justify-center sm:h-9 sm:px-2 sm:text-xs md:px-2.5 md:text-sm"
+            aria-label="Copy to Agile"
+            title="Export triage breakdown to Agile format"
+          >
+            Copy to Agile
+          </button>
+        </>
+      )}
+      {showDownloadButton && (
+        <button 
+          onClick={handleDownloadFolder}
+          disabled={isDownloading}
+          className="btn-outline-primary btn-sm h-8 px-2 text-xs justify-center sm:h-9 sm:px-2 sm:text-xs md:px-2.5 md:text-sm"
+          aria-label={isDownloading ? 'Downloading folder' : 'Download Folder'}
+          title="Download project folder from Ready for QC"
+        >
+          {isDownloading ? 'Downloading...' : 'Download Folder'}
+        </button>
+      )}
+      {showUploadButton && (
+        hasAlreadyUploaded ? (
+          <button 
+            disabled
+            className="btn-outline-success btn-sm h-8 px-2 text-xs justify-center opacity-75 cursor-not-allowed sm:h-9 sm:px-2 sm:text-xs md:px-2.5 md:text-sm"
+            aria-label="Uploaded to DAS"
+            title={`Uploaded on ${new Date(project.dasUploadStatus.uploadedAt).toLocaleString()}`}
+          >
+            Uploaded to Drive
+          </button>
+        ) : (
+          <button 
+            onClick={() => handleDasUpload(false)}
+            disabled={isUploading}
+            className="btn-primary btn-sm h-8 px-2 text-xs justify-center sm:h-9 sm:px-2 sm:text-xs md:px-2.5 md:text-sm"
+            aria-label={isUploading ? 'Uploading to DAS Drive' : 'Upload to DAS Drive'}
+            title="Upload project folder to DAS Drive (Z:)"
+          >
+            {isUploading ? 'Uploading...' : 'Upload to Drive'}
+          </button>
+        )
+      )}
+      {showOpenDasButton && (
+        <button 
+          onClick={handleOpenDasFolder}
+          className="btn-outline-primary btn-sm h-8 px-2 text-xs justify-center sm:h-9 sm:px-2 sm:text-xs md:px-2.5 md:text-sm"
+          aria-label="Open Drive Folder"
+          title="Open project folder on DAS Drive (Z:)"
+        >
+          Open Drive Folder
+        </button>
+      )}
+    </>
+  );
+
   return (
     <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 h-full overflow-y-auto custom-scrollbar">
       {/* Toast Notification */}
@@ -581,22 +659,27 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
       )}
 
       {/* Expand/Collapse All Controls */}
-      <div className="flex items-center justify-end gap-2 -mb-2">
-        <span className="text-sm text-gray-500 dark:text-gray-400">Sections:</span>
-        <button
-          onClick={expandAllSections}
-          disabled={allExpanded}
-          className="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          Expand All
-        </button>
-        <button
-          onClick={collapseAllSections}
-          disabled={allCollapsed}
-          className="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          Collapse All
-        </button>
+      <div className="flex flex-wrap items-center justify-between gap-3 -mb-2">
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto whitespace-nowrap pb-1 custom-scrollbar [&>*]:shrink-0">
+          {projectActionButtons}
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="text-sm text-gray-500 dark:text-gray-400">Sections:</span>
+          <button
+            onClick={expandAllSections}
+            disabled={allExpanded}
+            className="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            Expand All
+          </button>
+          <button
+            onClick={collapseAllSections}
+            disabled={allCollapsed}
+            className="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            Collapse All
+          </button>
+        </div>
       </div>
 
       {/* Project Info Section */}
@@ -605,83 +688,6 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
         icon="📋"
         isExpanded={sectionStates.projectInfo}
         onToggle={() => toggleSection('projectInfo')}
-        headerActions={
-          <>
-            {showExportButtons && (
-              <>
-                <button 
-                  onClick={handleCopyDates}
-                  className="btn-outline-primary btn-sm h-8 px-2 text-xs justify-center sm:h-9 sm:px-2 sm:text-xs md:px-2.5 md:text-sm"
-                  aria-label="Copy Dates"
-                  title="Copy ECD and Requested Date to clipboard"
-                >
-                  Copy Dates
-                </button>
-                <button 
-                  onClick={handleExportToDASBoard}
-                  disabled={isExporting || !project.rfaNumber || !project.projectName}
-                  className="btn-outline-primary btn-sm h-8 px-2 text-xs justify-center sm:h-9 sm:px-2 sm:text-xs md:px-2.5 md:text-sm"
-                  aria-label="Copy to Board"
-                  title="Export project data to DAS Board format"
-                >
-                  Copy to Board
-                </button>
-                <button 
-                  onClick={handleExportToAgile}
-                  disabled={isExporting}
-                  className="btn-outline-primary btn-sm h-8 px-2 text-xs justify-center sm:h-9 sm:px-2 sm:text-xs md:px-2.5 md:text-sm"
-                  aria-label="Copy to Agile"
-                  title="Export triage breakdown to Agile format"
-                >
-                  Copy to Agile
-                </button>
-              </>
-            )}
-            {showDownloadButton && (
-              <button 
-                onClick={handleDownloadFolder}
-                disabled={isDownloading}
-                className="btn-outline-primary btn-sm h-8 px-2 text-xs justify-center sm:h-9 sm:px-2 sm:text-xs md:px-2.5 md:text-sm"
-                aria-label={isDownloading ? 'Downloading folder' : 'Download Folder'}
-                title="Download project folder from Ready for QC"
-              >
-                {isDownloading ? 'Downloading...' : 'Download Folder'}
-              </button>
-            )}
-            {showUploadButton && (
-              hasAlreadyUploaded ? (
-                <button 
-                  disabled
-                  className="btn-outline-success btn-sm h-8 px-2 text-xs justify-center opacity-75 cursor-not-allowed sm:h-9 sm:px-2 sm:text-xs md:px-2.5 md:text-sm"
-                  aria-label="Uploaded to DAS"
-                  title={`Uploaded on ${new Date(project.dasUploadStatus.uploadedAt).toLocaleString()}`}
-                >
-                  Uploaded to Drive
-                </button>
-              ) : (
-                <button 
-                  onClick={() => handleDasUpload(false)}
-                  disabled={isUploading}
-                  className="btn-primary btn-sm h-8 px-2 text-xs justify-center sm:h-9 sm:px-2 sm:text-xs md:px-2.5 md:text-sm"
-                  aria-label={isUploading ? 'Uploading to DAS Drive' : 'Upload to DAS Drive'}
-                  title="Upload project folder to DAS Drive (Z:)"
-                >
-                  {isUploading ? 'Uploading...' : 'Upload to Drive'}
-                </button>
-              )
-            )}
-            {showOpenDasButton && (
-              <button 
-                onClick={handleOpenDasFolder}
-                className="btn-outline-primary btn-sm h-8 px-2 text-xs justify-center sm:h-9 sm:px-2 sm:text-xs md:px-2.5 md:text-sm"
-                aria-label="Open Drive Folder"
-                title="Open project folder on DAS Drive (Z:)"
-              >
-                Open Drive Folder
-              </button>
-            )}
-          </>
-        }
       >
         <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4 lg:grid-cols-2 md:grid-cols-1 pt-4">
           <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
