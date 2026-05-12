@@ -1,9 +1,43 @@
 import React from 'react';
 import { getFullVersionInfo, getVersionDisplay, BUILD_INFO } from '../../utils/version';
 
-function AppInfoTab({ onLaunchOnboarding }) {
+function AppInfoTab({ onLaunchOnboarding, setupChecklist = [] }) {
+  const remainingSetupItems = setupChecklist.filter(item => !item.done);
+
   return (
     <div className="space-y-6">
+      {setupChecklist.length > 0 && (
+        <div className="p-4 rounded-lg border border-info-200 dark:border-info-800 bg-info-50 dark:bg-info-900/20">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">First-Run Setup Checklist</h2>
+            <span className={`text-xs px-2 py-1 rounded-full ${remainingSetupItems.length === 0 ? 'bg-success-100 dark:bg-success-900/30 text-success-700 dark:text-success-300' : 'bg-warning-100 dark:bg-warning-900/30 text-warning-700 dark:text-warning-300'}`}>
+              {remainingSetupItems.length === 0 ? 'Ready to go' : `${remainingSetupItems.length} setup item${remainingSetupItems.length === 1 ? '' : 's'} left`}
+            </span>
+          </div>
+          <div className="space-y-2">
+            {setupChecklist.map(item => (
+              <div key={item.id} className="flex items-center justify-between gap-3 p-2 rounded-md bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                <div>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                    {item.done ? '✅' : '⚠️'} {item.label}
+                  </p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">{item.help}</p>
+                </div>
+                {!item.done && (
+                  <button
+                    type="button"
+                    onClick={item.action}
+                    className="px-3 py-1.5 text-xs bg-primary-600 hover:bg-primary-700 text-white rounded-md transition-all"
+                  >
+                    {item.actionLabel}
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Application Information Section */}
       <div className="p-6 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
         <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Application Information</h2>
