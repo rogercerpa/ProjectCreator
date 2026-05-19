@@ -558,7 +558,7 @@ function ProjectList({ projects, onProjectSelect, onProjectDelete, onNewProject,
       )}
 
       {/* Projects tabs + filters */}
-      <div className="px-8 py-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm sticky top-0 z-20">
+      <div className="px-8 py-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm sticky -top-4 z-30">
         <div className="max-w-7xl mx-auto space-y-3">
           {/* Primary page tabs (match DAS General / Spec Review pattern) */}
           <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700 pb-2">
