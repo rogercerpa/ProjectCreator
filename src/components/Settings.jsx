@@ -57,6 +57,9 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
         defaultLocation: 'desktop', // 'desktop', 'triage', 'custom'
         customPath: '{userHome}\\Desktop',
         triagePath: '{userHome}\\Desktop\\1) Triage'
+      },
+      readyForQC: {
+        folderPath: '{userHome}\\OneDrive - Acuity Brands, Inc\\C&I Design Solutions - LnT\\Ready for QC'
       }
     },
     sharePointSettings: {

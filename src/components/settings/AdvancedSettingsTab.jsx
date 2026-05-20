@@ -288,6 +288,66 @@ const AdvancedSettingsTab = ({ settings, setSettings }) => {
             </div>
           </div>
 
+          {/* Ready for QC Scan Path */}
+          <div className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1 flex items-center gap-2">
+              <span>✅</span>
+              <span>Ready for QC Scan Location</span>
+            </h3>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">
+              Folder scanned by the Projects page to find QC zip files and update matching projects to Ready for QC.
+            </p>
+
+            <div className="space-y-3">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Ready for QC Folder Path:</label>
+              <div className="p-3 bg-warning-50 dark:bg-warning-900/20 rounded-lg border border-warning-200 dark:border-warning-800 text-xs text-gray-700 dark:text-gray-300">
+                Use the <strong>local synced OneDrive/SharePoint folder path</strong>, not a SharePoint web URL.
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={settings.pathSettings.readyForQC?.folderPath || ''}
+                  onChange={(e) => setSettings(prev => ({
+                    ...prev,
+                    pathSettings: {
+                      ...prev.pathSettings,
+                      readyForQC: {
+                        ...prev.pathSettings.readyForQC,
+                        folderPath: e.target.value
+                      }
+                    }
+                  }))}
+                  placeholder="C:\Users\...\OneDrive - Acuity Brands, Inc\...\Ready for QC"
+                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                />
+                <button
+                  type="button"
+                  className="px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-all"
+                  onClick={async () => {
+                    if (electronAPI && electronAPI.selectFolder) {
+                      const result = await electronAPI.selectFolder();
+                      if (result && !result.canceled && result.filePaths[0]) {
+                        setSettings(prev => ({
+                          ...prev,
+                          pathSettings: {
+                            ...prev.pathSettings,
+                            readyForQC: {
+                              ...prev.pathSettings.readyForQC,
+                              folderPath: result.filePaths[0]
+                            }
+                          }
+                        }));
+                      }
+                    }
+                  }}
+                  title="Browse for Ready for QC folder"
+                >
+                  📂
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* Path Variables Info */}
           <div className="p-4 bg-info-50 dark:bg-info-900/20 rounded-lg border border-info-200 dark:border-info-800">
             <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">

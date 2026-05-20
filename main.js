@@ -90,6 +90,7 @@ const oneDriveSyncService = new OneDriveSyncService();
 // Initialize Ready for QC service
 const ReadyForQCService = require('./main-process/services/ReadyForQCService');
 const readyForQCService = new ReadyForQCService();
+// Provides project persistence and settings access for Ready for QC scans.
 readyForQCService.setProjectPersistenceService(projectPersistenceService);
 
 // Initialize DAS Upload service

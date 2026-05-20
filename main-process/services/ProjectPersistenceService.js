@@ -390,6 +390,9 @@ class ProjectPersistenceService {
             defaultLocation: 'desktop',
             customPath: '{userHome}\\Desktop',
             triagePath: '{userHome}\\Desktop\\1) Triage'
+          },
+          readyForQC: {
+            folderPath: '{userHome}\\OneDrive - Acuity Brands, Inc\\C&I Design Solutions - LnT\\Ready for QC'
           }
         },
         dasGeneralSettings: {
@@ -431,6 +434,10 @@ class ProjectPersistenceService {
             projectOutput: {
               ...defaultSettings.pathSettings.projectOutput,
               ...(savedSettings.pathSettings?.projectOutput || {})
+            },
+            readyForQC: {
+              ...defaultSettings.pathSettings.readyForQC,
+              ...(savedSettings.pathSettings?.readyForQC || {})
             }
           },
           dasGeneralSettings: {

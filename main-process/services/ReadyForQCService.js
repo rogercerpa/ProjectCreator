@@ -10,14 +10,14 @@ const { sanitizeProjectName: sanitizeProjectNameUtil, sanitizeForFilename } = re
  */
 class ReadyForQCService {
   constructor() {
-    // OneDrive SharePoint Ready for QC folder path
-    // Note: This path is user-specific and should be configurable in the future
-    this.readyForQCFolderPath = path.join(
+    // Default OneDrive SharePoint Ready for QC folder path.
+    this.defaultReadyForQCFolderPath = path.join(
       os.homedir(),
       'OneDrive - Acuity Brands, Inc',
       'C&I Design Solutions - LnT',
       'Ready for QC'
     );
+    this.readyForQCFolderPath = this.defaultReadyForQCFolderPath;
     
     this.projectPersistenceService = null; // Will be injected
   }
@@ -28,6 +28,38 @@ class ReadyForQCService {
    */
   setProjectPersistenceService(service) {
     this.projectPersistenceService = service;
+  }
+
+  /**
+   * Resolve supported path variables in user-configured settings.
+   * @param {string} folderPath - Configured folder path
+   * @returns {string} Expanded path
+   */
+  resolvePathVariables(folderPath) {
+    return String(folderPath || '').replace(/\{userHome\}/gi, os.homedir());
+  }
+
+  /**
+   * Get the configured Ready for QC folder path, falling back to the legacy default.
+   * @returns {Promise<string>} Resolved folder path
+   */
+  async getReadyForQCFolderPath() {
+    try {
+      if (this.projectPersistenceService?.loadSettings) {
+        const settingsResult = await this.projectPersistenceService.loadSettings();
+        const configuredPath = settingsResult?.success
+          ? settingsResult.data?.pathSettings?.readyForQC?.folderPath
+          : null;
+
+        if (configuredPath && String(configuredPath).trim()) {
+          return path.normalize(this.resolvePathVariables(configuredPath.trim()));
+        }
+      }
+    } catch (error) {
+      console.warn(`[ReadyForQC] Failed to load configured folder path, using default: ${error.message}`);
+    }
+
+    return this.defaultReadyForQCFolderPath;
   }
 
   /**
@@ -211,14 +243,17 @@ class ReadyForQCService {
    */
   async scanReadyForQCFolder() {
     try {
+      const readyForQCFolderPath = await this.getReadyForQCFolderPath();
+      this.readyForQCFolderPath = readyForQCFolderPath;
+
       // Check if folder exists
-      if (!await fs.pathExists(this.readyForQCFolderPath)) {
-        console.warn(`Ready for QC folder does not exist: ${this.readyForQCFolderPath}`);
+      if (!await fs.pathExists(readyForQCFolderPath)) {
+        console.warn(`Ready for QC folder does not exist: ${readyForQCFolderPath}`);
         return [];
       }
 
       // Read directory contents
-      const files = await fs.readdir(this.readyForQCFolderPath);
+      const files = await fs.readdir(readyForQCFolderPath);
       const zipFiles = [];
       const cutoffDate = this.getBusinessDaysAgo(5);
       const cutoffDateStr = cutoffDate.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
@@ -226,7 +261,7 @@ class ReadyForQCService {
       console.log(`[ReadyForQC] Scanning for zip files modified after ${cutoffDateStr} (5 business days ago)`);
 
       for (const file of files) {
-        const filePath = path.join(this.readyForQCFolderPath, file);
+        const filePath = path.join(readyForQCFolderPath, file);
         const stats = await fs.stat(filePath);
 
         // Check if it's a zip file
