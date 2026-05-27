@@ -18,7 +18,7 @@ import { buildSetupChecklist } from '../utils/setupChecklist';
 // Access secure electron API through contextBridge
 const { electronAPI } = window;
 
-function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
+function Settings({ initialTab = 'user-profile', onLaunchOnboarding }) {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [settings, setSettings] = useState({
     rfaTypes: ['BOM (No Layout)', 'BOM with Layout', 'Controls BOM - Budget', 'Controls BOM - Layout', 'BUDGET', 'LAYOUT', 'SUBMITTAL', 'RELEASE', 'GRAPHICS', 'PHOTOMETRICS', 'Consultation'],

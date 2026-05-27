@@ -183,7 +183,7 @@ function App() {
   const [assistantRuntimeMessage, setAssistantRuntimeMessage] = useState('');
   const [projects, setProjects] = useState([]);
   const [settings, setSettings] = useState(null);
-  const [settingsTab, setSettingsTab] = useState('app-info');
+  const [settingsTab, setSettingsTab] = useState('user-profile');
   
   // Draft recovery state
   const [showDraftRecovery, setShowDraftRecovery] = useState(false);
