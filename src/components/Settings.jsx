@@ -1432,10 +1432,10 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
 
   const allTabs = [
     {
-      id: 'app-info',
-      label: 'App Info',
-      icon: 'ℹ️',
-      fullLabel: 'Application Information'
+      id: 'user-profile',
+      label: 'User Profile',
+      icon: '👤',
+      fullLabel: 'User Profile & Knowledge'
     },
     {
       id: 'advanced-settings',
@@ -1444,10 +1444,22 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
       fullLabel: 'System Configuration'
     },
     {
+      id: 'app-info',
+      label: 'App Info',
+      icon: 'ℹ️',
+      fullLabel: 'Application Information'
+    },
+    {
       id: 'project-form',
       label: 'Form Settings',
       icon: '📝',
       fullLabel: 'Project Form Settings'
+    },
+    {
+      id: 'triage-calc',
+      label: 'Triage Calc',
+      icon: '🧮',
+      fullLabel: 'Triage Calculation Settings'
     },
     {
       id: 'agencies',
@@ -1456,10 +1468,10 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
       fullLabel: 'Agency Management'
     },
     {
-      id: 'user-profile',
-      label: 'User Profile',
-      icon: '👤',
-      fullLabel: 'User Profile & Knowledge'
+      id: 'ai-settings',
+      label: 'AI Config',
+      icon: '🤖',
+      fullLabel: 'AI Provider Configuration'
     },
     {
       id: 'workload',
@@ -1474,18 +1486,6 @@ function Settings({ initialTab = 'app-info', onLaunchOnboarding }) {
       icon: '📥',
       fullLabel: 'Agile Workqueue Monitor Settings',
       featureFlag: 'agile-workqueue'
-    },
-    {
-      id: 'triage-calc',
-      label: 'Triage Calc',
-      icon: '🧮',
-      fullLabel: 'Triage Calculation Settings'
-    },
-    {
-      id: 'ai-settings',
-      label: 'AI Config',
-      icon: '🤖',
-      fullLabel: 'AI Provider Configuration'
     }
   ];
 
