@@ -1,4 +1,5 @@
 import React from 'react';
+import MediaAsset from './MediaAsset';
 
 const CALLOUT_STYLES = {
   tip: { icon: '💡', box: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700 text-green-800 dark:text-green-200' },
@@ -6,7 +7,7 @@ const CALLOUT_STYLES = {
   info: { icon: 'ℹ️', box: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700 text-blue-800 dark:text-blue-200' }
 };
 
-const LessonBlock = ({ block }) => {
+const LessonBlock = ({ block, courseId }) => {
   if (!block) return null;
 
   switch (block.type) {
@@ -34,6 +35,10 @@ const LessonBlock = ({ block }) => {
           🔗 {block.label || block.url}
         </a>
       );
+
+    case 'image':
+    case 'video':
+      return <MediaAsset courseId={courseId} block={block} />;
 
     default:
       return null;

@@ -17,9 +17,9 @@ const gradeQuiz = (questions, answers) => {
   return { correct, total: questions.length, score: Math.round((correct / total) * 100) };
 };
 
-const CoursePlayer = ({ courseId, catalogCourse, onExit, onCompleted }) => {
-  const [course, setCourse] = useState(null);
-  const [loading, setLoading] = useState(true);
+const CoursePlayer = ({ courseId, catalogCourse, courseOverride = null, previewMode = false, onExit, onCompleted }) => {
+  const [course, setCourse] = useState(courseOverride || null);
+  const [loading, setLoading] = useState(!courseOverride);
   const [error, setError] = useState(null);
   const [phase, setPhase] = useState('lessons'); // lessons | quiz | results
   const [lessonIndex, setLessonIndex] = useState(0);
@@ -28,6 +28,11 @@ const CoursePlayer = ({ courseId, catalogCourse, onExit, onCompleted }) => {
   const [result, setResult] = useState(null);
 
   useEffect(() => {
+    if (courseOverride) {
+      setCourse(courseOverride);
+      setLoading(false);
+      return;
+    }
     let active = true;
     setLoading(true);
     electronAPI.trainingHubGetCourse(courseId)
@@ -42,7 +47,7 @@ const CoursePlayer = ({ courseId, catalogCourse, onExit, onCompleted }) => {
       .catch(err => active && setError(err.message))
       .finally(() => active && setLoading(false));
     return () => { active = false; };
-  }, [courseId]);
+  }, [courseId, courseOverride]);
 
   const questions = course?.quiz?.questions || [];
   const passScore = course?.passScore ?? 80;
@@ -53,26 +58,27 @@ const CoursePlayer = ({ courseId, catalogCourse, onExit, onCompleted }) => {
     const graded = gradeQuiz(questions, answers);
     setSubmitted(true);
 
-    const attempt = {
-      score: graded.score,
-      passScore,
-      courseVersion: course.version || catalogCourse?.version || 1,
-      category: course.category || catalogCourse?.category,
-      total: graded.total,
-      correct: graded.correct
-    };
-
     let saved = null;
-    try {
-      saved = await electronAPI.trainingHubSubmitAttempt(courseId, attempt);
-    } catch (err) {
-      console.error('Failed to save attempt:', err);
+    if (!previewMode) {
+      const attempt = {
+        score: graded.score,
+        passScore,
+        courseVersion: course.version || catalogCourse?.version || 1,
+        category: course.category || catalogCourse?.category,
+        total: graded.total,
+        correct: graded.correct
+      };
+      try {
+        saved = await electronAPI.trainingHubSubmitAttempt(courseId, attempt);
+      } catch (err) {
+        console.error('Failed to save attempt:', err);
+      }
+      onCompleted?.();
     }
 
     const passed = graded.score >= passScore;
     setResult({ ...graded, passed, passScore, topicScores: saved?.topicScores });
     setPhase('results');
-    onCompleted?.();
   };
 
   const restart = () => {
@@ -139,7 +145,7 @@ const CoursePlayer = ({ courseId, catalogCourse, onExit, onCompleted }) => {
           <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">{currentLesson.title}</h2>
           <div className="space-y-4">
             {(currentLesson.blocks || []).map((block, i) => (
-              <LessonBlock key={i} block={block} />
+              <LessonBlock key={i} block={block} courseId={courseId} />
             ))}
           </div>
 

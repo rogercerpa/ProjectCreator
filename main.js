@@ -156,7 +156,7 @@ const specReviewPersistenceService = new SpecReviewPersistenceService();
 
 // Initialize Training Hub service
 const TrainingHubService = require('./main-process/services/TrainingHubService');
-const trainingHubService = new TrainingHubService(settingsService);
+const trainingHubService = new TrainingHubService(settingsService, aiService);
 const appAssistantService = new AppAssistantService({
   projectPersistenceService,
   agencyService,
@@ -3878,6 +3878,93 @@ ipcMain.handle('training-hub:submit-attempt', async (event, courseId, attempt) =
 ipcMain.handle('training-hub:reset-course', async (event, courseId) => {
   try {
     return await trainingHubService.resetCourseProgress(courseId);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// --- Authoring ---
+
+ipcMain.handle('training-hub:select-source-files', async () => {
+  try {
+    const { dialog } = require('electron');
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openFile', 'multiSelections'],
+      filters: [
+        { name: 'Documents', extensions: ['pdf', 'docx', 'doc', 'txt'] }
+      ]
+    });
+    if (result.canceled || !result.filePaths.length) {
+      return { success: false, canceled: true };
+    }
+    return { success: true, filePaths: result.filePaths };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('training-hub:select-media-file', async (event, kind) => {
+  try {
+    const { dialog } = require('electron');
+    const filters = kind === 'video'
+      ? [{ name: 'Video', extensions: ['mp4', 'webm', 'ogg', 'mov', 'm4v'] }]
+      : [{ name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'] }];
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openFile'],
+      filters
+    });
+    if (result.canceled || !result.filePaths.length) {
+      return { success: false, canceled: true };
+    }
+    return { success: true, filePath: result.filePaths[0] };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('training-hub:generate-draft', async (event, params) => {
+  try {
+    return await trainingHubService.generateCourseDraft(params || {});
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('training-hub:save-course', async (event, course) => {
+  try {
+    return await trainingHubService.saveCourse(course);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('training-hub:delete-course', async (event, courseId) => {
+  try {
+    return await trainingHubService.deleteCourse(courseId);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('training-hub:upload-media', async (event, courseId, filePath) => {
+  try {
+    return await trainingHubService.uploadMedia(courseId, filePath);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('training-hub:media-data-url', async (event, courseId, assetId) => {
+  try {
+    return await trainingHubService.getMediaDataUrl(courseId, assetId);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('training-hub:media-buffer', async (event, courseId, assetId) => {
+  try {
+    return await trainingHubService.getMediaBuffer(courseId, assetId);
   } catch (error) {
     return { success: false, error: error.message };
   }

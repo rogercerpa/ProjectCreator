@@ -2,7 +2,7 @@ import React from 'react';
 import ScoreBadge from './ScoreBadge';
 import { deriveStatus, difficultyLabel } from '../utils';
 
-const CourseCard = ({ course, categoryMeta, courseProgress, onStart }) => {
+const CourseCard = ({ course, categoryMeta, courseProgress, onStart, onEdit }) => {
   const status = deriveStatus(course, courseProgress);
   const bestScore = courseProgress?.bestScore || 0;
   const isDone = status === 'passed';
@@ -23,7 +23,18 @@ const CourseCard = ({ course, categoryMeta, courseProgress, onStart }) => {
             <span className="text-base">{categoryMeta?.icon || '📘'}</span>
             {categoryMeta?.label || course.category}
           </span>
-          <ScoreBadge status={status} />
+          <div className="flex items-center gap-2">
+            <ScoreBadge status={status} />
+            {onEdit && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onEdit(course); }}
+                title="Edit course"
+                className="text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+              >
+                ✏️
+              </button>
+            )}
+          </div>
         </div>
 
         <h3 className="text-base font-semibold text-gray-900 dark:text-white leading-snug mb-1">

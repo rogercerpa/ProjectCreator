@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import CourseCatalog from './CourseCatalog';
 import CoursePlayer from './CoursePlayer';
 import ProgressDashboard from './ProgressDashboard';
+import CourseEditor from './author/CourseEditor';
 
 const { electronAPI } = window;
 
@@ -16,6 +17,8 @@ const TrainingHubPage = () => {
   const [progress, setProgress] = useState({ courses: {}, topicScores: {} });
   const [loading, setLoading] = useState(true);
   const [activeCourse, setActiveCourse] = useState(null); // catalog entry being played
+  const [editorTarget, setEditorTarget] = useState(null); // 'new' | courseId | null
+  const [aiReady, setAiReady] = useState(false);
 
   const loadProgress = useCallback(async () => {
     try {
@@ -26,16 +29,25 @@ const TrainingHubPage = () => {
     }
   }, []);
 
+  const loadCatalog = useCallback(async (forceRefresh = false) => {
+    try {
+      const res = await electronAPI.trainingHubGetCatalog(forceRefresh);
+      if (res?.success) setCatalog(res.catalog);
+    } catch (err) {
+      console.error('Failed to load Training Hub catalog:', err);
+    }
+  }, []);
+
   useEffect(() => {
     let active = true;
     (async () => {
       setLoading(true);
       try {
-        const [catRes] = await Promise.all([
-          electronAPI.trainingHubGetCatalog(),
-          loadProgress()
-        ]);
-        if (active && catRes?.success) setCatalog(catRes.catalog);
+        await Promise.all([loadCatalog(false), loadProgress()]);
+        try {
+          const key = await electronAPI.aiHasKey?.();
+          if (active) setAiReady(!!key?.hasKey);
+        } catch { /* AI optional */ }
       } catch (err) {
         console.error('Failed to load Training Hub:', err);
       } finally {
@@ -43,7 +55,7 @@ const TrainingHubPage = () => {
       }
     })();
     return () => { active = false; };
-  }, [loadProgress]);
+  }, [loadCatalog, loadProgress]);
 
   const handleStart = useCallback((course) => {
     setActiveCourse(course);
@@ -53,6 +65,29 @@ const TrainingHubPage = () => {
     setActiveCourse(null);
     loadProgress();
   }, [loadProgress]);
+
+  const handleEdit = useCallback((course) => {
+    setEditorTarget(course?.id || 'new');
+  }, []);
+
+  const handleEditorSaved = useCallback(async () => {
+    setEditorTarget(null);
+    await loadCatalog(true);
+  }, [loadCatalog]);
+
+  if (editorTarget) {
+    return (
+      <div className="h-full overflow-y-auto">
+        <CourseEditor
+          courseId={editorTarget === 'new' ? null : editorTarget}
+          catalog={catalog}
+          aiReady={aiReady}
+          onClose={() => setEditorTarget(null)}
+          onSaved={handleEditorSaved}
+        />
+      </div>
+    );
+  }
 
   if (activeCourse) {
     return (
@@ -77,12 +112,20 @@ const TrainingHubPage = () => {
             Short interactive courses and quizzes to sharpen your design &amp; application skills
           </p>
         </div>
-        {catalog && (
-          <div className="hidden sm:flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
-            <span>{catalog.courses?.length || 0} courses</span>
-            <span>{catalog.categories?.length || 0} topics</span>
-          </div>
-        )}
+        <div className="flex items-center gap-4">
+          {catalog && (
+            <div className="hidden sm:flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+              <span>{catalog.courses?.length || 0} courses</span>
+              <span>{catalog.categories?.length || 0} topics</span>
+            </div>
+          )}
+          <button
+            onClick={() => setEditorTarget('new')}
+            className="px-4 py-2 text-sm font-medium rounded-lg bg-primary-600 hover:bg-primary-700 text-white"
+          >
+            + Create course
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -114,6 +157,7 @@ const TrainingHubPage = () => {
             catalog={catalog}
             progressCourses={progress.courses}
             onStart={handleStart}
+            onEdit={handleEdit}
           />
         ) : (
           <ProgressDashboard

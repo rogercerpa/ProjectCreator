@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import CourseCard from './components/CourseCard';
 
-const CourseCatalog = ({ catalog, progressCourses, onStart }) => {
+const CourseCatalog = ({ catalog, progressCourses, onStart, onEdit }) => {
   const [activeCategory, setActiveCategory] = useState('all');
   const [query, setQuery] = useState('');
 
@@ -80,6 +80,7 @@ const CourseCatalog = ({ catalog, progressCourses, onStart }) => {
               categoryMeta={categoryMap[course.category]}
               courseProgress={progressCourses?.[course.id]}
               onStart={onStart}
+              onEdit={onEdit}
             />
           ))}
         </div>

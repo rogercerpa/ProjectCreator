@@ -481,6 +481,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   trainingHubGetProgress: () => ipcRenderer.invoke('training-hub:get-progress'),
   trainingHubSubmitAttempt: (courseId, attempt) => ipcRenderer.invoke('training-hub:submit-attempt', courseId, attempt),
   trainingHubResetCourse: (courseId) => ipcRenderer.invoke('training-hub:reset-course', courseId),
+  trainingHubSelectSourceFiles: () => ipcRenderer.invoke('training-hub:select-source-files'),
+  trainingHubSelectMediaFile: (kind) => ipcRenderer.invoke('training-hub:select-media-file', kind),
+  trainingHubGenerateDraft: (params) => ipcRenderer.invoke('training-hub:generate-draft', params),
+  trainingHubSaveCourse: (course) => ipcRenderer.invoke('training-hub:save-course', course),
+  trainingHubDeleteCourse: (courseId) => ipcRenderer.invoke('training-hub:delete-course', courseId),
+  trainingHubUploadMedia: (courseId, filePath) => ipcRenderer.invoke('training-hub:upload-media', courseId, filePath),
+  trainingHubMediaDataUrl: (courseId, assetId) => ipcRenderer.invoke('training-hub:media-data-url', courseId, assetId),
+  trainingHubMediaBuffer: (courseId, assetId) => ipcRenderer.invoke('training-hub:media-buffer', courseId, assetId),
 
   // ===== PRODUCT KNOWLEDGE BASE APIs =====
   kbLoad: (forceRefresh) => ipcRenderer.invoke('kb:load', forceRefresh),
