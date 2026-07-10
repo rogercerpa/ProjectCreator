@@ -37,6 +37,7 @@ const ProjectCreationService = require('./main-process/services/ProjectCreationS
 const DuplicateProjectDetectionService = require('./main-process/services/DuplicateProjectDetectionService');
 const FormSettingsService = require('./main-process/services/FormSettingsService');
 const SecurityLoggingService = require('./main-process/services/SecurityLoggingService');
+const ErrorLogService = require('./main-process/services/ErrorLogService');
 const AgencyService = require('./main-process/services/AgencyService');
 const AgencyProjectService = require('./main-process/services/AgencyProjectService');
 const ExcelDiagnosticService = require('./main-process/services/ExcelDiagnosticService');
@@ -76,6 +77,12 @@ const projectCreationService = new ProjectCreationService();
 const duplicateProjectDetectionService = new DuplicateProjectDetectionService();
 const formSettingsService = new FormSettingsService();
 const securityLoggingService = new SecurityLoggingService();
+const errorLogService = new ErrorLogService({
+  appName: packageJson.name === 'project-creator' ? 'Project Creator' : packageJson.name,
+  appVersion: packageJson.version,
+  buildDate: null,
+  getVersions: () => process.versions
+});
 const agencyService = new AgencyService();
 const agencyProjectService = new AgencyProjectService();
 const excelDiagnosticService = new ExcelDiagnosticService();
@@ -140,9 +147,11 @@ const ProductKnowledgeBaseService = require('./main-process/services/ProductKnow
 const SpecReviewService = require('./main-process/services/SpecReviewService');
 const SpecReviewPersistenceService = require('./main-process/services/SpecReviewPersistenceService');
 const SpecReviewLearningService = require('./main-process/services/SpecReviewLearningService');
+const SpecReviewTrainingService = require('./main-process/services/SpecReviewTrainingService');
 const productKBService = new ProductKnowledgeBaseService(settingsService);
 const specReviewLearningService = new SpecReviewLearningService(settingsService);
-const specReviewService = new SpecReviewService(aiService, productKBService, specReviewLearningService);
+const specReviewTrainingService = new SpecReviewTrainingService();
+const specReviewService = new SpecReviewService(aiService, productKBService, specReviewLearningService, specReviewTrainingService);
 const specReviewPersistenceService = new SpecReviewPersistenceService();
 const appAssistantService = new AppAssistantService({
   projectPersistenceService,
@@ -737,9 +746,24 @@ ipcMain.handle('qc-get-matching-zips', async (event, project) => {
 ipcMain.handle('qc-download-zip', async (event, zipFilePath, project) => {
   try {
     const result = await readyForQCService.downloadAndExtractZip(zipFilePath, project);
+    if (!result?.success) {
+      await errorLogService.logError({
+        category: 'das-download',
+        userMessage: `Failed to download folder: ${result?.error || 'Unknown error'}`,
+        technicalMessage: result?.error,
+        context: { projectId: project?.id, projectName: project?.projectName, zipFilePath }
+      });
+    }
     return result;
   } catch (error) {
     console.error('Error downloading and extracting zip:', error);
+    await errorLogService.logError({
+      category: 'das-download',
+      userMessage: `Failed to download folder: ${error.message}`,
+      technicalMessage: error.message,
+      stack: error.stack,
+      context: { projectId: project?.id, projectName: project?.projectName, zipFilePath }
+    });
     return { success: false, error: error.message };
   }
 });
@@ -796,12 +820,28 @@ ipcMain.handle('das-upload-project', async (event, project, confirmed) => {
     
     // Remove from active uploads (for confirmation dialogs or non-upload results)
     activeUploads.delete(uploadId);
+
+    if (!result.success && !result.needsConfirmation) {
+      await errorLogService.logError({
+        category: 'das-upload',
+        userMessage: `Upload to DAS Drive failed: ${result.error || 'Unknown error'}`,
+        technicalMessage: result.error,
+        context: { projectId: project?.id, projectName: project?.projectName }
+      });
+    }
     
     return result;
   } catch (error) {
     // Remove from active uploads on error
     activeUploads.delete(uploadId);
     console.error('Error uploading project to DAS:', error);
+    await errorLogService.logError({
+      category: 'das-upload',
+      userMessage: `Upload to DAS Drive failed: ${error.message}`,
+      technicalMessage: error.message,
+      stack: error.stack,
+      context: { projectId: project?.id, projectName: project?.projectName }
+    });
     return { success: false, error: error.message };
   }
 });
@@ -1082,6 +1122,72 @@ ipcMain.handle('settings-save', async (event, settings) => {
   try {
     return await projectPersistenceService.saveSettings(settings);
   } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// ===== ERROR LOGGING / DIAGNOSTICS APIs =====
+
+ipcMain.handle('error-log-capture', async (event, entry) => {
+  try {
+    const savedEntry = await errorLogService.logError(entry || {});
+    return { success: !!savedEntry, entry: savedEntry };
+  } catch (error) {
+    console.error('Failed to capture error log:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('error-log-list', async (event, options) => {
+  try {
+    const errors = await errorLogService.listErrors(options || {});
+    return { success: true, errors };
+  } catch (error) {
+    return { success: false, error: error.message, errors: [] };
+  }
+});
+
+ipcMain.handle('error-log-get', async (event, id) => {
+  try {
+    const entry = await errorLogService.getError(id);
+    return { success: true, entry };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('error-log-clear', async () => {
+  try {
+    return await errorLogService.clearErrors();
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('error-log-environment', async () => {
+  try {
+    return { success: true, environment: errorLogService.buildEnvironmentSnapshot() };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('error-log-export', async () => {
+  try {
+    const defaultFilename = errorLogService.getDefaultExportFilename();
+    const { canceled, filePath } = await dialog.showSaveDialog(mainWindow || undefined, {
+      title: 'Save Error Report',
+      defaultPath: defaultFilename,
+      filters: [{ name: 'JSON Files', extensions: ['json'] }]
+    });
+
+    if (canceled || !filePath) {
+      return { success: false, cancelled: true };
+    }
+
+    return await errorLogService.exportErrorsToFile(filePath);
+  } catch (error) {
+    console.error('Failed to export error report:', error);
     return { success: false, error: error.message };
   }
 });

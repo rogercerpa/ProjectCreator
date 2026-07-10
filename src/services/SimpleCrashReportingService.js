@@ -3,6 +3,8 @@
  * Safe for both main and renderer processes
  */
 
+import errorReportingService from './ErrorReportingService';
+
 class SimpleCrashReportingService {
   constructor() {
     this.isInitialized = false;
@@ -56,8 +58,13 @@ class SimpleCrashReportingService {
       timestamp: new Date().toISOString()
     });
 
-    // In a real implementation, you would send this to your crash reporting service
-    // For now, we'll just log it
+    // Persist to the local error log so it shows up in Settings > Error Report
+    errorReportingService.reportError({
+      category: context.category || 'crash',
+      userMessage: context.userMessage || error.message,
+      error,
+      context
+    }).catch(() => {});
   }
 
   /**

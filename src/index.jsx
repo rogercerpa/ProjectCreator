@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import './styles/tailwind.css';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { UploadProvider } from './contexts/UploadContext';
+import { ErrorNotificationProvider } from './contexts/ErrorNotificationContext';
 
 console.log('=== REACT INDEX.JS STARTING ===');
 console.log('React version:', React.version);
@@ -147,11 +148,13 @@ if (container) {
     root.render(
       <ErrorBoundary>
         <ThemeProvider>
-          <UploadProvider>
-            <React.Suspense fallback={<LoadingFallback />}>
-              <App />
-            </React.Suspense>
-          </UploadProvider>
+          <ErrorNotificationProvider>
+            <UploadProvider>
+              <React.Suspense fallback={<LoadingFallback />}>
+                <App />
+              </React.Suspense>
+            </UploadProvider>
+          </ErrorNotificationProvider>
         </ThemeProvider>
       </ErrorBoundary>
     );

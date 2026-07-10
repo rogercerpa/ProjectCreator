@@ -13,7 +13,8 @@ const UploadStatusBar = () => {
     hasActiveUpload,
     hasQueuedUploads,
     totalPendingUploads,
-    dismissCompletedUpload
+    dismissCompletedUpload,
+    clearStuckUpload
   } = useUploadContext();
 
   const [isExpanded, setIsExpanded] = useState(false);
@@ -145,9 +146,16 @@ const UploadStatusBar = () => {
                 <div className="w-8 h-8 rounded-lg bg-error-100 dark:bg-error-900/30 flex items-center justify-center">
                   <span className="text-lg">❌</span>
                 </div>
-                <span className="text-sm font-medium text-error-700 dark:text-error-400">
-                  Upload failed: {truncateName(completedUploads[0].projectName)}
-                </span>
+                <div className="min-w-0">
+                  <div className="text-sm font-medium text-error-700 dark:text-error-400 truncate">
+                    Upload failed: {truncateName(completedUploads[0].projectName)}
+                  </div>
+                  {completedUploads[0].error && (
+                    <div className="text-xs text-error-600 dark:text-error-400/80 truncate">
+                      {completedUploads[0].error}
+                    </div>
+                  )}
+                </div>
               </>
             )}
             <button
@@ -206,8 +214,22 @@ const UploadStatusBar = () => {
                         />
                       </div>
                     </div>
-                    <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                      {getPhaseDisplay(activeUpload)}
+                    <div className="mt-2 flex items-center justify-between gap-2">
+                      <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                        {getPhaseDisplay(activeUpload)}
+                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (window.confirm('Stop tracking this upload? Use this if it appears stuck. This closes the progress indicator here but does not guarantee the underlying file copy has stopped.')) {
+                            clearStuckUpload(activeUpload.projectId);
+                          }
+                        }}
+                        className="shrink-0 px-2 py-1 text-[11px] font-medium text-gray-500 dark:text-gray-400 hover:text-error-600 dark:hover:text-error-400 border border-gray-300 dark:border-gray-600 hover:border-error-300 dark:hover:border-error-700 rounded transition-all"
+                        title="Cancel tracking this upload if it seems stuck"
+                      >
+                        Cancel / Clear
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -252,23 +274,30 @@ const UploadStatusBar = () => {
                   return (
                     <div 
                       key={upload.id}
-                      className={`flex items-center gap-3 p-2 rounded-lg ${
+                      className={`flex items-start gap-3 p-2 rounded-lg ${
                         isSuccess 
                           ? 'bg-success-50 dark:bg-success-900/20' 
                           : 'bg-error-50 dark:bg-error-900/20'
                       }`}
                     >
                       <span className="text-lg">{isSuccess ? '✅' : '❌'}</span>
-                      <span className={`flex-1 text-sm truncate ${
-                        isSuccess 
-                          ? 'text-success-700 dark:text-success-300' 
-                          : 'text-error-700 dark:text-error-300'
-                      }`}>
-                        {upload.projectName}
-                      </span>
+                      <div className="flex-1 min-w-0">
+                        <span className={`block text-sm truncate ${
+                          isSuccess 
+                            ? 'text-success-700 dark:text-success-300' 
+                            : 'text-error-700 dark:text-error-300'
+                        }`}>
+                          {upload.projectName}
+                        </span>
+                        {!isSuccess && upload.error && (
+                          <span className="block text-xs text-error-600 dark:text-error-400/80 truncate">
+                            {upload.error}
+                          </span>
+                        )}
+                      </div>
                       <button
                         onClick={() => dismissCompletedUpload(upload.id)}
-                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                        className="shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                       >
                         ✕
                       </button>

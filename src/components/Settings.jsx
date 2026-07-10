@@ -18,8 +18,17 @@ import { buildSetupChecklist } from '../utils/setupChecklist';
 // Access secure electron API through contextBridge
 const { electronAPI } = window;
 
-function Settings({ initialTab = 'user-profile', onLaunchOnboarding }) {
+function Settings({ initialTab = 'user-profile', initialErrorId = null, onLaunchOnboarding }) {
   const [activeTab, setActiveTab] = useState(initialTab);
+
+  // Keep the active tab in sync if the parent navigates here again with a
+  // different target tab while this component is already mounted
+  // (e.g. clicking a persistent error banner while Settings is open).
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
   const [settings, setSettings] = useState({
     rfaTypes: ['BOM (No Layout)', 'BOM with Layout', 'Controls BOM - Budget', 'Controls BOM - Layout', 'BUDGET', 'LAYOUT', 'SUBMITTAL', 'RELEASE', 'GRAPHICS', 'PHOTOMETRICS', 'Consultation'],
     regionalTeams: ['Region 1', 'Region 2', 'Region 3', 'Region 4', 'Region 5', 'NAVS'],
@@ -1504,6 +1513,7 @@ function Settings({ initialTab = 'user-profile', onLaunchOnboarding }) {
           <AppInfoTab
             onLaunchOnboarding={onLaunchOnboarding}
             setupChecklist={buildSetupChecklist(settings, setActiveTab)}
+            initialErrorId={initialErrorId}
           />
         );
 

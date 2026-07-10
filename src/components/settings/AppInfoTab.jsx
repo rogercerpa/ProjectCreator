@@ -1,13 +1,25 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { getFullVersionInfo, getVersionDisplay, BUILD_INFO } from '../../utils/version';
+import ErrorReportTab from './ErrorReportTab';
 
-function AppInfoTab({ onLaunchOnboarding, setupChecklist = [] }) {
+function AppInfoTab({ onLaunchOnboarding, setupChecklist = [], initialErrorId = null }) {
   const remainingSetupItems = setupChecklist.filter(item => !item.done);
   const [isChecklistOpen, setIsChecklistOpen] = useState(() => remainingSetupItems.length > 0);
+  // Auto-expand the Error Report section when deep-linked to a specific error
+  // (e.g. clicking "View Details" on a persistent error banner elsewhere in the app).
+  const [isErrorReportOpen, setIsErrorReportOpen] = useState(() => Boolean(initialErrorId));
+  const errorReportSectionRef = useRef(null);
 
   useEffect(() => {
     setIsChecklistOpen(remainingSetupItems.length > 0);
   }, [remainingSetupItems.length]);
+
+  useEffect(() => {
+    if (initialErrorId) {
+      setIsErrorReportOpen(true);
+      errorReportSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [initialErrorId]);
 
   return (
     <div className="space-y-6">
@@ -83,6 +95,31 @@ function AppInfoTab({ onLaunchOnboarding, setupChecklist = [] }) {
             <span className="text-sm font-bold text-gray-900 dark:text-white">{BUILD_INFO.environment}</span>
           </div>
         </div>
+      </div>
+
+      {/* Error Report & Diagnostics Section */}
+      <div ref={errorReportSectionRef} className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">🐞 Error Report & Diagnostics</h2>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+              Having a problem? View recorded errors or download a report to share with the software team.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsErrorReportOpen(prev => !prev)}
+            className="px-3 py-1.5 text-xs bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md transition-all whitespace-nowrap"
+            aria-expanded={isErrorReportOpen}
+          >
+            {isErrorReportOpen ? 'Hide' : 'Show'}
+          </button>
+        </div>
+        {isErrorReportOpen && (
+          <div className="mt-4">
+            <ErrorReportTab selectedErrorId={initialErrorId} />
+          </div>
+        )}
       </div>
 
       {/* Onboarding Tutorial Section */}

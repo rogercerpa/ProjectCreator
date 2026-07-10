@@ -17,10 +17,11 @@ const crypto = require('crypto');
 const { DEVICE_CATEGORIES } = require('../constants/BuildingCodes');
 
 class SpecReviewService {
-  constructor(aiService, productKBService, learningService) {
+  constructor(aiService, productKBService, learningService, trainingService) {
     this.aiService = aiService;
     this.productKBService = productKBService;
     this.learningService = learningService;
+    this.trainingService = trainingService;
   }
 
   /**
@@ -101,6 +102,14 @@ class SpecReviewService {
       const coverage = this._verifyCompleteness(structure.outline, allRequirements);
       console.log(`Coverage: ${coverage.totalExtractedItems} extracted vs ${coverage.totalExpectedItems} expected (${coverage.coveragePercent}%)`);
 
+      // Step 4b: Self-QC keyword scan (AE best-practice cross-check)
+      this._progress(progressCallback, 'Running Self-QC keyword scan...');
+      const selfQC = await this._runSelfQC(normalizedText, normalizedPages, allRequirements, structure.sectionNumber);
+      if (selfQC.additionalRequirements.length > 0) {
+        console.log(`Self-QC added ${selfQC.additionalRequirements.length} requirement(s) from missed keywords`);
+        allRequirements.push(...selfQC.additionalRequirements);
+      }
+
       // Step 5: Match actionable requirements against Product Knowledge Base
       this._progress(progressCallback, 'Matching requirements to Acuity products...');
       const actionableReqs = allRequirements.filter(r => r.requirementType === 'actionable');
@@ -161,6 +170,7 @@ class SpecReviewService {
         gapAnalysis: finalRequirements.filter(r => r.status === 'gap' || r.status === 'alternative'),
         complianceScore,
         coverage,
+        selfQC: selfQC.summary,
         sourceFile: path.basename(filePath),
         analyzedAt: new Date().toISOString(),
         analysisTimeMs: elapsed
@@ -894,6 +904,15 @@ RULES:
       }
     }
 
+    let trainingContext = '';
+    if (this.trainingService) {
+      try {
+        trainingContext = await this.trainingService.buildPromptContext();
+      } catch (e) {
+        console.warn('Could not load training context:', e.message);
+      }
+    }
+
     const { sectionNumber, sectionTitle, partNumber, partTitle, structureType } = partContext;
     const sectionRef = sectionNumber !== 'Unknown' ? `Section ${sectionNumber}` : 'this specification';
 
@@ -926,6 +945,7 @@ Return a JSON object with this exact structure:
       "itemRef": "${structureBlock.itemRefExample}",
       "name": "Short descriptive name for this specific item",
       "requirementType": "actionable|informational",
+      "obligationLevel": "need|should|conditional",
       "category": "Energy|Life Safety|Integration|Controls|Power|Commissioning|Products|General",
       "description": "Detailed description of what this specific item requires",
       "specKeywords": ["specific terms from the spec that indicate this requirement"],
@@ -956,7 +976,13 @@ CONFIDENCE CLASSIFICATION RULES:
 - "medium": The requirement is implied or can be reasonably inferred from the spec context
 - "low": The spec language is vague, ambiguous, or could be interpreted multiple ways
 - Be consistent: the same spec language should always produce the same extraction
-- Do NOT over-extract: only include items that are clearly present in the text${learningContext}`;
+- Do NOT over-extract: only include items that are clearly present in the text
+
+OBLIGATION LEVEL CLASSIFICATION:
+- "need": A hard, unconditional requirement (e.g. "shall", "must", "provide", "required")
+- "should": An advisory or recommended item (e.g. "should", "preferred", "recommended")
+- "conditional": Applies only if a condition is met (e.g. "if plug load is provided...", "where applicable")
+- Default to "need" when the language is a clear mandate${trainingContext}${learningContext}`;
 
     const userPrompt = `Extract ALL individual requirements from ${partRef} of this specification. Create one entry per distinct requirement or bullet point:\n\n${partText}`;
 
@@ -978,6 +1004,7 @@ CONFIDENCE CLASSIFICATION RULES:
         subSectionTitle: req.subSectionTitle || '',
         itemRef: req.itemRef || '',
         requirementType: req.requirementType || 'actionable',
+        obligationLevel: req.obligationLevel || 'need',
         specKeywords: req.specKeywords || [],
         integrationType: req.integrationType || 'none',
         specExcerpt: req.specExcerpt || '',
@@ -1008,6 +1035,7 @@ CONFIDENCE CLASSIFICATION RULES:
               subSectionTitle: req.subSectionTitle || '',
               itemRef: req.itemRef || '',
               requirementType: req.requirementType || 'actionable',
+              obligationLevel: req.obligationLevel || 'need',
               specKeywords: req.specKeywords || [],
               integrationType: req.integrationType || 'none',
               specExcerpt: req.specExcerpt || '',
@@ -1140,6 +1168,167 @@ CONFIDENCE CLASSIFICATION RULES:
       partCoverage,
       coveragePercent: totalExpected > 0 ? Math.round((totalExtracted / totalExpected) * 100) : 100
     };
+  }
+
+  /**
+   * Self-QC keyword scan (AE best practice). Scans the full document text for
+   * each training keyword, checks whether it is already reflected in extracted
+   * requirements, and flags/creates entries for meaningful missed hits.
+   * Returns { summary, additionalRequirements }.
+   */
+  async _runSelfQC(fullText, pages, extractedRequirements, sectionNumber) {
+    const empty = {
+      summary: {
+        keywordsScanned: 0,
+        keywordsFound: [],
+        keywordsCovered: [],
+        keywordsMissed: [],
+        missedHits: [],
+        secondarySections: []
+      },
+      additionalRequirements: []
+    };
+
+    if (!this.trainingService) return empty;
+
+    let keywords = [];
+    try {
+      keywords = await this.trainingService.getSelfQcKeywords();
+    } catch (e) {
+      console.warn('Could not load Self-QC keywords:', e.message);
+      return empty;
+    }
+    if (!keywords || keywords.length === 0) return empty;
+
+    const lowerText = fullText.toLowerCase();
+
+    // Build a searchable haystack from what the AI already extracted
+    const extractedHaystack = extractedRequirements
+      .map(r => `${r.name || ''} ${r.description || ''} ${r.specExcerpt || ''} ${(r.specKeywords || []).join(' ')}`)
+      .join(' ')
+      .toLowerCase();
+
+    const keywordsFound = [];
+    const keywordsCovered = [];
+    const keywordsMissed = [];
+    const missedHits = [];
+    const additionalRequirements = [];
+
+    for (const kw of keywords) {
+      const kwLower = kw.toLowerCase();
+      if (!lowerText.includes(kwLower)) continue;
+
+      keywordsFound.push(kw);
+
+      if (extractedHaystack.includes(kwLower)) {
+        keywordsCovered.push(kw);
+        continue;
+      }
+
+      keywordsMissed.push(kw);
+
+      const excerpt = this._extractKeywordExcerpt(fullText, kwLower);
+      const pageHint = this._findKeywordPage(pages, kwLower);
+      missedHits.push({ keyword: kw, excerpt, pageHint });
+
+      additionalRequirements.push({
+        id: `SELFQC_${sectionNumber.replace(/\s+/g, '_')}_${kw.replace(/[^A-Za-z0-9]+/g, '_')}`,
+        sectionNumber: sectionNumber || 'Unknown',
+        sectionTitle: 'Self-QC Findings',
+        partNumber: 99,
+        partTitle: 'SELF-QC FINDINGS',
+        subSection: '',
+        subSectionTitle: 'Keyword Cross-Check',
+        itemRef: '',
+        name: `${kw} referenced in spec`,
+        requirementType: 'informational',
+        obligationLevel: 'conditional',
+        category: 'General',
+        description: `The keyword "${kw}" appears in the specification but was not captured in the primary requirements extraction. Review the referenced text to confirm whether it introduces a lighting controls requirement.`,
+        specKeywords: [kw],
+        deviceCategories: [],
+        integrationType: 'none',
+        confidence: 'low',
+        sourceSection: pageHint ? `Page ${pageHint}` : 'Self-QC scan',
+        specExcerpt: excerpt,
+        source: 'self-qc'
+      });
+    }
+
+    const secondarySections = await this._detectSecondarySections(fullText, pages);
+
+    const summary = {
+      keywordsScanned: keywords.length,
+      keywordsFound,
+      keywordsCovered,
+      keywordsMissed,
+      missedHits,
+      secondarySections
+    };
+
+    console.log(`Self-QC: ${keywordsFound.length} keyword(s) present, ${keywordsCovered.length} covered, ${keywordsMissed.length} missed. Secondary sections: ${secondarySections.map(s => s.marker).join(', ') || 'none'}`);
+
+    return { summary, additionalRequirements };
+  }
+
+  /**
+   * Extract a short surrounding excerpt for a keyword occurrence.
+   */
+  _extractKeywordExcerpt(text, kwLower, radius = 120) {
+    const idx = text.toLowerCase().indexOf(kwLower);
+    if (idx === -1) return '';
+    const start = Math.max(0, idx - radius);
+    const end = Math.min(text.length, idx + kwLower.length + radius);
+    let snippet = text.substring(start, end).replace(/\s+/g, ' ').trim();
+    if (start > 0) snippet = '...' + snippet;
+    if (end < text.length) snippet = snippet + '...';
+    return snippet;
+  }
+
+  /**
+   * Find the first page number where a keyword appears.
+   */
+  _findKeywordPage(pages, kwLower) {
+    if (!pages || pages.length === 0) return null;
+    for (const page of pages) {
+      if (page.text && page.text.toLowerCase().includes(kwLower)) {
+        return page.num;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Detect secondary sections (SOO, schedules, panel schedules, tables) that
+   * are easy to miss but often carry lighting controls requirements.
+   * Returns an array of { marker, excerpt, pageHint }.
+   */
+  async _detectSecondarySections(fullText, pages) {
+    if (!this.trainingService) return [];
+
+    let config;
+    try {
+      config = await this.trainingService.getSecondarySections();
+    } catch (e) {
+      return [];
+    }
+
+    const markers = (config && config.markers) || [];
+    const found = [];
+    const lowerText = fullText.toLowerCase();
+
+    for (const marker of markers) {
+      const mLower = marker.toLowerCase();
+      if (lowerText.includes(mLower)) {
+        found.push({
+          marker,
+          excerpt: this._extractKeywordExcerpt(fullText, mLower, 80),
+          pageHint: this._findKeywordPage(pages, mLower)
+        });
+      }
+    }
+
+    return found;
   }
 
   /**

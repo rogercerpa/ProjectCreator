@@ -1,0 +1,114 @@
+{
+  "version": 1,
+  "source": "Acuity Brands internal 'Specifications Rundown (Best Practices)' AE training",
+  "description": "Encoded best practices for how Application Engineers review lighting controls specifications. Injected into the Spec Review AI pipeline to align automated analysis with how AEs actually read specs.",
+  "sizeStrategy": [
+    {
+      "maxPages": 20,
+      "strategy": "full_read",
+      "guidance": "Documents under 20 pages: read every page thoroughly."
+    },
+    {
+      "maxPages": 50,
+      "strategy": "locate_lighting_controls",
+      "guidance": "Documents under 50 pages: locate the Lighting Controls section and read all of it thoroughly."
+    },
+    {
+      "maxPages": null,
+      "strategy": "keyword_locate",
+      "guidance": "Documents over 50 pages: use keyword search ('Lighting Control', 'Occupancy') to find the Lighting Controls section, then read that section thoroughly."
+    }
+  ],
+  "divisionFocus": {
+    "primaryDivision": "26",
+    "primarySection": "Lighting Controls",
+    "guidance": "Division 26 covers all lighting-related information. Focus primary attention on the Lighting Controls section within Division 26 and read it thoroughly. Other sections are searchable via keywords. You remain liable for ALL sections provided if they relate to lighting controls materials (e.g. interfaces to lighting from other systems).",
+    "typicalSectionPattern": "26.#.#.# is where lighting controls requirements typically live."
+  },
+  "obligationRules": {
+    "levels": ["need", "should", "conditional"],
+    "guidance": "Distinguish hard requirements from conditional or advisory language.",
+    "definitions": {
+      "need": "A hard, unconditional requirement. The spec states this must be provided (e.g. 'shall', 'must', 'provide', 'required').",
+      "should": "An advisory or recommended item. The spec suggests but does not strictly mandate it (e.g. 'should', 'preferred', 'recommended').",
+      "conditional": "A requirement that only applies if a condition is met (e.g. 'IF plug load is present, it shall meet these specs', 'where applicable', 'as required')."
+    },
+    "examples": [
+      "'The system shall provide dry contact closure' -> need",
+      "'Occupancy sensors should be ceiling mounted where practical' -> should",
+      "'If plug load control is provided, receptacles shall be controlled per code' -> conditional"
+    ],
+    "note": "Regardless of obligation level, all parts of the specification must still be met and captured."
+  },
+  "selfQcKeywords": [
+    "Training",
+    "Preconstruction",
+    "Startup",
+    "Post Visit",
+    "Service",
+    "BAS",
+    "BMS",
+    "BACnet",
+    "Network",
+    "Addressable",
+    "Spare",
+    "Attic Stock",
+    "Load Shed",
+    "Demand Response",
+    "Graphic",
+    "Floorplan",
+    "Auxiliary",
+    "Buy America",
+    "American",
+    "Monitoring",
+    "Occupancy",
+    "Vacancy",
+    "Switch",
+    "Relay",
+    "Scenes",
+    "Receptacle",
+    "Plug Load",
+    "Lighting Control Panel",
+    "Daylight",
+    "Dimming",
+    "Photocell",
+    "Photosensor",
+    "Time Clock",
+    "Scheduling",
+    "Emergency",
+    "Egress",
+    "Dry Contact",
+    "Commissioning"
+  ],
+  "secondarySections": {
+    "guidance": "After reviewing the main Lighting Controls section, quickly scan the ENTIRE document for large relevant sections outside the normal location. Tables and panel schedules are often placed at the end of a section or in an appendix and are easy to miss.",
+    "markers": [
+      "Sequence of Operations",
+      "SOO",
+      "Fixture Schedule",
+      "Luminaire Schedule",
+      "Zoning Schedule",
+      "Lighting Control Zoning",
+      "Panel Schedule",
+      "Lighting Control Panel Schedule",
+      "Point List",
+      "Points List",
+      "Appendix"
+    ],
+    "tableHints": [
+      "Type",
+      "Qty",
+      "Quantity",
+      "Catalog",
+      "Manufacturer",
+      "Zone",
+      "Room",
+      "Fixture"
+    ]
+  },
+  "markupPatterns": {
+    "guidance": "AEs mark up specs as they read, distinguishing action items (NEED) from informational notes (NOTE), always referencing the spec section.",
+    "needExamples": ["dry contact", "Graphics", "additional Startup", "demand response interface"],
+    "noteExamples": ["no ultrasonic", "no IR programmer", "System by ABL", "spare capacity provided"]
+  }
+}

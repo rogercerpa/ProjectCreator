@@ -51,6 +51,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Settings and persistence
   settingsLoad: () => ipcRenderer.invoke('settings-load'),
   settingsSave: (settings) => ipcRenderer.invoke('settings-save', settings),
+
+  // ===== ERROR LOGGING / DIAGNOSTICS APIs =====
+  errorLogCapture: (entry) => ipcRenderer.invoke('error-log-capture', entry),
+  errorLogList: (options) => ipcRenderer.invoke('error-log-list', options),
+  errorLogGet: (id) => ipcRenderer.invoke('error-log-get', id),
+  errorLogClear: () => ipcRenderer.invoke('error-log-clear'),
+  errorLogEnvironment: () => ipcRenderer.invoke('error-log-environment'),
+  errorLogExport: () => ipcRenderer.invoke('error-log-export'),
   templatesLoad: () => ipcRenderer.invoke('templates-load'),
   templatesSave: (templates) => ipcRenderer.invoke('templates-save', templates),
   

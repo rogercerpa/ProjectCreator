@@ -8,7 +8,23 @@ import CollapsibleSection from './shared/CollapsibleSection';
 import BOMDetailsSection from './bom/BOMDetailsSection';
 import { openPaidServicesEmail } from '../utils/emailTemplates';
 import { useUploadContext, UPLOAD_TYPES } from '../contexts/UploadContext';
+import { useErrorNotification } from '../contexts/ErrorNotificationContext';
 import { PROJECT_FILE_TYPE_OTHER, sanitizeProjectFileTypes } from '../constants/projectFileTypes';
+
+// Failures here used to vanish in a 3s toast, leaving users stuck on "Uploading…"/"Downloading…"
+// with no idea what happened. These timeouts guarantee the UI unblocks and a persistent,
+// clickable error banner (logged to Settings > Error Report) is always shown instead.
+const DAS_UPLOAD_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
+const QC_DOWNLOAD_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+
+const withTimeout = (promise, ms, label) => {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s`)), ms)
+    )
+  ]);
+};
 
 const WAIVER_REASON_LABELS = {
   acuitySpecRequirement: 'Acuity specification requirement',
@@ -40,6 +56,9 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
   const { startUpload, completeUpload, failUpload, isProjectUploading } = useUploadContext();
   const [showUploadConfirmDialog, setShowUploadConfirmDialog] = useState(false);
   const [uploadConfirmMessage, setUploadConfirmMessage] = useState('');
+
+  // Persistent, clickable error/warning banners (logged to Settings > Error Report)
+  const { showError: showErrorBanner } = useErrorNotification();
   
   // Section expansion states for Expand All / Collapse All functionality
   const [sectionStates, setSectionStates] = useState({
@@ -416,7 +435,11 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
     setShowZipSelectionDialog(false);
 
     try {
-      const result = await window.electronAPI.qcDownloadZip(zipFile.path, project);
+      const result = await withTimeout(
+        window.electronAPI.qcDownloadZip(zipFile.path, project),
+        QC_DOWNLOAD_TIMEOUT_MS,
+        'Folder download'
+      );
       
       if (result.success) {
         showToast(`✓ Folder downloaded to ${result.extractedPath}`, 'success');
@@ -451,11 +474,24 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
           await onProjectUpdate(updatedProject);
         }
       } else {
-        showToast(`Failed to download folder: ${result.error}`, 'error');
+        showErrorBanner(`Failed to download folder: ${result.error}`, {
+          category: 'das-download',
+          context: { projectId: project?.id, projectName: project?.projectName, zipPath: zipFile?.path }
+        });
       }
     } catch (error) {
       console.error('Error downloading zip file:', error);
-      showToast('Failed to download folder. Please try again.', 'error');
+      const isTimeout = /timed out/i.test(error.message || '');
+      showErrorBanner(
+        isTimeout
+          ? 'Folder download is taking much longer than expected and was stopped. Please check your network/DAS connection and try again.'
+          : 'Failed to download folder. Please try again.',
+        {
+          category: 'das-download',
+          error,
+          context: { projectId: project?.id, projectName: project?.projectName, zipPath: zipFile?.path, isTimeout }
+        }
+      );
     } finally {
       setIsDownloading(false);
     }
@@ -479,7 +515,11 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
     startUpload(project.id, project.projectName, UPLOAD_TYPES.DAS, { confirmed });
 
     try {
-      const result = await window.electronAPI.dasUploadProject(project, confirmed);
+      const result = await withTimeout(
+        window.electronAPI.dasUploadProject(project, confirmed),
+        DAS_UPLOAD_TIMEOUT_MS,
+        'DAS upload'
+      );
 
       if (result.needsConfirmation) {
         // Show confirmation dialog - upload hasn't started yet
@@ -499,12 +539,28 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
           await onProjectUpdate(result.updatedProject);
         }
       } else {
-        showToast(`Upload failed: ${result.error}`, 'error');
+        showErrorBanner(`Upload to DAS Drive failed: ${result.error}`, {
+          category: 'das-upload',
+          context: { projectId: project?.id, projectName: project?.projectName }
+        });
         failUpload(result.error);
       }
     } catch (error) {
       console.error('DAS upload error:', error);
-      showToast(`Upload failed: ${error.message}`, 'error');
+      const isTimeout = /timed out/i.test(error.message || '');
+      // failUpload() below clears the active upload and records the error, so the button
+      // always unblocks instead of staying stuck on "Uploading…" — even on timeout, even if
+      // the main-process copy is still technically finishing in the background.
+      showErrorBanner(
+        isTimeout
+          ? 'Upload to DAS Drive is taking much longer than expected and was stopped. Please check the Z: drive connection and try again.'
+          : `Upload to DAS Drive failed: ${error.message}`,
+        {
+          category: 'das-upload',
+          error,
+          context: { projectId: project?.id, projectName: project?.projectName, isTimeout }
+        }
+      );
       failUpload(error.message);
     }
   };

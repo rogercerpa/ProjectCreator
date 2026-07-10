@@ -17,6 +17,12 @@ const CONFIDENCE_CONFIG = {
   low: { label: 'Low', color: 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400', icon: '○' }
 };
 
+const OBLIGATION_CONFIG = {
+  need: { label: 'NEED', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300', title: 'Hard requirement (shall/must/provide)' },
+  should: { label: 'SHOULD', color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300', title: 'Advisory / recommended' },
+  conditional: { label: 'IF', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300', title: 'Conditional — applies only if a condition is met' }
+};
+
 const SpecReviewResults = ({ result, onNewAnalysis, onSaved }) => {
   const [activeSection, setActiveSection] = useState('requirements');
   const [expandedReqs, setExpandedReqs] = useState(new Set());
@@ -59,7 +65,7 @@ const SpecReviewResults = ({ result, onNewAnalysis, onSaved }) => {
   };
 
   const requirements = editedRequirements;
-  const { preliminaryBOM = [], projectSummary = '', sectionInfo, coverage } = result || {};
+  const { preliminaryBOM = [], projectSummary = '', sectionInfo, coverage, selfQC } = result || {};
 
   const complianceScore = useMemo(() => {
     if (requirements.length === 0) return { score: 0, met: 0, alternative: 0, gap: 0, acknowledged: 0, total: 0, actionableTotal: 0 };
@@ -474,6 +480,21 @@ const SpecReviewResults = ({ result, onNewAnalysis, onSaved }) => {
                 Coverage: {coverage.coveragePercent}% — {coverage.missedSections.length} sub-section(s) may not have been fully extracted.
               </div>
             )}
+
+            {selfQC && (selfQC.keywordsMissed?.length > 0 || selfQC.secondarySections?.length > 0) && (
+              <div className="mt-3 px-3 py-2 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg text-xs text-purple-700 dark:text-purple-300 space-y-1">
+                <div className="font-medium">Self-QC keyword scan</div>
+                <div>
+                  {selfQC.keywordsFound?.length || 0} key term(s) present · {selfQC.keywordsCovered?.length || 0} covered
+                  {selfQC.keywordsMissed?.length > 0 && (
+                    <> · <span className="font-medium">{selfQC.keywordsMissed.length} flagged for review</span> ({selfQC.keywordsMissed.join(', ')})</>
+                  )}
+                </div>
+                {selfQC.secondarySections?.length > 0 && (
+                  <div>Secondary sections detected — review recommended: {selfQC.secondarySections.map(s => s.marker).join(', ')}</div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Actions */}
@@ -602,6 +623,16 @@ const SpecReviewResults = ({ result, onNewAnalysis, onSaved }) => {
                                   {req.confidence && CONFIDENCE_CONFIG[req.confidence] && !isInformational && (
                                     <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0 ${CONFIDENCE_CONFIG[req.confidence].color}`} title={`AI Confidence: ${req.confidence}`}>
                                       {CONFIDENCE_CONFIG[req.confidence].icon} {CONFIDENCE_CONFIG[req.confidence].label}
+                                    </span>
+                                  )}
+                                  {req.obligationLevel && OBLIGATION_CONFIG[req.obligationLevel] && !isInformational && (
+                                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ${OBLIGATION_CONFIG[req.obligationLevel].color}`} title={OBLIGATION_CONFIG[req.obligationLevel].title}>
+                                      {OBLIGATION_CONFIG[req.obligationLevel].label}
+                                    </span>
+                                  )}
+                                  {req.source === 'self-qc' && (
+                                    <span className="px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0 bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300" title="Flagged by Self-QC keyword scan">
+                                      Self-QC
                                     </span>
                                   )}
                                   {req.isOverridden && (
@@ -1116,6 +1147,26 @@ const SpecReviewResults = ({ result, onNewAnalysis, onSaved }) => {
           );
         })()}
 
+        {/* Self-QC Summary */}
+        {selfQC && (selfQC.keywordsMissed?.length > 0 || selfQC.secondarySections?.length > 0) && (
+          <div style={{ marginBottom: '18px', padding: '10px 14px', backgroundColor: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '6px', breakInside: 'avoid' }}>
+            <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#6b21a8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>Self-QC Keyword Scan</div>
+            <div style={{ fontSize: '11px', color: '#4b5563', marginBottom: '4px' }}>
+              {selfQC.keywordsFound?.length || 0} key term(s) present in the spec, {selfQC.keywordsCovered?.length || 0} covered by the analysis above.
+            </div>
+            {selfQC.keywordsMissed?.length > 0 && (
+              <div style={{ fontSize: '11px', color: '#6b21a8', marginBottom: '4px' }}>
+                <span style={{ fontWeight: 'bold' }}>Flagged for review:</span> {selfQC.keywordsMissed.join(', ')}
+              </div>
+            )}
+            {selfQC.secondarySections?.length > 0 && (
+              <div style={{ fontSize: '11px', color: '#6b21a8' }}>
+                <span style={{ fontWeight: 'bold' }}>Secondary sections detected:</span> {selfQC.secondarySections.map(s => s.marker).join(', ')} — review recommended.
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Requirements Analysis — Grouped by Part / Sub-section */}
         <h2 style={{ fontSize: '15px', fontWeight: 'bold', marginBottom: '10px', color: '#1e40af', borderBottom: '1px solid #dbeafe', paddingBottom: '6px' }}>Requirements Analysis</h2>
 
@@ -1158,6 +1209,15 @@ const SpecReviewResults = ({ result, onNewAnalysis, onSaved }) => {
                             backgroundColor: req.confidence === 'high' ? '#dcfce7' : req.confidence === 'medium' ? '#fef3c7' : '#fee2e2'
                           }}>
                             {req.confidence === 'high' ? 'HIGH' : req.confidence === 'medium' ? 'MED' : 'LOW'}
+                          </span>
+                        )}
+                        {!isInformational && req.obligationLevel && (
+                          <span style={{
+                            fontSize: '8px', fontWeight: 'bold', padding: '2px 5px', borderRadius: '3px',
+                            color: req.obligationLevel === 'need' ? '#b91c1c' : req.obligationLevel === 'should' ? '#b45309' : '#1d4ed8',
+                            backgroundColor: req.obligationLevel === 'need' ? '#fee2e2' : req.obligationLevel === 'should' ? '#fef3c7' : '#dbeafe'
+                          }}>
+                            {req.obligationLevel === 'need' ? 'NEED' : req.obligationLevel === 'should' ? 'SHOULD' : 'IF'}
                           </span>
                         )}
                         {req.isOverridden && (

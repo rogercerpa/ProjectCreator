@@ -206,6 +206,33 @@ export function UploadProvider({ children }) {
     setActiveUpload(null);
   }, [activeUpload]);
 
+  // Safety valve: forcibly clear a stuck active upload so the UI never leaves the user
+  // stranded on "Uploading…" with no way to cancel or close. Does not abort the underlying
+  // main-process copy (not currently supported) — it only unblocks the renderer UI.
+  const clearStuckUpload = useCallback((projectId) => {
+    setActiveUpload((current) => {
+      if (!current || (projectId && current.projectId !== projectId)) {
+        return current;
+      }
+
+      const clearedUpload = {
+        ...current,
+        status: UPLOAD_STATUS.ERROR,
+        error: 'Upload cancelled by user (was stuck in progress).',
+        failedAt: new Date().toISOString()
+      };
+
+      setCompletedUploads((prev) => [clearedUpload, ...prev].slice(0, 5));
+      setLastError(clearedUpload);
+      return null;
+    });
+
+    // Also drop any queued uploads for this project so they don't silently start next
+    if (projectId) {
+      setUploadQueue((prev) => prev.filter((u) => u.projectId !== projectId));
+    }
+  }, []);
+
   // Check if a specific project is currently uploading
   const isProjectUploading = useCallback((projectId) => {
     if (activeUpload?.projectId === projectId) return true;
@@ -251,6 +278,7 @@ export function UploadProvider({ children }) {
     startUpload,
     completeUpload,
     failUpload,
+    clearStuckUpload,
     isProjectUploading,
     getProjectUploadStatus,
     clearError,

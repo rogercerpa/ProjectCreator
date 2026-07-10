@@ -11,6 +11,7 @@ import ErrorDialog, { useErrorDialog } from './components/ErrorDialog';
 import DuplicateProjectDialog from './components/DuplicateProjectDialog';
 import DuplicateProjectDetectionClient from '../../services/DuplicateProjectDetectionClient';
 import performanceMonitoringService from '../../services/SimplePerformanceMonitoringService';
+import { useErrorNotification } from '../../contexts/ErrorNotificationContext';
 
 // Lazy load draft service to prevent blocking initial render
 let ProjectDraftService = null;
@@ -271,6 +272,9 @@ const ProjectWizard = ({
   
   // Error dialog for revision errors
   const { errorState, showError, close: closeErrorDialog } = useErrorDialog();
+
+  // Persistent, clickable error/warning banners (logged to Settings > Error Report)
+  const { showError: showErrorBanner, showWarning: showWarningBanner } = useErrorNotification();
 
   // Debounced validation to prevent excessive validation calls
   const [validationTimeout, setValidationTimeout] = useState(null);
@@ -993,9 +997,9 @@ const ProjectWizard = ({
           console.warn('ProjectWizard: SAFETY TIMEOUT - forcing button reset after 15s');
           isNavigatingAwayRef.current = false;
           setIsLoading(false);
-          setNotification({
-            type: 'warning',
-            message: 'Operation took too long. Project may have been saved. Check the Projects list.'
+          showWarningBanner('Operation took too long. Project may have been saved. Check the Projects list.', {
+            category: 'wizard',
+            context: { step: 2, operation: 'step2-completion', trigger: 'safety-timeout' }
           });
         }, 15000);
 
@@ -1103,7 +1107,11 @@ const ProjectWizard = ({
               const msg = result.isTimeout
                 ? 'Project saved! Navigation took too long. Please click "Projects" in the sidebar.'
                 : 'Project saved, but navigation failed. Please check the Projects list.';
-              setNotification({ type: 'warning', message: msg });
+              showWarningBanner(msg, {
+                category: 'wizard',
+                error: result.error,
+                context: { step: 2, operation: 'onProjectCreated', isTimeout: !!result.isTimeout, projectId: savedProject?.id }
+              });
               isNavigatingAwayRef.current = false;
               setIsLoading(false);
             }
@@ -1115,7 +1123,11 @@ const ProjectWizard = ({
               const msg = result.isTimeout
                 ? 'Project updated! Navigation took too long. Please click "Projects" in the sidebar.'
                 : 'Project updated, but navigation failed. Please check the Projects list.';
-              setNotification({ type: 'warning', message: msg });
+              showWarningBanner(msg, {
+                category: 'wizard',
+                error: result.error,
+                context: { step: 2, operation: 'onProjectUpdated', isTimeout: !!result.isTimeout, projectId: savedProject?.id }
+              });
               isNavigatingAwayRef.current = false;
               setIsLoading(false);
             }
@@ -1123,9 +1135,9 @@ const ProjectWizard = ({
             console.error('ProjectWizard: No valid navigation function available!');
             isNavigatingAwayRef.current = false;
             setIsLoading(false);
-            setNotification({
-              type: 'warning',
-              message: 'Project saved! Please navigate to the Projects list to view it.'
+            showWarningBanner('Project saved! Please navigate to the Projects list to view it.', {
+              category: 'wizard',
+              context: { step: 2, operation: 'step2-completion', reason: 'no-navigation-handler', projectId: savedProject?.id }
             });
           }
 
@@ -1143,9 +1155,9 @@ const ProjectWizard = ({
                 console.warn('ProjectWizard: Navigation watchdog triggered - releasing stuck loading state');
                 isNavigatingAwayRef.current = false;
                 setIsLoading(false);
-                setNotification({
-                  type: 'warning',
-                  message: 'Project was saved, but navigation did not complete. Please open it from Projects.'
+                showWarningBanner('Project was saved, but navigation did not complete. Please open it from Projects.', {
+                  category: 'wizard',
+                  context: { step: 2, operation: 'step2-completion', trigger: 'navigation-watchdog', projectId: savedProject?.id }
                 });
               }
             }, 3500);
@@ -1170,24 +1182,21 @@ const ProjectWizard = ({
             errorMessage.includes('storage');
           const isTimeoutError = errorMessage.includes('timed out');
 
+          const step2ErrorContext = {
+            category: 'wizard',
+            error: step2Error,
+            context: { step: 2, operation: 'step2-completion', errorType: isSaveError ? 'save' : isTimeoutError ? 'timeout' : 'unknown' }
+          };
+
           if (isSaveError) {
             setError('Failed to save project. Please check your connection and try again.');
-            setNotification({
-              type: 'error',
-              message: 'Unable to save project to database. Please verify your connection and try again.'
-            });
+            showErrorBanner('Unable to save project to database. Please verify your connection and try again.', step2ErrorContext);
           } else if (isTimeoutError) {
             setError(null);
-            setNotification({
-              type: 'warning',
-              message: 'Project may have been saved. Operation timed out. Please check the Projects list.'
-            });
+            showWarningBanner('Project may have been saved. Operation timed out. Please check the Projects list.', step2ErrorContext);
           } else {
             setError('Failed to complete project creation. Please try again.');
-            setNotification({
-              type: 'error',
-              message: 'Unable to complete project creation. Please verify your data and try again.'
-            });
+            showErrorBanner('Unable to complete project creation. Please verify your data and try again.', step2ErrorContext);
           }
 
           console.log('ProjectWizard: Step 2 error handled, loading state reset, button should be clickable');
@@ -1275,11 +1284,19 @@ const ProjectWizard = ({
       }
       
       setError(userMessage);
-      setNotification({
-        type: notificationType,
-        message: userMessage
-      });
-      
+
+      const bannerContext = {
+        category: 'wizard',
+        error: err,
+        context: { operation: operationContext, currentStep: wizard.currentStep }
+      };
+
+      if (notificationType === 'warning') {
+        showWarningBanner(userMessage, bannerContext);
+      } else {
+        showErrorBanner(userMessage, bannerContext);
+      }
+
       // ENHANCED ERROR HANDLING: Recovery suggestions
       if (stepCompletionAttempted && operationContext !== 'navigation') {
         setTimeout(() => {

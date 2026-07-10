@@ -20,6 +20,7 @@ import logoUrl from '/assets/images/logo.png';
 // Use simple services that work in both main and renderer processes
 import featureFlagService from './services/FeatureFlagService';
 import crashReportingService from './services/SimpleCrashReportingService';
+import { useErrorNotification } from './contexts/ErrorNotificationContext';
 import analyticsService from './services/SimpleAnalyticsService';
 import performanceMonitoringService from './services/SimplePerformanceMonitoringService';
 import triageCalculationService from './services/TriageCalculationService';
@@ -184,6 +185,8 @@ function App() {
   const [projects, setProjects] = useState([]);
   const [settings, setSettings] = useState(null);
   const [settingsTab, setSettingsTab] = useState('user-profile');
+  const [selectedErrorId, setSelectedErrorId] = useState(null);
+  const { setViewDetailsHandler, showError: showErrorBanner, showWarning: showWarningBanner } = useErrorNotification();
   
   // Draft recovery state
   const [showDraftRecovery, setShowDraftRecovery] = useState(false);
@@ -482,8 +485,11 @@ function App() {
         projectsList = null; // Will trigger fallback below
       }
 
-      // Update state with flushSync for synchronous updates
-      console.log('🔄 handleProjectCreated: Updating state...');
+      // Update projects, currentProject, AND currentView in a single atomic flushSync.
+      // Previously these were split across two flushSync calls, which could let the view
+      // switch to 'project-management' a render before currentProject was actually set,
+      // producing a "Project Not Found" flash in ProjectManagement.
+      console.log('🔄 handleProjectCreated: Updating state and navigating atomically...');
       flushSync(() => {
         if (projectsList) {
           setProjects(projectsList);
@@ -501,17 +507,12 @@ function App() {
           });
         }
         setCurrentProject(projectToSet);
-      });
-
-      // Reset form data so wizard shows clean Step 1 when user returns
-      console.log('🔄 handleProjectCreated: Resetting form data...');
-      handleFormReset(); // Don't await - let it run async
-
-      // Navigate to project management view immediately
-      console.log('🎯 handleProjectCreated: Navigating to project-management');
-      flushSync(() => {
         setCurrentView('project-management');
       });
+
+      // Reset form data so wizard shows clean Step 1 when user returns (non-blocking)
+      console.log('🔄 handleProjectCreated: Resetting form data...');
+      handleFormReset();
 
       console.log('✅ handleProjectCreated: Navigation completed successfully');
       navigationResult = { ok: true, navigated: true, reason: 'primary-path' };
@@ -520,21 +521,17 @@ function App() {
       console.error('❌ handleProjectCreated: Error during state updates:', error);
       navigationResult = { ok: false, navigated: false, reason: `state-update-error:${error.message || 'unknown'}` };
 
-      // Fallback: Use provided project and navigate anyway
+      // Fallback: Use provided project and navigate anyway (still atomic)
       console.log('🔄 handleProjectCreated: Attempting fallback navigation...');
       try {
         flushSync(() => {
           setProjects(prev => [project, ...prev]);
           setCurrentProject(project);
+          setCurrentView('project-management');
         });
 
         // Reset form data (don't await)
         handleFormReset();
-
-        // Navigate to project management view
-        flushSync(() => {
-          setCurrentView('project-management');
-        });
 
         console.log('✅ handleProjectCreated: Fallback navigation completed');
         navigationResult = { ok: true, navigated: true, reason: 'fallback-path' };
@@ -551,6 +548,21 @@ function App() {
           console.error('❌ handleProjectCreated: Final navigation attempt failed:', e);
           navigationResult = { ok: false, navigated: false, reason: `final-navigation-error:${e.message || 'unknown'}` };
         }
+      }
+
+      // Log so it shows up in Settings > Error Report, and surface a persistent banner
+      // since navigation problems here are exactly the kind of error that used to
+      // disappear in 3 seconds before the user could read it.
+      const errorContext = {
+        category: 'wizard',
+        error,
+        context: { step: 2, operation: 'handleProjectCreated', navigationReason: navigationResult.reason, projectId: project?.id }
+      };
+
+      if (navigationResult.navigated) {
+        showWarningBanner('Project saved. If the details page looks off, please refresh or reopen it from Projects.', errorContext);
+      } else {
+        showErrorBanner('Project was saved, but the app could not open it automatically. Please find it in the Projects list.', errorContext);
       }
     }
 
@@ -980,6 +992,20 @@ function App() {
     // setCurrentProject(null); // REMOVED: This was causing the "Project Not Found" error
     // Additional wizard-specific resets will be handled by the wizard component
   };
+
+  // Navigate to the Error Report section under Settings > App Info, optionally highlighting
+  // a specific error. Wired into the ErrorNotificationProvider so clicking "View Details" on
+  // any persistent error banner (wizard, DAS upload, download, etc.) lands here.
+  const navigateToErrorReport = useCallback((errorId = null) => {
+    setSelectedErrorId(errorId || null);
+    setSettingsTab('app-info');
+    setCurrentView('settings');
+  }, []);
+
+  useEffect(() => {
+    setViewDetailsHandler(navigateToErrorReport);
+    return () => setViewDetailsHandler(null);
+  }, [setViewDetailsHandler, navigateToErrorReport]);
 
   const handleViewChange = async (view) => {
     // Clear current project when navigating away from project management
@@ -1523,9 +1549,10 @@ function App() {
         case 'spec-review':
           return <SpecReviewPage />;
         case 'settings':
-          return <Settings 
-            initialTab={settingsTab} 
-            onLaunchOnboarding={() => setShowMigrationAssistant(true)} 
+          return <Settings
+            initialTab={settingsTab}
+            initialErrorId={selectedErrorId}
+            onLaunchOnboarding={() => setShowMigrationAssistant(true)}
           />;
         case 'welcome':
         default:
