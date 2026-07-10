@@ -157,6 +157,16 @@ class FeatureFlagService {
         category: 'experimental',
         defaultValue: false,
         devOnly: true
+      },
+
+      // Training Hub - interactive courses & quizzes
+      'training-hub': {
+        enabled: true,
+        rolloutPercentage: 100,
+        userGroups: ['all'],
+        description: 'Enable the Training Hub (courses & quizzes)',
+        category: 'features',
+        defaultValue: true
       }
     };
 

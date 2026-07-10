@@ -1,0 +1,89 @@
+{
+  "id": "sensorview-software-intro",
+  "title": "SensorView Software Intro",
+  "category": "software-training",
+  "products": ["SensorView"],
+  "difficulty": 2,
+  "estimatedMinutes": 9,
+  "passScore": 80,
+  "tags": ["SensorView", "commissioning", "software"],
+  "version": 1,
+  "updatedAt": "2026-07-10",
+  "summary": "What SensorView does in an nLight system: discovery, grouping, profiles/schedules, and commissioning.",
+  "lessons": [
+    {
+      "id": "l1",
+      "title": "The role of SensorView",
+      "blocks": [
+        { "type": "text", "content": "SensorView is the management software for nLight networked systems. It discovers devices, organizes them into groups, and configures behavior such as timeouts, dimming levels, and schedules." },
+        { "type": "callout", "variant": "info", "content": "Think of SensorView as the 'brain' for configuration and monitoring — the devices enforce control locally, SensorView orchestrates them." }
+      ]
+    },
+    {
+      "id": "l2",
+      "title": "Groups, profiles, and schedules",
+      "blocks": [
+        { "type": "text", "content": "Devices are organized into groups that behave together. Profiles define settings (levels, timeouts), and schedules apply time-based behavior such as after-hours reduction." },
+        { "type": "callout", "variant": "tip", "content": "Get grouping right first — schedules and profiles are far easier to manage when the group structure mirrors how spaces are used." }
+      ]
+    },
+    {
+      "id": "l3",
+      "title": "Commissioning workflow",
+      "blocks": [
+        { "type": "text", "content": "A typical flow: discover devices, verify each responds, assign to groups, apply profiles/schedules, then validate operation and document the configuration." },
+        { "type": "callout", "variant": "warning", "content": "Always validate after configuration — confirm sensors, dimming, and schedules behave as the sequence of operation requires before leaving site." }
+      ]
+    }
+  ],
+  "quiz": {
+    "questions": [
+      {
+        "id": "q1",
+        "type": "single",
+        "prompt": "What is SensorView's primary role in an nLight system?",
+        "choices": [
+          { "id": "a", "text": "Management software: discovery, grouping, and configuration", "correct": true },
+          { "id": "b", "text": "A physical relay pack", "correct": false },
+          { "id": "c", "text": "A type of light fixture", "correct": false },
+          { "id": "d", "text": "A conduit fitting", "correct": false }
+        ],
+        "explanation": "SensorView is the management software used to discover, group, and configure nLight devices."
+      },
+      {
+        "id": "q2",
+        "type": "multi",
+        "prompt": "Which of the following does SensorView configure? (Select all that apply)",
+        "choices": [
+          { "id": "a", "text": "Device groups", "correct": true },
+          { "id": "b", "text": "Profiles (levels, timeouts)", "correct": true },
+          { "id": "c", "text": "Time-based schedules", "correct": true },
+          { "id": "d", "text": "The building's paint color", "correct": false }
+        ],
+        "explanation": "SensorView manages groups, profiles, and schedules for nLight devices."
+      },
+      {
+        "id": "q3",
+        "type": "single",
+        "prompt": "What should you do first for the smoothest commissioning?",
+        "choices": [
+          { "id": "a", "text": "Get device grouping right to mirror how spaces are used", "correct": true },
+          { "id": "b", "text": "Apply schedules before discovering devices", "correct": false },
+          { "id": "c", "text": "Skip validation to save time", "correct": false },
+          { "id": "d", "text": "Delete all profiles", "correct": false }
+        ],
+        "explanation": "Correct grouping first makes profiles and schedules much easier to manage."
+      },
+      {
+        "id": "q4",
+        "type": "boolean",
+        "prompt": "True or False: You should validate operation against the sequence of operation before leaving site.",
+        "choices": [
+          { "id": "true", "text": "True", "correct": true },
+          { "id": "false", "text": "False", "correct": false }
+        ],
+        "explanation": "Validation confirms sensors, dimming, and schedules behave as required before completion."
+      }
+    ]
+  }
+}

@@ -153,6 +153,10 @@ const specReviewLearningService = new SpecReviewLearningService(settingsService)
 const specReviewTrainingService = new SpecReviewTrainingService();
 const specReviewService = new SpecReviewService(aiService, productKBService, specReviewLearningService, specReviewTrainingService);
 const specReviewPersistenceService = new SpecReviewPersistenceService();
+
+// Initialize Training Hub service
+const TrainingHubService = require('./main-process/services/TrainingHubService');
+const trainingHubService = new TrainingHubService(settingsService);
 const appAssistantService = new AppAssistantService({
   projectPersistenceService,
   agencyService,
@@ -3832,6 +3836,48 @@ ipcMain.handle('bom-qc:get-requirements', async (event, projectId) => {
 ipcMain.handle('bom-qc:save-requirements', async (event, projectId, requirementsConfig) => {
   try {
     return await bomQCService.saveProjectRequirements(projectId, requirementsConfig);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// ===== TRAINING HUB IPC HANDLERS =====
+
+ipcMain.handle('training-hub:get-catalog', async (event, forceRefresh) => {
+  try {
+    return await trainingHubService.getCatalog(forceRefresh);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('training-hub:get-course', async (event, courseId) => {
+  try {
+    return await trainingHubService.getCourse(courseId);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('training-hub:get-progress', async () => {
+  try {
+    return await trainingHubService.getProgress();
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('training-hub:submit-attempt', async (event, courseId, attempt) => {
+  try {
+    return await trainingHubService.submitAttempt(courseId, attempt);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('training-hub:reset-course', async (event, courseId) => {
+  try {
+    return await trainingHubService.resetCourseProgress(courseId);
   } catch (error) {
     return { success: false, error: error.message };
   }

@@ -1,0 +1,89 @@
+{
+  "id": "spec-keywords-self-qc",
+  "title": "Spec Keywords & Self-QC Checklist",
+  "category": "process-qc",
+  "products": [],
+  "difficulty": 2,
+  "estimatedMinutes": 7,
+  "passScore": 80,
+  "tags": ["self-qc", "keywords", "quality"],
+  "version": 1,
+  "updatedAt": "2026-07-10",
+  "summary": "A practical checklist of high-signal controls keywords and how to use them to catch missed requirements.",
+  "lessons": [
+    {
+      "id": "l1",
+      "title": "Why keyword scanning works",
+      "blocks": [
+        { "type": "text", "content": "Specs are long and controls requirements are scattered. Scanning for a fixed set of high-signal keywords is a fast, repeatable way to catch requirements you might otherwise miss." },
+        { "type": "callout", "variant": "tip", "content": "Keyword scanning is a safety net, not a replacement for reading — use it as a final pass before sign-off." }
+      ]
+    },
+    {
+      "id": "l2",
+      "title": "The core keyword set",
+      "blocks": [
+        { "type": "text", "content": "Watch for: Occupancy / Vacancy, Daylight / Photocell, Dimming (0-10V / DALI), Plug Load control, Scheduling / Time clock, BACnet / integration, Emergency / Egress, and Networked / addressable." },
+        { "type": "callout", "variant": "info", "content": "Each keyword that appears in the spec should map to at least one captured requirement in your review." }
+      ]
+    },
+    {
+      "id": "l3",
+      "title": "Turning findings into action",
+      "blocks": [
+        { "type": "text", "content": "For every keyword hit with no matching requirement, re-read that section. If it's a real requirement, add it and classify its obligation (NEED / SHOULD / CONDITIONAL)." },
+        { "type": "callout", "variant": "warning", "content": "Plug load and emergency/egress requirements are frequently overlooked — give them extra attention." }
+      ]
+    }
+  ],
+  "quiz": {
+    "questions": [
+      {
+        "id": "q1",
+        "type": "single",
+        "prompt": "How should keyword scanning be used in a review?",
+        "choices": [
+          { "id": "a", "text": "As a final safety-net pass, not a replacement for reading", "correct": true },
+          { "id": "b", "text": "As the only step needed", "correct": false },
+          { "id": "c", "text": "Only on the cover page", "correct": false },
+          { "id": "d", "text": "Never — it is unreliable", "correct": false }
+        ],
+        "explanation": "Keyword scanning is a repeatable safety net used as a final pass, complementing careful reading."
+      },
+      {
+        "id": "q2",
+        "type": "multi",
+        "prompt": "Which are high-signal controls keywords to scan for? (Select all that apply)",
+        "choices": [
+          { "id": "a", "text": "Occupancy / Vacancy", "correct": true },
+          { "id": "b", "text": "Plug Load control", "correct": true },
+          { "id": "c", "text": "BACnet / integration", "correct": true },
+          { "id": "d", "text": "Landscaping", "correct": false }
+        ],
+        "explanation": "Occupancy/vacancy, plug load, and BACnet are all high-signal controls keywords; landscaping is not."
+      },
+      {
+        "id": "q3",
+        "type": "single",
+        "prompt": "You find 'Plug Load' in the spec but have no matching requirement. What do you do?",
+        "choices": [
+          { "id": "a", "text": "Re-read that section; add and classify the requirement if it's real", "correct": true },
+          { "id": "b", "text": "Ignore it", "correct": false },
+          { "id": "c", "text": "Remove plug load from the checklist", "correct": false },
+          { "id": "d", "text": "Assume it's covered elsewhere", "correct": false }
+        ],
+        "explanation": "A keyword hit with no matching requirement is a prompt to re-read and, if real, capture and classify it."
+      },
+      {
+        "id": "q4",
+        "type": "boolean",
+        "prompt": "True or False: Emergency/egress and plug load requirements are commonly overlooked and deserve extra attention.",
+        "choices": [
+          { "id": "true", "text": "True", "correct": true },
+          { "id": "false", "text": "False", "correct": false }
+        ],
+        "explanation": "These categories are frequently missed, so they warrant extra scrutiny during self-QC."
+      }
+    ]
+  }
+}

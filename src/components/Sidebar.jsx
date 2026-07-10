@@ -71,6 +71,13 @@ function Sidebar({ currentView, onViewChange, projectCount, isCollapsed = false,
       description: 'Analyze project specs'
     },
     {
+      id: 'training-hub',
+      label: 'Training Hub',
+      icon: '🎓',
+      description: 'Courses & quizzes',
+      featureFlag: 'training-hub'
+    },
+    {
       id: 'settings',
       label: 'Settings',
       icon: '⚙️',

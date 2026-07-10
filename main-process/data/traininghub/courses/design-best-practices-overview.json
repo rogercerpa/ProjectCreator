@@ -1,0 +1,89 @@
+{
+  "id": "design-best-practices-overview",
+  "title": "Design Best Practices Overview",
+  "category": "design-best-practices",
+  "products": [],
+  "difficulty": 2,
+  "estimatedMinutes": 8,
+  "passScore": 80,
+  "tags": ["quality", "documentation", "handoff"],
+  "version": 1,
+  "updatedAt": "2026-07-10",
+  "summary": "Habits that make a design accurate, buildable, and easy to hand off: complete inputs, clear documentation, and self-QC.",
+  "lessons": [
+    {
+      "id": "l1",
+      "title": "Start from complete inputs",
+      "blocks": [
+        { "type": "text", "content": "A design is only as good as its inputs. Before laying out devices, confirm you have the spec, drawings, fixture schedule, and any sequence of operation." },
+        { "type": "callout", "variant": "warning", "content": "Missing a sequence of operation is a common cause of rework — it defines how the controls must behave, not just what devices exist." }
+      ]
+    },
+    {
+      "id": "l2",
+      "title": "Document decisions and assumptions",
+      "blocks": [
+        { "type": "text", "content": "When you make an assumption (e.g., substituting an alternative device), record it. The next person to touch the project should understand why choices were made." },
+        { "type": "callout", "variant": "tip", "content": "A short assumptions/notes list on every design saves hours during QC and commissioning." }
+      ]
+    },
+    {
+      "id": "l3",
+      "title": "Self-QC before handoff",
+      "blocks": [
+        { "type": "text", "content": "Before handing off, verify: device counts match zones, every requirement is addressed, alternatives are noted, and the BOM ties back to the spec." },
+        { "type": "callout", "variant": "info", "content": "Treat handoff as if the reviewer has no context — clarity now prevents questions later." }
+      ]
+    }
+  ],
+  "quiz": {
+    "questions": [
+      {
+        "id": "q1",
+        "type": "single",
+        "prompt": "Why is the sequence of operation important to collect up front?",
+        "choices": [
+          { "id": "a", "text": "It defines how controls must behave, not just which devices exist", "correct": true },
+          { "id": "b", "text": "It lists paint colors", "correct": false },
+          { "id": "c", "text": "It is only needed for plumbing", "correct": false },
+          { "id": "d", "text": "It is optional and rarely useful", "correct": false }
+        ],
+        "explanation": "The sequence of operation specifies behavior; missing it is a common cause of rework."
+      },
+      {
+        "id": "q2",
+        "type": "boolean",
+        "prompt": "True or False: Assumptions and substitutions should be documented on the design.",
+        "choices": [
+          { "id": "true", "text": "True", "correct": true },
+          { "id": "false", "text": "False", "correct": false }
+        ],
+        "explanation": "Recording assumptions helps the next person understand decisions and speeds QC."
+      },
+      {
+        "id": "q3",
+        "type": "multi",
+        "prompt": "What should you verify during self-QC before handoff? (Select all that apply)",
+        "choices": [
+          { "id": "a", "text": "Device counts match zones", "correct": true },
+          { "id": "b", "text": "Every requirement is addressed", "correct": true },
+          { "id": "c", "text": "The BOM ties back to the spec", "correct": true },
+          { "id": "d", "text": "The office coffee machine is working", "correct": false }
+        ],
+        "explanation": "Self-QC confirms zoning/device counts, requirement coverage, and BOM-to-spec traceability."
+      },
+      {
+        "id": "q4",
+        "type": "single",
+        "prompt": "What mindset best supports a clean handoff?",
+        "choices": [
+          { "id": "a", "text": "Assume the reviewer already knows everything", "correct": false },
+          { "id": "b", "text": "Assume the reviewer has no context and needs clarity", "correct": true },
+          { "id": "c", "text": "Skip documentation to save time", "correct": false },
+          { "id": "d", "text": "Only document if asked", "correct": false }
+        ],
+        "explanation": "Designing for a context-free reviewer produces the clearest, most durable documentation."
+      }
+    ]
+  }
+}

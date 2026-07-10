@@ -1,0 +1,89 @@
+{
+  "id": "nlight-wired-primer",
+  "title": "nLight Wired Product Primer",
+  "category": "product-training",
+  "products": ["nLight Wired"],
+  "difficulty": 2,
+  "estimatedMinutes": 10,
+  "passScore": 80,
+  "tags": ["nLight", "networked", "CAT-5"],
+  "version": 1,
+  "updatedAt": "2026-07-10",
+  "summary": "An introduction to the nLight Wired networked lighting control platform: topology, cabling, and where it fits.",
+  "lessons": [
+    {
+      "id": "l1",
+      "title": "What nLight Wired is",
+      "blocks": [
+        { "type": "text", "content": "nLight Wired is a digital, networked lighting control platform. Devices (sensors, wall pods, power/relay packs) connect over standard CAT-5e cabling and communicate on a device network." },
+        { "type": "callout", "variant": "info", "content": "Because it is networked and addressable, nLight supports grouping, scheduling, and data — not just standalone room control." }
+      ]
+    },
+    {
+      "id": "l2",
+      "title": "Topology and cabling",
+      "blocks": [
+        { "type": "text", "content": "nLight devices are daisy-chained or connected in a free topology using CAT-5e patch cables. A bridge connects device groups to the larger network and to SensorView for management." },
+        { "type": "callout", "variant": "warning", "content": "CAT-5e carries both low-voltage power and data between many nLight devices — respect device-count and cable-length limits per zone/bridge." }
+      ]
+    },
+    {
+      "id": "l3",
+      "title": "Where nLight Wired fits",
+      "blocks": [
+        { "type": "text", "content": "Choose nLight Wired for new construction or renovations where running low-voltage cable is practical and the owner wants networked control, scheduling, and reporting." },
+        { "type": "callout", "variant": "tip", "content": "When pulling cable is impractical (retrofits, historic buildings), consider a wireless platform such as nLight Air instead." }
+      ]
+    }
+  ],
+  "quiz": {
+    "questions": [
+      {
+        "id": "q1",
+        "type": "single",
+        "prompt": "What cabling does nLight Wired primarily use between devices?",
+        "choices": [
+          { "id": "a", "text": "CAT-5e", "correct": true },
+          { "id": "b", "text": "Coaxial", "correct": false },
+          { "id": "c", "text": "Fiber optic only", "correct": false },
+          { "id": "d", "text": "12 AWG line voltage", "correct": false }
+        ],
+        "explanation": "nLight Wired devices connect over standard CAT-5e patch cabling."
+      },
+      {
+        "id": "q2",
+        "type": "single",
+        "prompt": "What device connects nLight device groups to the wider network and SensorView?",
+        "choices": [
+          { "id": "a", "text": "A bridge", "correct": true },
+          { "id": "b", "text": "A ballast", "correct": false },
+          { "id": "c", "text": "A photocell", "correct": false },
+          { "id": "d", "text": "A dimmer knob", "correct": false }
+        ],
+        "explanation": "A bridge links device groups to the larger network and to SensorView management."
+      },
+      {
+        "id": "q3",
+        "type": "boolean",
+        "prompt": "True or False: nLight Wired is addressable and networked, supporting grouping, scheduling, and data.",
+        "choices": [
+          { "id": "true", "text": "True", "correct": true },
+          { "id": "false", "text": "False", "correct": false }
+        ],
+        "explanation": "Being networked and addressable is exactly what distinguishes nLight from standalone room control."
+      },
+      {
+        "id": "q4",
+        "type": "single",
+        "prompt": "When is nLight Air (wireless) often a better fit than nLight Wired?",
+        "choices": [
+          { "id": "a", "text": "When running low-voltage cable is impractical (retrofits, historic buildings)", "correct": true },
+          { "id": "b", "text": "When the owner wants no controls at all", "correct": false },
+          { "id": "c", "text": "Only for outdoor sports lighting", "correct": false },
+          { "id": "d", "text": "Never — wired is always required", "correct": false }
+        ],
+        "explanation": "Wireless nLight Air shines where pulling cable is impractical, such as retrofits."
+      }
+    ]
+  }
+}

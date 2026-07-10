@@ -16,6 +16,7 @@ import MigrationAssistant from './components/wizard/components/MigrationAssistan
 import Settings from './components/Settings';
 import DASGeneralPage from './components/DASGeneralPage';
 import SpecReviewPage from './components/specreview/SpecReviewPage';
+import TrainingHubPage from './components/traininghub/TrainingHubPage';
 import logoUrl from '/assets/images/logo.png';
 // Use simple services that work in both main and renderer processes
 import featureFlagService from './services/FeatureFlagService';
@@ -1218,6 +1219,12 @@ function App() {
           label: 'Spec Review Context',
           detail: 'Specification reviews and product rules'
         };
+      case 'training-hub':
+        return {
+          type: 'training-hub',
+          label: 'Training Hub Context',
+          detail: 'Courses, quizzes, and topic proficiency'
+        };
       case 'welcome':
       default:
         return {
@@ -1548,6 +1555,8 @@ function App() {
           return <DASGeneralPage />;
         case 'spec-review':
           return <SpecReviewPage />;
+        case 'training-hub':
+          return <TrainingHubPage />;
         case 'settings':
           return <Settings
             initialTab={settingsTab}

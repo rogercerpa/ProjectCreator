@@ -475,6 +475,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeAllListeners('spec-review:progress');
   },
 
+  // ===== TRAINING HUB APIs =====
+  trainingHubGetCatalog: (forceRefresh) => ipcRenderer.invoke('training-hub:get-catalog', forceRefresh),
+  trainingHubGetCourse: (courseId) => ipcRenderer.invoke('training-hub:get-course', courseId),
+  trainingHubGetProgress: () => ipcRenderer.invoke('training-hub:get-progress'),
+  trainingHubSubmitAttempt: (courseId, attempt) => ipcRenderer.invoke('training-hub:submit-attempt', courseId, attempt),
+  trainingHubResetCourse: (courseId) => ipcRenderer.invoke('training-hub:reset-course', courseId),
+
   // ===== PRODUCT KNOWLEDGE BASE APIs =====
   kbLoad: (forceRefresh) => ipcRenderer.invoke('kb:load', forceRefresh),
   kbGetProducts: () => ipcRenderer.invoke('kb:get-products'),

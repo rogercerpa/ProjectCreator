@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "updatedAt": "2026-07-10",
+  "categories": [
+    { "id": "lighting-controls", "label": "Design & Application of Lighting Controls", "icon": "💡" },
+    { "id": "design-best-practices", "label": "Design Best Practices", "icon": "📐" },
+    { "id": "spec-review", "label": "Spec Review", "icon": "🔍" },
+    { "id": "product-training", "label": "Product Training", "icon": "🧩" },
+    { "id": "software-training", "label": "Software Training", "icon": "🖥️" },
+    { "id": "process-qc", "label": "Process & QC", "icon": "✅" }
+  ],
+  "courses": [
+    {
+      "id": "spec-review-fundamentals",
+      "title": "Spec Review Fundamentals",
+      "category": "spec-review",
+      "difficulty": 1,
+      "estimatedMinutes": 8,
+      "version": 1,
+      "tags": ["Division 26", "controls", "requirements"]
+    },
+    {
+      "id": "lighting-controls-design-basics",
+      "title": "Lighting Controls Design Basics",
+      "category": "lighting-controls",
+      "difficulty": 1,
+      "estimatedMinutes": 9,
+      "version": 1,
+      "tags": ["occupancy", "daylighting", "zoning"]
+    },
+    {
+      "id": "design-best-practices-overview",
+      "title": "Design Best Practices Overview",
+      "category": "design-best-practices",
+      "difficulty": 2,
+      "estimatedMinutes": 8,
+      "version": 1,
+      "tags": ["quality", "documentation", "handoff"]
+    },
+    {
+      "id": "nlight-wired-primer",
+      "title": "nLight Wired Product Primer",
+      "category": "product-training",
+      "products": ["nLight Wired"],
+      "difficulty": 2,
+      "estimatedMinutes": 10,
+      "version": 1,
+      "tags": ["nLight", "networked", "CAT-5"]
+    },
+    {
+      "id": "sensorview-software-intro",
+      "title": "SensorView Software Intro",
+      "category": "software-training",
+      "products": ["SensorView"],
+      "difficulty": 2,
+      "estimatedMinutes": 9,
+      "version": 1,
+      "tags": ["SensorView", "commissioning", "software"]
+    },
+    {
+      "id": "spec-keywords-self-qc",
+      "title": "Spec Keywords & Self-QC Checklist",
+      "category": "process-qc",
+      "difficulty": 2,
+      "estimatedMinutes": 7,
+      "version": 1,
+      "tags": ["self-qc", "keywords", "quality"]
+    }
+  ]
+}

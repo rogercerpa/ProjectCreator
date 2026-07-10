@@ -1,0 +1,102 @@
+{
+  "id": "lighting-controls-design-basics",
+  "title": "Lighting Controls Design Basics",
+  "category": "lighting-controls",
+  "products": [],
+  "difficulty": 1,
+  "estimatedMinutes": 9,
+  "passScore": 80,
+  "tags": ["occupancy", "daylighting", "zoning"],
+  "version": 1,
+  "updatedAt": "2026-07-10",
+  "summary": "The core building blocks of a lighting controls design: sensing, zoning, dimming, and code-driven strategies.",
+  "lessons": [
+    {
+      "id": "l1",
+      "title": "The four control strategies",
+      "blocks": [
+        { "type": "text", "content": "Most lighting controls designs combine four strategies: occupancy/vacancy sensing, daylight harvesting, scheduling, and manual/task tuning. Energy codes usually require several of these in combination." },
+        { "type": "callout", "variant": "info", "content": "Occupancy sensing turns lights ON and OFF based on presence; vacancy sensing only turns them OFF automatically (manual-on). Codes often mandate vacancy (manual-on) in specific space types." }
+      ]
+    },
+    {
+      "id": "l2",
+      "title": "Zoning and control granularity",
+      "blocks": [
+        { "type": "text", "content": "A control zone is a group of fixtures that respond together. Finer zoning gives more energy savings and flexibility but adds devices and cost." },
+        { "type": "callout", "variant": "tip", "content": "Match zoning to how a space is actually used: perimeter (daylight) zones separate from interior zones, and private offices controlled individually." },
+        { "type": "text", "content": "Daylight zones should be parallel to the window wall so photocells dim only the fixtures that actually receive daylight." }
+      ]
+    },
+    {
+      "id": "l3",
+      "title": "Dimming methods",
+      "blocks": [
+        { "type": "text", "content": "Common dimming protocols include 0-10V (simple analog), DALI (digital, addressable per-fixture), and phase control (legacy)." },
+        { "type": "callout", "variant": "warning", "content": "0-10V and DALI are not interchangeable at the driver — confirm the fixture driver matches the control protocol the design specifies." }
+      ]
+    }
+  ],
+  "quiz": {
+    "questions": [
+      {
+        "id": "q1",
+        "type": "single",
+        "prompt": "What is the key difference between occupancy and vacancy sensing?",
+        "choices": [
+          { "id": "a", "text": "Vacancy sensing is manual-ON, auto-OFF; occupancy is auto-ON, auto-OFF", "correct": true },
+          { "id": "b", "text": "They are identical", "correct": false },
+          { "id": "c", "text": "Occupancy sensing only works with daylight", "correct": false },
+          { "id": "d", "text": "Vacancy sensing requires DALI", "correct": false }
+        ],
+        "explanation": "Vacancy sensing requires a manual ON but turns lights off automatically; occupancy sensing does both automatically."
+      },
+      {
+        "id": "q2",
+        "type": "single",
+        "prompt": "How should daylight zones be oriented relative to a window wall?",
+        "choices": [
+          { "id": "a", "text": "Perpendicular to the window wall", "correct": false },
+          { "id": "b", "text": "Parallel to the window wall", "correct": true },
+          { "id": "c", "text": "Orientation does not matter", "correct": false },
+          { "id": "d", "text": "Diagonally across the room", "correct": false }
+        ],
+        "explanation": "Zones parallel to the window wall let photocells dim only the fixtures receiving daylight."
+      },
+      {
+        "id": "q3",
+        "type": "multi",
+        "prompt": "Which of these are recognized dimming methods? (Select all that apply)",
+        "choices": [
+          { "id": "a", "text": "0-10V", "correct": true },
+          { "id": "b", "text": "DALI", "correct": true },
+          { "id": "c", "text": "Phase control", "correct": true },
+          { "id": "d", "text": "BACnet lumens", "correct": false }
+        ],
+        "explanation": "0-10V, DALI, and phase control are dimming methods. 'BACnet lumens' is not a dimming protocol."
+      },
+      {
+        "id": "q4",
+        "type": "boolean",
+        "prompt": "True or False: Finer control zoning generally increases both energy savings and device count.",
+        "choices": [
+          { "id": "true", "text": "True", "correct": true },
+          { "id": "false", "text": "False", "correct": false }
+        ],
+        "explanation": "Finer zoning improves savings and flexibility but requires more devices and cost."
+      },
+      {
+        "id": "q5",
+        "type": "single",
+        "prompt": "Which four strategies form the core of most controls designs?",
+        "choices": [
+          { "id": "a", "text": "Occupancy, daylight harvesting, scheduling, manual/task tuning", "correct": true },
+          { "id": "b", "text": "Wiring, conduit, breakers, panels", "correct": false },
+          { "id": "c", "text": "Paint, drywall, ceiling, flooring", "correct": false },
+          { "id": "d", "text": "HVAC, plumbing, fire, security", "correct": false }
+        ],
+        "explanation": "The four core strategies are occupancy/vacancy sensing, daylight harvesting, scheduling, and manual/task tuning."
+      }
+    ]
+  }
+}

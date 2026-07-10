@@ -1,0 +1,115 @@
+{
+  "id": "spec-review-fundamentals",
+  "title": "Spec Review Fundamentals",
+  "category": "spec-review",
+  "products": [],
+  "difficulty": 1,
+  "estimatedMinutes": 8,
+  "passScore": 80,
+  "tags": ["Division 26", "controls", "requirements"],
+  "version": 1,
+  "updatedAt": "2026-07-10",
+  "summary": "Learn how Application Engineers approach a lighting controls specification review: where controls requirements live, how to classify obligations, and what to never miss.",
+  "lessons": [
+    {
+      "id": "l1",
+      "title": "What a spec review is for",
+      "blocks": [
+        { "type": "text", "content": "A spec review compares what a project's specification documents require against what Acuity lighting controls products can deliver. The goal is to surface requirements, match them to products, and flag gaps or alternatives before a bill of materials is built." },
+        { "type": "callout", "variant": "tip", "content": "Think of the output as three buckets: requirements we clearly MEET, requirements that need an ALTERNATIVE approach, and requirements that are a GAP." },
+        { "type": "text", "content": "A good review is complete (nothing missed) and honest (obligations classified correctly). Both matter equally." }
+      ]
+    },
+    {
+      "id": "l2",
+      "title": "Where controls requirements live",
+      "blocks": [
+        { "type": "text", "content": "Lighting controls requirements are concentrated in Division 26 (Electrical), typically in the 26 09 00 series (Integrated Automation / Lighting Control Devices). But they rarely stay there." },
+        { "type": "callout", "variant": "warning", "content": "Secondary sections are the most commonly missed source of requirements: schedules, sequences of operation, panel schedules, and appendix tables often contain controls requirements that aren't in the main narrative." },
+        { "type": "text", "content": "When you scan a spec, read the Division 26 narrative first, then deliberately sweep the schedules and sequences before you consider the review complete." }
+      ]
+    },
+    {
+      "id": "l3",
+      "title": "Classifying obligations: NEED, SHOULD, CONDITIONAL",
+      "blocks": [
+        { "type": "text", "content": "Not every sentence in a spec is a hard requirement. Classify each requirement by its obligation level:" },
+        { "type": "text", "content": "NEED — mandatory. Language like 'shall', 'must', 'is required to'. These are non-negotiable." },
+        { "type": "text", "content": "SHOULD — recommended or preferred, but not strictly mandatory. Language like 'should', 'preferred', 'desired'." },
+        { "type": "text", "content": "CONDITIONAL — applies only if a condition is met. Language like 'where applicable', 'if provided', 'as required by'." },
+        { "type": "callout", "variant": "tip", "content": "Misclassifying a NEED as a SHOULD is the most expensive mistake in a review — it can hide a true gap." }
+      ]
+    },
+    {
+      "id": "l4",
+      "title": "Self-QC before you finish",
+      "blocks": [
+        { "type": "text", "content": "Before signing off, run a keyword self-QC: scan the spec for high-signal controls terms and confirm each one that appears is captured as a requirement." },
+        { "type": "text", "content": "Common keywords: Occupancy / Vacancy sensing, Daylight harvesting / Photocell, Dimming (0-10V, DALI), Plug Load control, Time-based scheduling, BACnet integration, Emergency / Egress." },
+        { "type": "callout", "variant": "info", "content": "If a keyword appears in the spec but not in your requirement list, that is a red flag to re-read that section." }
+      ]
+    }
+  ],
+  "quiz": {
+    "questions": [
+      {
+        "id": "q1",
+        "type": "single",
+        "prompt": "Which division of a specification is the primary home for lighting controls requirements?",
+        "choices": [
+          { "id": "a", "text": "Division 09 (Finishes)", "correct": false },
+          { "id": "b", "text": "Division 26 (Electrical)", "correct": true },
+          { "id": "c", "text": "Division 03 (Concrete)", "correct": false },
+          { "id": "d", "text": "Division 22 (Plumbing)", "correct": false }
+        ],
+        "explanation": "Lighting controls requirements are concentrated in Division 26, especially the 26 09 00 series."
+      },
+      {
+        "id": "q2",
+        "type": "single",
+        "prompt": "A spec says lighting 'shall' provide occupancy-based shutoff. How do you classify this obligation?",
+        "choices": [
+          { "id": "a", "text": "SHOULD (recommended)", "correct": false },
+          { "id": "b", "text": "CONDITIONAL", "correct": false },
+          { "id": "c", "text": "NEED (mandatory)", "correct": true },
+          { "id": "d", "text": "Not a requirement", "correct": false }
+        ],
+        "explanation": "'Shall' is mandatory language, so this is a NEED."
+      },
+      {
+        "id": "q3",
+        "type": "multi",
+        "prompt": "Which of the following are commonly-missed 'secondary sections' where controls requirements hide? (Select all that apply)",
+        "choices": [
+          { "id": "a", "text": "Sequences of operation", "correct": true },
+          { "id": "b", "text": "Schedules", "correct": true },
+          { "id": "c", "text": "The cover page", "correct": false },
+          { "id": "d", "text": "Panel schedules and appendix tables", "correct": true }
+        ],
+        "explanation": "Schedules, sequences of operation, panel schedules, and appendix tables frequently contain requirements missing from the main narrative."
+      },
+      {
+        "id": "q4",
+        "type": "boolean",
+        "prompt": "True or False: The three output buckets of a spec review are MEET, ALTERNATIVE, and GAP.",
+        "choices": [
+          { "id": "true", "text": "True", "correct": true },
+          { "id": "false", "text": "False", "correct": false }
+        ],
+        "explanation": "Requirements are sorted into MEET, ALTERNATIVE, or GAP."
+      },
+      {
+        "id": "q5",
+        "type": "single",
+        "prompt": "During self-QC you notice 'BACnet' appears in the spec but is not in your requirement list. What should you do?",
+        "choices": [
+          { "id": "a", "text": "Ignore it — integration is out of scope", "correct": false },
+          { "id": "b", "text": "Re-read that section; a keyword with no captured requirement is a red flag", "correct": true },
+          { "id": "c", "text": "Delete the keyword from the checklist", "correct": false },
+          { "id": "d", "text": "Mark the whole review as failed", "correct": false }
+        ],
+        "explanation": "A high-signal keyword present in the spec but absent from your requirements means you likely missed something — re-read that section."
+      }
+    ]
+  }
+}
