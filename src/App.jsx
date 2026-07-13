@@ -454,69 +454,48 @@ function App() {
     let navigationResult = { ok: false, navigated: false, reason: 'unknown' };
 
     try {
-      // IDLE FIX: Reload projects with timeout protection
-      // If app was idle for 30+ minutes, IPC may be slow - use 3 second timeout
-      console.log('🔄 handleProjectCreated: Reloading projects with timeout protection...');
-      const projectsResult = await withTimeout(
-        window.electronAPI.projectsLoadAll(),
-        3000, // 3 second timeout
-        null  // Return null on timeout
-      );
-
-      let projectToSet = project;
-      let projectsList = null;
-
-      if (projectsResult && projectsResult.success && Array.isArray(projectsResult.projects)) {
-        console.log('✅ handleProjectCreated: Successfully reloaded projects from storage');
-        console.log(`🔄 handleProjectCreated: Found ${projectsResult.projects.length} projects in storage`);
-
-        projectsList = projectsResult.projects;
-
-        // Find the newly created project in the fresh data
-        const freshProject = projectsList.find(p => p.id === project.id);
-        if (freshProject) {
-          console.log('✅ handleProjectCreated: Found newly created project in fresh data');
-          projectToSet = freshProject;
-        } else {
-          console.log('⚠️ handleProjectCreated: Using provided project data as fallback');
-        }
-      } else {
-        // Timeout or failure - use provided project directly
-        console.warn('⚠️ handleProjectCreated: Projects reload timed out or failed, using provided project');
-        projectsList = null; // Will trigger fallback below
-      }
-
-      // Update projects, currentProject, AND currentView in a single atomic flushSync.
-      // Previously these were split across two flushSync calls, which could let the view
-      // switch to 'project-management' a render before currentProject was actually set,
-      // producing a "Project Not Found" flash in ProjectManagement.
-      console.log('🔄 handleProjectCreated: Updating state and navigating atomically...');
+      // Navigate FIRST with the saved project so Step 2 never waits on a slow
+      // projectsLoadAll IPC call (up to 3s) before leaving the wizard. That delay
+      // was a major contributor to users feeling "stuck" after Complete.
+      console.log('🎯 handleProjectCreated: Navigating immediately with saved project');
       flushSync(() => {
-        if (projectsList) {
-          setProjects(projectsList);
-        } else {
-          // Fallback: add project to existing list
-          setProjects(prev => {
-            const existingIndex = prev.findIndex(p => p.id === project.id);
-            if (existingIndex !== -1) {
-              const updated = [...prev];
-              updated[existingIndex] = project;
-              return updated;
-            } else {
-              return [project, ...prev];
-            }
-          });
-        }
-        setCurrentProject(projectToSet);
+        setProjects((prev) => {
+          const existingIndex = prev.findIndex((p) => p.id === project.id);
+          if (existingIndex !== -1) {
+            const updated = [...prev];
+            updated[existingIndex] = project;
+            return updated;
+          }
+          return [project, ...prev];
+        });
+        setCurrentProject(project);
         setCurrentView('project-management');
       });
 
-      // Reset form data so wizard shows clean Step 1 when user returns (non-blocking)
-      console.log('🔄 handleProjectCreated: Resetting form data...');
-      handleFormReset();
+      navigationResult = { ok: true, navigated: true, reason: 'immediate-path' };
+      console.log('✅ handleProjectCreated: Immediate navigation completed');
 
-      console.log('✅ handleProjectCreated: Navigation completed successfully');
-      navigationResult = { ok: true, navigated: true, reason: 'primary-path' };
+      // Soft-refresh the projects list in the background (non-blocking).
+      // Do NOT await this before returning — Step 2 is waiting on this promise
+      // to confirm navigation, and a slow projectsLoadAll would keep the wizard
+      // async function alive unnecessarily.
+      withTimeout(window.electronAPI.projectsLoadAll(), 3000, null)
+        .then((projectsResult) => {
+          if (projectsResult && projectsResult.success && Array.isArray(projectsResult.projects)) {
+            const freshProject = projectsResult.projects.find((p) => p.id === project.id) || project;
+            setProjects(projectsResult.projects);
+            setCurrentProject((prev) => (prev?.id === project.id ? freshProject : prev));
+            console.log('✅ handleProjectCreated: Background projects reload completed');
+          } else {
+            console.warn('⚠️ handleProjectCreated: Background projects reload timed out or failed');
+          }
+        })
+        .catch((reloadError) => {
+          console.warn('⚠️ handleProjectCreated: Background projects reload error:', reloadError);
+        });
+
+      // Reset form data so wizard shows clean Step 1 when user returns (non-blocking)
+      handleFormReset();
 
     } catch (error) {
       console.error('❌ handleProjectCreated: Error during state updates:', error);

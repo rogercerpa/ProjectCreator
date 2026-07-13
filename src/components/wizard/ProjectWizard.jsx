@@ -215,6 +215,11 @@ const ProjectWizard = ({
   const [notification, setNotification] = useState(null);
   // Use ref for navigation state to ensure synchronous access in finally block
   const isNavigatingAwayRef = useRef(false);
+  // Tracks mount status so post-unmount async continuations (and watchdogs) don't
+  // fire false "navigation failed" banners after a successful navigate away.
+  const isMountedRef = useRef(true);
+  const navigationWatchdogRef = useRef(null);
+  const safetyTimerRef = useRef(null);
   
   // Smart assignment state
   const [selectedAssignee, setSelectedAssignee] = useState(null);
@@ -275,6 +280,25 @@ const ProjectWizard = ({
 
   // Persistent, clickable error/warning banners (logged to Settings > Error Report)
   const { showError: showErrorBanner, showWarning: showWarningBanner } = useErrorNotification();
+
+  // Clear navigation watchdogs / flags on unmount. Without this, a successful
+  // navigate (wizard unmounts during await onProjectCreated) still schedules a
+  // 3.5s watchdog that later fires a false "navigation did not complete" warning.
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      isNavigatingAwayRef.current = false;
+      if (navigationWatchdogRef.current) {
+        clearTimeout(navigationWatchdogRef.current);
+        navigationWatchdogRef.current = null;
+      }
+      if (safetyTimerRef.current) {
+        clearTimeout(safetyTimerRef.current);
+        safetyTimerRef.current = null;
+      }
+    };
+  }, []);
 
   // Debounced validation to prevent excessive validation calls
   const [validationTimeout, setValidationTimeout] = useState(null);
@@ -993,7 +1017,12 @@ const ProjectWizard = ({
 
         // SAFETY NET: unconditionally resets button after 15 seconds.
         // Guards against ALL failure modes — hung IPC, throttled timers, stuck awaits.
-        const safetyTimer = setTimeout(() => {
+        // Cleared on unmount so a successful navigate can't leave a dangling warning.
+        if (safetyTimerRef.current) {
+          clearTimeout(safetyTimerRef.current);
+        }
+        safetyTimerRef.current = setTimeout(() => {
+          if (!isMountedRef.current) return;
           console.warn('ProjectWizard: SAFETY TIMEOUT - forcing button reset after 15s');
           isNavigatingAwayRef.current = false;
           setIsLoading(false);
@@ -1146,20 +1175,58 @@ const ProjectWizard = ({
             console.warn('ProjectWizard: Background assignment creation failed:', err);
           });
 
-          clearTimeout(safetyTimer);
+          clearTimeout(safetyTimerRef.current);
+          safetyTimerRef.current = null;
 
           if (navigationSuccess) {
-            // Short watchdog: if navigation does not unmount promptly, release stuck loading state.
-            setTimeout(() => {
-              if (isNavigatingAwayRef.current) {
-                console.warn('ProjectWizard: Navigation watchdog triggered - releasing stuck loading state');
-                isNavigatingAwayRef.current = false;
-                setIsLoading(false);
-                showWarningBanner('Project was saved, but navigation did not complete. Please open it from Projects.', {
-                  category: 'wizard',
-                  context: { step: 2, operation: 'step2-completion', trigger: 'navigation-watchdog', projectId: savedProject?.id }
-                });
+            // Watchdog: only fires if we are STILL mounted after confirmed navigation.
+            // If navigation worked, this component unmounts and the cleanup effect
+            // clears the timer — so we no longer log false "navigation did not complete"
+            // warnings (the pattern seen repeatedly in user error reports).
+            // If we are still mounted, retry navigation once before warning the user.
+            if (navigationWatchdogRef.current) {
+              clearTimeout(navigationWatchdogRef.current);
+            }
+            navigationWatchdogRef.current = setTimeout(async () => {
+              if (!isMountedRef.current || !isNavigatingAwayRef.current) {
+                return;
               }
+
+              console.warn('ProjectWizard: Navigation watchdog — still mounted after confirmed navigation, retrying once');
+
+              try {
+                const retryFn = shouldUseCreateHandler
+                  ? onProjectCreated
+                  : shouldUseUpdateHandler
+                    ? onProjectUpdated
+                    : null;
+                if (typeof retryFn === 'function') {
+                  await retryFn(savedProject);
+                }
+              } catch (retryError) {
+                console.warn('ProjectWizard: Navigation retry failed:', retryError);
+              }
+
+              // Give React a beat to unmount after the retry
+              await new Promise((resolve) => setTimeout(resolve, 500));
+
+              if (!isMountedRef.current || !isNavigatingAwayRef.current) {
+                return;
+              }
+
+              console.warn('ProjectWizard: Navigation watchdog — still mounted after retry, showing warning');
+              isNavigatingAwayRef.current = false;
+              setIsLoading(false);
+              showWarningBanner('Project was saved, but navigation did not complete. Please open it from Projects.', {
+                category: 'wizard',
+                context: {
+                  step: 2,
+                  operation: 'step2-completion',
+                  trigger: 'navigation-watchdog',
+                  projectId: savedProject?.id,
+                  retried: true
+                }
+              });
             }, 3500);
             console.log('ProjectWizard: Navigation successful, keeping loading state until unmount');
             return;
@@ -1169,7 +1236,8 @@ const ProjectWizard = ({
           return;
 
         } catch (step2Error) {
-          clearTimeout(safetyTimer);
+          clearTimeout(safetyTimerRef.current);
+          safetyTimerRef.current = null;
           console.error('Step 2 completion failed:', step2Error);
 
           isNavigatingAwayRef.current = false;
