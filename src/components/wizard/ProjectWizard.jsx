@@ -1125,9 +1125,13 @@ const ProjectWizard = ({
             }
           };
 
-          const shouldUseCreateHandler = mode === 'create' && typeof onProjectCreated === 'function';
+          const shouldUseCreateHandler = typeof onProjectCreated === 'function';
           const shouldUseUpdateHandler = !shouldUseCreateHandler && typeof onProjectUpdated === 'function';
 
+          // Step 2 completion must always leave the wizard and open Project Details.
+          // Previously, leftover currentProject put the wizard in edit mode so we called
+          // onProjectUpdated — which reports success without changing views, leaving
+          // users stuck on Step 2 (see error reports: trigger=navigation-watchdog, retried=true).
           if (shouldUseCreateHandler) {
             const result = await callNavigationWithTimeout(onProjectCreated, savedProject, 'onProjectCreated');
             if (result.success) {

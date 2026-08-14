@@ -835,7 +835,10 @@ function App() {
       setCurrentProject(projectToUse);
       console.log('✅ App.jsx: currentProject updated, ECD:', projectToUse.ecd);
       await syncSharedCalendarEntry(projectToUse);
-      updateResult = { ok: true, navigated: true, reason: 'project-updated' };
+      // This handler updates in-place (Project Details, form edits). It does NOT
+      // change currentView. Returning navigated:true here made Step 2 think it
+      // had left the wizard when the user was still stuck on it.
+      updateResult = { ok: true, navigated: false, reason: 'project-updated' };
       
     } catch (error) {
       console.error('Error updating project:', error);
@@ -844,7 +847,7 @@ function App() {
         prev.map(p => p.id === updatedProject.id ? updatedProject : p)
       );
       setCurrentProject(updatedProject);
-      updateResult = { ok: true, navigated: true, reason: 'project-updated-fallback' };
+      updateResult = { ok: true, navigated: false, reason: 'project-updated-fallback' };
     }
 
     return updateResult;
@@ -1065,6 +1068,7 @@ function App() {
     
     // Navigate to the selected interface
     if (selectedInterface === 'wizard') {
+      setCurrentProject(null);
       setCurrentView('wizard');
     } else if (selectedInterface === 'classic') {
       setCurrentView('form');
@@ -1073,13 +1077,28 @@ function App() {
     console.log(`User selected interface: ${selectedInterface}, remember: ${remember}`);
   };
 
+  // Open the Project Wizard for a *new* project. Must clear currentProject first —
+  // otherwise the wizard starts in edit mode (mode={currentProject ? 'edit' : 'create'})
+  // and Step 2 calls handleProjectUpdated, which never navigates away from the wizard.
+  const openNewProjectWizard = () => {
+    setCurrentProject(null);
+    handleSmartViewChange('wizard');
+  };
+
   // Smart view change handler that respects feature flags
   const handleSmartViewChange = (view) => {
+    // Starting a new project from the sidebar/list must not keep a previously
+    // viewed project selected, or Step 2 completion stays on the wizard.
+    if (view === 'wizard') {
+      setCurrentProject(null);
+    }
+
     // If trying to access wizard or form, check feature flags and preferences
     if (view === 'form' || view === 'wizard') {
       
       // Check if wizard is forced
       if (featureFlagService.isWizardForced() && view === 'form') {
+        setCurrentProject(null);
         setCurrentView('wizard');
         return;
       }
@@ -1092,6 +1111,7 @@ function App() {
       
       // Use default interface preference if no specific view requested
       if (view === 'form' && featureFlagService.isWizardDefault() && userInterfacePreference !== 'classic') {
+        setCurrentProject(null);
         setCurrentView('wizard');
         return;
       }
@@ -1384,8 +1404,8 @@ function App() {
             return (
               <div className="wizard-wrapper">
                 <ProjectWizard
-                  mode={currentProject ? 'edit' : 'create'}
-                  existingProject={currentProject}
+                  mode="create"
+                  existingProject={null}
                   existingProjects={projects}
                   formData={formData}
                   onFormDataChange={handleFormDataChange}
@@ -1435,7 +1455,7 @@ function App() {
                 setCurrentView('project-management');
               }}
               onProjectDelete={handleProjectDelete}
-              onNewProject={() => handleSmartViewChange('wizard')}
+              onNewProject={openNewProjectWizard}
               onCalendarProjectUpdate={handleCalendarProjectUpdate}
               onRefresh={async () => {
                 console.log('🔄 Manual refresh triggered');
@@ -1464,7 +1484,7 @@ function App() {
               project={currentProject}
               onProjectUpdated={handleProjectUpdated}
               onProjectDelete={handleProjectDelete}
-              onBack={() => setCurrentView('list')}
+              onBack={() => handleViewChange('list')}
               mode="view"
             />
           );
@@ -1505,7 +1525,7 @@ function App() {
         case 'agile-monitor':
           return (
             <AgileMonitorView
-              onNavigateToWizard={() => setCurrentView('wizard')}
+              onNavigateToWizard={openNewProjectWizard}
               onImportRfaData={(rfaData) => {
                 if (rfaData) {
                   setFormData((prev) => ({
@@ -1526,7 +1546,7 @@ function App() {
                     ...(rfaData.documents != null && { rfaDocuments: rfaData.documents })
                   }));
                 }
-                setCurrentView('wizard');
+                openNewProjectWizard();
               }}
             />
           );
