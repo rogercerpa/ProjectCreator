@@ -117,17 +117,91 @@ class ReadyForQCService {
   }
 
   /**
-   * Read and cache normalized RFA numbers found inside a zip archive
-   * @param {string} zipPath - Full zip file path
-   * @param {Map<string, Set<string>>} cache - In-memory cache for parsed zip metadata
-   * @returns {Promise<Set<string>>} Set of normalized RFA numbers found in zip entries
+   * Normalize text for zip/project matching.
+   * Treats underscores as spaces and & as "and" so engineer-renamed zips still match.
+   * @param {string} value - Raw text
+   * @returns {string} Normalized comparable text
    */
-  async getZipRfaNumbers(zipPath, cache = new Map()) {
+  normalizeMatchText(value) {
+    return String(value || '')
+      .toLowerCase()
+      .replace(/&/g, ' and ')
+      .replace(/[_]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  /**
+   * Extract the stable identity signals used to pair a zip with a project.
+   * @param {Object} project - Project data
+   * @returns {{name: string, container: string, rfa: string|null}}
+   */
+  getProjectMatchSignals(project) {
+    return {
+      name: this.normalizeMatchText(this.sanitizeProjectName(project?.projectName)),
+      container: String(project?.projectContainer || '').trim().toLowerCase(),
+      rfa: this.normalizeRfaNumber(project?.rfaNumber)
+    };
+  }
+
+  /**
+   * Cheap filename pre-filter. Accepts the canonical app zip name, or a renamed zip
+   * that still contains the project name plus the container and/or RFA number.
+   * @param {Object} zipFile - Zip file metadata object
+   * @param {Object} project - Project data
+   * @returns {boolean} True if the zip is worth inspecting
+   */
+  zipFilenameLooksLikeProject(zipFile, project) {
+    const zipName = zipFile?.nameWithoutExtension || String(zipFile?.name || '').replace(/\.zip$/i, '');
+    const zipNameLower = String(zipName || '').toLowerCase().trim();
+    if (!zipNameLower) return false;
+
+    const folderNames = this.getProjectFolderName(project) || [];
+    if (folderNames.some((folderName) => zipNameLower.startsWith(folderName.toLowerCase().trim()))) {
+      return true;
+    }
+
+    const signals = this.getProjectMatchSignals(project);
+    const normalizedZip = this.normalizeMatchText(zipName);
+    const hasName = Boolean(signals.name && normalizedZip.includes(signals.name));
+    const hasContainer = Boolean(signals.container && normalizedZip.includes(signals.container));
+    const hasRfa = Boolean(signals.rfa && normalizedZip.includes(signals.rfa));
+
+    return (hasName && (hasContainer || hasRfa)) || (hasContainer && hasRfa);
+  }
+
+  /**
+   * Confirm a zip belongs to a project using name, container, and exact RFA revision.
+   * Signals may appear in the zip filename and/or inside the zip folder structure.
+   * @param {string} searchText - Combined filename and zip entry paths
+   * @param {Set<string>} zipRfaNumbers - RFA numbers extracted from zip entries
+   * @param {Object} project - Project data
+   * @returns {boolean} True when name, container, and RFA all match
+   */
+  zipIdentityMatchesProject(searchText, zipRfaNumbers, project) {
+    const signals = this.getProjectMatchSignals(project);
+    if (!signals.name || !signals.container || !signals.rfa) return false;
+    if (!zipRfaNumbers?.has(signals.rfa)) return false;
+
+    const haystack = this.normalizeMatchText(searchText);
+    return haystack.includes(signals.name) && haystack.includes(signals.container);
+  }
+
+  /**
+   * Read and cache zip identity used for matching: RFA markers plus searchable path text.
+   * @param {string} zipPath - Full zip file path
+   * @param {Map<string, Object>} cache - In-memory cache for parsed zip metadata
+   * @returns {Promise<{rfaNumbers: Set<string>, searchText: string}>}
+   */
+  async getZipIdentity(zipPath, cache = new Map()) {
     if (cache.has(zipPath)) {
       return cache.get(zipPath);
     }
 
-    const rfaNumbers = new Set();
+    const identity = {
+      rfaNumbers: new Set(),
+      searchText: this.normalizeMatchText(path.basename(zipPath, path.extname(zipPath)))
+    };
 
     try {
       const zipBuffer = await fs.readFile(zipPath);
@@ -135,16 +209,31 @@ class ReadyForQCService {
       const entryPaths = Object.keys(zipArchive.files || {});
 
       for (const entryPath of entryPaths) {
-        const extractedRfas = this.extractRfaNumbersFromZipEntryPath(entryPath);
-        extractedRfas.forEach((rfa) => rfaNumbers.add(rfa));
+        this.extractRfaNumbersFromZipEntryPath(entryPath).forEach((rfa) => identity.rfaNumbers.add(rfa));
       }
+
+      identity.searchText = this.normalizeMatchText([
+        identity.searchText,
+        ...entryPaths
+      ].join(' '));
     } catch (error) {
       console.warn(`[ReadyForQC] ⚠️ Failed to inspect zip entries for RFA matching: ${zipPath}`);
       console.warn(`[ReadyForQC]   Error: ${error.message}`);
     }
 
-    cache.set(zipPath, rfaNumbers);
-    return rfaNumbers;
+    cache.set(zipPath, identity);
+    return identity;
+  }
+
+  /**
+   * Read and cache normalized RFA numbers found inside a zip archive
+   * @param {string} zipPath - Full zip file path
+   * @param {Map<string, Object>} cache - In-memory cache for parsed zip metadata
+   * @returns {Promise<Set<string>>} Set of normalized RFA numbers found in zip entries
+   */
+  async getZipRfaNumbers(zipPath, cache = new Map()) {
+    const identity = await this.getZipIdentity(zipPath, cache);
+    return identity.rfaNumbers;
   }
 
   /**
@@ -175,6 +264,28 @@ class ReadyForQCService {
     }
 
     return true;
+  }
+
+  /**
+   * Confirm a candidate zip belongs to a project by RFA revision plus name and container.
+   * @param {Object} zipFile - Zip file metadata object
+   * @param {Object} project - Project data
+   * @param {Map<string, Object>} cache - In-memory zip parse cache
+   * @returns {Promise<boolean>} True if the zip is this project
+   */
+  async zipBelongsToProject(zipFile, project, cache = new Map()) {
+    const identity = await this.getZipIdentity(zipFile.path, cache);
+    const searchText = [
+      zipFile.nameWithoutExtension || zipFile.name,
+      identity.searchText
+    ].join(' ');
+
+    const matches = this.zipIdentityMatchesProject(searchText, identity.rfaNumbers, project);
+    if (!matches) {
+      console.warn(`[ReadyForQC] ⚠️ Zip "${zipFile.name}" failed identity match for project ${project?.id || 'unknown'}`);
+      console.warn(`[ReadyForQC]   Expected name/container/RFA: "${this.sanitizeProjectName(project?.projectName)}" / ${project?.projectContainer} / ${this.normalizeRfaNumber(project?.rfaNumber)}`);
+    }
+    return matches;
   }
 
   /**
@@ -321,40 +432,29 @@ class ReadyForQCService {
           continue;
         }
 
-        // Find matching zip files (case-insensitive) - check both naming variations
-        // Uses "starts with" matching so Windows/OneDrive duplicate suffixes like (1) are tolerated
+        // First pass: filename still looks like this project even if engineers renamed separators/order.
         const nameMatchedZips = zipFiles.filter(zip => {
           if (!fs.existsSync(zip.path)) {
             console.warn(`[ReadyForQC] ⚠️ Zip file path does not exist: ${zip.path}`);
             return false;
           }
 
-          const zipNameLower = zip.nameWithoutExtension.toLowerCase().trim();
-          const isMatch = projectFolderNames.some(folderName => {
-            const folderNameLower = folderName.toLowerCase().trim();
-            const matches = zipNameLower.startsWith(folderNameLower);
-            if (matches) {
-              const suffix = zipNameLower.slice(folderNameLower.length);
-              const matchType = suffix ? 'starts-with' : 'exact';
-              console.log(`[ReadyForQC] ✓ MATCH FOUND (${matchType}): Project "${project.projectName}" (${project.projectContainer}) matches zip "${zip.name}"`);
-              console.log(`[ReadyForQC]   Project ID: ${project.id}`);
-              console.log(`[ReadyForQC]   Project folder name: "${folderName}"`);
-              console.log(`[ReadyForQC]   Zip file name: "${zip.nameWithoutExtension}"`);
-              console.log(`[ReadyForQC]   Zip file path: "${zip.path}"`);
-              if (suffix) {
-                console.log(`[ReadyForQC]   Tolerated suffix: "${suffix}"`);
-              }
-            }
-            return matches;
-          });
+          const isMatch = this.zipFilenameLooksLikeProject(zip, project);
+          if (isMatch) {
+            console.log(`[ReadyForQC] ✓ FILENAME CANDIDATE: Project "${project.projectName}" (${project.projectContainer}) matches zip "${zip.name}"`);
+            console.log(`[ReadyForQC]   Project ID: ${project.id}`);
+            console.log(`[ReadyForQC]   Expected folder name: "${projectFolderNames[0]}"`);
+            console.log(`[ReadyForQC]   Zip file name: "${zip.nameWithoutExtension}"`);
+            console.log(`[ReadyForQC]   Zip file path: "${zip.path}"`);
+          }
           return isMatch;
         });
 
-        // Second-stage validation: zip must contain matching full RFA number including revision
+        // Second-stage validation: zip must contain matching name, container, and exact RFA revision
         const matchingZips = [];
         for (const zip of nameMatchedZips) {
-          const hasExactRfaMatch = await this.validateZipRfaMatch(zip, project, zipRfaCache);
-          if (hasExactRfaMatch) {
+          const belongsToProject = await this.zipBelongsToProject(zip, project, zipRfaCache);
+          if (belongsToProject) {
             matchingZips.push(zip);
           }
         }
@@ -368,7 +468,7 @@ class ReadyForQCService {
           console.log(`[ReadyForQC] Added project ${project.id} (${project.projectName}) to matches with ${matchingZips.length} zip file(s)`);
         } else {
           if (nameMatchedZips.length > 0) {
-            console.log(`[ReadyForQC] ✗ Name-matched zip(s) rejected by strict RFA validation for project ${project.id}`);
+            console.log(`[ReadyForQC] ✗ Name-matched zip(s) rejected by name/container/RFA identity validation for project ${project.id}`);
           }
           // Log when a project is checked but doesn't match (for debugging)
           // Only log for "In Progress" projects to reduce noise
@@ -408,18 +508,12 @@ class ReadyForQCService {
         return [];
       }
 
-      // Find matching zip files (case-insensitive, starts-with) - check both naming variations
-      const nameMatchedZips = zipFiles.filter(zip => {
-        const zipNameLower = zip.nameWithoutExtension.toLowerCase().trim();
-        return projectFolderNames.some(folderName => 
-          zipNameLower.startsWith(folderName.toLowerCase().trim())
-        );
-      });
+      const nameMatchedZips = zipFiles.filter(zip => this.zipFilenameLooksLikeProject(zip, project));
 
       const validatedZips = [];
       for (const zip of nameMatchedZips) {
-        const hasExactRfaMatch = await this.validateZipRfaMatch(zip, project, zipRfaCache);
-        if (hasExactRfaMatch) {
+        const belongsToProject = await this.zipBelongsToProject(zip, project, zipRfaCache);
+        if (belongsToProject) {
           validatedZips.push(zip);
         }
       }
@@ -557,14 +651,10 @@ class ReadyForQCService {
             return false;
           }
           
-          // Re-verify the match (starts-with to tolerate Windows duplicate suffixes)
-          const projectFolderNames = this.getProjectFolderName(project);
-          const zipNameLower = zip.nameWithoutExtension.toLowerCase().trim();
-          const stillMatches = projectFolderNames.some(folderName => 
-            zipNameLower.startsWith(folderName.toLowerCase().trim())
-          );
+          const stillMatches = this.zipFilenameLooksLikeProject(zip, project);
           
           if (!stillMatches) {
+            const projectFolderNames = this.getProjectFolderName(project);
             console.warn(`[ReadyForQC] ⚠️ Zip file "${zip.name}" no longer matches project "${project.projectName}"`);
             console.warn(`[ReadyForQC]   Expected: ${projectFolderNames.join(' or ')}`);
             console.warn(`[ReadyForQC]   Zip name: ${zip.nameWithoutExtension}`);
