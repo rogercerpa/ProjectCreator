@@ -405,7 +405,7 @@ const ProjectManagement = ({
       <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
         <div className="px-6 py-3">
           {/* Project Title and Meta */}
-          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+          <div className="flex flex-col gap-3">
             <div className="flex-1 min-w-0">
               <div className="flex items-start gap-3 mb-2">
                 <h1 
