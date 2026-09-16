@@ -418,8 +418,10 @@ function Settings({ initialTab = 'user-profile', initialErrorId = null, onLaunch
       const searchLower = agencySearchTerm.toLowerCase();
       filtered = filtered.filter(agency => 
         agency.agencyName?.toLowerCase().includes(searchLower) ||
+        agency.agencyNumber?.toLowerCase().includes(searchLower) ||
         agency.contactName?.toLowerCase().includes(searchLower) ||
         agency.contactEmail?.toLowerCase().includes(searchLower) ||
+        agency.phoneNumber?.toLowerCase().includes(searchLower) ||
         agency.region?.toLowerCase().includes(searchLower) ||
         agency.role?.toLowerCase().includes(searchLower)
       );

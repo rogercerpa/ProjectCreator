@@ -1,4 +1,22 @@
-import React from 'react';
+import React, { useState } from 'react';
+import ColumnVisibilityControl from '../ColumnVisibilityControl';
+
+// All columns available in the Existing Agencies table (Actions is pinned and
+// intentionally excluded from the column picker below).
+const AGENCY_TABLE_COLUMNS = [
+  { key: 'agencyName', label: 'Agency Name', minWidth: '180px' },
+  { key: 'agencyNumber', label: 'Agency Number', minWidth: '130px' },
+  { key: 'contact', label: 'Contact', minWidth: '180px' },
+  { key: 'region', label: 'Region', minWidth: '110px' },
+  { key: 'role', label: 'Role', minWidth: '110px' },
+  { key: 'phone', label: 'Phone', minWidth: '130px' },
+  { key: 'email', label: 'Email', minWidth: '200px' },
+  { key: 'fastService', label: 'Fast Service', minWidth: '110px' },
+  { key: 'sae', label: 'SAE', minWidth: '80px' }
+];
+
+const AGENCY_TABLE_DEFAULT_VISIBLE = ['agencyName', 'agencyNumber', 'contact', 'region'];
+const AGENCY_TABLE_COLUMN_KEYS = AGENCY_TABLE_COLUMNS.map(col => col.key);
 
 const AgenciesTab = ({
   syncSettings,
@@ -42,6 +60,179 @@ const AgenciesTab = ({
   regionalTeams,
   assignedToOptions
 }) => {
+  // Column order (persisted). Only covers the toggleable columns; Actions is pinned.
+  const [columnOrder, setColumnOrder] = useState(() => {
+    const saved = localStorage.getItem('agencySettingsTableColumnOrder');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        const isValid = Array.isArray(parsed) &&
+          parsed.length === AGENCY_TABLE_COLUMN_KEYS.length &&
+          parsed.every(key => AGENCY_TABLE_COLUMN_KEYS.includes(key));
+        if (isValid) return parsed;
+      } catch (e) {
+        console.warn('Failed to parse saved agency column order, using defaults');
+      }
+    }
+    return [...AGENCY_TABLE_COLUMN_KEYS];
+  });
+
+  // Column visibility (persisted). Defaults show Agency Number and hide Role.
+  const [visibleColumns, setVisibleColumns] = useState(() => {
+    const saved = localStorage.getItem('agencySettingsTableVisibleColumns');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) {
+        console.warn('Failed to parse saved agency column visibility, using defaults');
+      }
+    }
+    return [...AGENCY_TABLE_DEFAULT_VISIBLE];
+  });
+
+  const [draggedColumn, setDraggedColumn] = useState(null);
+
+  const handleColumnToggle = (columnKey) => {
+    setVisibleColumns(prev => {
+      const next = prev.includes(columnKey)
+        ? prev.filter(key => key !== columnKey)
+        : [...prev, columnKey];
+      localStorage.setItem('agencySettingsTableVisibleColumns', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const handleColumnReorder = (newOrder) => {
+    setColumnOrder(newOrder);
+    localStorage.setItem('agencySettingsTableColumnOrder', JSON.stringify(newOrder));
+  };
+
+  const handleResetColumns = () => {
+    const defaultOrder = [...AGENCY_TABLE_COLUMN_KEYS];
+    setVisibleColumns([...AGENCY_TABLE_DEFAULT_VISIBLE]);
+    setColumnOrder(defaultOrder);
+    localStorage.setItem('agencySettingsTableVisibleColumns', JSON.stringify(AGENCY_TABLE_DEFAULT_VISIBLE));
+    localStorage.setItem('agencySettingsTableColumnOrder', JSON.stringify(defaultOrder));
+  };
+
+  // Header drag-and-drop reorder (mirrors ProjectTableView).
+  const handleHeaderDragStart = (e, columnKey) => {
+    setDraggedColumn(columnKey);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleHeaderDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleHeaderDrop = (e, targetColumnKey) => {
+    e.preventDefault();
+    if (!draggedColumn || draggedColumn === targetColumnKey) {
+      setDraggedColumn(null);
+      return;
+    }
+    const newOrder = [...columnOrder];
+    const draggedIndex = newOrder.indexOf(draggedColumn);
+    const targetIndex = newOrder.indexOf(targetColumnKey);
+    newOrder.splice(draggedIndex, 1);
+    newOrder.splice(targetIndex, 0, draggedColumn);
+    handleColumnReorder(newOrder);
+    setDraggedColumn(null);
+  };
+
+  const handleHeaderDragEnd = () => setDraggedColumn(null);
+
+  const formatPhoneNumber = (phone) => {
+    if (!phone) return '';
+    const cleaned = String(phone).replace(/\D/g, '');
+    if (cleaned.length === 10) {
+      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+    }
+    return phone;
+  };
+
+  const orderedColumns = columnOrder
+    .map(key => AGENCY_TABLE_COLUMNS.find(col => col.key === key))
+    .filter(Boolean);
+  const visibleColumnsData = orderedColumns.filter(col => visibleColumns.includes(col.key));
+  const emailColumnVisible = visibleColumns.includes('email');
+
+  const renderAgencyCell = (column, agency) => {
+    switch (column.key) {
+      case 'agencyName':
+        return (
+          <span className="font-medium text-gray-900 dark:text-white" title={agency.agencyName}>
+            {agency.agencyName}
+          </span>
+        );
+      case 'agencyNumber':
+        return agency.agencyNumber
+          ? (
+            <span className="text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">
+              #{agency.agencyNumber}
+            </span>
+          )
+          : <span className="text-gray-400 dark:text-gray-600">—</span>;
+      case 'contact':
+        return (
+          <div className="min-w-0">
+            <div className="truncate">{agency.contactName}</div>
+            {!emailColumnVisible && agency.contactEmail && (
+              <div className="truncate text-xs text-gray-500 dark:text-gray-400">{agency.contactEmail}</div>
+            )}
+          </div>
+        );
+      case 'region':
+        return <span>{agency.region}</span>;
+      case 'role':
+        return <span>{agency.role}</span>;
+      case 'phone':
+        return agency.phoneNumber
+          ? (
+            <a href={`tel:${agency.phoneNumber}`} className="text-primary-600 dark:text-primary-400 hover:underline">
+              {formatPhoneNumber(agency.phoneNumber)}
+            </a>
+          )
+          : <span className="text-gray-400 dark:text-gray-600">—</span>;
+      case 'email':
+        return agency.contactEmail
+          ? (
+            <a
+              href={`mailto:${agency.contactEmail}`}
+              className="text-primary-600 dark:text-primary-400 hover:underline truncate block"
+              title={agency.contactEmail}
+            >
+              {agency.contactEmail}
+            </a>
+          )
+          : <span className="text-gray-400 dark:text-gray-600">—</span>;
+      case 'fastService':
+        return (
+          <span className={`px-2 py-1 rounded text-xs font-medium ${
+            agency.fastService === 'Yes'
+              ? 'bg-success-100 dark:bg-success-900/30 text-success-700 dark:text-success-300'
+              : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+          }`}>
+            {agency.fastService === 'Yes' ? '⚡ Yes' : 'No'}
+          </span>
+        );
+      case 'sae':
+        return (
+          <span className={`px-2 py-1 rounded text-xs font-medium ${
+            agency.sae === 'Yes'
+              ? 'bg-success-100 dark:bg-success-900/30 text-success-700 dark:text-success-300'
+              : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+          }`}>
+            {agency.sae === 'Yes' ? 'SAE' : 'No'}
+          </span>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Auto-Sync Configuration Section */}
@@ -583,7 +774,15 @@ const AgenciesTab = ({
                       <option key={region} value={region}>{region}</option>
                     ))}
                   </select>
-                  
+
+                  <ColumnVisibilityControl
+                    columns={AGENCY_TABLE_COLUMNS}
+                    visibleColumns={visibleColumns}
+                    columnOrder={columnOrder}
+                    onColumnToggle={handleColumnToggle}
+                    onColumnReorder={handleColumnReorder}
+                    onResetColumns={handleResetColumns}
+                  />
                 </div>
               </div>
               
@@ -600,14 +799,6 @@ const AgenciesTab = ({
 
             {/* Agencies Table */}
             <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-              <div className="grid grid-cols-[2fr_2fr_1fr_1fr_auto] gap-4 px-4 py-3 bg-gray-50 dark:bg-gray-900 text-xs font-bold uppercase tracking-wide text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
-                <span>Agency Name</span>
-                <span>Contact</span>
-                <span>Region</span>
-                <span>Role</span>
-                <span>Actions</span>
-              </div>
-              
               {filteredAgencies.length === 0 ? (
                 <div className="p-8 text-center">
                   <p className="text-gray-600 dark:text-gray-400 mb-4">No agencies found matching your search criteria.</p>
@@ -615,43 +806,71 @@ const AgenciesTab = ({
                     className="px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-medium rounded-lg transition-all text-sm"
                     onClick={() => {
                       setAgencySearchTerm('');
-                      setAgencyFilters({ region: 'all', role: 'all' });
+                      handleAgencyFilterChange('region', 'all');
+                      handleAgencyFilterChange('role', 'all');
                     }}
                   >
                     Clear Filters
                   </button>
                 </div>
               ) : (
-                <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {getPaginatedAgencies().map(agency => (
-                    <div key={agency.id} className="grid grid-cols-[2fr_2fr_1fr_1fr_auto] gap-4 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all">
-                      <span className="truncate text-sm font-medium text-gray-900 dark:text-white" title={agency.agencyName}>
-                        {agency.agencyName}
-                      </span>
-                      <span className="text-sm text-gray-700 dark:text-gray-300">
-                        <div className="truncate">{agency.contactName}</div>
-                        <div className="truncate text-xs text-gray-500 dark:text-gray-400">{agency.contactEmail}</div>
-                      </span>
-                      <span className="text-sm text-gray-700 dark:text-gray-300">{agency.region}</span>
-                      <span className="text-sm text-gray-700 dark:text-gray-300">{agency.role}</span>
-                      <span className="flex gap-2">
-                        <button 
-                          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-primary-50 dark:hover:bg-primary-900/20 text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-all"
-                          onClick={() => handleEditAgency(agency)}
-                          title="Edit agency"
-                        >
-                          ✏️
-                        </button>
-                        <button 
-                          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-error-50 dark:hover:bg-error-900/20 text-gray-600 dark:text-gray-400 hover:text-error-600 dark:hover:text-error-400 transition-all"
-                          onClick={() => handleDeleteAgency(agency)}
-                          title="Delete agency"
-                        >
-                          🗑️
-                        </button>
-                      </span>
-                    </div>
-                  ))}
+                <div className="overflow-x-auto custom-scrollbar">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+                        {visibleColumnsData.map((column) => (
+                          <th
+                            key={column.key}
+                            draggable={true}
+                            onDragStart={(e) => handleHeaderDragStart(e, column.key)}
+                            onDragOver={handleHeaderDragOver}
+                            onDrop={(e) => handleHeaderDrop(e, column.key)}
+                            onDragEnd={handleHeaderDragEnd}
+                            style={{ minWidth: column.minWidth, cursor: 'move' }}
+                            className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-gray-700 dark:text-gray-300 whitespace-nowrap ${draggedColumn === column.key ? 'opacity-50' : ''}`}
+                            title="Drag to reorder columns"
+                          >
+                            {column.label}
+                          </th>
+                        ))}
+                        <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-gray-700 dark:text-gray-300 whitespace-nowrap w-px">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                      {getPaginatedAgencies().map(agency => (
+                        <tr key={agency.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all">
+                          {visibleColumnsData.map((column) => (
+                            <td
+                              key={column.key}
+                              className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300 align-top"
+                            >
+                              {renderAgencyCell(column, agency)}
+                            </td>
+                          ))}
+                          <td className="px-4 py-3 align-top">
+                            <span className="flex gap-2">
+                              <button 
+                                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-primary-50 dark:hover:bg-primary-900/20 text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-all"
+                                onClick={() => handleEditAgency(agency)}
+                                title="Edit agency"
+                              >
+                                ✏️
+                              </button>
+                              <button 
+                                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-error-50 dark:hover:bg-error-900/20 text-gray-600 dark:text-gray-400 hover:text-error-600 dark:hover:text-error-400 transition-all"
+                                onClick={() => handleDeleteAgency(agency)}
+                                title="Delete agency"
+                              >
+                                🗑️
+                              </button>
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
