@@ -352,32 +352,78 @@ const ProjectManagement = ({
   
   console.log('✅ ProjectManagement: Project validation passed, rendering main content');
 
+  // Timezone-safe compact date formatter (MM/DD/YYYY) for the header meta row.
+  // Avoids new Date('YYYY-MM-DD') UTC parsing that can shift the day.
+  const formatHeaderDate = (value) => {
+    if (!value) return '—';
+    let date;
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+      const [year, month, day] = value.slice(0, 10).split('-').map(Number);
+      date = new Date(year, month - 1, day);
+    } else {
+      date = new Date(value);
+    }
+    if (Number.isNaN(date.getTime())) return '—';
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    const yyyy = date.getFullYear();
+    return `${mm}/${dd}/${yyyy}`;
+  };
+
+  // Color-code the status pill based on the project status value.
+  const getStatusPillClasses = (status) => {
+    const normalized = (status || '').toString().trim().toLowerCase();
+    switch (normalized) {
+      case 'completed':
+        return 'bg-success-100 dark:bg-success-900/30 text-success-700 dark:text-success-300';
+      case 'inactive':
+        return 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
+      case 'not started':
+        return 'bg-warning-100 dark:bg-warning-900/30 text-warning-700 dark:text-warning-300';
+      case 'active':
+      case 'in progress':
+      default:
+        return 'bg-info-100 dark:bg-info-900/30 text-info-700 dark:text-info-300';
+    }
+  };
+
+  // Reusable compact stat for the header meta row.
+  const HeaderStat = ({ label, value }) => (
+    <div className="flex flex-col leading-tight">
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+        {label}
+      </span>
+      <span className="text-sm font-medium tabular-nums text-gray-800 dark:text-gray-200">
+        {value || '—'}
+      </span>
+    </div>
+  );
+
   return (
     <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
       {/* Responsive Header - Sticky */}
       <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
-        <div className="px-6 py-4">
+        <div className="px-6 py-3">
           {/* Project Title and Meta */}
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
             <div className="flex-1 min-w-0">
-              <h1 
-                className="text-2xl font-bold text-gray-900 dark:text-gray-100 truncate mb-2"
-                title={projectData.projectName || 'Untitled Project'}
-              >
-                {projectData.projectName || 'Untitled Project'}
-              </h1>
-              <div className="flex flex-wrap gap-3 text-sm">
-                <span className="px-3 py-1 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full font-medium">
-                  RFA: {projectData.rfaNumber || 'N/A'}
-                </span>
-                <span className="px-3 py-1 bg-info-100 dark:bg-info-900/30 text-info-700 dark:text-info-300 rounded-full font-medium">
+              <div className="flex items-start gap-3 mb-2">
+                <h1 
+                  className="flex-1 min-w-0 text-lg lg:text-xl font-semibold leading-snug text-gray-900 dark:text-gray-100 break-words line-clamp-2"
+                  title={projectData.projectName || 'Untitled Project'}
+                >
+                  {projectData.projectName || 'Untitled Project'}
+                </h1>
+                <span className={`shrink-0 mt-0.5 px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize ${getStatusPillClasses(projectData.status)}`}>
                   {projectData.status || 'Active'}
                 </span>
-                {projectData.totalTriage && (
-                  <span className="px-3 py-1 bg-success-100 dark:bg-success-900/30 text-success-700 dark:text-success-300 rounded-full font-medium">
-                    Triage: {projectData.totalTriage}h
-                  </span>
-                )}
+              </div>
+              <div className="flex flex-wrap items-center gap-y-2">
+                <div className="pl-0 pr-5"><HeaderStat label="RFA" value={projectData.rfaNumber} /></div>
+                <div className="pl-5 pr-5 border-l border-gray-200 dark:border-gray-700"><HeaderStat label="Container" value={projectData.projectContainer} /></div>
+                <div className="pl-5 pr-5 border-l border-gray-200 dark:border-gray-700"><HeaderStat label="RD" value={formatHeaderDate(projectData.requestedDate)} /></div>
+                <div className="pl-5 pr-5 border-l border-gray-200 dark:border-gray-700"><HeaderStat label="ECD" value={formatHeaderDate(projectData.ecd)} /></div>
+                <div className="pl-5 border-l border-gray-200 dark:border-gray-700"><HeaderStat label="Agency" value={projectData.agentNumber} /></div>
               </div>
             </div>
             
