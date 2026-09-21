@@ -1,6 +1,6 @@
 {
   "name": "project-creator",
-  "version": "5.0.272",
+  "version": "5.0.273",
   "description": "Project Creator - Modern Electron application for creating and managing projects",
   "main": "main.js",
   "homepage": "./",
@@ -94,6 +94,7 @@
     "mammoth": "^1.6.0",
     "officegen": "^0.6.5",
     "path-browserify": "^1.0.1",
+    "pdf-parse": "^2.4.5",
     "puppeteer-core": "^24.37.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",

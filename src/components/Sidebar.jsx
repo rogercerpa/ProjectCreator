@@ -65,6 +65,12 @@ function Sidebar({ currentView, onViewChange, projectCount, isCollapsed = false,
     },
     { id: 'divider-tools', divider: true, label: 'Tools' },
     {
+      id: 'spec-review',
+      label: 'Spec Review',
+      icon: '🔍',
+      description: 'Scan specs against product rules'
+    },
+    {
       id: 'training-hub',
       label: 'Training Hub',
       icon: '🎓',

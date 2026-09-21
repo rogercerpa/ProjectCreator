@@ -11,8 +11,9 @@
       ]
     },
     "specAndBom": {
-      "title": "BOM Analysis",
+      "title": "Spec Review & BOM Analysis",
       "items": [
+        { "name": "Spec Review", "description": "Rule-based specification scan against the product knowledge base, with lighting-section scoping, keyword proximity, and review history", "status": "production" },
         { "name": "BOM Data Analysis", "description": "Smart BOM upload with auto-detection, device breakdown, startup cost calculations, and product family analysis", "status": "production" }
       ]
     },
