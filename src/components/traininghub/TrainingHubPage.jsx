@@ -18,7 +18,6 @@ const TrainingHubPage = () => {
   const [loading, setLoading] = useState(true);
   const [activeCourse, setActiveCourse] = useState(null); // catalog entry being played
   const [editorTarget, setEditorTarget] = useState(null); // 'new' | courseId | null
-  const [aiReady, setAiReady] = useState(false);
 
   const loadProgress = useCallback(async () => {
     try {
@@ -44,10 +43,6 @@ const TrainingHubPage = () => {
       setLoading(true);
       try {
         await Promise.all([loadCatalog(false), loadProgress()]);
-        try {
-          const key = await electronAPI.aiHasKey?.();
-          if (active) setAiReady(!!key?.hasKey);
-        } catch { /* AI optional */ }
       } catch (err) {
         console.error('Failed to load Training Hub:', err);
       } finally {
@@ -81,7 +76,6 @@ const TrainingHubPage = () => {
         <CourseEditor
           courseId={editorTarget === 'new' ? null : editorTarget}
           catalog={catalog}
-          aiReady={aiReady}
           onClose={() => setEditorTarget(null)}
           onSaved={handleEditorSaved}
         />

@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { flushSync } from 'react-dom';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
-import AssistantPanel from './components/AssistantPanel';
 import ProjectForm from './components/ProjectForm';
 import ProjectWizard from './components/wizard/ProjectWizard';
 import ProjectManagement from './components/ProjectManagement';
@@ -15,7 +14,6 @@ import DraftRecoveryModal from './components/wizard/components/DraftRecoveryModa
 import MigrationAssistant from './components/wizard/components/MigrationAssistant';
 import Settings from './components/Settings';
 import DASGeneralPage from './components/DASGeneralPage';
-import SpecReviewPage from './components/specreview/SpecReviewPage';
 import TrainingHubPage from './components/traininghub/TrainingHubPage';
 import logoUrl from '/assets/images/logo.png';
 // Use simple services that work in both main and renderer processes
@@ -33,9 +31,7 @@ const ProjectDraftService = window.electron ?
   null;
 
 const UI_STORAGE_KEYS = {
-  sidebarCollapsed: 'projectCreator.sidebarCollapsed',
-  assistantVisible: 'projectCreator.assistantVisible',
-  assistantScopeMode: 'projectCreator.assistantScopeMode'
+  sidebarCollapsed: 'projectCreator.sidebarCollapsed'
 };
 
 const readBooleanPreference = (key, fallback) => {
@@ -48,34 +44,6 @@ const readBooleanPreference = (key, fallback) => {
     return fallback;
   }
 };
-
-const readStringPreference = (key, fallback) => {
-  try {
-    return localStorage.getItem(key) || fallback;
-  } catch (error) {
-    console.warn(`Unable to read preference ${key}:`, error);
-    return fallback;
-  }
-};
-
-const createAssistantTimestamp = () => new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-
-const createAssistantIntroMessage = () => ({
-  id: `assistant-intro-${Date.now()}`,
-  role: 'assistant',
-  timestamp: createAssistantTimestamp(),
-  sections: [
-    {
-      title: 'Ready',
-      content: 'Ask about projects, agencies, schedules, BOMs, or spec reviews. Answers stay grounded in app data and approved knowledge.'
-    },
-    {
-      title: 'Try asking',
-      content: 'What projects are overdue this week?\nShow active projects for this agency.\nSummarize this project and highlight risks.'
-    }
-  ],
-  sources: []
-});
 
 const createDefaultFormData = () => ({
   projectName: '',
@@ -175,14 +143,6 @@ function App() {
   const [currentProject, setCurrentProject] = useState(null);
   const [currentAgency, setCurrentAgency] = useState(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => readBooleanPreference(UI_STORAGE_KEYS.sidebarCollapsed, false));
-  const [isAssistantVisible, setIsAssistantVisible] = useState(() => readBooleanPreference(UI_STORAGE_KEYS.assistantVisible, true));
-  const [assistantScopeMode, setAssistantScopeMode] = useState(() => readStringPreference(UI_STORAGE_KEYS.assistantScopeMode, 'page'));
-  const [assistantDraft, setAssistantDraft] = useState('');
-  const [assistantMessages, setAssistantMessages] = useState(() => [createAssistantIntroMessage()]);
-  const [assistantStatus, setAssistantStatus] = useState('ready');
-  const [assistantRuntimeLabel, setAssistantRuntimeLabel] = useState('Local mode');
-  const [assistantRuntimeReady, setAssistantRuntimeReady] = useState(true);
-  const [assistantRuntimeMessage, setAssistantRuntimeMessage] = useState('');
   const [projects, setProjects] = useState([]);
   const [settings, setSettings] = useState(null);
   const [settingsTab, setSettingsTab] = useState('user-profile');
@@ -1152,233 +1112,9 @@ function App() {
     localStorage.setItem(UI_STORAGE_KEYS.sidebarCollapsed, String(isSidebarCollapsed));
   }, [isSidebarCollapsed]);
 
-  useEffect(() => {
-    localStorage.setItem(UI_STORAGE_KEYS.assistantVisible, String(isAssistantVisible));
-  }, [isAssistantVisible]);
-
-  useEffect(() => {
-    localStorage.setItem(UI_STORAGE_KEYS.assistantScopeMode, assistantScopeMode);
-  }, [assistantScopeMode]);
-
-  useEffect(() => {
-    const loadAssistantRuntimeStatus = async () => {
-      try {
-        const runtimeStatus = await window.electronAPI?.aiGetRuntimeStatus?.();
-        if (runtimeStatus) {
-          setAssistantRuntimeLabel(runtimeStatus.modeLabel || 'Local mode');
-          setAssistantRuntimeReady(runtimeStatus.ready !== false);
-          setAssistantRuntimeMessage(runtimeStatus.message || '');
-        }
-      } catch (error) {
-        console.warn('Failed to load assistant runtime status:', error);
-        setAssistantRuntimeLabel('Local runtime unavailable');
-        setAssistantRuntimeReady(false);
-        setAssistantRuntimeMessage(error.message || 'Could not get local runtime status.');
-      }
-    };
-
-    loadAssistantRuntimeStatus();
-  }, [isAssistantVisible]);
-
-  const assistantContext = useMemo(() => {
-    const isAppWide = assistantScopeMode === 'app-wide';
-    if (isAppWide) {
-      return {
-        type: 'default',
-        label: 'All App Data',
-        detail: 'Projects, agencies, workload, BOMs, specs, and knowledge base'
-      };
-    }
-
-    switch (currentView) {
-      case 'project-management':
-        return {
-          type: 'project',
-          label: 'Project Context',
-          detail: currentProject?.projectName || currentProject?.rfaNumber || 'Current project',
-          entityId: currentProject?.id || null
-        };
-      case 'agency-dashboard':
-      case 'agencies':
-        return {
-          type: 'agency',
-          label: currentAgency ? 'Agency Context' : 'Agency Directory',
-          detail: currentAgency?.agencyName || currentAgency?.agencyNumber || 'Agencies and contacts',
-          entityId: currentAgency?.id || null
-        };
-      case 'workload':
-        return {
-          type: 'workload',
-          label: 'Workload Context',
-          detail: 'Assignments, capacity, and schedule data'
-        };
-      case 'spec-review':
-        return {
-          type: 'spec-review',
-          label: 'Spec Review Context',
-          detail: 'Specification reviews and product rules'
-        };
-      case 'training-hub':
-        return {
-          type: 'training-hub',
-          label: 'Training Hub Context',
-          detail: 'Courses, quizzes, and topic proficiency'
-        };
-      case 'welcome':
-      default:
-        return {
-          type: 'default',
-          label: 'All App Data',
-          detail: 'Projects, agencies, workload, BOMs, specs, and knowledge base'
-        };
-    }
-  }, [assistantScopeMode, currentAgency, currentProject, currentView]);
-
   const handleToggleSidebar = useCallback(() => {
     setIsSidebarCollapsed((previous) => !previous);
   }, []);
-
-  const handleToggleAssistant = useCallback(() => {
-    setIsAssistantVisible((previous) => !previous);
-  }, []);
-
-  const handleNewAssistantChat = useCallback(() => {
-    setAssistantDraft('');
-    setAssistantMessages([createAssistantIntroMessage()]);
-    setAssistantStatus('ready');
-  }, []);
-
-  const handleAssistantPromptSelect = useCallback((prompt) => {
-    setAssistantDraft(prompt);
-  }, []);
-
-  const handleAssistantSourceSelect = useCallback(async (source) => {
-    const action = source?.action;
-    if (!action?.type) return;
-
-    try {
-      if (action.type === 'open-project') {
-        let targetProject = projects.find((project) => project.id === action.entityId) || null;
-
-        if (!targetProject) {
-          const projectsResult = await window.electronAPI?.projectsLoadAll?.();
-          if (projectsResult?.success && Array.isArray(projectsResult.projects)) {
-            targetProject = projectsResult.projects.find((project) => project.id === action.entityId) || null;
-            setProjects(projectsResult.projects);
-          }
-        }
-
-        if (targetProject) {
-          setCurrentProject(targetProject);
-          setCurrentView(action.view || 'project-management');
-        }
-        return;
-      }
-
-      if (action.type === 'open-agency') {
-        const agenciesResult = await window.electronAPI?.agenciesLoadAll?.();
-        const agencies = agenciesResult?.success && Array.isArray(agenciesResult.agencies)
-          ? agenciesResult.agencies
-          : [];
-
-        const targetAgency = agencies.find((agency) => agency.id === action.entityId) || null;
-        if (targetAgency) {
-          setCurrentAgency(targetAgency);
-          setCurrentView(action.view || 'agency-dashboard');
-        } else {
-          setCurrentView('agencies');
-        }
-        return;
-      }
-
-      if (action.type === 'open-view' && action.view) {
-        setCurrentView(action.view);
-      }
-    } catch (error) {
-      console.warn('Failed to open assistant source:', error);
-    }
-  }, [projects]);
-
-  const handleAssistantSubmit = useCallback(async () => {
-    const trimmedMessage = assistantDraft.trim();
-    if (!trimmedMessage) return;
-
-    const userMessage = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      content: trimmedMessage,
-      timestamp: createAssistantTimestamp()
-    };
-
-    setAssistantMessages((previous) => [...previous, userMessage]);
-    setAssistantDraft('');
-    setAssistantStatus('loading');
-    setIsAssistantVisible(true);
-
-    try {
-      // Build a serializable history of prior turns for multi-turn LLM context.
-      // We use the state snapshot at the time of submission (before the new user
-      // message is appended), so the current question is not included twice.
-      const historySnapshot = assistantMessages
-        .filter((m) => m.role === 'user' || m.role === 'assistant')
-        .slice(-12)
-        .map((m) => ({
-          role: m.role,
-          content: Array.isArray(m.sections) && m.sections.length > 0
-            ? m.sections.map((s) => (s.title ? `${s.title}: ${s.content}` : s.content)).join('\n')
-            : (m.content || '')
-        }))
-        .filter((m) => m.content.trim().length > 0);
-
-      const result = await window.electronAPI?.assistantSendMessage?.({
-        message: trimmedMessage,
-        context: assistantContext,
-        scopeMode: assistantScopeMode,
-        history: historySnapshot
-      });
-
-      if (!result?.success) {
-        throw new Error(result?.error || 'Assistant request failed.');
-      }
-
-      const assistantMessage = {
-        id: result.message?.id || `assistant-${Date.now()}`,
-        role: 'assistant',
-        content: result.message?.content || '',
-        sections: result.message?.sections || [],
-        sources: result.message?.sources || [],
-        referencedProjects: result.message?.referencedProjects || [],
-        referencedAgencies: result.message?.referencedAgencies || [],
-        meta: result.message?.meta || null,
-        timestamp: createAssistantTimestamp()
-      };
-
-      setAssistantMessages((previous) => [...previous, assistantMessage]);
-      setAssistantStatus(result.status || 'ready');
-    } catch (error) {
-      setAssistantMessages((previous) => [
-        ...previous,
-        {
-          id: `assistant-error-${Date.now()}`,
-          role: 'assistant',
-          timestamp: createAssistantTimestamp(),
-          sections: [
-            {
-              title: 'Assistant unavailable',
-              content: error.message || 'The assistant could not complete this request.'
-            }
-          ],
-          sources: [],
-          meta: {
-            generationMode: 'fallback-error',
-            runtimeMode: 'deterministic',
-            reason: error.message || 'assistant-request-error'
-          }
-        }
-      ]);
-      setAssistantStatus('ready');
-    }
-  }, [assistantContext, assistantDraft, assistantScopeMode]);
 
   // Render main content based on current view
   // Maps views to their required feature flags for dev-only gating
@@ -1552,8 +1288,6 @@ function App() {
           );
         case 'das-general':
           return <DASGeneralPage />;
-        case 'spec-review':
-          return <SpecReviewPage />;
         case 'training-hub':
           return <TrainingHubPage />;
         case 'settings':
@@ -1861,10 +1595,7 @@ function App() {
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-      <Header
-        isAssistantVisible={isAssistantVisible}
-        onToggleAssistant={handleToggleAssistant}
-      />
+      <Header />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
           currentView={currentView}
@@ -1876,26 +1607,6 @@ function App() {
         <main className="flex-1 overflow-y-auto bg-white p-4 shadow-lg custom-scrollbar dark:bg-gray-800">
           {renderMainContent()}
         </main>
-        {isAssistantVisible && (
-          <AssistantPanel
-            isWelcomeView={currentView === 'welcome'}
-            isLoading={assistantStatus === 'loading'}
-            status={assistantStatus}
-            runtimeLabel={assistantRuntimeLabel}
-            runtimeReady={assistantRuntimeReady}
-            runtimeMessage={assistantRuntimeMessage}
-            context={assistantContext}
-            scopeMode={assistantScopeMode}
-            draftMessage={assistantDraft}
-            messages={assistantMessages}
-            onDraftChange={setAssistantDraft}
-            onSubmit={handleAssistantSubmit}
-            onNewChat={handleNewAssistantChat}
-            onScopeChange={setAssistantScopeMode}
-            onPromptSelect={handleAssistantPromptSelect}
-            onSourceSelect={handleAssistantSourceSelect}
-          />
-        )}
       </div>
       
       {/* Draft Recovery Modal */}

@@ -11,7 +11,6 @@ import UserProfileTab from './settings/UserProfileTab';
 import WorkloadTab from './settings/WorkloadTab';
 import TriageCalcTab from './settings/TriageCalcTab';
 import AgileTab from './settings/AgileTab';
-import AISettingsTab from './settings/AISettingsTab';
 import featureFlagService from '../services/FeatureFlagService';
 import { buildSetupChecklist } from '../utils/setupChecklist';
 
@@ -1477,12 +1476,6 @@ function Settings({ initialTab = 'user-profile', initialErrorId = null, onLaunch
       label: 'Agencies',
       icon: '🏢',
       fullLabel: 'Agency Management'
-    },
-    {
-      id: 'ai-settings',
-      label: 'AI Config',
-      icon: '🤖',
-      fullLabel: 'AI Provider Configuration'
     },
     {
       id: 'workload',
@@ -3332,9 +3325,6 @@ function Settings({ initialTab = 'user-profile', initialErrorId = null, onLaunch
             setSettings={setSettings}
           />
         );
-
-      case 'ai-settings':
-        return <AISettingsTab />;
 
       // Original code for reference (now replaced by WorkloadTab component)
       case 'workload-old':

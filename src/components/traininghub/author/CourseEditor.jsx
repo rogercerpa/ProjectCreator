@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import AiGeneratePanel from './AiGeneratePanel';
 import LessonEditor from './LessonEditor';
 import QuizEditor from './QuizEditor';
 import CoursePlayer from '../CoursePlayer';
@@ -85,7 +84,7 @@ function validate(course) {
 
 const NEW_LESSON = () => ({ title: '', blocks: [{ type: 'text', content: '' }] });
 
-const CourseEditor = ({ courseId, catalog, aiReady, onClose, onSaved }) => {
+const CourseEditor = ({ courseId, catalog, onClose, onSaved }) => {
   const categories = catalog?.categories || [];
   const [course, setCourse] = useState(() => emptyCourse(categories));
   const [loading, setLoading] = useState(!!courseId);
@@ -113,22 +112,6 @@ const CourseEditor = ({ courseId, catalog, aiReady, onClose, onSaved }) => {
   }, [courseId]);
 
   const set = (patch) => setCourse(prev => ({ ...prev, ...patch }));
-
-  const applyGenerated = (draft) => {
-    const hasContent = (course.lessons || []).length > 0 || (course.quiz?.questions || []).length > 0;
-    if (hasContent && !window.confirm('Replace the current lessons and quiz with the AI-generated draft?')) {
-      return;
-    }
-    setCourse(prev => ({
-      ...prev,
-      title: prev.title || draft.title || '',
-      summary: draft.summary || prev.summary,
-      estimatedMinutes: draft.estimatedMinutes || prev.estimatedMinutes,
-      tags: (draft.tags && draft.tags.length) ? draft.tags : prev.tags,
-      lessons: draft.lessons || [],
-      quiz: draft.quiz || { questions: [] }
-    }));
-  };
 
   // Lessons
   const setLesson = (i, next) => setCourse(prev => {
@@ -231,16 +214,6 @@ const CourseEditor = ({ courseId, catalog, aiReady, onClose, onSaved }) => {
           {errors.map((e, i) => <p key={i} className="text-sm text-red-700 dark:text-red-300">• {e}</p>)}
         </div>
       )}
-
-      {/* AI generation */}
-      <div className="mb-8">
-        <AiGeneratePanel
-          aiReady={aiReady}
-          category={course.category}
-          difficulty={course.difficulty}
-          onGenerated={applyGenerated}
-        />
-      </div>
 
       {/* Metadata */}
       <div className="rounded-3xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 mb-8 space-y-4">

@@ -33,7 +33,6 @@ const PROGRESS_DIR = path.join(os.homedir(), '.project-creator', 'training');
 const PROGRESS_PATH = path.join(PROGRESS_DIR, 'progress.json');
 
 const DEFAULT_PASS_SCORE = 80;
-const MAX_SOURCE_CHARS = 24000;
 const IMAGE_MIME = {
   jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif',
   bmp: 'image/bmp', webp: 'image/webp', svg: 'image/svg+xml'
@@ -46,21 +45,10 @@ class TrainingHubService {
   /**
    * @param {object} settingsService - used to resolve the current user profile
    *   for keying progress and stamping authorship. Optional.
-   * @param {object} aiService - used to generate course drafts. Optional.
    */
-  constructor(settingsService = null, aiService = null) {
+  constructor(settingsService = null) {
     this.settingsService = settingsService;
-    this.aiService = aiService;
-    this._docTextService = null;
     this._catalogCache = null;
-  }
-
-  _docParser() {
-    if (!this._docTextService) {
-      const DocumentTextService = require('./DocumentTextService');
-      this._docTextService = new DocumentTextService();
-    }
-    return this._docTextService;
   }
 
   // ===== Catalog / Content =====
@@ -283,60 +271,6 @@ class TrainingHubService {
 
     await fs.writeJson(SHARED_INDEX, localIndex, { spaces: 2 });
     console.log('Seeded shared Training Hub catalog on Z: drive');
-  }
-
-  /**
-   * Generate a draft course (lessons + quiz) using the AI service from uploaded
-   * source documents and/or pasted notes. Does NOT save the course.
-   */
-  async generateCourseDraft(params = {}) {
-    const { filePaths = [], notes = '', links = [], category = null, difficulty = 1 } = params;
-
-    if (!this.aiService) {
-      return { success: false, error: 'AI service is not available' };
-    }
-    try {
-      const ready = this.aiService.isAssistantReady
-        ? this.aiService.isAssistantReady()
-        : await this.aiService.hasApiKey();
-      if (!ready) {
-        return { success: false, error: 'AI is not configured. Set it up in Settings > AI Configuration.' };
-      }
-    } catch (error) {
-      return { success: false, error: 'AI is not configured. Set it up in Settings > AI Configuration.' };
-    }
-
-    // Gather source text.
-    let sourceText = '';
-    let sources = [];
-    try {
-      const extracted = await this._docParser().extractCombined(filePaths, MAX_SOURCE_CHARS);
-      sourceText = extracted.combined;
-      sources = extracted.sources;
-    } catch (error) {
-      console.warn('Training Hub: document extraction failed:', error.message);
-    }
-
-    const notesText = (notes || '').trim();
-    const linkText = (links || []).filter(Boolean).join('\n');
-    if (!sourceText && !notesText) {
-      return { success: false, error: 'Provide at least one source document or some notes to generate from.' };
-    }
-
-    const { system, user } = this._buildCoursePrompt({ sourceText, notesText, linkText, category, difficulty });
-
-    try {
-      const result = await this.aiService.chatCompletion(system, user, {
-        jsonMode: true,
-        maxTokens: 8192,
-        timeout: 120000
-      });
-      const course = this._normalizeGeneratedCourse(result, { category, difficulty });
-      return { success: true, course, sources };
-    } catch (error) {
-      console.error('Training Hub: course generation failed:', error);
-      return { success: false, error: error.message || 'Course generation failed' };
-    }
   }
 
   /**
@@ -577,78 +511,6 @@ class TrainingHubService {
     index.updatedAt = new Date().toISOString();
     await fs.ensureDir(SHARED_DIR);
     await fs.writeJson(SHARED_INDEX, index, { spaces: 2 });
-  }
-
-  _buildCoursePrompt({ sourceText, notesText, linkText, category, difficulty }) {
-    const system = [
-      'You are an instructional designer for Acuity Brands lighting controls Design & Application engineers.',
-      'Create a SHORT, interactive micro-course from the provided source material.',
-      'Return ONLY valid JSON matching EXACTLY this schema (no markdown, no commentary):',
-      '{',
-      '  "title": string,',
-      '  "summary": string,',
-      '  "estimatedMinutes": number,',
-      '  "tags": string[],',
-      '  "lessons": [ { "title": string, "blocks": [ { "type": "text", "content": string } | { "type": "callout", "variant": "tip"|"warning"|"info", "content": string } ] } ],',
-      '  "quiz": { "questions": [ { "type": "single"|"multi"|"boolean", "prompt": string, "choices": [ { "text": string, "correct": boolean } ], "explanation": string } ] }',
-      '}',
-      'Rules: 3 to 5 lessons, each with 2-4 blocks. 4 to 6 quiz questions. Every question must have at least one correct choice.',
-      'For "boolean" questions provide exactly two choices: "True" and "False". Keep language concise and practical. Base content strictly on the source material.'
-    ].join('\n');
-
-    let user = '';
-    if (category) user += `Target topic/category: ${category}.\n`;
-    user += `Target difficulty (1=intro, 3=advanced): ${difficulty}.\n\n`;
-    if (notesText) user += `AUTHOR NOTES:\n${notesText}\n\n`;
-    if (linkText) user += `REFERENCE LINKS (context only, do not fabricate content):\n${linkText}\n\n`;
-    if (sourceText) user += `SOURCE MATERIAL:\n${sourceText}`;
-    if (!sourceText) user += 'Generate the course primarily from the author notes above.';
-
-    return { system, user };
-  }
-
-  _normalizeGeneratedCourse(raw, meta = {}) {
-    const obj = raw && typeof raw === 'object' ? raw : {};
-    const lessons = (Array.isArray(obj.lessons) ? obj.lessons : []).map((lesson, li) => ({
-      id: `l${li + 1}`,
-      title: lesson.title || `Lesson ${li + 1}`,
-      blocks: (Array.isArray(lesson.blocks) ? lesson.blocks : []).map(block => {
-        if (block && block.type === 'callout') {
-          const variant = ['tip', 'warning', 'info'].includes(block.variant) ? block.variant : 'info';
-          return { type: 'callout', variant, content: String(block.content || '') };
-        }
-        return { type: 'text', content: String(block?.content || '') };
-      }).filter(b => b.content)
-    })).filter(l => l.blocks.length > 0);
-
-    const questions = (Array.isArray(obj.quiz?.questions) ? obj.quiz.questions : []).map((q, qi) => {
-      const type = ['single', 'multi', 'boolean'].includes(q.type) ? q.type : 'single';
-      let choices = (Array.isArray(q.choices) ? q.choices : []).map((c, ci) => ({
-        id: type === 'boolean' ? (String(c.text).toLowerCase().startsWith('t') ? 'true' : 'false') : String.fromCharCode(97 + ci),
-        text: String(c.text || ''),
-        correct: !!c.correct
-      })).filter(c => c.text);
-      if (!choices.some(c => c.correct) && choices.length > 0) choices[0].correct = true;
-      return {
-        id: `q${qi + 1}`,
-        type,
-        prompt: String(q.prompt || ''),
-        choices,
-        explanation: String(q.explanation || '')
-      };
-    }).filter(q => q.prompt && q.choices.length >= 2);
-
-    return {
-      title: String(obj.title || 'Untitled Course'),
-      summary: String(obj.summary || ''),
-      category: meta.category || null,
-      difficulty: meta.difficulty ?? 1,
-      estimatedMinutes: Number.isFinite(obj.estimatedMinutes) ? obj.estimatedMinutes : 8,
-      passScore: DEFAULT_PASS_SCORE,
-      tags: Array.isArray(obj.tags) ? obj.tags.map(String) : [],
-      lessons,
-      quiz: { questions }
-    };
   }
 
   async _resolveUserKey() {

@@ -1,7 +1,7 @@
 # Project Creator
 
 <!-- AUTO:BADGES:START -->
-[![Version](https://img.shields.io/badge/version-5.0.271-blue.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-5.0.272-blue.svg)](package.json)
 [![License](https://img.shields.io/badge/license-ISC-green.svg)](LICENSE)
 [![Electron](https://img.shields.io/badge/Electron-38.0.0-47848F.svg)](https://www.electronjs.org/)
 [![React](https://img.shields.io/badge/React-19.1.1-61DAFB.svg)](https://reactjs.org/)
@@ -23,10 +23,8 @@ A modern Electron-based desktop application for creating and managing DAS projec
 - **Template Validation**: Validates templates and manages selection based on National Account and Agent preferences
 - **Document Generation**: Automated Word document generation from templates with variable substitution
 
-### Spec Review & BOM Analysis
-- **Spec Review**: AI-powered specification analysis with file upload, review history, and knowledge base management
+### BOM Analysis
 - **BOM Data Analysis**: Smart BOM upload with auto-detection, device breakdown, startup cost calculations, and product family analysis
-- **BOM QC Review**: Building code compliance scoring, anomaly detection, and device capability analysis
 
 ### Dashboards
 - **Agency Dashboard**: 8-tab dashboard with Overview, Projects, Contacts, Playbook, Email Templates, Analytics, Tasks, and Settings
@@ -147,9 +145,9 @@ npm run dist:signed:linux
 ### Version Management
 
 <!-- AUTO:VERSION_SCRIPTS:START -->
-- `npm run version:patch` - Increment patch version (5.0.271 → 5.0.272)
-- `npm run version:minor` - Increment minor version (5.0.271 → 5.1.0)
-- `npm run version:major` - Increment major version (5.0.271 → 6.0.0)
+- `npm run version:patch` - Increment patch version (5.0.272 → 5.0.273)
+- `npm run version:minor` - Increment minor version (5.0.272 → 5.1.0)
+- `npm run version:major` - Increment major version (5.0.272 → 6.0.0)
 - `npm run version:show` - Display current version
 <!-- AUTO:VERSION_SCRIPTS:END -->
 
@@ -417,7 +415,7 @@ Built with amazing open-source technologies:
 ---
 
 <!-- AUTO:FOOTER:START -->
-**Last Updated**: September 16, 2026  
-**Current Version**: 5.0.271  
+**Last Updated**: September 21, 2026  
+**Current Version**: 5.0.272  
 **Maintained by**: Roger Cerpa
 <!-- AUTO:FOOTER:END -->

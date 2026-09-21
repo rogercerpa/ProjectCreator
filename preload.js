@@ -420,31 +420,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   bomSmartUpload: (project) => ipcRenderer.invoke('bom:smart-upload', project),
   bomOpenFolder: (folderPath) => ipcRenderer.invoke('bom:open-folder', folderPath),
   
-  // ===== AI PROVIDER APIs =====
-  aiSaveConfig: (config) => ipcRenderer.invoke('ai:save-config', config),
-  aiGetConfig: () => ipcRenderer.invoke('ai:get-config'),
-  aiTestConnection: () => ipcRenderer.invoke('ai:test-connection'),
-  aiHasKey: () => ipcRenderer.invoke('ai:has-key'),
-  aiClearKey: () => ipcRenderer.invoke('ai:clear-key'),
-  aiGetProviders: () => ipcRenderer.invoke('ai:get-providers'),
-  aiRefreshModelCatalog: () => ipcRenderer.invoke('ai:refresh-model-catalog'),
-  aiGetRuntimeStatus: () => ipcRenderer.invoke('ai:get-runtime-status'),
-
-  // ===== ASSISTANT APIs =====
-  assistantSendMessage: (payload) => ipcRenderer.invoke('assistant:send-message', payload),
-  assistantGetStatus: () => ipcRenderer.invoke('assistant:get-status'),
-  assistantResetSession: () => ipcRenderer.invoke('assistant:reset-session'),
-
-  // ===== BOM QC REVIEW APIs =====
-  bomQcRunAnalysis: (projectId, requirementsConfig) => ipcRenderer.invoke('bom-qc:run-analysis', projectId, requirementsConfig),
-  bomQcAnalyzeDevices: (devices) => ipcRenderer.invoke('bom-qc:analyze-devices', devices),
-  bomQcParseSpec: (filePath) => ipcRenderer.invoke('bom-qc:parse-spec', filePath),
-  bomQcSelectSpecFile: (project) => ipcRenderer.invoke('bom-qc:select-spec-file', project),
-  bomQcClearDeviceCache: () => ipcRenderer.invoke('bom-qc:clear-device-cache'),
-  bomQcGetBuildingCodes: () => ipcRenderer.invoke('bom-qc:get-building-codes'),
-  bomQcGetRequirements: (projectId) => ipcRenderer.invoke('bom-qc:get-requirements', projectId),
-  bomQcSaveRequirements: (projectId, requirementsConfig) => ipcRenderer.invoke('bom-qc:save-requirements', projectId, requirementsConfig),
-
   // BOM event listeners
   onBomBulkImportProgress: (callback) => {
     ipcRenderer.on('bom:bulk-import-progress', (event, data) => callback(data));
@@ -459,58 +434,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeAllListeners('bom:auto-import-complete');
   },
 
-  // ===== SPEC REVIEW APIs =====
-  specReviewAnalyze: (filePath) => ipcRenderer.invoke('spec-review:analyze', filePath),
-  specReviewSelectFile: () => ipcRenderer.invoke('spec-review:select-spec-file'),
-  specReviewSave: (reviewData) => ipcRenderer.invoke('spec-review:save', reviewData),
-  specReviewGet: (reviewId) => ipcRenderer.invoke('spec-review:get', reviewId),
-  specReviewList: () => ipcRenderer.invoke('spec-review:list'),
-  specReviewLinkProject: (reviewId, projectId, projectName) => ipcRenderer.invoke('spec-review:link-project', reviewId, projectId, projectName),
-  specReviewUnlinkProject: (reviewId) => ipcRenderer.invoke('spec-review:unlink-project', reviewId),
-  specReviewGetForProject: (projectId) => ipcRenderer.invoke('spec-review:get-for-project', projectId),
-  specReviewDelete: (reviewId) => ipcRenderer.invoke('spec-review:delete', reviewId),
-  specReviewUpdateReview: (reviewId, updates) => ipcRenderer.invoke('spec-review:update-review', reviewId, updates),
-  onSpecReviewProgress: (callback) => {
-    ipcRenderer.on('spec-review:progress', (event, data) => callback(data));
-    return () => ipcRenderer.removeAllListeners('spec-review:progress');
-  },
-
   // ===== TRAINING HUB APIs =====
   trainingHubGetCatalog: (forceRefresh) => ipcRenderer.invoke('training-hub:get-catalog', forceRefresh),
   trainingHubGetCourse: (courseId) => ipcRenderer.invoke('training-hub:get-course', courseId),
   trainingHubGetProgress: () => ipcRenderer.invoke('training-hub:get-progress'),
   trainingHubSubmitAttempt: (courseId, attempt) => ipcRenderer.invoke('training-hub:submit-attempt', courseId, attempt),
   trainingHubResetCourse: (courseId) => ipcRenderer.invoke('training-hub:reset-course', courseId),
-  trainingHubSelectSourceFiles: () => ipcRenderer.invoke('training-hub:select-source-files'),
   trainingHubSelectMediaFile: (kind) => ipcRenderer.invoke('training-hub:select-media-file', kind),
-  trainingHubGenerateDraft: (params) => ipcRenderer.invoke('training-hub:generate-draft', params),
   trainingHubSaveCourse: (course) => ipcRenderer.invoke('training-hub:save-course', course),
   trainingHubDeleteCourse: (courseId) => ipcRenderer.invoke('training-hub:delete-course', courseId),
   trainingHubUploadMedia: (courseId, filePath) => ipcRenderer.invoke('training-hub:upload-media', courseId, filePath),
   trainingHubMediaDataUrl: (courseId, assetId) => ipcRenderer.invoke('training-hub:media-data-url', courseId, assetId),
-  trainingHubMediaBuffer: (courseId, assetId) => ipcRenderer.invoke('training-hub:media-buffer', courseId, assetId),
-
-  // ===== PRODUCT KNOWLEDGE BASE APIs =====
-  kbLoad: (forceRefresh) => ipcRenderer.invoke('kb:load', forceRefresh),
-  kbGetProducts: () => ipcRenderer.invoke('kb:get-products'),
-  kbGetSpecRules: () => ipcRenderer.invoke('kb:get-spec-rules'),
-  kbGetAlternatives: () => ipcRenderer.invoke('kb:get-alternatives'),
-  kbGetSummary: () => ipcRenderer.invoke('kb:get-summary'),
-  kbAddProduct: (product) => ipcRenderer.invoke('kb:add-product', product),
-  kbUpdateProduct: (catalogNumber, updates) => ipcRenderer.invoke('kb:update-product', catalogNumber, updates),
-  kbDeleteProduct: (catalogNumber) => ipcRenderer.invoke('kb:delete-product', catalogNumber),
-  kbAddSpecRule: (rule) => ipcRenderer.invoke('kb:add-spec-rule', rule),
-  kbUpdateSpecRule: (ruleId, updates) => ipcRenderer.invoke('kb:update-spec-rule', ruleId, updates),
-  kbDeleteSpecRule: (ruleId) => ipcRenderer.invoke('kb:delete-spec-rule', ruleId),
-  kbAddAlternative: (alt) => ipcRenderer.invoke('kb:add-alternative', alt),
-  kbUpdateAlternative: (index, updates) => ipcRenderer.invoke('kb:update-alternative', index, updates),
-  kbDeleteAlternative: (index) => ipcRenderer.invoke('kb:delete-alternative', index),
-  kbGetFilePath: () => ipcRenderer.invoke('kb:get-file-path'),
-  kbEnrichFromBOMs: (options) => ipcRenderer.invoke('kb:enrich-from-boms', options),
-  onKBEnrichmentProgress: (callback) => {
-    ipcRenderer.on('kb:enrichment-progress', (event, data) => callback(data));
-    return () => ipcRenderer.removeAllListeners('kb:enrichment-progress');
-  }
+  trainingHubMediaBuffer: (courseId, assetId) => ipcRenderer.invoke('training-hub:media-buffer', courseId, assetId)
 });
 
 // SECURITY: Prevent access to Node.js APIs

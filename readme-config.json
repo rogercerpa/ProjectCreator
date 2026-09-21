@@ -11,11 +11,9 @@
       ]
     },
     "specAndBom": {
-      "title": "Spec Review & BOM Analysis",
+      "title": "BOM Analysis",
       "items": [
-        { "name": "Spec Review", "description": "AI-powered specification analysis with file upload, review history, and knowledge base management", "status": "production" },
-        { "name": "BOM Data Analysis", "description": "Smart BOM upload with auto-detection, device breakdown, startup cost calculations, and product family analysis", "status": "production" },
-        { "name": "BOM QC Review", "description": "Building code compliance scoring, anomaly detection, and device capability analysis", "status": "production" }
+        { "name": "BOM Data Analysis", "description": "Smart BOM upload with auto-detection, device breakdown, startup cost calculations, and product family analysis", "status": "production" }
       ]
     },
     "dashboards": {
