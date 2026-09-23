@@ -82,7 +82,16 @@ function MonthlyAnalyticsReportTab() {
     );
   }
 
-  return <MonthlyAnalyticsReport projects={projects} />;
+  return (
+    <MonthlyAnalyticsReport
+      projects={projects}
+      onProjectUpdated={(saved) => {
+        setProjects((prev) => prev.map((project) => (
+          project.id === saved.id ? { ...project, ...saved } : project
+        )));
+      }}
+    />
+  );
 }
 
 export default MonthlyAnalyticsReportTab;

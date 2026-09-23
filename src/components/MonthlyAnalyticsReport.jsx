@@ -6,6 +6,7 @@ import {
 import reportDataService from '../services/ReportDataService';
 import { buildProductivityReport } from '../services/ProductivityMetricsService';
 import MyProductivityPanel from './shared/MyProductivityPanel';
+import ProductivityEntryModal from './shared/ProductivityEntryModal';
 import reportExportService from '../services/ReportExportService';
 import ReportSettingsModal from './ReportSettingsModal';
 import {
@@ -230,7 +231,7 @@ const getDefaultDateRange = () => {
 };
 
 // Main Component
-function MonthlyAnalyticsReport({ projects = [] }) {
+function MonthlyAnalyticsReport({ projects = [], onProjectUpdated }) {
   const reportRef = useRef(null);
   const exportDropdownRef = useRef(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -241,6 +242,7 @@ function MonthlyAnalyticsReport({ projects = [] }) {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showExportDropdown, setShowExportDropdown] = useState(false);
   const [productivity, setProductivity] = useState(null);
+  const [editingProject, setEditingProject] = useState(null);
 
   // Report settings state
   const [reportSettings, setReportSettings] = useState(() => {
@@ -827,7 +829,13 @@ function MonthlyAnalyticsReport({ projects = [] }) {
 
         {productivity && (
           <PrintSection isPrintMode={isPrintMode}>
-            <MyProductivityPanel report={productivity} />
+            <MyProductivityPanel
+              report={productivity}
+              onOpenProject={isPrintMode ? undefined : (projectId) => {
+                const project = projects.find((item) => item.id === projectId);
+                if (project) setEditingProject(project);
+              }}
+            />
           </PrintSection>
         )}
 
@@ -1588,6 +1596,16 @@ function MonthlyAnalyticsReport({ projects = [] }) {
           })}
         </div>
       </div>
+      {editingProject && (
+        <ProductivityEntryModal
+          project={editingProject}
+          onClose={() => setEditingProject(null)}
+          onSaved={(saved) => {
+            onProjectUpdated?.(saved);
+            setEditingProject(null);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -17,8 +17,26 @@ const bandClass = {
   unavailable: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'
 };
 
-export default function MyProductivityPanel({ report, compact = false }) {
+export default function MyProductivityPanel({ report, compact = false, onOpenProject }) {
   if (!report) return null;
+
+  const missingByProject = [];
+  const missingSeen = new Map();
+  (report.missing || []).forEach((item) => {
+    const key = item.projectId || item.projectName;
+    const existing = missingSeen.get(key);
+    if (existing) {
+      existing.phases.push(item.phaseLabel);
+      return;
+    }
+    const grouped = { ...item, phases: [item.phaseLabel] };
+    missingSeen.set(key, grouped);
+    missingByProject.push(grouped);
+  });
+
+  const openProject = (projectId) => {
+    if (onOpenProject && projectId) onOpenProject(projectId);
+  };
 
   const rows = [
     ['Weekday capacity', hours(report.grossHours)],
@@ -76,20 +94,26 @@ export default function MyProductivityPanel({ report, compact = false }) {
             {report.schedule.length === 0 ? (
               <p className="text-sm text-gray-500 dark:text-gray-400">No projects you designed were completed in this period.</p>
             ) : (
-              <ul className="space-y-2">
+              <ul className="max-h-64 space-y-2 overflow-y-auto pr-1">
                 {report.schedule.map((item) => (
-                  <li key={item.projectId || item.rfaNumber} className="text-sm text-gray-800 dark:text-gray-200">
-                    <span className="font-medium">{item.projectName}</span>
-                    <span className="block text-xs text-gray-500 dark:text-gray-400">
-                      RD {formatScheduleResult(item.rd)}
-                      {item.rdReasonMissing ? ' · reason missing' : ''}
-                      {item.rd.status === 'not-met' && item.rdMissReason ? ` · ${item.rdMissReason}` : ''}
-                    </span>
-                    <span className="block text-xs text-gray-500 dark:text-gray-400">
-                      ECD {formatScheduleResult(item.ecd)}
-                      {item.ecdReasonMissing ? ' · reason missing' : ''}
-                      {item.ecd.status === 'not-met' && item.ecdMissReason ? ` · ${item.ecdMissReason}` : ''}
-                    </span>
+                  <li key={item.projectId || item.rfaNumber}>
+                    <button
+                      type="button"
+                      onClick={() => openProject(item.projectId)}
+                      className="w-full rounded-lg px-2 py-1.5 text-left text-sm text-gray-800 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700/40"
+                    >
+                      <span className="font-medium">{item.projectName}</span>
+                      <span className="block text-xs text-gray-500 dark:text-gray-400">
+                        RD {formatScheduleResult(item.rd)}
+                        {item.rdReasonMissing ? ' · reason missing' : ''}
+                        {item.rd.status === 'not-met' && item.rdMissReason ? ` · ${item.rdMissReason}` : ''}
+                      </span>
+                      <span className="block text-xs text-gray-500 dark:text-gray-400">
+                        ECD {formatScheduleResult(item.ecd)}
+                        {item.ecdReasonMissing ? ' · reason missing' : ''}
+                        {item.ecd.status === 'not-met' && item.ecdMissReason ? ` · ${item.ecdMissReason}` : ''}
+                      </span>
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -100,10 +124,17 @@ export default function MyProductivityPanel({ report, compact = false }) {
             {report.missing.length === 0 ? (
               <p className="text-sm text-gray-500 dark:text-gray-400">Recorded project hours cover your work in this period.</p>
             ) : (
-              <ul className="space-y-1">
-                {report.missing.map((item) => (
-                  <li key={`${item.projectId}-${item.phase}`} className="text-sm text-gray-800 dark:text-gray-200">
-                    {item.projectName} · {item.phaseLabel}
+              <ul className="max-h-64 space-y-1 overflow-y-auto pr-1">
+                {missingByProject.map((item) => (
+                  <li key={item.projectId || item.projectName}>
+                    <button
+                      type="button"
+                      onClick={() => openProject(item.projectId)}
+                      className="w-full rounded-lg px-2 py-1.5 text-left text-sm text-gray-800 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700/40"
+                    >
+                      <span className="font-medium">{item.projectName}</span>
+                      <span className="block text-xs text-gray-500 dark:text-gray-400">{item.phases.join(', ')}</span>
+                    </button>
                   </li>
                 ))}
               </ul>
