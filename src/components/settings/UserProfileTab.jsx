@@ -1,6 +1,13 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { claimTeamMember, refreshClaimedProfile } from '../../services/MachineClaimService';
+import { roleLabel } from '../../services/TeamRosterService';
+
+const { electronAPI } = window;
 
 const UserProfileTab = ({ settings, setSettings }) => {
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [directoryError, setDirectoryError] = useState('');
+  const [claimError, setClaimError] = useState('');
   const PRODUCTS = [
     'nLight Wired', 'nLight Air', 'SensorSwitch', 'SensorSwitch Air',
     'Visual Installer', 'Visual Controls', 'Fresco', 'Pathway',
@@ -40,6 +47,52 @@ const UserProfileTab = ({ settings, setSettings }) => {
     return settings.workloadSettings?.productKnowledge?.[product] || 0;
   };
 
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const settingsResult = await electronAPI.dasGeneralGetSettings();
+        const loaded = await electronAPI.dasGeneralLoadAll(settingsResult?.settings?.filePath);
+        if (!active) return;
+        if (!loaded?.success) {
+          setDirectoryError(loaded?.message || 'The team directory could not be opened. Showing the last claimed person.');
+          setTeamMembers([]);
+          return;
+        }
+        const members = Array.isArray(loaded.data?.teamMembers) ? loaded.data.teamMembers : [];
+        setTeamMembers(members);
+        setDirectoryError('');
+        await refreshClaimedProfile(members);
+      } catch (error) {
+        if (active) setDirectoryError(error.message || 'The team directory could not be opened.');
+      }
+    })();
+    return () => { active = false; };
+  }, []);
+
+  const selectedName = settings.workloadSettings?.claimedMemberName || settings.workloadSettings?.userName || '';
+  const selectedMember = teamMembers.find((member) => member.name === selectedName);
+
+  const handleClaim = async (memberName) => {
+    const member = teamMembers.find((item) => item.name === memberName);
+    if (!member) return;
+    setClaimError('');
+    const result = await claimTeamMember(member);
+    if (!result?.success) {
+      setClaimError(result?.error || 'Could not claim this PC.');
+      return;
+    }
+    setSettings((prev) => ({
+      ...prev,
+      workloadSettings: {
+        ...prev.workloadSettings,
+        ...result.profile,
+        claimedMemberEmail: member.email || '',
+        claimedMemberName: member.name || ''
+      }
+    }));
+  };
+
   return (
     <div className="space-y-6">
       {/* User Profile Section */}
@@ -53,64 +106,44 @@ const UserProfileTab = ({ settings, setSettings }) => {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Your Name */}
+          <div className="md:col-span-2">
+            <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Team member on this PC</label>
+            <select
+              value={selectedMember?.name || ''}
+              onChange={(event) => handleClaim(event.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700"
+            >
+              <option value="">{teamMembers.length ? 'Select your name' : 'Team directory unavailable'}</option>
+              {teamMembers.map((member) => (
+                <option key={member.id || member.name} value={member.name}>{member.name}</option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Name, email, and category come from DAS General → Team Members. Weekly capacity and product knowledge stay on this PC.
+            </p>
+            {directoryError && <p className="mt-1 text-xs text-warning-700 dark:text-warning-300">{directoryError}</p>}
+            {claimError && <p className="mt-1 text-xs text-danger-600">{claimError}</p>}
+          </div>
+
           <div>
             <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Your Name</label>
-            <input
-              type="text"
-              value={settings.workloadSettings?.userName || ''}
-              onChange={(e) => setSettings(prev => ({
-                ...prev,
-                workloadSettings: {
-                  ...prev.workloadSettings,
-                  userName: e.target.value
-                }
-              }))}
-              placeholder="John Smith"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 transition-all focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-            />
+            <div className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 text-sm text-gray-800 dark:text-gray-100">
+              {settings.workloadSettings?.userName || 'Not selected'}
+            </div>
           </div>
 
-          {/* Your Email */}
           <div>
             <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Your Email</label>
-            <input
-              type="email"
-              value={settings.workloadSettings?.userEmail || ''}
-              onChange={(e) => setSettings(prev => ({
-                ...prev,
-                workloadSettings: {
-                  ...prev.workloadSettings,
-                  userEmail: e.target.value
-                }
-              }))}
-              placeholder="john.smith@acuity.com"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 transition-all focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-            />
+            <div className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 text-sm text-gray-800 dark:text-gray-100">
+              {settings.workloadSettings?.userEmail || 'Not set'}
+            </div>
           </div>
 
-          {/* Role */}
           <div>
-            <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Role</label>
-            <select
-              value={settings.workloadSettings?.position || ''}
-              onChange={(e) => setSettings(prev => ({
-                ...prev,
-                workloadSettings: {
-                  ...prev.workloadSettings,
-                  position: e.target.value
-                }
-              }))}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 transition-all focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-            >
-              <option value="">Select your role...</option>
-              <option value="L&T Junior Design Application Analyst">L&T Junior Design Application Analyst</option>
-              <option value="L&T Senior Design Application Analyst">L&T Senior Design Application Analyst</option>
-              <option value="Junior Design Application Analyst">Junior Design Application Analyst</option>
-              <option value="Senior Design Application Analyst">Senior Design Application Analyst</option>
-              <option value="Lead Design Application Analyst">Lead Design Application Analyst</option>
-              <option value="Manager Design Application Analyst">Manager Design Application Analyst</option>
-            </select>
+            <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Category</label>
+            <div className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 text-sm text-gray-800 dark:text-gray-100">
+              {settings.workloadSettings?.position ? roleLabel(settings.workloadSettings.position) : 'Not selected'}
+            </div>
           </div>
 
           {/* Years of Experience */}

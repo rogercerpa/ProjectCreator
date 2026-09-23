@@ -44,7 +44,9 @@ export default function ReferenceLinksTab() {
       teamMembers: loaded.data?.teamMembers || [],
       trainingMaterial: partial.trainingMaterial ?? loaded.data?.trainingMaterial ?? [],
       productsInfo: loaded.data?.productsInfo || [],
-      products: loaded.data?.products || []
+      products: loaded.data?.products || [],
+      machineUsers: loaded.data?.machineUsers || [],
+      activityAction: 'Saved reference links'
     };
     return electronAPI.dasGeneralSaveAll(next, filePath || undefined);
   };

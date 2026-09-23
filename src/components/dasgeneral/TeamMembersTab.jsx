@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ROLE_CATEGORIES, canonicalRole, roleLabel } from '../../services/TeamRosterService';
+import { otherMachinesForMember } from '../../services/MachineClaimService';
 
 function RoleSelect({ value, onChange, className }) {
   const known = canonicalRole(value);
@@ -13,7 +14,7 @@ function RoleSelect({ value, onChange, className }) {
   );
 }
 
-function TeamMembersTab({ teamMembers = [], onDataChange, onSave, isLoading }) {
+function TeamMembersTab({ teamMembers = [], machineUsers = [], hostname = '', onClaim, onDataChange, onSave, isLoading }) {
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [isAdding, setIsAdding] = useState(false);
@@ -28,6 +29,29 @@ function TeamMembersTab({ teamMembers = [], onDataChange, onSave, isLoading }) {
 
   // Ensure teamMembers is an array
   const safeTeamMembers = Array.isArray(teamMembers) ? teamMembers : [];
+  const thisMachineClaim = (machineUsers || []).find((row) => (
+    String(row?.machineName || '').trim().toLowerCase() === String(hostname || '').trim().toLowerCase()
+  ));
+  const isThisPc = (member) => (
+    thisMachineClaim
+    && String(thisMachineClaim.memberName || '').trim().toLowerCase() === String(member?.name || '').trim().toLowerCase()
+  );
+
+  const handleClaim = async (member) => {
+    if (!onClaim) return;
+    setSaveStatus('saving');
+    try {
+      const result = await onClaim(member);
+      setSaveStatus(result?.success ? 'saved' : 'error');
+      if (!result?.success && result?.error) {
+        window.alert(result.error);
+      }
+    } catch (error) {
+      setSaveStatus('error');
+      window.alert(error.message || 'Could not claim this PC.');
+    }
+    setTimeout(() => setSaveStatus(null), 2000);
+  };
 
   // Filter members by search term
   const filteredMembers = safeTeamMembers.filter(member => {
@@ -132,6 +156,12 @@ function TeamMembersTab({ teamMembers = [], onDataChange, onSave, isLoading }) {
 
   return (
     <div className="space-y-6">
+      {!thisMachineClaim && safeTeamMembers.length > 0 && (
+        <div className="p-3 rounded-lg border border-primary-200 bg-primary-50 text-sm text-primary-800 dark:border-primary-800 dark:bg-primary-900/20 dark:text-primary-200">
+          Choose your name so this PC is recognized when DAS General is saved.
+        </div>
+      )}
+
       {/* Header with actions */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -353,7 +383,15 @@ function TeamMembersTab({ teamMembers = [], onDataChange, onSave, isLoading }) {
                             <span className="font-medium text-gray-900 dark:text-white">
                               {member.name || '-'}
                             </span>
+                            {isThisPc(member) && (
+                              <span className="text-xs font-semibold text-primary-700 dark:text-primary-300">You on this PC</span>
+                            )}
                           </div>
+                          {otherMachinesForMember(machineUsers, member.name, hostname).map((row) => (
+                            <div key={row.machineName} className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              Also on {row.machineName}{row.lastSeen ? `, last seen ${new Date(row.lastSeen).toLocaleDateString()}` : ''}
+                            </div>
+                          ))}
                         </td>
                         <td className="px-6 py-4 text-gray-600 dark:text-gray-400">
                           {member.email ? (
@@ -373,6 +411,15 @@ function TeamMembersTab({ teamMembers = [], onDataChange, onSave, isLoading }) {
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="flex justify-end gap-2">
+                            {!isThisPc(member) && (
+                              <button
+                                onClick={() => handleClaim(member)}
+                                disabled={isLoading}
+                                className="px-3 py-1 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded transition-colors disabled:opacity-50"
+                              >
+                                This is me
+                              </button>
+                            )}
                             <button
                               onClick={() => handleEdit(member)}
                               disabled={isLoading}

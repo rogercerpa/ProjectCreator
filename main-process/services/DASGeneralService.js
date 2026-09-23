@@ -1,7 +1,10 @@
 // DASGeneralService - Handles DAS General data Excel read/write operations
 const fs = require('fs-extra');
 const path = require('path');
+const os = require('os');
 const XLSX = require('xlsx');
+
+const ACTIVITY_LIMIT = 200;
 
 class DASGeneralService {
   constructor(settingsService) {
@@ -178,6 +181,8 @@ class DASGeneralService {
       const productsSheet = XLSX.utils.aoa_to_sheet(productsData);
       XLSX.utils.book_append_sheet(workbook, productsSheet, 'Products');
 
+      this.appendIdentitySheets(workbook, [], []);
+
       // Write the file
       XLSX.writeFile(workbook, normalizedPath);
 
@@ -216,6 +221,8 @@ class DASGeneralService {
       // Load Products list
       const products = this.loadSheetData(workbook, 'Products', ['productName']);
       const productsList = products.map(p => p.productName).filter(Boolean);
+      const machineUsers = this.loadSheetData(workbook, 'MachineUsers', ['memberName', 'email', 'machineName', 'windowsUser', 'lastSeen']);
+      const activity = this.loadSheetData(workbook, 'Activity', ['timestamp', 'memberName', 'machineName', 'action']);
 
       return {
         success: true,
@@ -223,7 +230,9 @@ class DASGeneralService {
           teamMembers,
           trainingMaterial,
           productsInfo,
-          products: productsList.length > 0 ? productsList : this.defaultProducts
+          products: productsList.length > 0 ? productsList : this.defaultProducts,
+          machineUsers,
+          activity
         },
         lastLoaded: new Date().toISOString()
       };
@@ -244,6 +253,46 @@ class DASGeneralService {
         error: 'LOAD_ERROR',
         message: `Failed to load data: ${error.message}`
       };
+    }
+  }
+
+  appendIdentitySheets(workbook, machineUsers, activity) {
+    const machineRows = [
+      ['MemberName', 'Email', 'MachineName', 'WindowsUser', 'LastSeen'],
+      ...(machineUsers || []).map((row) => [
+        row.memberName || '',
+        row.email || '',
+        row.machineName || '',
+        row.windowsUser || '',
+        row.lastSeen || ''
+      ])
+    ];
+    const activityRows = [
+      ['Timestamp', 'MemberName', 'MachineName', 'Action'],
+      ...(activity || []).slice(-ACTIVITY_LIMIT).map((row) => [
+        row.timestamp || '',
+        row.memberName || '',
+        row.machineName || '',
+        row.action || ''
+      ])
+    ];
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(machineRows), 'MachineUsers');
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(activityRows), 'Activity');
+  }
+
+  async readIdentitySheets(filePath) {
+    try {
+      if (!(await fs.pathExists(filePath))) {
+        return { machineUsers: [], activity: [] };
+      }
+      const workbook = XLSX.readFile(filePath);
+      return {
+        machineUsers: this.loadSheetData(workbook, 'MachineUsers', ['memberName', 'email', 'machineName', 'windowsUser', 'lastSeen']),
+        activity: this.loadSheetData(workbook, 'Activity', ['timestamp', 'memberName', 'machineName', 'action'])
+      };
+    } catch (error) {
+      console.warn('Could not read machine identity sheets:', error.message);
+      return { machineUsers: [], activity: [] };
     }
   }
 
@@ -371,6 +420,23 @@ class DASGeneralService {
       ];
       const productsSheet = XLSX.utils.aoa_to_sheet(productsData);
       XLSX.utils.book_append_sheet(workbook, productsSheet, 'Products');
+
+      const existingIdentity = await this.readIdentitySheets(normalizedPath);
+      const machineUsers = Array.isArray(data.machineUsers) ? data.machineUsers : existingIdentity.machineUsers;
+      let activity = Array.isArray(data.activity) ? data.activity : existingIdentity.activity;
+      if (data.activityAction) {
+        const claimed = machineUsers.find((row) => String(row.machineName || '').toLowerCase() === os.hostname().toLowerCase());
+        activity = [
+          ...activity,
+          {
+            timestamp: new Date().toISOString(),
+            memberName: data.activityMember || claimed?.memberName || 'Unclaimed',
+            machineName: os.hostname(),
+            action: String(data.activityAction)
+          }
+        ].slice(-ACTIVITY_LIMIT);
+      }
+      this.appendIdentitySheets(workbook, machineUsers, activity);
 
       // Write the file
       XLSX.writeFile(workbook, normalizedPath);
@@ -531,7 +597,8 @@ class DASGeneralService {
         ...existingData.data,
         products: updatedProducts,
         trainingMaterial: updatedTrainingMaterial,
-        productsInfo: updatedProductsInfo
+        productsInfo: updatedProductsInfo,
+        activityAction: 'Saved products'
       };
 
       return await this.saveAllData(updatedData, filePath);
@@ -561,7 +628,8 @@ class DASGeneralService {
         ...existingData.data,
         products: updatedProducts,
         trainingMaterial: updatedTrainingMaterial,
-        productsInfo: updatedProductsInfo
+        productsInfo: updatedProductsInfo,
+        activityAction: 'Saved products'
       };
 
       return await this.saveAllData(updatedData, filePath);

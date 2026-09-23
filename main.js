@@ -3115,6 +3115,11 @@ ipcMain.handle('das-general:save-all', async (event, data, filePath) => {
   }
 });
 
+ipcMain.handle('machine:get-identity', async () => ({
+  hostname: os.hostname(),
+  windowsUser: os.userInfo().username
+}));
+
 ipcMain.handle('time-calendar:load', async () => userTimeCalendarService.load());
 ipcMain.handle('time-calendar:upsert', async (event, entry) => {
   try {

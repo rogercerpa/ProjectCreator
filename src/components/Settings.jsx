@@ -200,7 +200,26 @@ function Settings({ initialTab = 'user-profile', initialErrorId = null, onLaunch
       setSettings((prev) => ({ ...prev, assignedToOptions: names }));
     };
     window.addEventListener('assigned-to-options-updated', handleAssignedToUpdate);
-    return () => window.removeEventListener('assigned-to-options-updated', handleAssignedToUpdate);
+    const handleClaimUpdate = (event) => {
+      const profile = event.detail;
+      if (!profile?.userName) return;
+      setSettings((prev) => ({
+        ...prev,
+        workloadSettings: {
+          ...prev.workloadSettings,
+          userName: profile.userName,
+          userEmail: profile.userEmail || '',
+          position: profile.position || '',
+          claimedMemberName: profile.userName,
+          claimedMemberEmail: profile.userEmail || ''
+        }
+      }));
+    };
+    window.addEventListener('machine-claim-updated', handleClaimUpdate);
+    return () => {
+      window.removeEventListener('assigned-to-options-updated', handleAssignedToUpdate);
+      window.removeEventListener('machine-claim-updated', handleClaimUpdate);
+    };
   }, []);
 
   useEffect(() => {

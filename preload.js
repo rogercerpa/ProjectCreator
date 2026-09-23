@@ -387,6 +387,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // File selection
   dasGeneralSelectFile: () => ipcRenderer.invoke('das-general:select-file'),
 
+  machineGetIdentity: () => ipcRenderer.invoke('machine:get-identity'),
   timeCalendarLoad: () => ipcRenderer.invoke('time-calendar:load'),
   timeCalendarUpsert: (entry) => ipcRenderer.invoke('time-calendar:upsert', entry),
   timeCalendarDelete: (entryId) => ipcRenderer.invoke('time-calendar:delete', entryId),

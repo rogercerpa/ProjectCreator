@@ -4,6 +4,7 @@ import ProductsInfoTab from './dasgeneral/ProductsInfoTab';
 import MonthlyAnalyticsReportTab from './dasgeneral/MonthlyAnalyticsReportTab';
 import MyTimeCalendarTab from './dasgeneral/MyTimeCalendarTab';
 import { syncAssignedToFromTeam } from '../services/TeamRosterService';
+import { claimTeamMember, refreshClaimedProfile } from '../services/MachineClaimService';
 
 const { electronAPI } = window;
 
@@ -18,8 +19,10 @@ function DASGeneralPage({ onOpenProject }) {
     teamMembers: [],
     trainingMaterial: [],
     productsInfo: [],
-    products: []
+    products: [],
+    machineUsers: []
   });
+  const [hostname, setHostname] = useState('');
   const [filePath, setFilePath] = useState(DEFAULT_FILE_PATH);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [lastSaved, setLastSaved] = useState(null);
@@ -37,6 +40,9 @@ function DASGeneralPage({ onOpenProject }) {
       }
     };
     loadSettings();
+    electronAPI.machineGetIdentity?.().then((identity) => {
+      if (identity?.hostname) setHostname(identity.hostname);
+    }).catch(() => {});
   }, []);
 
   // Load data from Excel file
@@ -88,8 +94,14 @@ function DASGeneralPage({ onOpenProject }) {
           teamMembers: Array.isArray(loadResult.data?.teamMembers) ? loadResult.data.teamMembers : [],
           trainingMaterial: Array.isArray(loadResult.data?.trainingMaterial) ? loadResult.data.trainingMaterial : [],
           productsInfo: Array.isArray(loadResult.data?.productsInfo) ? loadResult.data.productsInfo : [],
-          products: Array.isArray(loadResult.data?.products) ? loadResult.data.products : []
+          products: Array.isArray(loadResult.data?.products) ? loadResult.data.products : [],
+          machineUsers: Array.isArray(loadResult.data?.machineUsers) ? loadResult.data.machineUsers : []
         });
+        if (Array.isArray(loadResult.data?.teamMembers)) {
+          refreshClaimedProfile(loadResult.data.teamMembers).catch((refreshError) => {
+            console.warn('Could not refresh the claimed profile:', refreshError);
+          });
+        }
         setLastSaved(loadResult.lastLoaded);
         setHasUnsavedChanges(false);
         setError(null);
@@ -153,17 +165,29 @@ function DASGeneralPage({ onOpenProject }) {
     setIsLoading(true);
     try {
       // Merge updatedData with existing data to ensure we don't lose any sheets
+      const actions = [];
+      if (updatedData?.teamMembers) actions.push('Saved team members');
+      if (updatedData?.trainingMaterial) actions.push('Saved reference links');
+      if (updatedData?.productsInfo || updatedData?.products) actions.push('Saved products');
       const dataToSave = {
         teamMembers: updatedData?.teamMembers ?? data.teamMembers,
         trainingMaterial: updatedData?.trainingMaterial ?? data.trainingMaterial,
         productsInfo: updatedData?.productsInfo ?? data.productsInfo,
-        products: updatedData?.products ?? data.products
+        products: updatedData?.products ?? data.products,
+        machineUsers: data.machineUsers,
+        activityAction: actions.join('; ') || 'Saved DAS General'
       };
       
       const result = await electronAPI.dasGeneralSaveAll(dataToSave, filePath);
       
       if (result.success) {
-        setData(dataToSave);
+        setData((prev) => ({
+          ...prev,
+          teamMembers: dataToSave.teamMembers,
+          trainingMaterial: dataToSave.trainingMaterial,
+          productsInfo: dataToSave.productsInfo,
+          products: dataToSave.products
+        }));
         setLastSaved(result.savedAt);
         setHasUnsavedChanges(false);
         if (Array.isArray(dataToSave.teamMembers) && dataToSave.teamMembers.length > 0) {
@@ -295,6 +319,15 @@ function DASGeneralPage({ onOpenProject }) {
         return (
           <TeamMembersTab
             teamMembers={data.teamMembers}
+            machineUsers={data.machineUsers}
+            hostname={hostname}
+            onClaim={async (member) => {
+              const result = await claimTeamMember(member);
+              if (result?.success) {
+                setData((prev) => ({ ...prev, machineUsers: result.machineUsers || prev.machineUsers }));
+              }
+              return result;
+            }}
             onDataChange={(newData) => handleDataChange('teamMembers', newData)}
             onSave={handleSaveAll}
             isLoading={isLoading}
