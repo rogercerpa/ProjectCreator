@@ -1,12 +1,39 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import dropdownOptionsService from '../../services/DropdownOptionsService';
 import { ActualHoursFields, ScheduleOutcomeFields } from './ProjectProductivityFields';
 
 const { electronAPI } = window;
 
+const PEOPLE = [
+  { key: 'triagedBy', label: 'Triaged by' },
+  { key: 'designBy', label: 'Worked by' },
+  { key: 'qcBy', label: 'QC by' }
+];
+
+function namesFor(options, current) {
+  const names = Array.isArray(options) ? [...options] : [];
+  const value = String(current || '').trim();
+  if (value && !names.some((name) => name.trim().toLowerCase() === value.toLowerCase())) {
+    names.unshift(value);
+  }
+  return names;
+}
+
 export default function ProductivityEntryModal({ project, onClose, onSaved }) {
   const [form, setForm] = useState(() => ({ ...project }));
+  const [assignees, setAssignees] = useState(() => dropdownOptionsService.getOptionsForField('assignedToOptions'));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    dropdownOptionsService.loadFromSettings().then(() => {
+      if (!cancelled) setAssignees(dropdownOptionsService.getOptionsForField('assignedToOptions'));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleSave = async () => {
     setSaving(true);
@@ -34,10 +61,36 @@ export default function ProductivityEntryModal({ project, onClose, onSaved }) {
           </h3>
           <p className="text-sm text-gray-500 dark:text-gray-400">
             {project.rfaNumber ? `${project.rfaNumber} · ` : ''}
-            These hours and date notes are the same ones shown on the project page.
+            Hours, who did each task, and date notes are the same fields shown on the project page.
           </p>
         </div>
         <div className="space-y-4 overflow-y-auto px-5 py-4">
+          <div className="space-y-3">
+            <div className="text-sm font-semibold text-gray-800 dark:text-gray-100">Who did the work</div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Worked by is Design By on the project page. Hours count for the person named on that task.
+            </p>
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+              {PEOPLE.map((person) => (
+                <div key={person.key} className="space-y-1">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300" htmlFor={`productivity-${person.key}`}>
+                    {person.label}
+                  </label>
+                  <select
+                    id={`productivity-${person.key}`}
+                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                    value={form[person.key] || ''}
+                    onChange={(event) => setForm((prev) => ({ ...prev, [person.key]: event.target.value }))}
+                  >
+                    <option value="">Not assigned</option>
+                    {namesFor(assignees, form[person.key]).map((name) => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </div>
+          </div>
           <ActualHoursFields
             formData={form}
             onPatch={(partial) => setForm((prev) => ({ ...prev, ...partial }))}
