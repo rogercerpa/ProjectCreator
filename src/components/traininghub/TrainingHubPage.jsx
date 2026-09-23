@@ -3,12 +3,14 @@ import CourseCatalog from './CourseCatalog';
 import CoursePlayer from './CoursePlayer';
 import ProgressDashboard from './ProgressDashboard';
 import CourseEditor from './author/CourseEditor';
+import ReferenceLinksTab from './ReferenceLinksTab';
 
 const { electronAPI } = window;
 
 const TABS = [
   { id: 'catalog', label: 'Course Catalog', icon: '📚' },
-  { id: 'progress', label: 'My Progress', icon: '📈' }
+  { id: 'progress', label: 'My Progress', icon: '📈' },
+  { id: 'references', label: 'Reference links', icon: '🔗' }
 ];
 
 const TrainingHubPage = () => {
@@ -146,6 +148,8 @@ const TrainingHubPage = () => {
           <div className="flex items-center justify-center py-24">
             <div className="animate-spin h-8 w-8 border-2 border-primary-500 border-t-transparent rounded-full" />
           </div>
+        ) : activeTab === 'references' ? (
+          <ReferenceLinksTab />
         ) : activeTab === 'catalog' ? (
           <CourseCatalog
             catalog={catalog}

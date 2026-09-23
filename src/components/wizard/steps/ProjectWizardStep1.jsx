@@ -8,6 +8,7 @@ import EditableProductTags from '../../EditableProductTags';
 import { parseAgileDate, getUserTimezone, formatDateTimeLocal } from '../../../utils/dateUtils';
 import { openPaidServicesEmail } from '../../../utils/emailTemplates';
 import DASPaidServicesSection from '../../shared/DASPaidServicesSection';
+import { ActualHoursFields, ScheduleOutcomeFields } from '../../shared/ProjectProductivityFields';
 import {
   PROJECT_FILE_TYPE_OTHER,
   sanitizeProjectFileTypes
@@ -2679,6 +2680,10 @@ const ProjectWizardStep1 = ({
               {isFieldImported('bidDate') && <span className="import-indicator">📋 Imported</span>}
             </div>
           </div>
+          <ScheduleOutcomeFields
+            formData={formData}
+            onPatch={(partial) => onFormDataChange({ ...formData, ...partial })}
+          />
         </div>
 
         {/* WorkTask Section */}
@@ -2733,6 +2738,10 @@ const ProjectWizardStep1 = ({
               {isFieldImported('qcBy') && <span className="import-indicator">📋 Imported</span>}
             </div>
           </div>
+          <ActualHoursFields
+            formData={formData}
+            onPatch={(partial) => onFormDataChange({ ...formData, ...partial })}
+          />
         </div>
 
         <div className="mt-10 space-y-4">

@@ -134,7 +134,15 @@ const createDefaultFormData = () => ({
   dasRepEmailList: [],
   dasWaiverReasons: [],
   dasWaiverOtherNote: '',
-  dasWaiverDescription: ''
+  dasWaiverDescription: '',
+  actualTriageHours: '',
+  triageHoursDate: '',
+  actualDesignHours: '',
+  designHoursDate: '',
+  actualQcHours: '',
+  qcHoursDate: '',
+  rdMissReason: '',
+  ecdMissReason: ''
 });
 
 function App() {
@@ -1288,7 +1296,14 @@ function App() {
             />
           );
         case 'das-general':
-          return <DASGeneralPage />;
+          return (
+            <DASGeneralPage
+              onOpenProject={(project) => {
+                setCurrentProject(project);
+                setCurrentView('project-management');
+              }}
+            />
+          );
         case 'spec-review':
           return <SpecReviewPage />;
         case 'training-hub':

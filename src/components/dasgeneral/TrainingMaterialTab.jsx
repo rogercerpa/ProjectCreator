@@ -9,7 +9,10 @@ function TrainingMaterialTab({
   onSave, 
   onAddProduct, 
   onRemoveProduct,
-  isLoading 
+  isLoading,
+  allowProductAdmin = true,
+  title = 'Training Material',
+  subtitle = 'Training resources and links by product'
 }) {
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
@@ -150,10 +153,10 @@ function TrainingMaterialTab({
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            Training Material
+            {title}
           </h2>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            Training resources and links by product
+            {subtitle}
           </p>
         </div>
         
@@ -183,20 +186,21 @@ function TrainingMaterialTab({
             ))}
           </select>
 
-          {/* Add product button */}
-          <button
-            onClick={() => setShowAddProduct(true)}
-            disabled={isLoading}
-            className="px-4 py-2 bg-secondary-600 hover:bg-secondary-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
-          >
-            <span>🏷️</span>
-            Add Product
-          </button>
+          {allowProductAdmin && (
+            <button
+              onClick={() => setShowAddProduct(true)}
+              disabled={isLoading}
+              className="px-4 py-2 bg-secondary-600 hover:bg-secondary-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              <span>🏷️</span>
+              Add Product
+            </button>
+          )}
         </div>
       </div>
 
       {/* Add new product dialog */}
-      {showAddProduct && (
+      {allowProductAdmin && showAddProduct && (
         <div className="p-6 bg-secondary-50 dark:bg-secondary-900/20 border border-secondary-200 dark:border-secondary-800 rounded-xl">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
             Add New Product

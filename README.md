@@ -1,7 +1,7 @@
 # Project Creator
 
 <!-- AUTO:BADGES:START -->
-[![Version](https://img.shields.io/badge/version-5.0.273-blue.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-5.0.274-blue.svg)](package.json)
 [![License](https://img.shields.io/badge/license-ISC-green.svg)](LICENSE)
 [![Electron](https://img.shields.io/badge/Electron-38.0.0-47848F.svg)](https://www.electronjs.org/)
 [![React](https://img.shields.io/badge/React-19.1.1-61DAFB.svg)](https://reactjs.org/)
@@ -146,9 +146,9 @@ npm run dist:signed:linux
 ### Version Management
 
 <!-- AUTO:VERSION_SCRIPTS:START -->
-- `npm run version:patch` - Increment patch version (5.0.273 → 5.0.274)
-- `npm run version:minor` - Increment minor version (5.0.273 → 5.1.0)
-- `npm run version:major` - Increment major version (5.0.273 → 6.0.0)
+- `npm run version:patch` - Increment patch version (5.0.274 → 5.0.275)
+- `npm run version:minor` - Increment minor version (5.0.274 → 5.1.0)
+- `npm run version:major` - Increment major version (5.0.274 → 6.0.0)
 - `npm run version:show` - Display current version
 <!-- AUTO:VERSION_SCRIPTS:END -->
 
@@ -416,7 +416,7 @@ Built with amazing open-source technologies:
 ---
 
 <!-- AUTO:FOOTER:START -->
-**Last Updated**: September 21, 2026  
-**Current Version**: 5.0.273  
+**Last Updated**: September 23, 2026  
+**Current Version**: 5.0.274  
 **Maintained by**: Roger Cerpa
 <!-- AUTO:FOOTER:END -->

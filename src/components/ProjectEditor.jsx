@@ -3,6 +3,7 @@ import dropdownOptionsService from '../services/DropdownOptionsService';
 import triageCalculationService from '../services/TriageCalculationService';
 import EditableProductTags from './EditableProductTags';
 import DASPaidServicesSection from './shared/DASPaidServicesSection';
+import { ActualHoursFields, ScheduleOutcomeFields } from './shared/ProjectProductivityFields';
 import { openPaidServicesEmail } from '../utils/emailTemplates';
 import {
   PROJECT_FILE_TYPE_OTHER,
@@ -794,6 +795,14 @@ const ProjectEditor = ({
               />
             </div>
           </div>
+          <ActualHoursFields
+            formData={formData}
+            onPatch={(partial) => {
+              const next = { ...formData, ...partial };
+              setFormData(next);
+              onProjectDataChange(next);
+            }}
+          />
         </div>
 
         {/* Important Dates Section */}
@@ -866,23 +875,15 @@ const ProjectEditor = ({
               />
             </div>
 
-            {/* Completed Date - Read Only, Auto-populated when status changes to Completed */}
-            {formData.completedAt && (
-              <div className="flex flex-col gap-1.5">
-                <label className="text-green-700 dark:text-green-400 font-semibold">Completed Date & Time</label>
-                <div className="px-3 py-2 bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-700 rounded-lg text-green-800 dark:text-green-300 text-sm">
-                  {new Date(formData.completedAt).toLocaleString('en-US', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: true
-                  })}
-                </div>
-              </div>
-            )}
           </div>
+          <ScheduleOutcomeFields
+            formData={formData}
+            onPatch={(partial) => {
+              const next = { ...formData, ...partial };
+              setFormData(next);
+              onProjectDataChange(next);
+            }}
+          />
         </div>
 
         {/* DAS Paid Services */}

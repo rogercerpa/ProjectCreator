@@ -4,6 +4,8 @@ import {
   ResponsiveContainer, Legend, AreaChart, Area, LabelList
 } from 'recharts';
 import reportDataService from '../services/ReportDataService';
+import { buildProductivityReport } from '../services/ProductivityMetricsService';
+import MyProductivityPanel from './shared/MyProductivityPanel';
 import reportExportService from '../services/ReportExportService';
 import ReportSettingsModal from './ReportSettingsModal';
 import {
@@ -238,6 +240,7 @@ function MonthlyAnalyticsReport({ projects = [] }) {
   const [isPrintMode, setIsPrintMode] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showExportDropdown, setShowExportDropdown] = useState(false);
+  const [productivity, setProductivity] = useState(null);
 
   // Report settings state
   const [reportSettings, setReportSettings] = useState(() => {
@@ -348,6 +351,30 @@ function MonthlyAnalyticsReport({ projects = [] }) {
   useEffect(() => {
     generateReport();
   }, [generateReport]);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const [settingsResult, calendarResult] = await Promise.all([
+          window.electronAPI?.settingsLoad?.(),
+          window.electronAPI?.timeCalendarLoad?.()
+        ]);
+        if (!active) return;
+        setProductivity(buildProductivityReport({
+          projects,
+          entries: calendarResult?.entries || [],
+          userName: settingsResult?.data?.workloadSettings?.userName || '',
+          startDate: reportSettings.startDate,
+          endDate: reportSettings.endDate,
+          weeklyCapacity: settingsResult?.data?.workloadSettings?.weeklyCapacity || 40
+        }));
+      } catch (error) {
+        console.error('Error building productivity report:', error);
+      }
+    })();
+    return () => { active = false; };
+  }, [projects, reportSettings.startDate, reportSettings.endDate]);
 
   // Handle settings apply
   const handleApplySettings = (newSettings) => {
@@ -577,7 +604,7 @@ function MonthlyAnalyticsReport({ projects = [] }) {
     setShowExportDropdown(false);
     
     try {
-      await reportExportService.exportToExcel(reportData, reportSettings, projects);
+      await reportExportService.exportToExcel({ ...reportData, productivity }, reportSettings, projects);
     } catch (error) {
       console.error('Error exporting to Excel:', error);
       alert('Failed to export to Excel. Please try again.');
@@ -594,7 +621,7 @@ function MonthlyAnalyticsReport({ projects = [] }) {
     setShowExportDropdown(false);
     
     try {
-      await reportExportService.exportToCSV(reportData, reportSettings, projects);
+      await reportExportService.exportToCSV({ ...reportData, productivity }, reportSettings, projects);
     } catch (error) {
       console.error('Error exporting to CSV:', error);
       alert('Failed to export to CSV. Please try again.');
@@ -797,6 +824,12 @@ function MonthlyAnalyticsReport({ projects = [] }) {
             {activeFilterCount > 0 && ` (${activeFilterCount} filter${activeFilterCount > 1 ? 's' : ''} applied)`}
           </p>
         </div>
+
+        {productivity && (
+          <PrintSection isPrintMode={isPrintMode}>
+            <MyProductivityPanel report={productivity} />
+          </PrintSection>
+        )}
 
         {/* KPI Cards - Responsive grid */}
         <PrintSection isPrintMode={isPrintMode}>

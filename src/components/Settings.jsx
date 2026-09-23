@@ -6,6 +6,7 @@ import { getFullVersionInfo, getVersionDisplay, BUILD_INFO } from '../utils/vers
 import AppInfoTab from './settings/AppInfoTab';
 import AdvancedSettingsTab from './settings/AdvancedSettingsTab';
 import FormSettingsTab from './settings/FormSettingsTab';
+import AssignedToDirectory from './settings/AssignedToDirectory';
 import AgenciesTab from './settings/AgenciesTab';
 import UserProfileTab from './settings/UserProfileTab';
 import WorkloadTab from './settings/WorkloadTab';
@@ -137,7 +138,7 @@ function Settings({ initialTab = 'user-profile', initialErrorId = null, onLaunch
     { key: 'complexityLevels', label: 'Complexity Levels', icon: '⚡', description: 'Project complexity classifications' },
     { key: 'statusOptions', label: 'Status Options', icon: '📊', description: 'Project status options' },
     { key: 'productOptions', label: 'Product Options', icon: '💡', description: 'Available product categories' },
-    { key: 'assignedToOptions', label: 'Assigned To', icon: '👥', description: 'Team member assignment options' },
+    { key: 'assignedToOptions', label: 'Assigned To', icon: '👥', description: 'Synced from DAS General team members' },
     { key: 'projectTypes', label: 'Project Types', icon: '🏗️', description: 'Building and project type categories' }
   ];
 
@@ -191,6 +192,16 @@ function Settings({ initialTab = 'user-profile', initialErrorId = null, onLaunch
   // Modal state for editing agencies
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingAgencyModal, setEditingAgencyModal] = useState(null);
+
+  useEffect(() => {
+    const handleAssignedToUpdate = (event) => {
+      const names = event.detail?.names;
+      if (!Array.isArray(names)) return;
+      setSettings((prev) => ({ ...prev, assignedToOptions: names }));
+    };
+    window.addEventListener('assigned-to-options-updated', handleAssignedToUpdate);
+    return () => window.removeEventListener('assigned-to-options-updated', handleAssignedToUpdate);
+  }, []);
 
   useEffect(() => {
     loadSettings();
@@ -1281,6 +1292,9 @@ function Settings({ initialTab = 'user-profile', initialErrorId = null, onLaunch
 
   // Original detailed field editor (kept for comparison/fallback)
   const renderFieldEditor = (field, label, items) => (
+    field === 'assignedToOptions' ? (
+      <AssignedToDirectory assignedNames={settings.assignedToOptions || []} />
+    ) : (
     <div className="space-y-4">
       {/* Header with Add New button */}
       <div className="flex items-center justify-between">
@@ -1429,6 +1443,7 @@ function Settings({ initialTab = 'user-profile', initialErrorId = null, onLaunch
         ))}
       </div>
     </div>
+    )
   );
 
   if (isLoading) {

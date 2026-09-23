@@ -121,6 +121,8 @@ const googleSheetSyncService = new GoogleSheetSyncService(workloadPersistenceSer
 
 // Initialize DAS General service
 const dasGeneralService = new DASGeneralService(settingsService);
+const UserTimeCalendarService = require('./main-process/services/UserTimeCalendarService');
+const userTimeCalendarService = new UserTimeCalendarService();
 
 // Import BOM services
 const BOMParserService = require('./main-process/services/BOMParserService');
@@ -3110,6 +3112,22 @@ ipcMain.handle('das-general:save-all', async (event, data, filePath) => {
   } catch (error) {
     console.error('Error saving DAS General data:', error);
     return { success: false, error: 'SAVE_ERROR', message: error.message };
+  }
+});
+
+ipcMain.handle('time-calendar:load', async () => userTimeCalendarService.load());
+ipcMain.handle('time-calendar:upsert', async (event, entry) => {
+  try {
+    return await userTimeCalendarService.upsert(entry);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle('time-calendar:delete', async (event, entryId) => {
+  try {
+    return await userTimeCalendarService.remove(entryId);
+  } catch (error) {
+    return { success: false, error: error.message };
   }
 });
 

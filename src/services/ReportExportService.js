@@ -4,6 +4,7 @@
  */
 
 import { formatCurrency, formatPercentage, formatDurationDays } from '../utils/reportHelpers';
+import { formatScheduleResult } from './ProductivityMetricsService';
 
 class ReportExportService {
   /**
@@ -123,6 +124,13 @@ class ReportExportService {
         XLSX.utils.book_append_sheet(workbook, rfaValueSheet, 'RFA Value');
       }
 
+      if (reportData.productivity) {
+        const productivityData = this.createProductivitySheet(reportData.productivity);
+        const productivitySheet = XLSX.utils.aoa_to_sheet(productivityData);
+        this.setColumnWidths(productivitySheet, [28, 24, 40]);
+        XLSX.utils.book_append_sheet(workbook, productivitySheet, 'My Productivity');
+      }
+
       // Sheet 8: All Projects (if projects data provided)
       if (projects.length > 0) {
         const projectsData = this.createProjectsSheet(projects);
@@ -179,6 +187,10 @@ class ReportExportService {
       csvData.push(['Avg Turnaround', formatDurationDays(reportData.kpis?.avgTurnaroundTime?.value || 0), reportData.kpis?.avgTurnaroundTime?.change?.formatted || 'N/A']);
       csvData.push(['On-Time Rate', formatPercentage(reportData.kpis?.onTimeRate?.value || 0), reportData.kpis?.onTimeRate?.change?.formatted || 'N/A']);
       csvData.push([]);
+      if (reportData.productivity) {
+        this.createProductivitySheet(reportData.productivity).forEach((row) => csvData.push(row));
+        csvData.push([]);
+      }
 
       // Add projects data if available
       if (projects.length > 0) {
@@ -243,6 +255,46 @@ class ReportExportService {
   }
 
   // Helper methods
+
+  createProductivitySheet(report) {
+    const hours = (value) => Number(value || 0).toFixed(1);
+    const percent = (value) => (value == null ? '' : `${Number(value).toFixed(0)}%`);
+    const rows = [
+      ['My Productivity', report.userName || ''],
+      ['Score', percent(report.score), report.bandLabel || ''],
+      ['Weekday capacity (h)', hours(report.grossHours)],
+      ['PTO (h)', hours(report.pto)],
+      ['Available (h)', hours(report.available)],
+      ['Triage (h)', hours(report.triage)],
+      ['Design / work (h)', hours(report.design)],
+      ['QC (h)', hours(report.qc)],
+      ['Productive (h)', hours(report.productive)],
+      ['Meetings (h)', hours(report.meetings)],
+      ['Initiative (h)', hours(report.initiative)],
+      ['Agency (h)', hours(report.agency)],
+      ['Training (h)', hours(report.training)],
+      ['Unaccounted (h)', hours(report.unaccounted)],
+      ['RD hit rate', percent(report.rdHitRate)],
+      ['ECD hit rate', percent(report.ecdHitRate)],
+      [],
+      ['Schedule', 'RD', 'ECD', 'RD reason', 'ECD reason']
+    ];
+    (report.schedule || []).forEach((item) => {
+      rows.push([
+        item.projectName,
+        formatScheduleResult(item.rd),
+        formatScheduleResult(item.ecd),
+        item.rdReasonMissing ? 'Reason missing' : (item.rdMissReason || ''),
+        item.ecdReasonMissing ? 'Reason missing' : (item.ecdMissReason || '')
+      ]);
+    });
+    rows.push([]);
+    rows.push(['Hours not recorded', 'Phase']);
+    (report.missing || []).forEach((item) => {
+      rows.push([item.projectName, item.phaseLabel]);
+    });
+    return rows;
+  }
 
   createSummarySheet(reportData, reportSettings) {
     const data = [

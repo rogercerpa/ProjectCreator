@@ -1,15 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import TeamMembersTab from './dasgeneral/TeamMembersTab';
-import TrainingMaterialTab from './dasgeneral/TrainingMaterialTab';
 import ProductsInfoTab from './dasgeneral/ProductsInfoTab';
 import MonthlyAnalyticsReportTab from './dasgeneral/MonthlyAnalyticsReportTab';
+import MyTimeCalendarTab from './dasgeneral/MyTimeCalendarTab';
+import { syncAssignedToFromTeam } from '../services/TeamRosterService';
 
 const { electronAPI } = window;
 
 // Default file path
 const DEFAULT_FILE_PATH = 'Z:\\DAS References\\ProjectCreatorV5\\DASGeneral.xlsx';
 
-function DASGeneralPage() {
+function DASGeneralPage({ onOpenProject }) {
   const [activeTab, setActiveTab] = useState('team-members');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -92,6 +93,11 @@ function DASGeneralPage() {
         setLastSaved(loadResult.lastLoaded);
         setHasUnsavedChanges(false);
         setError(null);
+        if (Array.isArray(loadResult.data?.teamMembers) && loadResult.data.teamMembers.length > 0) {
+          syncAssignedToFromTeam(loadResult.data.teamMembers).catch((syncError) => {
+            console.warn('Could not sync Assigned To from team members:', syncError);
+          });
+        }
       } else {
         setError({
           type: loadResult.error || 'LOAD_ERROR',
@@ -160,6 +166,11 @@ function DASGeneralPage() {
         setData(dataToSave);
         setLastSaved(result.savedAt);
         setHasUnsavedChanges(false);
+        if (Array.isArray(dataToSave.teamMembers) && dataToSave.teamMembers.length > 0) {
+          syncAssignedToFromTeam(dataToSave.teamMembers).catch((syncError) => {
+            console.warn('Could not sync Assigned To from team members:', syncError);
+          });
+        }
         return { success: true };
       } else {
         // Show error but don't update data (revert changes)
@@ -258,10 +269,10 @@ function DASGeneralPage() {
       description: 'Team directory'
     },
     {
-      id: 'training-material',
-      label: 'Training Material',
-      icon: '📚',
-      description: 'Product training'
+      id: 'my-time',
+      label: 'My Time',
+      icon: '🗓️',
+      description: 'Personal time and project hours'
     },
     {
       id: 'products-info',
@@ -289,18 +300,8 @@ function DASGeneralPage() {
             isLoading={isLoading}
           />
         );
-      case 'training-material':
-        return (
-          <TrainingMaterialTab
-            trainingMaterial={data.trainingMaterial}
-            products={data.products}
-            onDataChange={(newData) => handleDataChange('trainingMaterial', newData)}
-            onSave={handleSaveAll}
-            onAddProduct={handleAddProduct}
-            onRemoveProduct={handleRemoveProduct}
-            isLoading={isLoading}
-          />
-        );
+      case 'my-time':
+        return <MyTimeCalendarTab onOpenProject={onOpenProject} />;
       case 'products-info':
         return (
           <ProductsInfoTab

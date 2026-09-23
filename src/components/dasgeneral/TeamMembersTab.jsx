@@ -1,4 +1,17 @@
 import React, { useState } from 'react';
+import { ROLE_CATEGORIES, canonicalRole, roleLabel } from '../../services/TeamRosterService';
+
+function RoleSelect({ value, onChange, className }) {
+  const known = canonicalRole(value);
+  return (
+    <select value={known} onChange={(event) => onChange(event.target.value)} className={className}>
+      <option value="">{value && !known ? `Uncategorized (${value})` : 'Select category'}</option>
+      {ROLE_CATEGORIES.map((category) => (
+        <option key={category} value={category}>{category}</option>
+      ))}
+    </select>
+  );
+}
 
 function TeamMembersTab({ teamMembers = [], onDataChange, onSave, isLoading }) {
   const [editingId, setEditingId] = useState(null);
@@ -68,6 +81,10 @@ function TeamMembersTab({ teamMembers = [], onDataChange, onSave, isLoading }) {
   const handleAdd = async () => {
     if (!newMember.name?.trim()) {
       alert('Name is required');
+      return;
+    }
+    if (!canonicalRole(newMember.role)) {
+      alert('Select a category: AE, SAE, Lead, Manager, or L&T AE.');
       return;
     }
 
@@ -194,13 +211,11 @@ function TeamMembersTab({ teamMembers = [], onDataChange, onSave, isLoading }) {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Role
+                Category <span className="text-danger-500">*</span>
               </label>
-              <input
-                type="text"
+              <RoleSelect
                 value={newMember.role}
-                onChange={(e) => setNewMember(prev => ({ ...prev, role: e.target.value }))}
-                placeholder="Job title or role"
+                onChange={(role) => setNewMember((prev) => ({ ...prev, role }))}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
               />
             </div>
@@ -262,7 +277,7 @@ function TeamMembersTab({ teamMembers = [], onDataChange, onSave, isLoading }) {
                     Email
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                    Role
+                    Category
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
                     Phone
@@ -295,10 +310,9 @@ function TeamMembersTab({ teamMembers = [], onDataChange, onSave, isLoading }) {
                           />
                         </td>
                         <td className="px-6 py-4">
-                          <input
-                            type="text"
+                          <RoleSelect
                             value={editForm.role || ''}
-                            onChange={(e) => setEditForm(prev => ({ ...prev, role: e.target.value }))}
+                            onChange={(role) => setEditForm((prev) => ({ ...prev, role }))}
                             className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
                           />
                         </td>
@@ -352,7 +366,7 @@ function TeamMembersTab({ teamMembers = [], onDataChange, onSave, isLoading }) {
                           ) : '-'}
                         </td>
                         <td className="px-6 py-4 text-gray-600 dark:text-gray-400">
-                          {member.role || '-'}
+                          {roleLabel(member.role)}
                         </td>
                         <td className="px-6 py-4 text-gray-600 dark:text-gray-400">
                           {member.phoneNumber || '-'}

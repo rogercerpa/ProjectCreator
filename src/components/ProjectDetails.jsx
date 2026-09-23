@@ -5,6 +5,7 @@ import NotificationToast from './NotificationToast';
 import ZipSelectionDialog from './ZipSelectionDialog';
 import EmailTemplateEditor from './shared/EmailTemplateEditor';
 import CollapsibleSection from './shared/CollapsibleSection';
+import { ActualHoursFields, ScheduleOutcomeFields } from './shared/ProjectProductivityFields';
 import BOMDetailsSection from './bom/BOMDetailsSection';
 import { openPaidServicesEmail } from '../utils/emailTemplates';
 import { useUploadContext, UPLOAD_TYPES } from '../contexts/UploadContext';
@@ -961,6 +962,7 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
             <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{formatDateOnly(project.engineerExpectedCompleteDate)}</span>
           </div>
         </div>
+        <ActualHoursFields formData={project} readOnly />
       </CollapsibleSection>
 
       {/* DAS Paid Services */}
@@ -1144,6 +1146,7 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
             <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{formatDate(project.updatedAt)}</span>
           </div>
         </div>
+        <ScheduleOutcomeFields formData={project} readOnly />
       </CollapsibleSection>
 
       {/* Triage Calculation Section */}
