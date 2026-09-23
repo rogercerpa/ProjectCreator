@@ -2548,6 +2548,10 @@ ipcMain.handle("das-general:save-all", async (event, data, filePath) => {
     return { success: false, error: "SAVE_ERROR", message: error.message };
   }
 });
+ipcMain.handle("machine:get-identity", async () => ({
+  hostname: os.hostname(),
+  windowsUser: os.userInfo().username
+}));
 ipcMain.handle("time-calendar:load", async () => userTimeCalendarService.load());
 ipcMain.handle("time-calendar:upsert", async (event, entry) => {
   try {

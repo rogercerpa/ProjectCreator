@@ -173,8 +173,7 @@ function TeamMembersTab({ teamMembers = [], machineUsers = [], hostname = '', on
           </p>
         </div>
         
-        <div className="flex items-center gap-3">
-          {/* Save status indicator */}
+        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
           {saveStatus && (
             <span className={`text-sm font-medium ${
               saveStatus === 'saving' ? 'text-gray-500' :
@@ -187,20 +186,18 @@ function TeamMembersTab({ teamMembers = [], machineUsers = [], hostname = '', on
             </span>
           )}
           
-          {/* Search */}
           <input
             type="text"
             placeholder="Search members..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            className="w-full sm:w-48 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
           />
 
-          {/* Add button */}
           <button
             onClick={() => setIsAdding(true)}
             disabled={isAdding || isLoading}
-            className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+            className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2 whitespace-nowrap"
           >
             <span>➕</span>
             Add Member
@@ -296,155 +293,127 @@ function TeamMembersTab({ teamMembers = [], machineUsers = [], hostname = '', on
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-700/50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                    Name
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                    Email
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                    Category
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                    Phone
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {filteredMembers.map((member) => (
-                  <tr key={member.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                    {editingId === member.id ? (
-                      // Edit mode
-                      <>
-                        <td className="px-6 py-4">
-                          <input
-                            type="text"
-                            value={editForm.name || ''}
-                            onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
-                            className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
-                          />
-                        </td>
-                        <td className="px-6 py-4">
-                          <input
-                            type="email"
-                            value={editForm.email || ''}
-                            onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
-                            className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
-                          />
-                        </td>
-                        <td className="px-6 py-4">
-                          <RoleSelect
-                            value={editForm.role || ''}
-                            onChange={(role) => setEditForm((prev) => ({ ...prev, role }))}
-                            className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
-                          />
-                        </td>
-                        <td className="px-6 py-4">
-                          <input
-                            type="tel"
-                            value={editForm.phoneNumber || ''}
-                            onChange={(e) => setEditForm(prev => ({ ...prev, phoneNumber: e.target.value }))}
-                            className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
-                          />
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex justify-end gap-2">
-                            <button
-                              onClick={handleSaveEdit}
-                              disabled={isLoading}
-                              className="px-3 py-1 bg-success-600 hover:bg-success-700 text-white text-sm rounded transition-colors disabled:opacity-50"
-                            >
-                              Save
-                            </button>
-                            <button
-                              onClick={handleCancelEdit}
-                              className="px-3 py-1 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 text-sm rounded transition-colors"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </td>
-                      </>
-                    ) : (
-                      // View mode
-                      <>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center text-primary-700 dark:text-primary-300 font-semibold text-sm">
-                              {member.name?.charAt(0)?.toUpperCase() || '?'}
-                            </div>
-                            <span className="font-medium text-gray-900 dark:text-white">
-                              {member.name || '-'}
+          <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+            {filteredMembers.map((member) => (
+              <li key={member.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                {editingId === member.id ? (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <input
+                        type="text"
+                        value={editForm.name || ''}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                        aria-label="Name"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                      />
+                      <input
+                        type="email"
+                        value={editForm.email || ''}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
+                        aria-label="Email"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                      />
+                      <RoleSelect
+                        value={editForm.role || ''}
+                        onChange={(role) => setEditForm((prev) => ({ ...prev, role }))}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                      />
+                      <input
+                        type="tel"
+                        value={editForm.phoneNumber || ''}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, phoneNumber: e.target.value }))}
+                        aria-label="Phone"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                      />
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <button
+                        onClick={handleCancelEdit}
+                        className="px-3 py-1.5 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 text-sm rounded-lg transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleSaveEdit}
+                        disabled={isLoading}
+                        className="px-3 py-1.5 bg-success-600 hover:bg-success-700 text-white text-sm rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className="w-9 h-9 shrink-0 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center text-primary-700 dark:text-primary-300 font-semibold text-sm">
+                        {member.name?.charAt(0)?.toUpperCase() || '?'}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <span className="font-semibold text-gray-900 dark:text-white whitespace-nowrap">
+                            {member.name || '-'}
+                          </span>
+                          <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200 whitespace-nowrap">
+                            {roleLabel(member.role)}
+                          </span>
+                          {isThisPc(member) && (
+                            <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-200 whitespace-nowrap">
+                              You on this PC
                             </span>
-                            {isThisPc(member) && (
-                              <span className="text-xs font-semibold text-primary-700 dark:text-primary-300">You on this PC</span>
-                            )}
-                          </div>
-                          {otherMachinesForMember(machineUsers, member.name, hostname).map((row) => (
-                            <div key={row.machineName} className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              Also on {row.machineName}{row.lastSeen ? `, last seen ${new Date(row.lastSeen).toLocaleDateString()}` : ''}
-                            </div>
-                          ))}
-                        </td>
-                        <td className="px-6 py-4 text-gray-600 dark:text-gray-400">
+                          )}
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500 dark:text-gray-400">
                           {member.email ? (
-                            <a 
+                            <a
                               href={`mailto:${member.email}`}
-                              className="hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+                              className="truncate max-w-full hover:text-primary-600 dark:hover:text-primary-400"
                             >
                               {member.email}
                             </a>
-                          ) : '-'}
-                        </td>
-                        <td className="px-6 py-4 text-gray-600 dark:text-gray-400">
-                          {roleLabel(member.role)}
-                        </td>
-                        <td className="px-6 py-4 text-gray-600 dark:text-gray-400">
-                          {member.phoneNumber || '-'}
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex justify-end gap-2">
-                            {!isThisPc(member) && (
-                              <button
-                                onClick={() => handleClaim(member)}
-                                disabled={isLoading}
-                                className="px-3 py-1 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded transition-colors disabled:opacity-50"
-                              >
-                                This is me
-                              </button>
-                            )}
-                            <button
-                              onClick={() => handleEdit(member)}
-                              disabled={isLoading}
-                              className="px-3 py-1 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded transition-colors"
-                              title="Edit"
-                            >
-                              ✏️
-                            </button>
-                            <button
-                              onClick={() => handleDelete(member.id)}
-                              disabled={isLoading}
-                              className="px-3 py-1 text-danger-600 dark:text-danger-400 hover:bg-danger-50 dark:hover:bg-danger-900/30 rounded transition-colors"
-                              title="Delete"
-                            >
-                              🗑️
-                            </button>
+                          ) : (
+                            <span>No email</span>
+                          )}
+                          <span className="whitespace-nowrap">{member.phoneNumber || 'No phone'}</span>
+                        </div>
+                        {otherMachinesForMember(machineUsers, member.name, hostname).map((row) => (
+                          <div key={row.machineName} className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Also on {row.machineName}{row.lastSeen ? `, last seen ${new Date(row.lastSeen).toLocaleDateString()}` : ''}
                           </div>
-                        </td>
-                      </>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 sm:pl-3">
+                      {!isThisPc(member) && (
+                        <button
+                          onClick={() => handleClaim(member)}
+                          disabled={isLoading}
+                          className="px-3 py-1.5 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors disabled:opacity-50 whitespace-nowrap"
+                        >
+                          This is me
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleEdit(member)}
+                        disabled={isLoading}
+                        className="w-8 h-8 inline-flex items-center justify-center text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors"
+                        title="Edit"
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        onClick={() => handleDelete(member.id)}
+                        disabled={isLoading}
+                        className="w-8 h-8 inline-flex items-center justify-center text-danger-600 dark:text-danger-400 hover:bg-danger-50 dark:hover:bg-danger-900/30 rounded-lg transition-colors"
+                        title="Delete"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
         )}
       </div>
     </div>
