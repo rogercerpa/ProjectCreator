@@ -24,6 +24,7 @@ export default function ProductivityEntryModal({ project, onClose, onSaved }) {
   const [assignees, setAssignees] = useState(() => dropdownOptionsService.getOptionsForField('assignedToOptions'));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [rfaNotice, setRfaNotice] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -34,6 +35,26 @@ export default function ProductivityEntryModal({ project, onClose, onSaved }) {
       cancelled = true;
     };
   }, []);
+
+  const handleOpenRfa = async () => {
+    const rfaNumber = String(form.rfaNumber || '').trim();
+    if (!rfaNumber) {
+      setRfaNotice('No RFA number available for this project.');
+      return;
+    }
+    try {
+      const baseRfaNumber = rfaNumber.split('-')[0];
+      const rfaUrl = `http://rfa.acuitybrandslighting.net/#/requestnav/${baseRfaNumber}`;
+      const result = await electronAPI.openInEdge(rfaUrl);
+      if (result?.success) {
+        setRfaNotice('Opening RFA in Microsoft Edge.');
+      } else {
+        setRfaNotice(result?.error || 'Could not open the RFA.');
+      }
+    } catch (err) {
+      setRfaNotice(err.message || 'Could not open the RFA.');
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -66,10 +87,22 @@ export default function ProductivityEntryModal({ project, onClose, onSaved }) {
         </div>
         <div className="space-y-4 overflow-y-auto px-5 py-4">
           <div className="space-y-3">
-            <div className="text-sm font-semibold text-gray-800 dark:text-gray-100">Who did the work</div>
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-sm font-semibold text-gray-800 dark:text-gray-100">Who did the work</div>
+              <button
+                type="button"
+                className="btn-outline-primary btn-sm shrink-0"
+                onClick={handleOpenRfa}
+                disabled={!form.rfaNumber}
+                title={form.rfaNumber ? `Open RFA ${form.rfaNumber} in Microsoft Edge` : 'No RFA number available'}
+              >
+                Open RFA
+              </button>
+            </div>
             <p className="text-xs text-gray-500 dark:text-gray-400">
               Worked by is Design By on the project page. Hours count for the person named on that task.
             </p>
+            {rfaNotice && <p className="text-xs text-gray-600 dark:text-gray-300">{rfaNotice}</p>}
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
               {PEOPLE.map((person) => (
                 <div key={person.key} className="space-y-1">
