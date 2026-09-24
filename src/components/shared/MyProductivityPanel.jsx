@@ -39,18 +39,14 @@ export default function MyProductivityPanel({ report, compact = false, onOpenPro
   };
 
   const rows = [
-    ['Weekday capacity', hours(report.grossHours)],
-    ['PTO', hours(report.pto)],
-    ['Available', hours(report.available)],
-    ['Triage', hours(report.triage)],
-    ['Design / work', hours(report.design)],
-    ['QC', hours(report.qc)],
-    ['Productive', hours(report.productive)],
-    ['Meetings', hours(report.meetings)],
-    ['Initiative', hours(report.initiative)],
-    ['Agency', hours(report.agency)],
-    ['Training', hours(report.training)],
-    ['Unaccounted', hours(report.unaccounted)]
+    ['Weekday capacity', hours(report.grossHours), ''],
+    ['PTO', hours(report.pto), ''],
+    ['Available', hours(report.available), '100% of this period'],
+    ['Project hours', `${hours(report.productive)} · ${percent(report.projectShare)}`, `Triage ${hours(report.triage)} · Design ${hours(report.design)} · QC ${hours(report.qc)}`],
+    ['Meetings', `${hours(report.meetingsWorked)} · ${percent(report.meetingsShare)}`, report.agency > 0 ? `Includes ${hours(report.agency)} agency calls` : ''],
+    ['Initiative', `${hours(report.initiative)} · ${percent(report.initiativeShare)}`, ''],
+    ['Training', `${hours(report.training)} · ${percent(report.trainingShare)}`, ''],
+    ['Not recorded', `${hours(report.unaccounted)} · ${percent(report.unaccountedShare)}`, '']
   ];
 
   return (
@@ -71,17 +67,18 @@ export default function MyProductivityPanel({ report, compact = false, onOpenPro
       </div>
 
       <div className={`grid gap-2 ${compact ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4'}`}>
-        {rows.map(([label, value]) => (
+        {rows.map(([label, value, detail]) => (
           <div key={label} className="px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-900">
             <div className="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">{label}</div>
             <div className="text-sm font-semibold text-gray-900 dark:text-white">{value}</div>
+            {detail ? <div className="text-[11px] text-gray-500 dark:text-gray-400">{detail}</div> : null}
           </div>
         ))}
       </div>
 
       {report.band === 'needs-validation' && (
         <p className="text-sm text-warning-800 dark:text-warning-200">
-          Productive project time is under 80% of available hours. Meetings, initiative, agency calls, training, and unaccounted time show where the rest of the week went.
+          Logged work is under 80% of available hours. Project hours, meetings, initiative, and training are the slices of that total. The rest of the period is not recorded yet.
         </p>
       )}
 
@@ -140,6 +137,26 @@ export default function MyProductivityPanel({ report, compact = false, onOpenPro
               </ul>
             )}
           </div>
+        </div>
+      )}
+
+      {!compact && report.samples?.length > 0 && (
+        <div>
+          <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Sample projects, not counted</h4>
+          <ul className="max-h-40 space-y-1 overflow-y-auto pr-1">
+            {report.samples.map((item) => (
+              <li key={item.projectId || item.projectName}>
+                <button
+                  type="button"
+                  onClick={() => openProject(item.projectId)}
+                  className="w-full rounded-lg px-2 py-1.5 text-left text-sm text-gray-800 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700/40"
+                >
+                  <span className="font-medium">{item.projectName}</span>
+                  <span className="block text-xs text-gray-500 dark:text-gray-400">Left out of productivity and this report</span>
+                </button>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </div>

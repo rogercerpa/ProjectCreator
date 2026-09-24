@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import dropdownOptionsService from '../../services/DropdownOptionsService';
-import { ActualHoursFields, ScheduleOutcomeFields } from './ProjectProductivityFields';
+import { ActualHoursFields, SampleProjectField, ScheduleOutcomeFields } from './ProjectProductivityFields';
 
 const { electronAPI } = window;
 
@@ -124,6 +124,10 @@ export default function ProductivityEntryModal({ project, onClose, onSaved }) {
               ))}
             </div>
           </div>
+          <SampleProjectField
+            formData={form}
+            onPatch={(partial) => setForm((prev) => ({ ...prev, ...partial }))}
+          />
           <ActualHoursFields
             formData={form}
             onPatch={(partial) => setForm((prev) => ({ ...prev, ...partial }))}

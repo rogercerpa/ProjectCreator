@@ -3,7 +3,7 @@ import dropdownOptionsService from '../services/DropdownOptionsService';
 import triageCalculationService from '../services/TriageCalculationService';
 import EditableProductTags from './EditableProductTags';
 import DASPaidServicesSection from './shared/DASPaidServicesSection';
-import { ActualHoursFields, ScheduleOutcomeFields } from './shared/ProjectProductivityFields';
+import { ActualHoursFields, SampleProjectField, ScheduleOutcomeFields } from './shared/ProjectProductivityFields';
 import { openPaidServicesEmail } from '../utils/emailTemplates';
 import {
   PROJECT_FILE_TYPE_OTHER,
@@ -795,6 +795,14 @@ const ProjectEditor = ({
               />
             </div>
           </div>
+          <SampleProjectField
+            formData={formData}
+            onPatch={(partial) => {
+              const next = { ...formData, ...partial };
+              setFormData(next);
+              onProjectDataChange(next);
+            }}
+          />
           <ActualHoursFields
             formData={formData}
             onPatch={(partial) => {

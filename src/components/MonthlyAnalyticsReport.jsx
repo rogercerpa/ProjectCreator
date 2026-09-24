@@ -4,7 +4,7 @@ import {
   ResponsiveContainer, Legend, AreaChart, Area, LabelList
 } from 'recharts';
 import reportDataService from '../services/ReportDataService';
-import { buildProductivityReport } from '../services/ProductivityMetricsService';
+import { buildProductivityReport, isSampleProject } from '../services/ProductivityMetricsService';
 import MyProductivityPanel from './shared/MyProductivityPanel';
 import ProductivityEntryModal from './shared/ProductivityEntryModal';
 import reportExportService from '../services/ReportExportService';
@@ -232,6 +232,10 @@ const getDefaultDateRange = () => {
 
 // Main Component
 function MonthlyAnalyticsReport({ projects = [], onProjectUpdated }) {
+  const countableProjects = useMemo(
+    () => (projects || []).filter((project) => !isSampleProject(project)),
+    [projects]
+  );
   const reportRef = useRef(null);
   const exportDropdownRef = useRef(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -267,9 +271,9 @@ function MonthlyAnalyticsReport({ projects = [], onProjectUpdated }) {
 
   // Get filter options from data
   const filterOptions = useMemo(() => {
-    reportDataService.setProjects(projects);
+    reportDataService.setProjects(countableProjects);
     return reportDataService.getFilterOptions();
-  }, [projects]);
+  }, [countableProjects]);
 
   // Count active filters for badge
   const activeFilterCount = useMemo(() => {
@@ -335,7 +339,7 @@ function MonthlyAnalyticsReport({ projects = [], onProjectUpdated }) {
   const generateReport = useCallback(() => {
     setIsLoading(true);
     try {
-      reportDataService.setProjects(projects);
+      reportDataService.setProjects(countableProjects);
       const data = reportDataService.generateReportWithFilters(
         reportSettings.startDate,
         reportSettings.endDate,
@@ -348,7 +352,7 @@ function MonthlyAnalyticsReport({ projects = [], onProjectUpdated }) {
     } finally {
       setIsLoading(false);
     }
-  }, [projects, reportSettings]);
+  }, [countableProjects, reportSettings]);
 
   useEffect(() => {
     generateReport();

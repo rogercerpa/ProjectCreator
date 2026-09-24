@@ -142,7 +142,8 @@ const createDefaultFormData = () => ({
   actualQcHours: '',
   qcHoursDate: '',
   rdMissReason: '',
-  ecdMissReason: ''
+  ecdMissReason: '',
+  sampleProject: false
 });
 
 function App() {

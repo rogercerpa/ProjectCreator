@@ -8,7 +8,7 @@ import EditableProductTags from '../../EditableProductTags';
 import { parseAgileDate, getUserTimezone, formatDateTimeLocal } from '../../../utils/dateUtils';
 import { openPaidServicesEmail } from '../../../utils/emailTemplates';
 import DASPaidServicesSection from '../../shared/DASPaidServicesSection';
-import { ActualHoursFields, ScheduleOutcomeFields } from '../../shared/ProjectProductivityFields';
+import { ActualHoursFields, SampleProjectField, ScheduleOutcomeFields } from '../../shared/ProjectProductivityFields';
 import {
   PROJECT_FILE_TYPE_OTHER,
   sanitizeProjectFileTypes
@@ -2738,6 +2738,10 @@ const ProjectWizardStep1 = ({
               {isFieldImported('qcBy') && <span className="import-indicator">📋 Imported</span>}
             </div>
           </div>
+          <SampleProjectField
+            formData={formData}
+            onPatch={(partial) => onFormDataChange({ ...formData, ...partial })}
+          />
           <ActualHoursFields
             formData={formData}
             onPatch={(partial) => onFormDataChange({ ...formData, ...partial })}

@@ -65,6 +65,34 @@ function formatShortDate(value) {
 
 const inputClass = 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm';
 
+export function SampleProjectField({ formData = {}, onPatch, readOnly = false }) {
+  const checked = Boolean(formData.sampleProject);
+  if (readOnly) {
+    if (!checked) return null;
+    return (
+      <p className="mt-4 text-sm text-gray-600 dark:text-gray-300">
+        Sample project. Left out of productivity and the analytics report.
+      </p>
+    );
+  }
+  return (
+    <label className="mt-4 flex items-start gap-2 text-sm text-gray-800 dark:text-gray-200">
+      <input
+        type="checkbox"
+        className="mt-1"
+        checked={checked}
+        onChange={(event) => onPatch?.({ sampleProject: event.target.checked })}
+      />
+      <span>
+        <span className="font-medium">Sample project</span>
+        <span className="block text-xs text-gray-500 dark:text-gray-400">
+          Testing and sample work stays out of productivity and the analytics report.
+        </span>
+      </span>
+    </label>
+  );
+}
+
 export function ActualHoursFields({ formData = {}, onPatch, readOnly = false }) {
   const estimated = Number(formData.totalTriage || 0);
   const actualTriage = isHoursRecorded(formData.actualTriageHours) ? Number(formData.actualTriageHours) : null;

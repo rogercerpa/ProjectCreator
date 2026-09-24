@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import dropdownOptionsService from '../services/DropdownOptionsService';
 import triageCalculationService from '../services/TriageCalculationService';
 import EditableProductTags from './EditableProductTags';
-import { ActualHoursFields, ScheduleOutcomeFields } from './shared/ProjectProductivityFields';
+import { ActualHoursFields, SampleProjectField, ScheduleOutcomeFields } from './shared/ProjectProductivityFields';
 
 function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProjectCreated, onProjectUpdated }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -893,6 +893,10 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
               </select>
             </div>
           </div>
+          <SampleProjectField
+            formData={formData}
+            onPatch={(partial) => onFormDataChange({ ...formData, ...partial })}
+          />
           <ActualHoursFields
             formData={formData}
             onPatch={(partial) => onFormDataChange({ ...formData, ...partial })}

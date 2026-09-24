@@ -1,7 +1,8 @@
 /**
  * Personal productivity and schedule math.
- * Productive hours are actual triage, design, and QC only.
- * Available hours are weekday capacity minus PTO.
+ * The score is all logged work divided by weekday capacity minus PTO.
+ * Logged work is project hours plus meetings (including agency calls), initiative, and training.
+ * Sample projects stay out of the score and the schedule.
  */
 
 export const TIME_CATEGORIES = [
@@ -24,6 +25,10 @@ const PHASES = [
   { id: 'design', roleField: 'designBy', hoursField: 'actualDesignHours', label: 'Design' },
   { id: 'qc', roleField: 'qcBy', hoursField: 'actualQcHours', label: 'QC' }
 ];
+
+export function isSampleProject(project) {
+  return Boolean(project?.sampleProject);
+}
 
 export function namesMatch(left, right) {
   return String(left || '').trim().toLowerCase() === String(right || '').trim().toLowerCase();
@@ -121,9 +126,24 @@ function projectLabel(project) {
   return project?.projectName || project?.rfaNumber || 'Project';
 }
 
+function projectTouchesRange(project, startDate, endDate) {
+  const dates = [
+    project?.createdAt,
+    project?.submittedDate,
+    project?.completedAt,
+    project?.requestedDate,
+    project?.ecd,
+    resolvePhaseCreditDate(project, 'triage'),
+    resolvePhaseCreditDate(project, 'design'),
+    resolvePhaseCreditDate(project, 'qc')
+  ];
+  return dates.some((value) => dateInRange(value, startDate, endDate));
+}
+
 export function collectPhaseChips(projects, userName) {
   const chips = [];
   (projects || []).forEach((project) => {
+    if (isSampleProject(project)) return;
     PHASES.forEach((phase) => {
       if (!namesMatch(project?.[phase.roleField], userName)) return;
       if (!isHoursRecorded(project?.[phase.hoursField])) return;
@@ -172,8 +192,19 @@ export function buildProductivityReport({
   let qc = 0;
   const missing = [];
   const schedule = [];
+  const samples = [];
 
   (projects || []).forEach((project) => {
+    if (isSampleProject(project)) {
+      if (projectTouchesRange(project, startDate, endDate)) {
+        samples.push({
+          projectId: project.id,
+          projectName: projectLabel(project),
+          rfaNumber: project.rfaNumber || ''
+        });
+      }
+      return;
+    }
     PHASES.forEach((phase) => {
       if (!userName || !namesMatch(project?.[phase.roleField], userName)) return;
       const creditDate = resolvePhaseCreditDate(project, phase.id);
@@ -215,9 +246,11 @@ export function buildProductivityReport({
   });
 
   const productive = triage + design + qc;
-  const explanatory = categoryHours.meeting + categoryHours.initiative + categoryHours.agency + categoryHours.training;
-  const unaccounted = Math.max(0, available - productive - explanatory);
-  const score = available > 0 ? (productive / available) * 100 : null;
+  const meetingsWorked = categoryHours.meeting + categoryHours.agency;
+  const accounted = productive + meetingsWorked + categoryHours.initiative + categoryHours.training;
+  const unaccounted = Math.max(0, available - accounted);
+  const share = (part) => (available > 0 ? (part / available) * 100 : null);
+  const score = share(accounted);
   const band = available > 0 ? productivityBand(score) : 'unavailable';
 
   const rdScored = schedule.filter((item) => item.rd.status !== 'not-recorded');
@@ -237,16 +270,23 @@ export function buildProductivityReport({
     qc,
     productive,
     meetings: categoryHours.meeting,
+    meetingsWorked,
     initiative: categoryHours.initiative,
     agency: categoryHours.agency,
     training: categoryHours.training,
-    explanatory,
+    accounted,
     unaccounted,
+    projectShare: share(productive),
+    meetingsShare: share(meetingsWorked),
+    initiativeShare: share(categoryHours.initiative),
+    trainingShare: share(categoryHours.training),
+    unaccountedShare: share(unaccounted),
     score,
     band,
     bandLabel: BAND_LABELS[band],
     missing,
     schedule,
+    samples,
     rdHitRate,
     ecdHitRate
   };

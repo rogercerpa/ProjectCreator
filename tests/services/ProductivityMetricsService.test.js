@@ -128,11 +128,55 @@ describe('productivity score', () => {
       ]
     });
     expect(report.available).toBe(32);
-    expect(report.meetings).toBe(8);
+    expect(report.meetingsWorked).toBe(8);
+    expect(report.score).toBeCloseTo(75);
     expect(report.unaccounted).toBe(8);
     expect(report.rdHitRate).toBe(100);
     expect(report.ecdHitRate).toBe(0);
     expect(report.schedule[0].ecdReasonMissing).toBe(true);
+  });
+
+  test('counts agency calls with meetings and adds every logged slice toward 100%', () => {
+    const report = reportFor(16, {
+      entries: [
+        { date: '2026-09-08', category: 'meeting', hours: 4 },
+        { date: '2026-09-08', category: 'agency', hours: 4 },
+        { date: '2026-09-09', category: 'initiative', hours: 4 },
+        { date: '2026-09-10', category: 'training', hours: 4 }
+      ]
+    });
+    expect(report.meetingsWorked).toBe(8);
+    expect(report.accounted).toBe(32);
+    expect(report.projectShare).toBeCloseTo(40);
+    expect(report.meetingsShare).toBeCloseTo(20);
+    expect(report.score).toBeCloseTo(80);
+    expect(report.unaccounted).toBe(8);
+    expect(report.band).toBe('meets');
+  });
+
+  test('leaves sample projects out of hours, missing work, and the schedule', () => {
+    const report = buildProductivityReport({
+      userName: 'Cerpa, Roger',
+      startDate,
+      endDate,
+      weeklyCapacity: 40,
+      projects: [{
+        id: 'sample',
+        projectName: 'Test layout',
+        sampleProject: true,
+        designBy: 'Cerpa, Roger',
+        actualDesignHours: 20,
+        designHoursDate: '2026-09-08',
+        completedAt: '2026-09-10'
+      }],
+      entries: []
+    });
+    expect(report.productive).toBe(0);
+    expect(report.missing).toEqual([]);
+    expect(report.schedule).toEqual([]);
+    expect(report.samples).toEqual([
+      expect.objectContaining({ projectName: 'Test layout' })
+    ]);
   });
 });
 
