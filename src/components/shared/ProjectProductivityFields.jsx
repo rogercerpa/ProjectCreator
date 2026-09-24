@@ -132,7 +132,18 @@ export function ActualHoursFields({ formData = {}, onPatch, readOnly = false }) 
   );
 }
 
-function OutcomeCard({ title, result, reason, readOnly, onReasonChange }) {
+function formatTargetDate(value) {
+  const day = toDateInput(value);
+  if (!day) return 'Not recorded';
+  const [year, month, date] = day.split('-').map(Number);
+  return new Date(year, month - 1, date).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
+}
+
+function OutcomeCard({ title, targetDate, result, reason, readOnly, onReasonChange }) {
   const missed = result.status === 'not-met';
   return (
     <div className={`p-3 rounded-lg border space-y-2 ${
@@ -140,7 +151,10 @@ function OutcomeCard({ title, result, reason, readOnly, onReasonChange }) {
         ? 'border-warning-300 bg-warning-50 dark:border-warning-700 dark:bg-warning-900/20'
         : 'border-gray-200 bg-gray-50 dark:border-gray-600 dark:bg-gray-900'
     }`}>
-      <div className="text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">{title}</div>
+      <div className="flex items-baseline justify-between gap-3">
+        <div className="text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">{title}</div>
+        <div className="text-sm font-semibold text-gray-900 dark:text-white">{formatTargetDate(targetDate)}</div>
+      </div>
       <div className="text-sm font-medium text-gray-900 dark:text-white">{formatScheduleResult(result)}</div>
       <label className="text-xs text-gray-500 dark:text-gray-400">
         {missed ? 'Why it was missed' : 'Notes if this date is missed'}
@@ -190,6 +204,7 @@ export function ScheduleOutcomeFields({ formData = {}, onPatch, readOnly = false
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <OutcomeCard
           title="Requested Date (RD)"
+          targetDate={formData.requestedDate}
           result={rd}
           reason={formData.rdMissReason}
           readOnly={readOnly}
@@ -197,6 +212,7 @@ export function ScheduleOutcomeFields({ formData = {}, onPatch, readOnly = false
         />
         <OutcomeCard
           title="Expected Completion (ECD)"
+          targetDate={formData.ecd}
           result={ecd}
           reason={formData.ecdMissReason}
           readOnly={readOnly}
