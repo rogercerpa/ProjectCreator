@@ -4,13 +4,15 @@ import CoursePlayer from './CoursePlayer';
 import ProgressDashboard from './ProgressDashboard';
 import CourseEditor from './author/CourseEditor';
 import ReferenceLinksTab from './ReferenceLinksTab';
+import ProductsInfoHost from './ProductsInfoHost';
 
 const { electronAPI } = window;
 
 const TABS = [
   { id: 'catalog', label: 'Course Catalog', icon: '📚' },
   { id: 'progress', label: 'My Progress', icon: '📈' },
-  { id: 'references', label: 'Reference links', icon: '🔗' }
+  { id: 'references', label: 'Reference links', icon: '🔗' },
+  { id: 'products', label: 'Products Info', icon: '💡' }
 ];
 
 const TrainingHubPage = () => {
@@ -103,7 +105,7 @@ const TrainingHubPage = () => {
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Training Hub</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Learning Hub</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             Short interactive courses and quizzes to sharpen your design &amp; application skills
           </p>
@@ -150,6 +152,8 @@ const TrainingHubPage = () => {
           </div>
         ) : activeTab === 'references' ? (
           <ReferenceLinksTab />
+        ) : activeTab === 'products' ? (
+          <ProductsInfoHost />
         ) : activeTab === 'catalog' ? (
           <CourseCatalog
             catalog={catalog}

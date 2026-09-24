@@ -164,7 +164,7 @@ class FeatureFlagService {
         enabled: true,
         rolloutPercentage: 100,
         userGroups: ['all'],
-        description: 'Enable the Training Hub (courses & quizzes)',
+        description: 'Enable the Learning Hub (courses, products, and reference links)',
         category: 'features',
         defaultValue: true
       }

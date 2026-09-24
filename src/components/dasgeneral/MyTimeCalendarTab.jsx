@@ -198,9 +198,18 @@ export default function MyTimeCalendarTab({ onOpenProject }) {
                   </div>
                 ))}
                 {dayEntries.map((entry) => (
-                  <div key={entry.id} className="px-1 py-0.5 rounded text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 truncate">
+                  <button
+                    key={entry.id}
+                    type="button"
+                    className="block w-full truncate rounded px-1 py-0.5 text-left text-[10px] bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                    title="Edit or delete"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setForm({ ...entry, date: dateKey(entry.date), hours: String(entry.hours) });
+                    }}
+                  >
                     {TIME_CATEGORIES.find((item) => item.id === entry.category)?.label || entry.category} {entry.hours}h
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>

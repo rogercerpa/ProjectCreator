@@ -61,7 +61,7 @@ function Sidebar({ currentView, onViewChange, projectCount, isCollapsed = false,
       id: 'das-general',
       label: 'DAS General',
       icon: '📖',
-      description: 'Team & product info'
+      description: 'Team directory and time'
     },
     { id: 'divider-tools', divider: true, label: 'Tools' },
     {
@@ -72,9 +72,9 @@ function Sidebar({ currentView, onViewChange, projectCount, isCollapsed = false,
     },
     {
       id: 'training-hub',
-      label: 'Training Hub',
+      label: 'Learning Hub',
       icon: '🎓',
-      description: 'Courses & quizzes',
+      description: 'Courses, products, and reference links',
       featureFlag: 'training-hub'
     },
     {

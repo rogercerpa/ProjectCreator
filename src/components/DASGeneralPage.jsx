@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import TeamMembersTab from './dasgeneral/TeamMembersTab';
-import ProductsInfoTab from './dasgeneral/ProductsInfoTab';
 import MonthlyAnalyticsReportTab from './dasgeneral/MonthlyAnalyticsReportTab';
 import MyTimeCalendarTab from './dasgeneral/MyTimeCalendarTab';
 import { syncAssignedToFromTeam } from '../services/TeamRosterService';
@@ -228,62 +227,6 @@ function DASGeneralPage({ onOpenProject }) {
     setHasUnsavedChanges(true);
   };
 
-  // Handle adding a new product
-  const handleAddProduct = async (productName) => {
-    setIsLoading(true);
-    try {
-      const result = await electronAPI.dasGeneralAddProduct(productName, filePath);
-      if (result.success) {
-        await loadData(); // Reload to get updated data
-        return { success: true };
-      } else {
-        setError({
-          type: result.error || 'ADD_ERROR',
-          message: result.message || 'Failed to add product.',
-          canDismiss: true
-        });
-        return { success: false, error: result.message };
-      }
-    } catch (err) {
-      setError({
-        type: 'ADD_ERROR',
-        message: err.message,
-        canDismiss: true
-      });
-      return { success: false, error: err.message };
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Handle removing a product
-  const handleRemoveProduct = async (productName) => {
-    setIsLoading(true);
-    try {
-      const result = await electronAPI.dasGeneralRemoveProduct(productName, filePath);
-      if (result.success) {
-        await loadData(); // Reload to get updated data
-        return { success: true };
-      } else {
-        setError({
-          type: result.error || 'REMOVE_ERROR',
-          message: result.message || 'Failed to remove product.',
-          canDismiss: true
-        });
-        return { success: false, error: result.message };
-      }
-    } catch (err) {
-      setError({
-        type: 'REMOVE_ERROR',
-        message: err.message,
-        canDismiss: true
-      });
-      return { success: false, error: err.message };
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   // Tab configuration
   const tabs = [
     {
@@ -297,12 +240,6 @@ function DASGeneralPage({ onOpenProject }) {
       label: 'My Time',
       icon: '🗓️',
       description: 'Personal time and project hours'
-    },
-    {
-      id: 'products-info',
-      label: 'Products Info',
-      icon: '💡',
-      description: 'Product details'
     },
     {
       id: 'analytics',
@@ -335,18 +272,6 @@ function DASGeneralPage({ onOpenProject }) {
         );
       case 'my-time':
         return <MyTimeCalendarTab onOpenProject={onOpenProject} />;
-      case 'products-info':
-        return (
-          <ProductsInfoTab
-            productsInfo={data.productsInfo}
-            products={data.products}
-            onDataChange={(newData) => handleDataChange('productsInfo', newData)}
-            onSave={handleSaveAll}
-            onAddProduct={handleAddProduct}
-            onRemoveProduct={handleRemoveProduct}
-            isLoading={isLoading}
-          />
-        );
       case 'analytics':
         return <MonthlyAnalyticsReportTab />;
       default:

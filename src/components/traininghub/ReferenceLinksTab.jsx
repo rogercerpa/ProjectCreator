@@ -70,7 +70,7 @@ export default function ReferenceLinksTab() {
         isLoading={isLoading}
         allowProductAdmin={false}
         title="Reference links"
-        subtitle="Product training links from the DAS General workbook. Add products on DAS General → Products Info."
+        subtitle="Product training links from the DAS General workbook. Add products on Products Info."
       />
     </div>
   );
