@@ -116,24 +116,21 @@ const KPICard = ({ title, value, subtitle, change, formatType = 'number', icon, 
     ? 'text-red-600 dark:text-red-400' 
     : 'text-gray-500 dark:text-gray-400';
 
-  // In print mode, don't truncate text so full content appears in PDF
-  const truncateClass = isPrintMode ? '' : 'truncate';
-
   return (
     <div className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-4 flex flex-col min-w-0 ${isPrintMode ? 'min-h-[100px]' : ''}`}>
-      <div className="flex items-center justify-between mb-1 sm:mb-2 gap-1">
-        <span className={`text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 ${truncateClass}`}>{title}</span>
+      <div className="flex items-start justify-between mb-1 sm:mb-2 gap-2">
+        <span className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 leading-snug">{title}</span>
         {icon && <span className="text-base sm:text-xl flex-shrink-0">{icon}</span>}
       </div>
-      <div className={`font-bold text-gray-900 dark:text-white mb-1 ${truncateClass} ${isPrintMode ? 'text-lg' : 'text-base sm:text-lg md:text-xl lg:text-2xl'}`}>
+      <div className={`font-bold text-gray-900 dark:text-white mb-1 break-words ${isPrintMode ? 'text-lg' : 'text-lg sm:text-xl'}`}>
         {formattedValue}
       </div>
       {subtitle && (
-        <div className={`text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mb-1 ${truncateClass}`}>{subtitle}</div>
+        <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mb-1">{subtitle}</div>
       )}
       {change && (
-        <div className={`text-[10px] sm:text-xs md:text-sm font-medium ${changeColor} ${truncateClass}`}>
-          {change.formatted} vs prior period
+        <div className={`text-[11px] sm:text-xs font-medium leading-snug ${changeColor}`}>
+          {change.formatted} vs prior
         </div>
       )}
     </div>
@@ -847,7 +844,7 @@ function MonthlyAnalyticsReport({ projects = [], onProjectUpdated }) {
 
         {/* KPI Cards - Responsive grid */}
         <PrintSection isPrintMode={isPrintMode}>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 md:gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 2xl:grid-cols-6 gap-2 sm:gap-3 md:gap-4">
             <KPICard
               title="Total Projects"
               value={kpis.totalProjects.value}
@@ -912,24 +909,32 @@ function MonthlyAnalyticsReport({ projects = [], onProjectUpdated }) {
               <h3 className="font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4 text-sm sm:text-base">RFA Type Distribution</h3>
               {charts.rfaTypeDistribution.length > 0 ? (
                 <>
-                  <ResponsiveContainer width="100%" height={isPrintMode ? 200 : 220}>
-                    <PieChart>
+                  <ResponsiveContainer width="100%" height={isPrintMode ? 220 : 280}>
+                    <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
                       <Pie
                         data={charts.rfaTypeDistribution}
                         cx="50%"
-                        cy="50%"
-                        innerRadius={isPrintMode ? 40 : 50}
-                        outerRadius={isPrintMode ? 70 : 85}
+                        cy="42%"
+                        innerRadius={isPrintMode ? 40 : 48}
+                        outerRadius={isPrintMode ? 70 : 72}
                         paddingAngle={2}
                         dataKey="value"
-                        label={({ name, percent }) => `${truncateText(name, 10)} ${(percent * 100).toFixed(0)}%`}
-                        labelLine={false}
                       >
                         {charts.rfaTypeDistribution.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={getChartColor(index)} />
                         ))}
                       </Pie>
-                      {isPrintMode && <Legend layout="horizontal" verticalAlign="bottom" wrapperStyle={{ fontSize: 10 }} />}
+                      <Legend
+                        layout="horizontal"
+                        verticalAlign="bottom"
+                        wrapperStyle={{ fontSize: 12, lineHeight: '18px' }}
+                        formatter={(value, entry) => {
+                          const total = charts.rfaTypeDistribution.reduce((sum, item) => sum + (item.value || 0), 0);
+                          const count = entry?.payload?.value || 0;
+                          const share = total ? Math.round((count / total) * 100) : 0;
+                          return `${value} ${share}%`;
+                        }}
+                      />
                       <Tooltip content={<CustomTooltip />} />
                     </PieChart>
                   </ResponsiveContainer>
@@ -1080,21 +1085,20 @@ function MonthlyAnalyticsReport({ projects = [], onProjectUpdated }) {
                 <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-3 text-sm">Project Status</h4>
                 {charts.statusDistribution.length > 0 ? (
                   <>
-                    <ResponsiveContainer width="100%" height={180}>
+                    <ResponsiveContainer width="100%" height={240}>
                       <PieChart>
                         <Pie
                           data={charts.statusDistribution}
                           cx="50%"
-                          cy="50%"
-                          outerRadius={70}
+                          cy="42%"
+                          outerRadius={64}
                           dataKey="value"
-                          label={({ name, value }) => `${truncateText(name, 8)}: ${value}`}
-                          labelLine={false}
                         >
                           {charts.statusDistribution.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={getChartColor(index)} />
                           ))}
                         </Pie>
+                        <Legend layout="horizontal" verticalAlign="bottom" wrapperStyle={{ fontSize: 12 }} />
                         <Tooltip content={<CustomTooltip />} />
                       </PieChart>
                     </ResponsiveContainer>

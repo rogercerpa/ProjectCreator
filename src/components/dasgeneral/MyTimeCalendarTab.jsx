@@ -42,12 +42,7 @@ function visibleDays(focus, view) {
   }
   if (view === 'month') {
     const count = new Date(focus.getFullYear(), focus.getMonth() + 1, 0).getDate();
-    const days = [];
-    for (let day = 1; day <= count; day += 1) {
-      const date = new Date(focus.getFullYear(), focus.getMonth(), day);
-      if (date.getDay() !== 0 && date.getDay() !== 6) days.push(date);
-    }
-    return days;
+    return Array.from({ length: count }, (_, index) => new Date(focus.getFullYear(), focus.getMonth(), index + 1));
   }
   const start = startOfWeek(focus, 1);
   return Array.from({ length: 5 }, (_, index) => addDays(start, index));
@@ -145,7 +140,7 @@ export default function MyTimeCalendarTab({ onOpenProject }) {
   }), [projects, entries, userName, scoreStart, scoreEnd, weeklyCapacity]);
 
   const days = useMemo(() => visibleDays(focus, calendarView), [focus, calendarView]);
-  const columns = calendarView === 'day' ? 1 : (calendarView === 'week' ? 7 : 5);
+  const columns = calendarView === 'workweek' ? 5 : (calendarView === 'day' ? 1 : 7);
   const chips = useMemo(() => collectPhaseChips(projects, userName), [projects, userName]);
 
   const saveForm = async () => {
@@ -235,14 +230,15 @@ export default function MyTimeCalendarTab({ onOpenProject }) {
       </div>
 
       <div className="grid gap-1 text-xs text-gray-500 dark:text-gray-400" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
-        {(calendarView === 'month' ? days.slice(0, 5) : days).map((day) => (
-          <div key={dateKey(day)} className="px-1 py-1 text-center">
-            {day.toLocaleDateString('en-US', { weekday: 'short' })}
-          </div>
+        {(calendarView === 'month'
+          ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+          : days.map((day) => day.toLocaleDateString('en-US', { weekday: 'short' }))
+        ).map((label) => (
+          <div key={label} className="px-1 py-1 text-center">{label}</div>
         ))}
       </div>
       <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
-        {calendarView === 'month' && days[0] && Array.from({ length: (days[0].getDay() + 6) % 7 }, (_, index) => (
+        {calendarView === 'month' && days[0] && Array.from({ length: days[0].getDay() }, (_, index) => (
           <div key={`lead-${index}`} className="min-h-24" />
         ))}
         {days.map((day) => {
