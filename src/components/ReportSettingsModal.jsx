@@ -224,6 +224,7 @@ function ReportSettingsModal({ isOpen, onClose, onApply, currentSettings, filter
     endDate: null,
     activePreset: 'This Month',
     viewMode: 'created',
+    showSampleProjects: false,
     filters: {
       rfaTypes: [],
       regions: [],
@@ -300,6 +301,7 @@ function ReportSettingsModal({ isOpen, onClose, onApply, currentSettings, filter
       endDate: preset.end,
       activePreset: 'This Month',
       viewMode: 'created',
+      showSampleProjects: false,
       filters: {
         rfaTypes: [],
         regions: [],
@@ -443,6 +445,15 @@ function ReportSettingsModal({ isOpen, onClose, onApply, currentSettings, filter
                 </button>
               </div>
             </div>
+            <label className="mt-4 flex items-start gap-2 text-sm text-gray-800 dark:text-gray-200">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={Boolean(settings.showSampleProjects)}
+                onChange={(event) => setSettings((prev) => ({ ...prev, showSampleProjects: event.target.checked }))}
+              />
+              <span>Show sample projects that are left out of this report</span>
+            </label>
           </div>
 
           {/* Filters Section */}

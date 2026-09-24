@@ -14,10 +14,64 @@ const PHASE_COLOR = {
   qc: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'
 };
 
-function monthRange(year, month) {
-  const startDate = new Date(year, month, 1);
-  const endDate = new Date(year, month + 1, 0);
-  return { startDate, endDate };
+const CALENDAR_VIEWS = [
+  { id: 'day', label: 'Day' },
+  { id: 'workweek', label: 'Work week' },
+  { id: 'week', label: 'Week' },
+  { id: 'month', label: 'Month' }
+];
+
+function addDays(date, count) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + count);
+  return next;
+}
+
+function startOfWeek(date, weekStartsOn) {
+  const next = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const delta = (next.getDay() - weekStartsOn + 7) % 7;
+  next.setDate(next.getDate() - delta);
+  return next;
+}
+
+function visibleDays(focus, view) {
+  if (view === 'day') return [new Date(focus.getFullYear(), focus.getMonth(), focus.getDate())];
+  if (view === 'week') {
+    const start = startOfWeek(focus, 0);
+    return Array.from({ length: 7 }, (_, index) => addDays(start, index));
+  }
+  if (view === 'month') {
+    const count = new Date(focus.getFullYear(), focus.getMonth() + 1, 0).getDate();
+    const days = [];
+    for (let day = 1; day <= count; day += 1) {
+      const date = new Date(focus.getFullYear(), focus.getMonth(), day);
+      if (date.getDay() !== 0 && date.getDay() !== 6) days.push(date);
+    }
+    return days;
+  }
+  const start = startOfWeek(focus, 1);
+  return Array.from({ length: 5 }, (_, index) => addDays(start, index));
+}
+
+function shiftFocus(focus, view, direction) {
+  if (view === 'day') return addDays(focus, direction);
+  if (view === 'month') return new Date(focus.getFullYear(), focus.getMonth() + direction, 1);
+  return addDays(focus, direction * 7);
+}
+
+function rangeLabel(days, view) {
+  if (view === 'month') {
+    return days[0].toLocaleString('en-US', { month: 'long', year: 'numeric' });
+  }
+  if (view === 'day') {
+    return days[0].toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  }
+  const start = days[0];
+  const end = days[days.length - 1];
+  const sameMonth = start.getMonth() === end.getMonth();
+  const startText = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const endText = end.toLocaleDateString('en-US', sameMonth ? { day: 'numeric', year: 'numeric' } : { month: 'short', day: 'numeric', year: 'numeric' });
+  return `${startText} – ${endText}`;
 }
 
 function dateKey(value) {
@@ -43,7 +97,9 @@ function emptyForm(date) {
 
 export default function MyTimeCalendarTab({ onOpenProject }) {
   const today = new Date();
-  const [cursor, setCursor] = useState({ year: today.getFullYear(), month: today.getMonth() });
+  const [focus, setFocus] = useState(today);
+  const [calendarView, setCalendarView] = useState('workweek');
+  const [viewMenuOpen, setViewMenuOpen] = useState(false);
   const [entries, setEntries] = useState([]);
   const [projects, setProjects] = useState([]);
   const [userName, setUserName] = useState('');
@@ -76,31 +132,21 @@ export default function MyTimeCalendarTab({ onOpenProject }) {
     return () => { active = false; };
   }, []);
 
-  const { startDate, endDate } = monthRange(cursor.year, cursor.month);
+  const scoreStart = new Date(focus.getFullYear(), focus.getMonth(), 1);
+  const scoreEnd = new Date(focus.getFullYear(), focus.getMonth() + 1, 0);
   const dailyCapacity = (Number(weeklyCapacity) || 40) / 5;
   const report = useMemo(() => buildProductivityReport({
     projects,
     entries,
     userName,
-    startDate,
-    endDate,
+    startDate: scoreStart,
+    endDate: scoreEnd,
     weeklyCapacity
-  }), [projects, entries, userName, startDate, endDate, weeklyCapacity]);
+  }), [projects, entries, userName, scoreStart, scoreEnd, weeklyCapacity]);
 
-  const monthPrefix = `${cursor.year}-${String(cursor.month + 1).padStart(2, '0')}`;
-  const chips = useMemo(() => collectPhaseChips(projects, userName).filter((chip) => (
-    dateKey(chip.date).startsWith(monthPrefix)
-  )), [projects, userName, monthPrefix]);
-
-  const days = useMemo(() => {
-    const first = new Date(cursor.year, cursor.month, 1);
-    const lead = first.getDay();
-    const count = new Date(cursor.year, cursor.month + 1, 0).getDate();
-    const cells = [];
-    for (let i = 0; i < lead; i += 1) cells.push(null);
-    for (let day = 1; day <= count; day += 1) cells.push(new Date(cursor.year, cursor.month, day));
-    return cells;
-  }, [cursor]);
+  const days = useMemo(() => visibleDays(focus, calendarView), [focus, calendarView]);
+  const columns = calendarView === 'day' ? 1 : (calendarView === 'week' ? 7 : 5);
+  const chips = useMemo(() => collectPhaseChips(projects, userName), [projects, userName]);
 
   const saveForm = async () => {
     setError('');
@@ -140,40 +186,66 @@ export default function MyTimeCalendarTab({ onOpenProject }) {
       )}
       {error && <p className="text-sm text-danger-600">{error}</p>}
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <button
           type="button"
           className="px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-600"
-          onClick={() => setCursor((prev) => {
-            const date = new Date(prev.year, prev.month - 1, 1);
-            return { year: date.getFullYear(), month: date.getMonth() };
-          })}
+          onClick={() => setFocus((prev) => shiftFocus(prev, calendarView, -1))}
         >
           Previous
         </button>
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-          {startDate.toLocaleString('en-US', { month: 'long', year: 'numeric' })}
+          {rangeLabel(days, calendarView)}
         </h2>
-        <button
-          type="button"
-          className="px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-600"
-          onClick={() => setCursor((prev) => {
-            const date = new Date(prev.year, prev.month + 1, 1);
-            return { year: date.getFullYear(), month: date.getMonth() };
-          })}
-        >
-          Next
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <button
+              type="button"
+              className="px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-600"
+              onClick={() => setViewMenuOpen((open) => !open)}
+            >
+              {CALENDAR_VIEWS.find((item) => item.id === calendarView)?.label}
+            </button>
+            {viewMenuOpen && (
+              <div className="absolute right-0 z-10 mt-1 w-36 rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-600 dark:bg-gray-800">
+                {CALENDAR_VIEWS.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="block w-full px-3 py-1.5 text-left text-sm text-gray-800 hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-gray-700"
+                    onClick={() => {
+                      setCalendarView(item.id);
+                      setViewMenuOpen(false);
+                    }}
+                  >
+                    {item.id === calendarView ? '✓ ' : ''}{item.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            className="px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-600"
+            onClick={() => setFocus((prev) => shiftFocus(prev, calendarView, 1))}
+          >
+            Next
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-1 text-xs text-gray-500 dark:text-gray-400">
-        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((label) => (
-          <div key={label} className="px-1 py-1 text-center">{label}</div>
+      <div className="grid gap-1 text-xs text-gray-500 dark:text-gray-400" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
+        {(calendarView === 'month' ? days.slice(0, 5) : days).map((day) => (
+          <div key={dateKey(day)} className="px-1 py-1 text-center">
+            {day.toLocaleDateString('en-US', { weekday: 'short' })}
+          </div>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-1">
-        {days.map((day, index) => {
-          if (!day) return <div key={`empty-${index}`} className="min-h-24" />;
+      <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
+        {calendarView === 'month' && days[0] && Array.from({ length: (days[0].getDay() + 6) % 7 }, (_, index) => (
+          <div key={`lead-${index}`} className="min-h-24" />
+        ))}
+        {days.map((day) => {
           const key = dateKey(day);
           const dayEntries = entries.filter((entry) => dateKey(entry.date) === key);
           const dayChips = chips.filter((chip) => dateKey(chip.date) === key);

@@ -256,6 +256,7 @@ function MonthlyAnalyticsReport({ projects = [], onProjectUpdated }) {
       endDate,
       activePreset: 'This Month',
       viewMode: 'created',
+      showSampleProjects: false,
       filters: {
         rfaTypes: [],
         regions: [],
@@ -835,6 +836,7 @@ function MonthlyAnalyticsReport({ projects = [], onProjectUpdated }) {
           <PrintSection isPrintMode={isPrintMode}>
             <MyProductivityPanel
               report={productivity}
+              showSampleProjects={Boolean(reportSettings.showSampleProjects)}
               onOpenProject={isPrintMode ? undefined : (projectId) => {
                 const project = projects.find((item) => item.id === projectId);
                 if (project) setEditingProject(project);

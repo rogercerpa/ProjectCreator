@@ -17,7 +17,14 @@ const bandClass = {
   unavailable: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'
 };
 
-export default function MyProductivityPanel({ report, compact = false, onOpenProject }) {
+function scheduleNeedsAttention(item) {
+  return item.rd.status === 'not-recorded'
+    || item.ecd.status === 'not-recorded'
+    || item.rdReasonMissing
+    || item.ecdReasonMissing;
+}
+
+export default function MyProductivityPanel({ report, compact = false, onOpenProject, showSampleProjects = false }) {
   if (!report) return null;
 
   const missingByProject = [];
@@ -37,6 +44,8 @@ export default function MyProductivityPanel({ report, compact = false, onOpenPro
   const openProject = (projectId) => {
     if (onOpenProject && projectId) onOpenProject(projectId);
   };
+
+  const scheduleAttention = (report.schedule || []).filter(scheduleNeedsAttention);
 
   const rows = [
     ['Weekday capacity', hours(report.grossHours), ''],
@@ -88,11 +97,11 @@ export default function MyProductivityPanel({ report, compact = false, onOpenPro
             <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
               Schedule · RD {percent(report.rdHitRate)} · ECD {percent(report.ecdHitRate)}
             </h4>
-            {report.schedule.length === 0 ? (
-              <p className="text-sm text-gray-500 dark:text-gray-400">No projects you designed were completed in this period.</p>
+            {scheduleAttention.length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">Requested dates and ECDs are recorded for the projects you completed in this period.</p>
             ) : (
               <ul className="max-h-64 space-y-2 overflow-y-auto pr-1">
-                {report.schedule.map((item) => (
+                {scheduleAttention.map((item) => (
                   <li key={item.projectId || item.rfaNumber}>
                     <button
                       type="button"
@@ -140,7 +149,7 @@ export default function MyProductivityPanel({ report, compact = false, onOpenPro
         </div>
       )}
 
-      {!compact && report.samples?.length > 0 && (
+      {!compact && showSampleProjects && report.samples?.length > 0 && (
         <div>
           <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Sample projects, not counted</h4>
           <ul className="max-h-40 space-y-1 overflow-y-auto pr-1">
