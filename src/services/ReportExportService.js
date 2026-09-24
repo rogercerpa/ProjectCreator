@@ -140,7 +140,7 @@ class ReportExportService {
       }
 
       // Generate filename
-      const fileName = this.generateFileName(reportSettings, 'xlsx');
+      const fileName = this.generateFileName(reportSettings, 'xlsx', reportData.productivity?.userName);
 
       // Write and save
       const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
@@ -229,7 +229,7 @@ class ReportExportService {
       }
 
       // Generate filename
-      const fileName = this.generateFileName(reportSettings, 'csv');
+      const fileName = this.generateFileName(reportSettings, 'csv', reportData.productivity?.userName);
 
       // Convert to CSV string
       const csvContent = csvData.map(row => 
@@ -483,14 +483,151 @@ class ReportExportService {
     return `${start.toLocaleDateString('en-US', options)} - ${end.toLocaleDateString('en-US', options)}`;
   }
 
-  generateFileName(reportSettings, extension) {
-    const startStr = reportSettings.startDate 
-      ? reportSettings.startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).replace(' ', '')
-      : 'All';
-    const endStr = reportSettings.endDate 
-      ? reportSettings.endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).replace(/[\s,]/g, '')
-      : 'Time';
-    return `Project_Analytics_Report_${startStr}-${endStr}.${extension}`;
+  generateFileName(reportSettings, extension, userName = '') {
+    const safeUser = String(userName || 'User').replace(/[\\/:*?"<>|]/g, '').trim() || 'User';
+    const monthName = reportSettings?.startDate
+      ? reportSettings.startDate.toLocaleString('en-US', { month: 'long' })
+      : 'Report';
+    return `${safeUser}.${monthName}.Report.${extension}`;
+  }
+
+  async exportToPdf(reportData, reportSettings, userName = '') {
+    const { default: jsPDF } = await import('jspdf');
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'letter' });
+    const margin = 48;
+    const pageWidth = 612;
+    const pageHeight = 792;
+    const width = pageWidth - margin * 2;
+    let y = 56;
+
+    const ensure = (height) => {
+      if (y + height > pageHeight - 48) {
+        pdf.addPage();
+        y = 56;
+      }
+    };
+    const textBlock = (value, { size = 11, style = 'normal', gap = 16, color = [17, 24, 39] } = {}) => {
+      pdf.setFont('helvetica', style);
+      pdf.setFontSize(size);
+      pdf.setTextColor(...color);
+      const lines = pdf.splitTextToSize(String(value), width);
+      ensure(lines.length * (size + 4));
+      pdf.text(lines, margin, y);
+      y += lines.length * (size + 4) + (gap - size);
+    };
+    const section = (title) => {
+      ensure(36);
+      y += 8;
+      pdf.setDrawColor(229, 231, 235);
+      pdf.line(margin, y, margin + width, y);
+      y += 18;
+      textBlock(title, { size: 13, style: 'bold', gap: 8 });
+    };
+    const table = (headers, rows) => {
+      const colWidth = width / headers.length;
+      const drawRow = (cells, bold) => {
+        ensure(18);
+        pdf.setFont('helvetica', bold ? 'bold' : 'normal');
+        pdf.setFontSize(10);
+        pdf.setTextColor(17, 24, 39);
+        cells.forEach((cell, index) => {
+          const lines = pdf.splitTextToSize(String(cell ?? ''), colWidth - 8);
+          pdf.text(lines[0] || '', margin + index * colWidth, y);
+        });
+        y += 16;
+      };
+      drawRow(headers, true);
+      rows.forEach((row) => drawRow(row, false));
+      y += 6;
+    };
+
+    const range = this.formatDateRange(reportSettings.startDate, reportSettings.endDate);
+    const viewLabel = reportSettings.viewMode === 'completed' ? 'By completed date' : 'By created date';
+    textBlock('Project Analytics Report', { size: 20, style: 'bold', gap: 10 });
+    textBlock(`${userName || 'User'} · ${range}`, { size: 11, color: [75, 85, 99], gap: 4 });
+    textBlock(viewLabel, { size: 10, color: [107, 114, 128], gap: 8 });
+
+    section('Summary');
+    const kpis = reportData.kpis || {};
+    table(
+      ['Metric', 'Value', 'Vs prior'],
+      [
+        ['Total projects', kpis.totalProjects?.value ?? 0, kpis.totalProjects?.change?.formatted || '—'],
+        ['Completed', kpis.completedProjects?.value ?? 0, kpis.completedProjects?.change?.formatted || '—'],
+        ['RFA value', formatCurrency(kpis.totalRfaValue?.value || 0), kpis.totalRfaValue?.change?.formatted || '—'],
+        ['DAS revenue', formatCurrency(kpis.totalDasRevenue?.value || 0), kpis.totalDasRevenue?.change?.formatted || '—'],
+        ['Turnaround', formatDurationDays(kpis.avgTurnaroundTime?.value || 0), kpis.avgTurnaroundTime?.change?.formatted || '—'],
+        ['On time', formatPercentage(kpis.onTimeRate?.value || 0), kpis.onTimeRate?.change?.formatted || '—']
+      ]
+    );
+
+    const chartTable = (title, rows, headers) => {
+      if (!rows?.length) return;
+      section(title);
+      table(headers, rows);
+    };
+    chartTable(
+      'RFA type',
+      (reportData.charts?.rfaTypeDistribution || []).map((item) => [item.name, item.value]),
+      ['Type', 'Projects']
+    );
+    chartTable(
+      'Regional volume',
+      (reportData.charts?.regionalDistribution || []).map((item) => [item.name, item.value]),
+      ['Region', 'Projects']
+    );
+    chartTable(
+      'Status',
+      (reportData.charts?.statusDistribution || []).map((item) => [item.name, item.value]),
+      ['Status', 'Projects']
+    );
+
+    const productivity = reportData.productivity;
+    if (productivity) {
+      section('My productivity');
+      const percent = (value) => (value == null ? '—' : `${Math.round(value)}%`);
+      const hours = (value) => `${Number(value || 0).toFixed(1)} h`;
+      textBlock(`${percent(productivity.score)} · ${productivity.bandLabel || ''}`, { size: 12, style: 'bold', gap: 8 });
+      table(
+        ['Slice', 'Hours', 'Share'],
+        [
+          ['Project hours', hours(productivity.productive), percent(productivity.projectShare)],
+          ['Meetings', hours(productivity.meetingsWorked), percent(productivity.meetingsShare)],
+          ['Initiative', hours(productivity.initiative), percent(productivity.initiativeShare)],
+          ['Training', hours(productivity.training), percent(productivity.trainingShare)],
+          ['Not recorded', hours(productivity.unaccounted), percent(productivity.unaccountedShare)]
+        ]
+      );
+      textBlock(`RD ${percent(productivity.rdHitRate)} · ECD ${percent(productivity.ecdHitRate)}`, { size: 11, gap: 8 });
+      const attention = (productivity.schedule || []).filter((item) => (
+        item.rd.status === 'not-recorded'
+        || item.ecd.status === 'not-recorded'
+        || item.rdReasonMissing
+        || item.ecdReasonMissing
+      ));
+      if (attention.length) {
+        textBlock('Schedule items that still need a date or a reason', { size: 11, style: 'bold', gap: 6 });
+        attention.forEach((item) => {
+          textBlock(`${item.projectName}: RD ${formatScheduleResult(item.rd)}; ECD ${formatScheduleResult(item.ecd)}`, { size: 10, gap: 4 });
+        });
+      }
+      const missingSeen = new Map();
+      (productivity.missing || []).forEach((item) => {
+        const key = item.projectId || item.projectName;
+        const existing = missingSeen.get(key);
+        if (existing) existing.phases.push(item.phaseLabel);
+        else missingSeen.set(key, { name: item.projectName, phases: [item.phaseLabel] });
+      });
+      const missing = [...missingSeen.values()];
+      if (missing.length) {
+        textBlock('Hours not recorded yet', { size: 11, style: 'bold', gap: 6 });
+        missing.forEach((item) => {
+          textBlock(`${item.name}: ${item.phases.join(', ')}`, { size: 10, gap: 4 });
+        });
+      }
+    }
+
+    pdf.save(this.generateFileName(reportSettings, 'pdf', userName));
   }
 }
 

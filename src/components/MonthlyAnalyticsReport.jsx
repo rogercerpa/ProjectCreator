@@ -386,7 +386,19 @@ function MonthlyAnalyticsReport({ projects = [], onProjectUpdated }) {
   };
 
   // Print handler
-  const handlePrint = () => {
+  const handlePrint = async () => {
+    const previousTitle = document.title;
+    const userName = String(productivity?.userName || 'User').replace(/[\\/:*?"<>|]/g, '').trim() || 'User';
+    const monthName = reportSettings.startDate.toLocaleString('en-US', { month: 'long' });
+    document.title = `${userName}.${monthName}.Report`;
+    setIsPrintMode(true);
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    const restore = () => {
+      document.title = previousTitle;
+      setIsPrintMode(false);
+      window.removeEventListener('afterprint', restore);
+    };
+    window.addEventListener('afterprint', restore);
     window.print();
   };
 
@@ -395,207 +407,16 @@ function MonthlyAnalyticsReport({ projects = [], onProjectUpdated }) {
     setIsExporting(true);
     setExportType('pdf');
     setShowExportDropdown(false);
-    setIsPrintMode(true);
-    
-    // Wait for React to re-render with print mode
-    await new Promise(resolve => setTimeout(resolve, 600));
-    
     try {
-      const { default: jsPDF } = await import('jspdf');
-      const { default: html2canvas } = await import('html2canvas');
-
-      const element = reportRef.current;
-      if (!element) return;
-
-      // Capture the element with improved settings
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-        windowWidth: 1400, // Wider render for better layout and less truncation
-        onclone: (clonedDoc) => {
-          // Ensure all text is visible in the cloned document
-          const clonedElement = clonedDoc.body.querySelector('[data-report-content]') || clonedDoc.body;
-          const allElements = clonedElement.querySelectorAll('*');
-          allElements.forEach(el => {
-            const style = window.getComputedStyle(el);
-            if (style.overflow === 'hidden' || style.textOverflow === 'ellipsis') {
-              el.style.overflow = 'visible';
-              el.style.textOverflow = 'clip';
-              el.style.whiteSpace = 'normal';
-            }
-          });
-        }
-      });
-
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'in',
-        format: 'letter',
-      });
-
-      const pageWidth = 8.5;
-      const pageHeight = 11;
-      const margin = 0.4;
-      const contentWidth = pageWidth - margin * 2;
-      const contentHeight = pageHeight - margin * 2;
-      
-      // Calculate scaling
-      const imgAspectRatio = canvas.height / canvas.width;
-      const scaledImgHeight = contentWidth * imgAspectRatio;
-      
-      // Find white bands in the canvas that indicate good break points
-      // A "white band" is multiple consecutive rows that are mostly white
-      const findWhiteBands = (canvasElement) => {
-        const ctx = canvasElement.getContext('2d');
-        const whiteBands = [];
-        const minBandHeight = 10; // Minimum height of white band to consider
-        
-        let bandStart = -1;
-        
-        for (let y = 0; y < canvasElement.height; y += 2) {
-          // Sample pixels across this row
-          const imageData = ctx.getImageData(0, y, canvasElement.width, 1);
-          let whitePixels = 0;
-          const samples = Math.floor(canvasElement.width / 5);
-          
-          for (let x = 0; x < canvasElement.width; x += 5) {
-            const idx = x * 4;
-            const r = imageData.data[idx];
-            const g = imageData.data[idx + 1];
-            const b = imageData.data[idx + 2];
-            // Check if pixel is white/very light
-            if (r > 245 && g > 245 && b > 245) {
-              whitePixels++;
-            }
-          }
-          
-          const whiteRatio = whitePixels / samples;
-          const isWhiteRow = whiteRatio > 0.9; // 90% of row is white
-          
-          if (isWhiteRow && bandStart === -1) {
-            bandStart = y;
-          } else if (!isWhiteRow && bandStart !== -1) {
-            const bandHeight = y - bandStart;
-            if (bandHeight >= minBandHeight) {
-              // Store the middle of the white band as a potential break point
-              whiteBands.push({
-                y: bandStart + Math.floor(bandHeight / 2),
-                height: bandHeight
-              });
-            }
-            bandStart = -1;
-          }
-        }
-        
-        return whiteBands;
-      };
-      
-      // Find optimal page breaks using white bands
-      const findPageBreaks = (canvasElement, maxPageHeight) => {
-        const whiteBands = findWhiteBands(canvasElement);
-        const breaks = [0];
-        let currentY = 0;
-        
-        // Convert max page height from inches to canvas pixels
-        const scale = canvasElement.height / scaledImgHeight;
-        const maxHeightPx = maxPageHeight * scale;
-        
-        while (currentY < canvasElement.height - 50) {
-          const targetY = currentY + maxHeightPx;
-          
-          if (targetY >= canvasElement.height) {
-            breaks.push(canvasElement.height);
-            break;
-          }
-          
-          // Find the best white band near the target position
-          // Search range: from 70% to 100% of page height from current position
-          const searchStart = currentY + maxHeightPx * 0.7;
-          const searchEnd = Math.min(currentY + maxHeightPx * 1.05, canvasElement.height);
-          
-          // Find white bands in the search range, prefer those closer to target
-          const candidateBands = whiteBands.filter(band => 
-            band.y > searchStart && band.y < searchEnd
-          );
-          
-          if (candidateBands.length > 0) {
-            // Prefer bands with larger height (more obvious breaks)
-            // and closer to target position
-            let bestBand = candidateBands[0];
-            let bestScore = 0;
-            
-            for (const band of candidateBands) {
-              // Score based on band height and proximity to ideal position
-              const proximityScore = 1 - Math.abs(band.y - targetY) / maxHeightPx;
-              const heightScore = Math.min(band.height / 40, 1); // Max score at 40px height
-              const score = proximityScore * 0.4 + heightScore * 0.6;
-              
-              if (score > bestScore) {
-                bestScore = score;
-                bestBand = band;
-              }
-            }
-            
-            breaks.push(bestBand.y);
-            currentY = bestBand.y;
-          } else {
-            // No good white band found, break at target (fallback)
-            breaks.push(Math.floor(targetY));
-            currentY = Math.floor(targetY);
-          }
-        }
-        
-        // Ensure the last segment is added
-        if (breaks[breaks.length - 1] < canvasElement.height - 50) {
-          breaks.push(canvasElement.height);
-        }
-        
-        return breaks;
-      };
-      
-      // Find optimal break points
-      const pageBreaks = findPageBreaks(canvas, contentHeight);
-      
-      // Generate pages
-      for (let i = 0; i < pageBreaks.length - 1; i++) {
-        const startY = pageBreaks[i];
-        const endY = pageBreaks[i + 1];
-        const sectionHeight = endY - startY;
-        
-        if (sectionHeight <= 10) continue;
-        
-        // Create a temporary canvas for this page section
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = canvas.width;
-        tempCanvas.height = sectionHeight;
-        const tempCtx = tempCanvas.getContext('2d');
-        tempCtx.fillStyle = '#ffffff';
-        tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-        tempCtx.drawImage(canvas, 0, startY, canvas.width, sectionHeight, 0, 0, canvas.width, sectionHeight);
-
-        const pageImgData = tempCanvas.toDataURL('image/png');
-        
-        if (i > 0) {
-          pdf.addPage();
-        }
-        
-        // Calculate the height this section should be on the PDF page
-        const pdfSectionHeight = (sectionHeight / canvas.height) * scaledImgHeight;
-        
-        pdf.addImage(pageImgData, 'PNG', margin, margin, contentWidth, pdfSectionHeight);
-      }
-
-      const startStr = reportSettings.startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).replace(' ', '');
-      const endStr = reportSettings.endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).replace(/[\s,]/g, '');
-      const fileName = `Project_Analytics_Report_${startStr}-${endStr}.pdf`;
-      pdf.save(fileName);
+      await reportExportService.exportToPdf(
+        { ...reportData, productivity },
+        reportSettings,
+        productivity?.userName || ''
+      );
     } catch (error) {
       console.error('Error exporting PDF:', error);
       alert('Failed to export PDF. Please try again.');
     } finally {
-      setIsPrintMode(false);
       setIsExporting(false);
       setExportType(null);
     }
@@ -814,7 +635,7 @@ function MonthlyAnalyticsReport({ projects = [], onProjectUpdated }) {
       )}
 
       {/* Report Content */}
-      <div ref={reportRef} className={`space-y-4 sm:space-y-6 p-4 sm:p-6 rounded-xl print:bg-white print:p-0 ${isPrintMode ? 'bg-white' : 'bg-gray-50 dark:bg-gray-900'}`}>
+      <div ref={reportRef} data-print-root className={`space-y-4 sm:space-y-6 p-4 sm:p-6 rounded-xl print:bg-white print:p-0 ${isPrintMode ? 'bg-white' : 'bg-gray-50 dark:bg-gray-900'}`}>
         {/* Report Title */}
         <div className="text-center mb-4 sm:mb-6">
           <h2 className={`font-bold text-gray-900 ${isPrintMode ? 'text-xl' : 'text-lg sm:text-xl md:text-2xl'} dark:text-white`}>

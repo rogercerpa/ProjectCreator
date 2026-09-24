@@ -439,3 +439,23 @@
   }
 }
 
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+
+  [data-print-root],
+  [data-print-root] * {
+    visibility: visible !important;
+  }
+
+  [data-print-root] {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: #ffffff !important;
+    color: #111827;
+  }
+}
+

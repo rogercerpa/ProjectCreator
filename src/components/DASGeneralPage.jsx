@@ -10,8 +10,8 @@ const { electronAPI } = window;
 // Default file path
 const DEFAULT_FILE_PATH = 'Z:\\DAS References\\ProjectCreatorV5\\DASGeneral.xlsx';
 
-function DASGeneralPage({ onOpenProject }) {
-  const [activeTab, setActiveTab] = useState('team-members');
+function DASGeneralPage({ onOpenProject, initialTab = 'team-members' }) {
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [data, setData] = useState({

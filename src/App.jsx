@@ -16,6 +16,7 @@ import Settings from './components/Settings';
 import DASGeneralPage from './components/DASGeneralPage';
 import SpecReviewPage from './components/specreview/SpecReviewPage';
 import TrainingHubPage from './components/traininghub/TrainingHubPage';
+import WelcomeSnapshot from './components/WelcomeSnapshot';
 import logoUrl from '/assets/images/logo.png';
 // Use simple services that work in both main and renderer processes
 import featureFlagService from './services/FeatureFlagService';
@@ -150,6 +151,7 @@ function App() {
   
   const [isLoading, setIsLoading] = useState(true);
   const [currentView, setCurrentView] = useState('welcome');
+  const [dasTab, setDasTab] = useState('team-members');
   const [currentProject, setCurrentProject] = useState(null);
   const [currentAgency, setCurrentAgency] = useState(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => readBooleanPreference(UI_STORAGE_KEYS.sidebarCollapsed, false));
@@ -1299,6 +1301,7 @@ function App() {
         case 'das-general':
           return (
             <DASGeneralPage
+              initialTab={dasTab}
               onOpenProject={(project) => {
                 setCurrentProject(project);
                 setCurrentView('project-management');
@@ -1340,20 +1343,13 @@ function App() {
                   </p>
 
                   {/* Quick Stats Bar */}
-                  <div className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-4xl">
-                    <div className="flex flex-col items-center rounded-2xl bg-white/10 p-4 backdrop-blur-lg border border-white/10 hover:bg-white/20 transition-colors">
-                      <span className="text-3xl font-bold">{projects.length}</span>
-                      <span className="text-xs uppercase tracking-wider opacity-70 mt-1 font-semibold">Active Projects</span>
-                    </div>
-                    <div className="flex flex-col items-center rounded-2xl bg-white/10 p-4 backdrop-blur-lg border border-white/10 hover:bg-white/20 transition-colors">
-                      <span className="text-3xl font-bold">{hasDrafts ? 'Active' : 'None'}</span>
-                      <span className="text-xs uppercase tracking-wider opacity-70 mt-1 font-semibold">Pending Drafts</span>
-                    </div>
-                    <div className="flex flex-col items-center rounded-2xl bg-white/10 p-4 backdrop-blur-lg border border-white/10 hover:bg-white/20 transition-colors">
-                      <span className="text-3xl font-bold">5.0</span>
-                      <span className="text-xs uppercase tracking-wider opacity-70 mt-1 font-semibold">System Stability</span>
-                    </div>
-                  </div>
+                  <WelcomeSnapshot
+                    projects={projects}
+                    onOpenReport={() => {
+                      setDasTab('analytics');
+                      setCurrentView('das-general');
+                    }}
+                  />
                 </div>
               </div>
 
