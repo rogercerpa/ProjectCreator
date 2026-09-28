@@ -154,6 +154,18 @@ describe('productivity score', () => {
     expect(report.band).toBe('meets');
   });
 
+  test('counts email responses and extra categories as logged work', () => {
+    const report = reportFor(8, {
+      entries: [
+        { date: '2026-09-08', category: 'email', hours: 4 },
+        { date: '2026-09-09', category: 'custom-site-visits', hours: 4 }
+      ]
+    });
+    expect(report.email).toBe(4);
+    expect(report.other).toBe(4);
+    expect(report.accounted).toBe(16);
+  });
+
   test('leaves sample projects out of hours, missing work, and the schedule', () => {
     const report = buildProductivityReport({
       userName: 'Cerpa, Roger',
@@ -191,5 +203,8 @@ describe('team roster', () => {
     expect(canonicalRole('l&t ae')).toBe('L&T AE');
     expect(roleLabel('Application Engineer')).toBe('Uncategorized (Application Engineer)');
     expect(namesMissingFromDirectory(['Ann AE', 'Old Name'], members)).toEqual(['Old Name']);
+    const { expertiseFromKnowledge, parseExpertise } = require('../../src/services/TeamRosterService');
+    expect(expertiseFromKnowledge({ Fresco: 5, nLight: 3, 'nLight Air': 4 })).toBe('Fresco:5; nLight Air:4');
+    expect(parseExpertise('Fresco:5; nLight:3')).toEqual([{ product: 'Fresco', level: 5 }]);
   });
 });

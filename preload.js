@@ -391,6 +391,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   timeCalendarLoad: () => ipcRenderer.invoke('time-calendar:load'),
   timeCalendarUpsert: (entry) => ipcRenderer.invoke('time-calendar:upsert', entry),
   timeCalendarDelete: (entryId) => ipcRenderer.invoke('time-calendar:delete', entryId),
+  timeCalendarSaveCategories: (categories) => ipcRenderer.invoke('time-calendar:save-categories', categories),
   
   // ===== BOM ANALYTICS APIs =====
   

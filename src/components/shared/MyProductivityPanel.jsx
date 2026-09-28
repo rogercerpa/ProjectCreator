@@ -55,6 +55,8 @@ export default function MyProductivityPanel({ report, compact = false, onOpenPro
     ['Meetings', `${hours(report.meetingsWorked)} · ${percent(report.meetingsShare)}`, report.agency > 0 ? `Includes ${hours(report.agency)} agency calls` : ''],
     ['Initiative', `${hours(report.initiative)} · ${percent(report.initiativeShare)}`, ''],
     ['Training', `${hours(report.training)} · ${percent(report.trainingShare)}`, ''],
+    ['Email responses', `${hours(report.email)} · ${percent(report.emailShare)}`, ''],
+    ...(report.other > 0 ? [['Other', `${hours(report.other)} · ${percent(report.otherShare)}`, '']] : []),
     ['Not recorded', `${hours(report.unaccounted)} · ${percent(report.unaccountedShare)}`, '']
   ];
 
@@ -87,7 +89,7 @@ export default function MyProductivityPanel({ report, compact = false, onOpenPro
 
       {report.band === 'needs-validation' && (
         <p className="text-sm text-warning-800 dark:text-warning-200">
-          Logged work is under 80% of available hours. Project hours, meetings, initiative, and training are the slices of that total. The rest of the period is not recorded yet.
+          Logged work is under 80% of available hours. Project hours, meetings, initiative, training, and email responses are the slices of that total. The rest of the period is not recorded yet.
         </p>
       )}
 

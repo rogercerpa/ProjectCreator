@@ -1,7 +1,7 @@
 /**
  * Personal productivity and schedule math.
  * The score is all logged work divided by weekday capacity minus PTO.
- * Logged work is project hours plus meetings (including agency calls), initiative, and training.
+ * Logged work is project hours plus meetings (including agency calls), initiative, training, email responses, and any extra categories.
  * Sample projects stay out of the score and the schedule.
  */
 
@@ -10,8 +10,11 @@ export const TIME_CATEGORIES = [
   { id: 'initiative', label: 'Initiative' },
   { id: 'agency', label: 'Agency call/meeting' },
   { id: 'pto', label: 'PTO/vacation' },
-  { id: 'training', label: 'Training' }
+  { id: 'training', label: 'Training' },
+  { id: 'email', label: 'Email responses' }
 ];
+
+export const BUILTIN_CATEGORY_IDS = new Set(TIME_CATEGORIES.map((category) => category.id));
 
 export const BAND_LABELS = {
   'needs-validation': 'Needs validation',
@@ -176,15 +179,19 @@ export function buildProductivityReport({
   const dailyCapacity = capacity / 5;
   const grossHours = weekdays * dailyCapacity;
 
-  const categoryHours = { meeting: 0, initiative: 0, agency: 0, pto: 0, training: 0 };
+  const categoryHours = { meeting: 0, initiative: 0, agency: 0, pto: 0, training: 0, email: 0 };
+  const otherCategories = {};
   (entries || []).forEach((entry) => {
     if (!dateInRange(entry?.date, startDate, endDate)) return;
     const hours = Number(entry?.hours);
     if (!Number.isFinite(hours) || hours <= 0) return;
     if (Object.prototype.hasOwnProperty.call(categoryHours, entry.category)) {
       categoryHours[entry.category] += hours;
+    } else if (entry.category) {
+      otherCategories[entry.category] = (otherCategories[entry.category] || 0) + hours;
     }
   });
+  const other = Object.values(otherCategories).reduce((sum, value) => sum + value, 0);
 
   const available = Math.max(0, grossHours - categoryHours.pto);
   let triage = 0;
@@ -247,7 +254,7 @@ export function buildProductivityReport({
 
   const productive = triage + design + qc;
   const meetingsWorked = categoryHours.meeting + categoryHours.agency;
-  const accounted = productive + meetingsWorked + categoryHours.initiative + categoryHours.training;
+  const accounted = productive + meetingsWorked + categoryHours.initiative + categoryHours.training + categoryHours.email + other;
   const unaccounted = Math.max(0, available - accounted);
   const share = (part) => (available > 0 ? (part / available) * 100 : null);
   const score = share(accounted);
@@ -274,12 +281,17 @@ export function buildProductivityReport({
     initiative: categoryHours.initiative,
     agency: categoryHours.agency,
     training: categoryHours.training,
+    email: categoryHours.email,
+    other,
+    otherCategories,
     accounted,
     unaccounted,
     projectShare: share(productive),
     meetingsShare: share(meetingsWorked),
     initiativeShare: share(categoryHours.initiative),
     trainingShare: share(categoryHours.training),
+    emailShare: share(categoryHours.email),
+    otherShare: share(other),
     unaccountedShare: share(unaccounted),
     score,
     band,

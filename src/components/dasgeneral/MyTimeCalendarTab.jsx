@@ -101,6 +101,9 @@ export default function MyTimeCalendarTab({ onOpenProject }) {
   const [weeklyCapacity, setWeeklyCapacity] = useState(40);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(null);
+  const [customCategories, setCustomCategories] = useState([]);
+  const [showCategories, setShowCategories] = useState(false);
+  const [newCategory, setNewCategory] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -118,6 +121,7 @@ export default function MyTimeCalendarTab({ onOpenProject }) {
         setWeeklyCapacity(Number(settingsResult?.data?.workloadSettings?.weeklyCapacity) || 40);
         setProjects(Array.isArray(projectResult?.projects) ? projectResult.projects : (Array.isArray(projectResult) ? projectResult : []));
         setEntries(calendarResult?.entries || []);
+        setCustomCategories(calendarResult?.customCategories || []);
       } catch (err) {
         if (active) setError(err.message || 'Could not load your calendar.');
       } finally {
@@ -162,6 +166,18 @@ export default function MyTimeCalendarTab({ onOpenProject }) {
     if (result?.success) setEntries(result.entries || []);
   };
 
+  const categoryOptions = [...TIME_CATEGORIES, ...customCategories];
+  const categoryLabel = (id) => categoryOptions.find((item) => item.id === id)?.label || id;
+
+  const saveCategories = async (next) => {
+    const result = await electronAPI.timeCalendarSaveCategories(next);
+    if (!result?.success) {
+      setError(result?.error || 'Could not save categories.');
+      return;
+    }
+    setCustomCategories(result.customCategories || []);
+  };
+
   const openProject = (projectId) => {
     const project = projects.find((item) => item.id === projectId);
     if (project && onOpenProject) onOpenProject(project);
@@ -180,6 +196,11 @@ export default function MyTimeCalendarTab({ onOpenProject }) {
         </p>
       )}
       {error && <p className="text-sm text-danger-600">{error}</p>}
+      <div className="flex justify-end">
+        <button type="button" className="text-sm text-primary-600" onClick={() => setShowCategories(true)}>
+          Edit categories
+        </button>
+      </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <button
@@ -276,7 +297,7 @@ export default function MyTimeCalendarTab({ onOpenProject }) {
                       setForm({ ...entry, date: dateKey(entry.date), hours: String(entry.hours) });
                     }}
                   >
-                    {TIME_CATEGORIES.find((item) => item.id === entry.category)?.label || entry.category} {entry.hours}h
+                    {categoryLabel(entry.category)} {entry.hours}h
                   </button>
                 ))}
               </div>
@@ -297,7 +318,7 @@ export default function MyTimeCalendarTab({ onOpenProject }) {
               value={form.category}
               onChange={(event) => setForm((prev) => ({ ...prev, category: event.target.value }))}
             >
-              {TIME_CATEGORIES.map((category) => (
+              {categoryOptions.map((category) => (
                 <option key={category.id} value={category.id}>{category.label}</option>
               ))}
             </select>
@@ -337,7 +358,7 @@ export default function MyTimeCalendarTab({ onOpenProject }) {
                 {entries.filter((entry) => dateKey(entry.date) === form.date).map((entry) => (
                   <div key={entry.id} className="flex justify-between gap-2">
                     <button type="button" className="underline" onClick={() => setForm({ ...entry, hours: String(entry.hours) })}>
-                      Edit {TIME_CATEGORIES.find((item) => item.id === entry.category)?.label} {entry.hours}h
+                      Edit {categoryLabel(entry.category)} {entry.hours}h
                     </button>
                     <button type="button" className="text-danger-600" onClick={() => deleteEntry(entry.id)}>Delete</button>
                   </div>
@@ -352,6 +373,74 @@ export default function MyTimeCalendarTab({ onOpenProject }) {
               )}
               <button type="button" className="px-3 py-2" onClick={() => setForm(null)}>Cancel</button>
               <button type="button" className="px-3 py-2 rounded-lg bg-primary-600 text-white" onClick={saveForm}>Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showCategories && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md space-y-3 rounded-xl bg-white p-5 shadow-xl dark:bg-gray-800">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Categories</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Work meeting, agency calls, initiative, training, email responses, and PTO stay in the list. Extra categories count as logged work.
+            </p>
+            <ul className="space-y-1 text-sm text-gray-700 dark:text-gray-200">
+              {TIME_CATEGORIES.map((category) => (
+                <li key={category.id}>{category.label}</li>
+              ))}
+            </ul>
+            <ul className="space-y-2">
+              {customCategories.map((category) => (
+                <li key={category.id} className="flex items-center gap-2">
+                  <input
+                    className="flex-1 rounded-lg border border-gray-300 px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-900"
+                    value={category.label}
+                    onChange={(event) => setCustomCategories((prev) => prev.map((item) => (
+                      item.id === category.id ? { ...item, label: event.target.value } : item
+                    )))}
+                  />
+                  <button
+                    type="button"
+                    className="text-sm text-danger-600"
+                    onClick={() => saveCategories(customCategories.filter((item) => item.id !== category.id))}
+                  >
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <div className="flex gap-2">
+              <input
+                className="flex-1 rounded-lg border border-gray-300 px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-900"
+                placeholder="New category"
+                value={newCategory}
+                onChange={(event) => setNewCategory(event.target.value)}
+              />
+              <button
+                type="button"
+                className="rounded-lg bg-primary-600 px-3 py-1 text-sm text-white"
+                onClick={() => {
+                  const label = newCategory.trim();
+                  if (!label) return;
+                  saveCategories([...customCategories, { label }]);
+                  setNewCategory('');
+                }}
+              >
+                Add
+              </button>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button type="button" className="px-3 py-2 text-sm" onClick={() => setShowCategories(false)}>Close</button>
+              <button
+                type="button"
+                className="rounded-lg bg-primary-600 px-3 py-2 text-sm text-white"
+                onClick={async () => {
+                  await saveCategories(customCategories);
+                  setShowCategories(false);
+                }}
+              >
+                Save names
+              </button>
             </div>
           </div>
         </div>

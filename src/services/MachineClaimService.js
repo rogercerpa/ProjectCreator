@@ -1,4 +1,4 @@
-import { canonicalRole } from './TeamRosterService';
+import { canonicalRole, expertiseFromKnowledge } from './TeamRosterService';
 
 export function upsertMachineUser(rows = [], next) {
   const machine = String(next?.machineName || '').trim().toLowerCase();
@@ -100,6 +100,42 @@ export async function claimTeamMember(member) {
     hostname: identity.hostname,
     error: local.error
   };
+}
+
+export async function publishClaimedExpertise(settings) {
+  const workload = settings?.workloadSettings || {};
+  const claim = {
+    email: workload.claimedMemberEmail,
+    memberName: workload.claimedMemberName || workload.userName
+  };
+  if (!claim.email && !claim.memberName) return { success: true, skipped: true };
+
+  const settingsResult = await window.electronAPI.dasGeneralGetSettings();
+  const filePath = settingsResult?.settings?.filePath;
+  const loaded = await window.electronAPI.dasGeneralLoadAll(filePath);
+  if (!loaded?.success) {
+    return { success: false, error: loaded?.message || 'The team directory could not be opened.' };
+  }
+  const member = findMemberForClaim(loaded.data?.teamMembers || [], claim);
+  if (!member) return { success: false, error: 'The claimed team member was not found.' };
+
+  const expertise = expertiseFromKnowledge(workload.productKnowledge);
+  const teamMembers = (loaded.data.teamMembers || []).map((row) => (
+    row.id === member.id ? { ...row, expertise } : row
+  ));
+  const saved = await window.electronAPI.dasGeneralSaveAll({
+    teamMembers,
+    trainingMaterial: loaded.data.trainingMaterial || [],
+    productsInfo: loaded.data.productsInfo || [],
+    products: loaded.data.products || [],
+    machineUsers: loaded.data.machineUsers || [],
+    activityAction: 'Updated product expertise',
+    activityMember: member.name
+  }, filePath);
+  if (!saved?.success) {
+    return { success: false, error: saved?.message || saved?.error || 'Could not publish product expertise.' };
+  }
+  return { success: true, expertise };
 }
 
 export async function refreshClaimedProfile(teamMembers = []) {

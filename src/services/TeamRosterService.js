@@ -10,6 +10,25 @@ export function canonicalRole(role) {
   return ROLE_CATEGORIES.find((category) => category.toLowerCase() === value.toLowerCase()) || '';
 }
 
+export function expertiseFromKnowledge(productKnowledge = {}) {
+  return Object.entries(productKnowledge)
+    .map(([product, level]) => [String(product || '').trim(), Number(level)])
+    .filter(([product, level]) => product && (level === 4 || level === 5))
+    .map(([product, level]) => `${product}:${level}`)
+    .join('; ');
+}
+
+export function parseExpertise(value) {
+  return String(value || '').split(';').map((part) => part.trim()).filter(Boolean).flatMap((part) => {
+    const splitAt = part.lastIndexOf(':');
+    if (splitAt <= 0) return [];
+    const product = part.slice(0, splitAt).trim();
+    const level = Number(part.slice(splitAt + 1));
+    if (!product || (level !== 4 && level !== 5)) return [];
+    return [{ product, level }];
+  });
+}
+
 export function roleLabel(role) {
   const category = canonicalRole(role);
   if (category) return category;

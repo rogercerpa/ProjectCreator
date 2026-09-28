@@ -149,7 +149,7 @@ class DASGeneralService {
 
       // Sheet 1: TeamMembers
       const teamMembersData = [
-        ['Name', 'Email', 'Role', 'PhoneNumber'],
+        ['Name', 'Email', 'Role', 'PhoneNumber', 'Expertise'],
         // Default empty row as placeholder
       ];
       const teamMembersSheet = XLSX.utils.aoa_to_sheet(teamMembersData);
@@ -210,7 +210,7 @@ class DASGeneralService {
       const workbook = XLSX.readFile(normalizedPath);
       
       // Load Team Members
-      const teamMembers = this.loadSheetData(workbook, 'TeamMembers', ['name', 'email', 'role', 'phoneNumber']);
+      const teamMembers = this.loadSheetData(workbook, 'TeamMembers', ['name', 'email', 'role', 'phoneNumber', 'expertise']);
       
       // Load Training Material
       const trainingMaterial = this.loadSheetData(workbook, 'TrainingMaterial', ['product', 'linkType', 'link', 'description']);
@@ -374,12 +374,13 @@ class DASGeneralService {
 
       // Sheet 1: TeamMembers
       const teamMembersData = [
-        ['Name', 'Email', 'Role', 'PhoneNumber'],
+        ['Name', 'Email', 'Role', 'PhoneNumber', 'Expertise'],
         ...safeTeamMembers.map(m => [
-          m?.name || '', 
-          m?.email || '', 
-          m?.role || '', 
-          m?.phoneNumber || ''
+          m?.name || '',
+          m?.email || '',
+          m?.role || '',
+          m?.phoneNumber || '',
+          m?.expertise || ''
         ])
       ];
       const teamMembersSheet = XLSX.utils.aoa_to_sheet(teamMembersData);

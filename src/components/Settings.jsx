@@ -14,6 +14,7 @@ import TriageCalcTab from './settings/TriageCalcTab';
 import AgileTab from './settings/AgileTab';
 import featureFlagService from '../services/FeatureFlagService';
 import { buildSetupChecklist } from '../utils/setupChecklist';
+import { publishClaimedExpertise } from '../services/MachineClaimService';
 
 // Access secure electron API through contextBridge
 const { electronAPI } = window;
@@ -961,6 +962,15 @@ function Settings({ initialTab = 'user-profile', initialErrorId = null, onLaunch
         }
       }
       
+      try {
+        const expertiseResult = await publishClaimedExpertise(settings);
+        if (expertiseResult && expertiseResult.success === false) {
+          errors.push('Product expertise: ' + (expertiseResult.error || 'Could not update Team Members'));
+        }
+      } catch (error) {
+        errors.push('Product expertise: ' + error.message);
+      }
+
       // Show result message
       if (errors.length === 0) {
         alert('All settings saved successfully!');

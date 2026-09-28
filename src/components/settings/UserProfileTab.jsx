@@ -119,7 +119,7 @@ const UserProfileTab = ({ settings, setSettings }) => {
               ))}
             </select>
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Name, email, and category come from DAS General → Team Members. Weekly capacity and product knowledge stay on this PC.
+              Name, email, and category come from DAS General → Team Members. The full product scale stays on this PC. Products rated 4 or 5 appear on Team Members for everyone.
             </p>
             {directoryError && <p className="mt-1 text-xs text-warning-700 dark:text-warning-300">{directoryError}</p>}
             {claimError && <p className="mt-1 text-xs text-danger-600">{claimError}</p>}

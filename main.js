@@ -3128,6 +3128,13 @@ ipcMain.handle('time-calendar:upsert', async (event, entry) => {
     return { success: false, error: error.message };
   }
 });
+ipcMain.handle('time-calendar:save-categories', async (event, categories) => {
+  try {
+    return await userTimeCalendarService.saveCategories(categories);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
 ipcMain.handle('time-calendar:delete', async (event, entryId) => {
   try {
     return await userTimeCalendarService.remove(entryId);

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ROLE_CATEGORIES, canonicalRole, roleLabel } from '../../services/TeamRosterService';
+import { ROLE_CATEGORIES, canonicalRole, parseExpertise, roleLabel } from '../../services/TeamRosterService';
 import { otherMachinesForMember } from '../../services/MachineClaimService';
 
 function RoleSelect({ value, onChange, className }) {
@@ -375,6 +375,18 @@ function TeamMembersTab({ teamMembers = [], machineUsers = [], hostname = '', on
                           )}
                           <span className="whitespace-nowrap">{member.phoneNumber || 'No phone'}</span>
                         </div>
+                        {parseExpertise(member.expertise).length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {parseExpertise(member.expertise).map((item) => (
+                              <span
+                                key={`${item.product}-${item.level}`}
+                                className="inline-flex rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-800 dark:bg-primary-900/40 dark:text-primary-200"
+                              >
+                                {item.product} {item.level}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                         {otherMachinesForMember(machineUsers, member.name, hostname).map((row) => (
                           <div key={row.machineName} className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                             Also on {row.machineName}{row.lastSeen ? `, last seen ${new Date(row.lastSeen).toLocaleDateString()}` : ''}
