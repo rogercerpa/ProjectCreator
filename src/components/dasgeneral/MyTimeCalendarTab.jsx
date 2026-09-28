@@ -189,7 +189,7 @@ export default function MyTimeCalendarTab({ onOpenProject }) {
 
   return (
     <div className="space-y-4">
-      <MyProductivityPanel report={report} compact />
+      <MyProductivityPanel report={report} compact onViewProject={openProject} />
       {!userName && (
         <p className="text-sm text-warning-700 dark:text-warning-300">
           Set your name under Settings → User Profile so project triage, design, and QC hours attach to you.

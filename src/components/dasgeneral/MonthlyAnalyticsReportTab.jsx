@@ -7,7 +7,7 @@ const { electronAPI } = window;
  * Monthly Analytics Report Tab
  * Wrapper component that loads projects and renders the analytics report
  */
-function MonthlyAnalyticsReportTab() {
+function MonthlyAnalyticsReportTab({ onViewProject }) {
   const [projects, setProjects] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -85,6 +85,7 @@ function MonthlyAnalyticsReportTab() {
   return (
     <MonthlyAnalyticsReport
       projects={projects}
+      onViewProject={onViewProject}
       onProjectUpdated={(saved) => {
         setProjects((prev) => prev.map((project) => (
           project.id === saved.id ? { ...project, ...saved } : project

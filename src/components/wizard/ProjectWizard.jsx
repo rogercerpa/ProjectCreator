@@ -12,6 +12,7 @@ import DuplicateProjectDialog from './components/DuplicateProjectDialog';
 import DuplicateProjectDetectionClient from '../../services/DuplicateProjectDetectionClient';
 import performanceMonitoringService from '../../services/SimplePerformanceMonitoringService';
 import { useErrorNotification } from '../../contexts/ErrorNotificationContext';
+import { nextSampleIdentity } from '../../services/SampleProjectService';
 
 // Lazy load draft service to prevent blocking initial render
 let ProjectDraftService = null;
@@ -1504,6 +1505,51 @@ const ProjectWizard = ({
   }, [mode, existingProject]); // Removed projectDraft from dependencies
 
 
+  const createSampleProject = async () => {
+    if (isLoading || mode !== 'create') return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      let designBy = '';
+      if (window.electronAPI?.settingsLoad) {
+        const settingsResult = await window.electronAPI.settingsLoad();
+        designBy = settingsResult?.data?.workloadSettings?.userName || '';
+      }
+      const identity = nextSampleIdentity(existingProjects);
+      const sampleProject = {
+        projectName: identity.projectName,
+        rfaNumber: identity.rfaNumber,
+        projectContainer: identity.projectContainer,
+        requestedDate: identity.requestedDate,
+        ecd: identity.ecd,
+        sampleProject: true,
+        rfaStatus: 'In Progress',
+        designBy,
+        status: 'active',
+        sourceType: 'sample',
+        projectNotes: `${identity.projectName} was created in the app only. No folder or files were created.`
+      };
+      const saveResult = await window.electronAPI.projectSave(sampleProject);
+      if (!saveResult?.success || !saveResult.project) {
+        throw new Error(saveResult?.error || 'Could not save the sample project.');
+      }
+      setNotification({
+        type: 'success',
+        message: `${identity.projectName} was created in the app only. No folder or files were created.`
+      });
+      if (typeof onProjectCreated === 'function') {
+        await onProjectCreated(saveResult.project);
+      }
+    } catch (sampleError) {
+      console.error('Sample project creation failed:', sampleError);
+      if (isMountedRef.current) {
+        setError(sampleError.message || 'Could not create the sample project.');
+      }
+    } finally {
+      if (isMountedRef.current) setIsLoading(false);
+    }
+  };
+
   // Render current step content
   const renderStepContent = () => {
     switch (wizard.currentStep) {
@@ -1516,6 +1562,11 @@ const ProjectWizard = ({
             onFieldError={handleFieldError}
             onFieldTouch={handleFieldTouch}
             showImportedFields={true}
+            sampleAction={mode === 'create' && !existingProject ? {
+              label: nextSampleIdentity(existingProjects).projectName,
+              busy: isLoading,
+              onClick: createSampleProject
+            } : null}
             onValidationChange={(isValid, errors) => {
               wizard.setStepValidation(1, isValid, errors);
             }}

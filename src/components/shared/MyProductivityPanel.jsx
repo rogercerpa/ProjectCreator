@@ -1,5 +1,5 @@
-import React from 'react';
-import { formatScheduleResult } from '../../services/ProductivityMetricsService';
+import React, { useEffect, useState } from 'react';
+import { formatScheduleResult, startOfDay } from '../../services/ProductivityMetricsService';
 
 function hours(value) {
   return `${Number(value || 0).toFixed(1)} h`;
@@ -24,7 +24,127 @@ function scheduleNeedsAttention(item) {
     || item.ecdReasonMissing;
 }
 
-export default function MyProductivityPanel({ report, compact = false, onOpenProject, showSampleProjects = false }) {
+const DRILLDOWN = {
+  'Project hours': 'projectHours',
+  Meetings: 'meetings',
+  Initiative: 'initiative',
+  Training: 'training',
+  'Email responses': 'email',
+  Other: 'other'
+};
+
+function formatEntryDate(value) {
+  const day = startOfDay(value);
+  if (!day) return '';
+  return day.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+function phaseBits(item) {
+  return [
+    item.triage != null ? `Triage ${hours(item.triage)}` : '',
+    item.design != null ? `Design ${hours(item.design)}` : '',
+    item.qc != null ? `QC ${hours(item.qc)}` : ''
+  ].filter(Boolean).join(' · ');
+}
+
+function MetricDetailModal({ metric, report, onClose, onViewProject }) {
+  useEffect(() => {
+    const onKey = (event) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const lines = report.detail?.[metric] || [];
+  const titles = {
+    projectHours: 'Project hours',
+    meetings: 'Meetings',
+    initiative: 'Initiative',
+    training: 'Training',
+    email: 'Email responses',
+    other: 'Other'
+  };
+  const summaries = {
+    projectHours: `${hours(report.productive)} · ${percent(report.projectShare)}`,
+    meetings: `${hours(report.meetingsWorked)} · ${percent(report.meetingsShare)}`,
+    initiative: `${hours(report.initiative)} · ${percent(report.initiativeShare)}`,
+    training: `${hours(report.training)} · ${percent(report.trainingShare)}`,
+    email: `${hours(report.email)} · ${percent(report.emailShare)}`,
+    other: `${hours(report.other)} · ${percent(report.otherShare)}`
+  };
+
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 print:hidden" role="presentation" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/40" />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="metric-detail-title"
+        className="relative z-10 flex max-h-[80vh] w-full max-w-lg flex-col rounded-xl bg-white shadow-xl dark:bg-gray-800"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-3 border-b border-gray-200 px-4 py-3 dark:border-gray-700">
+          <div>
+            <h3 id="metric-detail-title" className="text-base font-bold text-gray-900 dark:text-white">{titles[metric]}</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{summaries[metric]}</p>
+          </div>
+          <button type="button" onClick={onClose} className="text-lg font-bold text-gray-500 hover:text-gray-800 dark:hover:text-gray-200" aria-label="Close">
+            ×
+          </button>
+        </div>
+        <div className="overflow-y-auto px-4 py-3">
+          {lines.length === 0 ? (
+            <p className="text-sm text-gray-500 dark:text-gray-400">Nothing was logged in this period.</p>
+          ) : metric === 'projectHours' ? (
+            <ul className="space-y-1">
+              {lines.map((item) => (
+                <li key={item.projectId || item.projectName}>
+                  <button
+                    type="button"
+                    onClick={() => onViewProject?.(item.projectId)}
+                    disabled={!onViewProject || !item.projectId}
+                    className="w-full rounded-lg px-2 py-1.5 text-left text-sm text-gray-800 hover:bg-gray-50 disabled:cursor-default disabled:hover:bg-transparent dark:text-gray-200 dark:hover:bg-gray-700/40"
+                  >
+                    <span className="font-medium">{item.projectName}</span>
+                    <span className="block text-xs text-gray-500 dark:text-gray-400">
+                      {[item.rfaNumber, phaseBits(item), hours(item.total)].filter(Boolean).join(' · ')}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <ul className="space-y-1">
+              {lines.map((item) => (
+                <li key={item.id} className="rounded-lg px-2 py-1.5 text-sm text-gray-800 dark:text-gray-200">
+                  <span className="font-medium">{formatEntryDate(item.date)}</span>
+                  <span className="text-gray-500 dark:text-gray-400"> · {item.label} · {hours(item.hours)}</span>
+                  {item.notes ? <span className="block text-xs text-gray-500 dark:text-gray-400">{item.notes}</span> : null}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function MyProductivityPanel({
+  report,
+  compact = false,
+  onOpenProject,
+  onViewProject,
+  showSampleProjects = false,
+  interactive = true
+}) {
+  const [openMetric, setOpenMetric] = useState(null);
+
+  useEffect(() => {
+    if (!interactive) setOpenMetric(null);
+  }, [interactive]);
+
   if (!report) return null;
 
   const missingByProject = [];
@@ -43,6 +163,11 @@ export default function MyProductivityPanel({ report, compact = false, onOpenPro
 
   const openProject = (projectId) => {
     if (onOpenProject && projectId) onOpenProject(projectId);
+  };
+
+  const viewProject = (projectId) => {
+    setOpenMetric(null);
+    if (onViewProject && projectId) onViewProject(projectId);
   };
 
   const scheduleAttention = (report.schedule || []).filter(scheduleNeedsAttention);
@@ -78,14 +203,43 @@ export default function MyProductivityPanel({ report, compact = false, onOpenPro
       </div>
 
       <div className={`grid gap-2 ${compact ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4'}`}>
-        {rows.map(([label, value, detail]) => (
-          <div key={label} className="px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-900">
-            <div className="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">{label}</div>
-            <div className="text-sm font-semibold text-gray-900 dark:text-white">{value}</div>
-            {detail ? <div className="text-[11px] text-gray-500 dark:text-gray-400">{detail}</div> : null}
-          </div>
-        ))}
+        {rows.map(([label, value, detail]) => {
+          const metric = DRILLDOWN[label];
+          const card = (
+            <>
+              <div className="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">{label}</div>
+              <div className="text-sm font-semibold text-gray-900 dark:text-white">{value}</div>
+              {detail ? <div className="text-[11px] text-gray-500 dark:text-gray-400">{detail}</div> : null}
+            </>
+          );
+          if (!metric || !interactive) {
+            return (
+              <div key={label} className="px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-900">
+                {card}
+              </div>
+            );
+          }
+          return (
+            <button
+              key={label}
+              type="button"
+              onClick={() => setOpenMetric(metric)}
+              className="px-3 py-2 rounded-lg bg-gray-50 text-left hover:bg-gray-100 dark:bg-gray-900 dark:hover:bg-gray-700/60"
+            >
+              {card}
+            </button>
+          );
+        })}
       </div>
+
+      {openMetric && interactive && (
+        <MetricDetailModal
+          metric={openMetric}
+          report={report}
+          onClose={() => setOpenMetric(null)}
+          onViewProject={onViewProject ? viewProject : undefined}
+        />
+      )}
 
       {report.band === 'needs-validation' && (
         <p className="text-sm text-warning-800 dark:text-warning-200">

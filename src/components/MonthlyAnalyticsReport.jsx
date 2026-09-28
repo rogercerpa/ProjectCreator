@@ -228,7 +228,7 @@ const getDefaultDateRange = () => {
 };
 
 // Main Component
-function MonthlyAnalyticsReport({ projects = [], onProjectUpdated }) {
+function MonthlyAnalyticsReport({ projects = [], onProjectUpdated, onViewProject }) {
   const countableProjects = useMemo(
     () => (projects || []).filter((project) => !isSampleProject(project)),
     [projects]
@@ -655,6 +655,11 @@ function MonthlyAnalyticsReport({ projects = [], onProjectUpdated }) {
             <MyProductivityPanel
               report={productivity}
               showSampleProjects={Boolean(reportSettings.showSampleProjects)}
+              interactive={!isPrintMode}
+              onViewProject={isPrintMode ? undefined : (projectId) => {
+                const project = projects.find((item) => item.id === projectId);
+                if (project && onViewProject) onViewProject(project);
+              }}
               onOpenProject={isPrintMode ? undefined : (projectId) => {
                 const project = projects.find((item) => item.id === projectId);
                 if (project) setEditingProject(project);

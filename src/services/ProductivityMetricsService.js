@@ -129,6 +129,14 @@ function projectLabel(project) {
   return project?.projectName || project?.rfaNumber || 'Project';
 }
 
+function timeCategoryLabel(id) {
+  return TIME_CATEGORIES.find((category) => category.id === id)?.label || id;
+}
+
+function compareDetailDate(left, right) {
+  return String(left?.date || '').localeCompare(String(right?.date || ''));
+}
+
 function projectTouchesRange(project, startDate, endDate) {
   const dates = [
     project?.createdAt,
@@ -181,16 +189,29 @@ export function buildProductivityReport({
 
   const categoryHours = { meeting: 0, initiative: 0, agency: 0, pto: 0, training: 0, email: 0 };
   const otherCategories = {};
-  (entries || []).forEach((entry) => {
+  const timeDetail = { meetings: [], initiative: [], training: [], email: [], other: [] };
+  (entries || []).forEach((entry, index) => {
     if (!dateInRange(entry?.date, startDate, endDate)) return;
     const hours = Number(entry?.hours);
     if (!Number.isFinite(hours) || hours <= 0) return;
+    const line = {
+      id: entry.id || `${entry.date}-${entry.category}-${index}`,
+      date: entry.date,
+      category: entry.category,
+      label: timeCategoryLabel(entry.category),
+      hours,
+      notes: entry.notes || ''
+    };
     if (Object.prototype.hasOwnProperty.call(categoryHours, entry.category)) {
       categoryHours[entry.category] += hours;
+      if (entry.category === 'meeting' || entry.category === 'agency') timeDetail.meetings.push(line);
+      else if (entry.category !== 'pto') timeDetail[entry.category].push(line);
     } else if (entry.category) {
       otherCategories[entry.category] = (otherCategories[entry.category] || 0) + hours;
+      timeDetail.other.push(line);
     }
   });
+  Object.values(timeDetail).forEach((lines) => lines.sort(compareDetailDate));
   const other = Object.values(otherCategories).reduce((sum, value) => sum + value, 0);
 
   const available = Math.max(0, grossHours - categoryHours.pto);
@@ -200,6 +221,7 @@ export function buildProductivityReport({
   const missing = [];
   const schedule = [];
   const samples = [];
+  const projectHourRows = new Map();
 
   (projects || []).forEach((project) => {
     if (isSampleProject(project)) {
@@ -224,6 +246,17 @@ export function buildProductivityReport({
         if (phase.id === 'triage') triage += hours;
         if (phase.id === 'design') design += hours;
         if (phase.id === 'qc') qc += hours;
+        const key = project.id || project.rfaNumber || projectLabel(project);
+        const row = projectHourRows.get(key) || {
+          projectId: project.id,
+          projectName: projectLabel(project),
+          rfaNumber: project.rfaNumber || '',
+          triage: null,
+          design: null,
+          qc: null
+        };
+        row[phase.id] = (row[phase.id] || 0) + hours;
+        projectHourRows.set(key, row);
       } else if (!recorded && (creditInRange || completedInRange)) {
         missing.push({
           projectId: project.id,
@@ -300,6 +333,15 @@ export function buildProductivityReport({
     schedule,
     samples,
     rdHitRate,
-    ecdHitRate
+    ecdHitRate,
+    detail: {
+      projectHours: Array.from(projectHourRows.values())
+        .map((row) => ({
+          ...row,
+          total: (row.triage || 0) + (row.design || 0) + (row.qc || 0)
+        }))
+        .sort((left, right) => left.projectName.localeCompare(right.projectName)),
+      ...timeDetail
+    }
   };
 }

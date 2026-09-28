@@ -129,7 +129,8 @@ const ProjectWizardStep1 = ({
   onWizardReset,
   onCheckForDuplicates,
   isDuplicateDetectionRunning = false,
-  onDuplicateCheckStateChange
+  onDuplicateCheckStateChange,
+  sampleAction = null
 }) => {
   const [isPasting, setIsPasting] = useState(false);
   const [importedFields, setImportedFields] = useState([]);
@@ -1948,6 +1949,18 @@ const ProjectWizardStep1 = ({
       totalSteps={2}
       actions={
         <>
+          {sampleAction && (
+            <button
+              type="button"
+              onClick={sampleAction.onClick}
+              disabled={sampleAction.busy}
+              className="px-3 py-1.5 text-sm font-medium bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/30 text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Create a test project in the app only. No folder or files are created."
+            >
+              {sampleAction.busy ? 'Creating…' : sampleAction.label}
+            </button>
+          )}
+
           {/* Start Fresh Button */}
           <button
             type="button"

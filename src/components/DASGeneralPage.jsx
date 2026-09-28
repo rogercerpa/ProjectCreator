@@ -273,7 +273,7 @@ function DASGeneralPage({ onOpenProject, initialTab = 'team-members' }) {
       case 'my-time':
         return <MyTimeCalendarTab onOpenProject={onOpenProject} />;
       case 'analytics':
-        return <MonthlyAnalyticsReportTab />;
+        return <MonthlyAnalyticsReportTab onViewProject={onOpenProject} />;
       default:
         return null;
     }

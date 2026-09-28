@@ -164,6 +164,50 @@ describe('productivity score', () => {
     expect(report.email).toBe(4);
     expect(report.other).toBe(4);
     expect(report.accounted).toBe(16);
+    expect(report.detail.email).toEqual([
+      expect.objectContaining({ label: 'Email responses', hours: 4, date: '2026-09-08' })
+    ]);
+    expect(report.detail.other).toEqual([
+      expect.objectContaining({ category: 'custom-site-visits', hours: 4 })
+    ]);
+  });
+
+  test('lists the project hours and meeting tasks behind the totals', () => {
+    const report = buildProductivityReport({
+      userName: 'Cerpa, Roger',
+      startDate,
+      endDate,
+      weeklyCapacity: 40,
+      projects: [{
+        id: 'p1',
+        projectName: 'Lobby',
+        rfaNumber: '284443-0',
+        triagedBy: 'Cerpa, Roger',
+        designBy: 'Cerpa, Roger',
+        actualTriageHours: 2,
+        triageHoursDate: '2026-09-08',
+        actualDesignHours: 6,
+        designHoursDate: '2026-09-09'
+      }],
+      entries: [
+        { id: 'm1', date: '2026-09-08', category: 'meeting', hours: 1, notes: 'Standup' },
+        { id: 'a1', date: '2026-09-09', category: 'agency', hours: 2, notes: 'Rep call' },
+        { date: '2026-09-01', category: 'meeting', hours: 5 }
+      ]
+    });
+    expect(report.productive).toBe(8);
+    expect(report.detail.projectHours).toEqual([
+      expect.objectContaining({
+        projectId: 'p1',
+        rfaNumber: '284443-0',
+        triage: 2,
+        design: 6,
+        qc: null,
+        total: 8
+      })
+    ]);
+    expect(report.meetingsWorked).toBe(3);
+    expect(report.detail.meetings.map((item) => item.id)).toEqual(['m1', 'a1']);
   });
 
   test('leaves sample projects out of hours, missing work, and the schedule', () => {
