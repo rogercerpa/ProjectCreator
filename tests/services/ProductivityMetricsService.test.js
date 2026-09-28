@@ -190,7 +190,7 @@ describe('productivity score', () => {
         designHoursDate: '2026-09-09'
       }],
       entries: [
-        { id: 'm1', date: '2026-09-08', category: 'meeting', hours: 1, notes: 'Standup' },
+        { id: 'm1', date: '2026-09-08', category: 'meeting', hours: 1, title: 'Standup', notes: 'Lobby' },
         { id: 'a1', date: '2026-09-09', category: 'agency', hours: 2, notes: 'Rep call' },
         { date: '2026-09-01', category: 'meeting', hours: 5 }
       ]
@@ -208,6 +208,7 @@ describe('productivity score', () => {
     ]);
     expect(report.meetingsWorked).toBe(3);
     expect(report.detail.meetings.map((item) => item.id)).toEqual(['m1', 'a1']);
+    expect(report.detail.meetings[0].title).toBe('Standup');
   });
 
   test('leaves sample projects out of hours, missing work, and the schedule', () => {

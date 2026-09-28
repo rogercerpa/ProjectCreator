@@ -118,7 +118,8 @@ function MetricDetailModal({ metric, report, onClose, onViewProject }) {
             <ul className="space-y-1">
               {lines.map((item) => (
                 <li key={item.id} className="rounded-lg px-2 py-1.5 text-sm text-gray-800 dark:text-gray-200">
-                  <span className="font-medium">{formatEntryDate(item.date)}</span>
+                  {item.title ? <span className="block font-medium">{item.title}</span> : null}
+                  <span className={item.title ? 'text-xs text-gray-500 dark:text-gray-400' : 'font-medium'}>{formatEntryDate(item.date)}</span>
                   <span className="text-gray-500 dark:text-gray-400"> · {item.label} · {hours(item.hours)}</span>
                   {item.notes ? <span className="block text-xs text-gray-500 dark:text-gray-400">{item.notes}</span> : null}
                 </li>

@@ -200,6 +200,7 @@ export function buildProductivityReport({
       category: entry.category,
       label: timeCategoryLabel(entry.category),
       hours,
+      title: entry.title || '',
       notes: entry.notes || ''
     };
     if (Object.prototype.hasOwnProperty.call(categoryHours, entry.category)) {
