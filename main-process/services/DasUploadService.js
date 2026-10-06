@@ -3,6 +3,7 @@ const path = require('path');
 const os = require('os');
 const { shell } = require('electron');
 const { sanitizeProjectName: sanitizeProjectNameUtil } = require('./FileUtils');
+const BOMParserService = require('./BOMParserService');
 
 /**
  * DasUploadService - Handles uploading project folders to the DAS Drive (Z:)
@@ -20,6 +21,40 @@ class DasUploadService {
     
     // Downloads folder path
     this.downloadsPath = path.join(os.homedir(), 'Downloads');
+
+    // Parser used to auto-import a BOM during upload when the project has none yet
+    this.bomParserService = new BOMParserService();
+  }
+
+  /**
+   * Attempt to locate and parse a BOM from the project's Downloads source folder.
+   * Used during Upload to Drive so projects that never went through Download Folder
+   * still get their BOM imported. Never throws - the drive upload must not be blocked
+   * by a missing or unparseable BOM.
+   * @param {string} sourcePath - Downloads project folder path (about to be uploaded)
+   * @returns {Promise<Object|null>} Parsed bomData, or null if none found/parseable
+   */
+  async tryParseBomFromSource(sourcePath) {
+    try {
+      const bomCheckResult = await this.bomParserService.findBOMCheckInProject(sourcePath);
+      if (!bomCheckResult.found) {
+        console.log(`[DasUpload] No BOM found to import: ${bomCheckResult.reason}`);
+        return null;
+      }
+
+      const bomData = await this.bomParserService.parse(bomCheckResult.bomFile);
+      const validation = this.bomParserService.validateBOMData(bomData);
+      if (!validation.valid) {
+        console.warn(`[DasUpload] BOM parse invalid, skipping import: ${validation.errors.join(', ')}`);
+        return null;
+      }
+
+      console.log(`[DasUpload] BOM parsed for import: ${bomData.totalDevices} devices`);
+      return bomData;
+    } catch (error) {
+      console.warn(`[DasUpload] BOM auto-import during upload failed (non-fatal): ${error.message}`);
+      return null;
+    }
   }
 
   /**
@@ -449,6 +484,16 @@ class DasUploadService {
         uploadResult = await this.uploadNewProject(project, sourcePath, confirmed, progressCallback);
       }
       
+      // Step 3.5: If the project has no BOM yet, import it from the Downloads source
+      // folder now - before cleanup trashes that folder. This covers projects that
+      // never went through Download Folder. Returned to main.js for persistence.
+      if (uploadResult.success && !uploadResult.needsConfirmation && !project.bomData) {
+        const pendingBom = await this.tryParseBomFromSource(sourcePath);
+        if (pendingBom) {
+          uploadResult.pendingBom = pendingBom;
+        }
+      }
+
       // Step 4: Clean up source folder after successful upload (move to Recycle Bin)
       if (uploadResult.success && !uploadResult.needsConfirmation) {
         if (progressCallback) {

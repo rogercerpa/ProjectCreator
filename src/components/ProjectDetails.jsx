@@ -534,6 +534,11 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
       if (result.success) {
         showToast(`✓ ${result.message}`, 'success');
         completeUpload({ success: true, message: result.message });
+
+        // If the upload step auto-imported a BOM (project had none), surface it
+        if (result.bomImported) {
+          showToast(`📦 BOM imported: ${result.bomStats?.totalDevices || 0} devices`, 'success');
+        }
         
         // Update project with new upload status
         if (result.updatedProject && onProjectUpdate) {

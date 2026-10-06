@@ -788,15 +788,48 @@ ipcMain.handle('das-upload-project', async (event, project, confirmed) => {
         }
       };
       
-      // Save the updated project
+      // Save the updated project (status first)
       await projectPersistenceService.saveProject(updatedProject);
+
+      // If the upload step auto-imported a BOM (project had none), persist it now.
+      // saveBOMToProject reloads the project from disk, so this must run after the
+      // status save to avoid clobbering the Completed status / dasUploadStatus.
+      let finalProject = updatedProject;
+      let bomImported = false;
+      let bomStats = null;
+      if (result.pendingBom) {
+        try {
+          const bomSaveResult = await bomPersistenceService.saveBOMToProject(project.id, result.pendingBom);
+          if (bomSaveResult.success) {
+            bomImported = true;
+            bomStats = bomSaveResult.stats || null;
+            if (bomSaveResult.project) {
+              finalProject = bomSaveResult.project;
+            }
+            // Notify renderer so BOM analytics refresh in real time
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              mainWindow.webContents.send('bom:auto-import-complete', {
+                projectId: project.id,
+                totalDevices: result.pendingBom.totalDevices,
+                startupCost: result.pendingBom.startupCosts?.total || 0
+              });
+            }
+          } else {
+            console.warn(`[DasUpload] Failed to persist auto-imported BOM: ${bomSaveResult.error}`);
+          }
+        } catch (bomError) {
+          console.warn(`[DasUpload] Error persisting auto-imported BOM (non-fatal): ${bomError.message}`);
+        }
+      }
       
       // Remove from active uploads
       activeUploads.delete(uploadId);
       
       return {
         ...result,
-        updatedProject: updatedProject
+        updatedProject: finalProject,
+        bomImported,
+        bomStats
       };
     }
     
