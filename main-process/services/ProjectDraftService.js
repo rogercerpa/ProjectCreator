@@ -38,11 +38,12 @@ class ProjectDraftService {
 
   // Setup automatic cleanup
   setupAutoCleanup() {
-    setInterval(() => {
+    const timer = setInterval(() => {
       this.cleanupOldDrafts().catch(error => {
         console.error('Error during automatic draft cleanup:', error);
       });
     }, this.config.autoCleanupInterval);
+    timer.unref?.();
   }
 
   // Get drafts file path

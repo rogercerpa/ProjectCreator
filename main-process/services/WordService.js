@@ -1,9 +1,10 @@
 // WordService runs in main process - no need for ipcRenderer
 const fs = require('fs-extra');
 const path = require('path');
-const officegen = require('officegen');
-const docx = require('docx');
-const mammoth = require('mammoth');
+const lazyRequire = require('./lazyRequire');
+const officegen = lazyRequire('officegen');
+const docx = lazyRequire('docx');
+const mammoth = lazyRequire('mammoth');
 
 class WordService {
   constructor() {

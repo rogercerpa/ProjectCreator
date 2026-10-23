@@ -196,6 +196,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Image processing for email templates
   emailConvertImageToBase64: (filePath) => ipcRenderer.invoke('email-convert-image-to-base64', filePath),
   
+  // Wizard drafts
+  draftsCall: (method, ...args) => ipcRenderer.invoke('drafts:call', method, ...args),
+
   // Error handling
   onError: (callback) => ipcRenderer.on('error', callback),
   onNewProject: (callback) => ipcRenderer.on('new-project', callback),

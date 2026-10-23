@@ -1,7 +1,8 @@
 // WorkloadExcelService - Handles workload data Excel read/write operations with field mapping
 const fs = require('fs-extra');
 const path = require('path');
-const XLSX = require('xlsx');
+const lazyRequire = require('./lazyRequire');
+const XLSX = lazyRequire('xlsx');
 
 class WorkloadExcelService {
   constructor(fieldMappingService) {

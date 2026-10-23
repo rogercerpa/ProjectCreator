@@ -3,6 +3,31 @@ const fs = require('fs-extra');
 const path = require('path');
 const os = require('os');
 const StatusTrackingService = require('./StatusTrackingService');
+const { writeFileAtomic, writeJsonAtomic, readJsonWithRecovery, createSerialQueue } = require('./AtomicJsonFile');
+
+const HISTORY_MAX_BYTES = 20 * 1024 * 1024;
+
+// Shared by every ProjectPersistenceService instance (several services construct
+// their own), so they all see one cache and one write queue per data file.
+const projectStores = new Map();
+
+function getProjectStore(projectsPath) {
+  if (!projectStores.has(projectsPath)) {
+    projectStores.set(projectsPath, {
+      projects: null,
+      loading: null,
+      historyMigration: null,
+      runExclusive: createSerialQueue()
+    });
+  }
+  return projectStores.get(projectsPath);
+}
+
+// Callers mutate the arrays/objects they load, so never hand out the cached copy.
+// The cache only ever holds JSON-parsed data, so a JSON round-trip is an exact copy.
+const cloneProjects = typeof structuredClone === 'function'
+  ? (projects) => structuredClone(projects)
+  : (projects) => JSON.parse(JSON.stringify(projects));
 
 class ProjectPersistenceService {
   constructor() {
@@ -10,7 +35,7 @@ class ProjectPersistenceService {
       dataDirectory: path.join(os.homedir(), '.project-creator'),
       projectsFile: 'projects.json',
       settingsFile: 'settings.json',
-      historyFile: 'history.json',
+      historyFile: 'history.jsonl',
       templatesFile: 'templates.json'
     };
     
@@ -18,6 +43,54 @@ class ProjectPersistenceService {
     this.statusTrackingService = new StatusTrackingService();
     
     this.initializeDataDirectory();
+  }
+
+  get projectStore() {
+    return getProjectStore(this.getDataFilePath(this.config.projectsFile));
+  }
+
+  async readProjectsFromCache() {
+    const store = this.projectStore;
+    if (store.projects) return store.projects;
+
+    if (!store.loading) {
+      const projectsPath = this.getDataFilePath(this.config.projectsFile);
+      store.loading = readJsonWithRecovery(projectsPath, [])
+        .then((projects) => {
+          if (!Array.isArray(projects)) {
+            throw new Error('projects.json does not contain a project list');
+          }
+          store.projects = projects;
+          return projects;
+        })
+        .finally(() => {
+          store.loading = null;
+        });
+    }
+    return store.loading;
+  }
+
+  async writeProjects(projects) {
+    const projectsPath = this.getDataFilePath(this.config.projectsFile);
+    const serialized = JSON.stringify(projects);
+    await writeJsonAtomic(projectsPath, projects, { backup: true });
+    this.projectStore.projects = JSON.parse(serialized);
+  }
+
+  /**
+   * Run a read-modify-write of the project list without racing other writers.
+   * `mutate` receives a private copy and returns { projects, result }; when
+   * `projects` is omitted nothing is written.
+   */
+  async mutateProjects(mutate) {
+    return this.projectStore.runExclusive(async () => {
+      const projects = cloneProjects(await this.readProjectsFromCache());
+      const outcome = await mutate(projects);
+      if (outcome?.projects) {
+        await this.writeProjects(outcome.projects);
+      }
+      return outcome?.result;
+    });
   }
 
   // Initialize data directory
@@ -47,96 +120,90 @@ class ProjectPersistenceService {
         };
       }
 
-      const projects = await this.loadProjects();
-      
-      // Check if project already exists
-      const existingIndex = projects.findIndex(p => 
-        p.rfaNumber === projectData.rfaNumber && 
-        p.projectContainer === projectData.projectContainer
-      );
+      const result = await this.mutateProjects((projects) => {
+        // Check if project already exists
+        const existingIndex = projects.findIndex(p => 
+          p.rfaNumber === projectData.rfaNumber && 
+          p.projectContainer === projectData.projectContainer
+        );
 
-      if (existingIndex !== -1) {
-        const existingProject = projects[existingIndex];
+        if (existingIndex !== -1) {
+          const existingProject = projects[existingIndex];
         
-        // Detect status change and record it
-        const statusChange = this.statusTrackingService.detectStatusChange(existingProject, projectData);
-        if (statusChange) {
-          // Get the source from the project data or default to 'manual'
-          const source = projectData._statusChangeSource || 'manual';
+          // Detect status change and record it
+          const statusChange = this.statusTrackingService.detectStatusChange(existingProject, projectData);
+          if (statusChange) {
+            // Get the source from the project data or default to 'manual'
+            const source = projectData._statusChangeSource || 'manual';
           
-          // Preserve existing status history
-          projectData.statusHistory = existingProject.statusHistory || [];
-          projectData.completedAt = existingProject.completedAt;
+            // Preserve existing status history
+            projectData.statusHistory = existingProject.statusHistory || [];
+            projectData.completedAt = existingProject.completedAt;
           
-          // Record the status change
-          this.statusTrackingService.recordStatusChange(projectData, statusChange.newStatus, source);
+            // Record the status change
+            this.statusTrackingService.recordStatusChange(projectData, statusChange.newStatus, source);
           
-          console.log(`[ProjectPersistence] Status changed from "${statusChange.oldStatus}" to "${statusChange.newStatus}" (source: ${source})`);
+            console.log(`[ProjectPersistence] Status changed from "${statusChange.oldStatus}" to "${statusChange.newStatus}" (source: ${source})`);
+          } else {
+            // Preserve existing status tracking data if no change
+            projectData.statusHistory = projectData.statusHistory || existingProject.statusHistory;
+            projectData.statusDurations = projectData.statusDurations || existingProject.statusDurations;
+            projectData.totalProjectDuration = projectData.totalProjectDuration || existingProject.totalProjectDuration;
+            projectData.completedAt = projectData.completedAt || existingProject.completedAt;
+          }
+        
+          // Remove the internal source marker before saving
+          delete projectData._statusChangeSource;
+        
+          // Update existing project
+          projects[existingIndex] = {
+            ...projects[existingIndex],
+            ...projectData,
+            lastModified: new Date().toISOString(),
+            version: (projects[existingIndex].version || 0) + 1
+          };
+
+          return {
+            projects,
+            result: {
+              success: true,
+              project: projects[existingIndex],
+              message: 'Project updated successfully'
+            }
+          };
         } else {
-          // Preserve existing status tracking data if no change
-          projectData.statusHistory = projectData.statusHistory || existingProject.statusHistory;
-          projectData.statusDurations = projectData.statusDurations || existingProject.statusDurations;
-          projectData.totalProjectDuration = projectData.totalProjectDuration || existingProject.totalProjectDuration;
-          projectData.completedAt = projectData.completedAt || existingProject.completedAt;
-        }
+          // Add new project
+          const now = new Date().toISOString();
+          const newProject = {
+            ...projectData,
+            id: this.generateProjectId(),
+            createdAt: now,
+            lastModified: now,
+            version: 1
+          };
         
-        // Remove the internal source marker before saving
-        delete projectData._statusChangeSource;
+          // Initialize status history for new projects
+          const initialStatus = projectData.rfaStatus || 'In Progress';
+          this.statusTrackingService.initializeStatusHistory(newProject, initialStatus);
         
-        // Update existing project
-        projects[existingIndex] = {
-          ...projects[existingIndex],
-          ...projectData,
-          lastModified: new Date().toISOString(),
-          version: (projects[existingIndex].version || 0) + 1
-        };
+          // Remove the internal source marker before saving
+          delete newProject._statusChangeSource;
         
-        // Save to file
-        await this.saveProjects(projects);
-        
-        // Add to history
-        await this.addToHistory(projectData);
-        
-        // Return the updated project with its ID
-        return {
-          success: true,
-          project: projects[existingIndex],
-          message: 'Project updated successfully'
-        };
-      } else {
-        // Add new project
-        const now = new Date().toISOString();
-        const newProject = {
-          ...projectData,
-          id: this.generateProjectId(),
-          createdAt: now,
-          lastModified: now,
-          version: 1
-        };
-        
-        // Initialize status history for new projects
-        const initialStatus = projectData.rfaStatus || 'In Progress';
-        this.statusTrackingService.initializeStatusHistory(newProject, initialStatus);
-        
-        // Remove the internal source marker before saving
-        delete newProject._statusChangeSource;
-        
-        projects.push(newProject);
-        
-        // Save to file
-        await this.saveProjects(projects);
-        
-        // Add to history
-        await this.addToHistory(projectData);
-        
-        // Return the new project with its generated ID
-        return {
-          success: true,
-          project: newProject,
-          message: 'Project created successfully'
-        };
-      }
+          projects.push(newProject);
 
+          return {
+            projects,
+            result: {
+              success: true,
+              project: newProject,
+              message: 'Project created successfully'
+            }
+          };
+        }
+      });
+
+      await this.addToHistory(projectData);
+      return result;
     } catch (error) {
       console.error('Error saving project:', error);
       return {
@@ -146,28 +213,18 @@ class ProjectPersistenceService {
     }
   }
 
-  // Load all projects
+  /**
+   * Load all projects. Throws if projects.json is corrupt and cannot be
+   * recovered from its backup, so a bad file is never treated as "no projects".
+   */
   async loadProjects() {
-    try {
-      const projectsPath = this.getDataFilePath(this.config.projectsFile);
-      
-      if (await fs.pathExists(projectsPath)) {
-        const data = await fs.readFile(projectsPath, 'utf8');
-        return JSON.parse(data);
-      }
-      
-      return [];
-    } catch (error) {
-      console.error('Error loading projects:', error);
-      return [];
-    }
+    return cloneProjects(await this.readProjectsFromCache());
   }
 
   // Save all projects
   async saveProjects(projects) {
     try {
-      const projectsPath = this.getDataFilePath(this.config.projectsFile);
-      await fs.writeFile(projectsPath, JSON.stringify(projects, null, 2), 'utf8');
+      await this.projectStore.runExclusive(() => this.writeProjects(projects));
       
       return {
         success: true,
@@ -243,26 +300,23 @@ class ProjectPersistenceService {
   // Delete project
   async deleteProject(projectId) {
     try {
-      const projects = await this.loadProjects();
-      const projectIndex = projects.findIndex(p => p.id === projectId);
-      
-      if (projectIndex === -1) {
+      return await this.mutateProjects((projects) => {
+        const projectIndex = projects.findIndex(p => p.id === projectId);
+
+        if (projectIndex === -1) {
+          return { result: { success: false, error: 'Project not found' } };
+        }
+
+        const [deletedProject] = projects.splice(projectIndex, 1);
         return {
-          success: false,
-          error: 'Project not found'
+          projects,
+          result: {
+            success: true,
+            project: deletedProject,
+            message: 'Project deleted successfully'
+          }
         };
-      }
-      
-      const deletedProject = projects[projectIndex];
-      projects.splice(projectIndex, 1);
-      
-      await this.saveProjects(projects);
-      
-      return {
-        success: true,
-        project: deletedProject,
-        message: 'Project deleted successfully'
-      };
+      });
     } catch (error) {
       console.error('Error deleting project:', error);
       return {
@@ -476,7 +530,7 @@ class ProjectPersistenceService {
   async saveSettings(settings) {
     try {
       const settingsPath = this.getDataFilePath(this.config.settingsFile);
-      await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
+      await writeJsonAtomic(settingsPath, settings, { space: 2, backup: true });
       
       return {
         success: true,
@@ -523,7 +577,7 @@ class ProjectPersistenceService {
   async saveTemplates(templates) {
     try {
       const templatesPath = this.getDataFilePath(this.config.templatesFile);
-      await fs.writeFile(templatesPath, JSON.stringify(templates, null, 2), 'utf8');
+      await writeJsonAtomic(templatesPath, templates, { space: 2, backup: true });
       
       return {
         success: true,
@@ -538,14 +592,51 @@ class ProjectPersistenceService {
     }
   }
 
-  // Load history
+  // Older versions kept history in history.json as a newest-first array. Fold it into
+  // history.jsonl once, then rename it to history.json.migrated so it isn't read again.
+  ensureHistoryMigrated() {
+    const store = this.projectStore;
+    if (!store.historyMigration) {
+      store.historyMigration = store
+        .runExclusive(async () => {
+          const legacyPath = this.getDataFilePath('history.json');
+          if (!(await fs.pathExists(legacyPath))) return;
+
+          const legacy = await fs.readJson(legacyPath);
+          const historyPath = this.getDataFilePath(this.config.historyFile);
+          const existing = (await fs.pathExists(historyPath)) ? await fs.readFile(historyPath, 'utf8') : '';
+          const lines = Array.isArray(legacy) ? [...legacy].reverse().map((entry) => JSON.stringify(entry)) : [];
+          const migrated = lines.length ? `${lines.join('\n')}\n` : '';
+
+          await writeFileAtomic(historyPath, migrated + existing);
+          await fs.move(legacyPath, `${legacyPath}.migrated`, { overwrite: true });
+          console.log(`Migrated ${lines.length} history entries to ${this.config.historyFile}`);
+        })
+        .catch((error) => {
+          console.error('History migration failed; legacy history.json left in place:', error);
+        });
+    }
+    return store.historyMigration;
+  }
+
+  // Load history (newest first). history.jsonl holds one JSON entry per line, oldest first.
   async loadHistory() {
     try {
+      await this.ensureHistoryMigrated();
       const historyPath = this.getDataFilePath(this.config.historyFile);
       
       if (await fs.pathExists(historyPath)) {
         const data = await fs.readFile(historyPath, 'utf8');
-        return JSON.parse(data);
+        const entries = [];
+        for (const line of data.split('\n')) {
+          if (!line.trim()) continue;
+          try {
+            entries.push(JSON.parse(line));
+          } catch {
+            // A torn final line from a crash mid-append; skip it.
+          }
+        }
+        return entries.reverse();
       }
       
       return [];
@@ -555,11 +646,13 @@ class ProjectPersistenceService {
     }
   }
 
-  // Save history
+  // Save history (expects newest first, matching loadHistory)
   async saveHistory(history) {
     try {
+      await this.ensureHistoryMigrated();
       const historyPath = this.getDataFilePath(this.config.historyFile);
-      await fs.writeFile(historyPath, JSON.stringify(history, null, 2), 'utf8');
+      const lines = [...history].reverse().map((entry) => JSON.stringify(entry));
+      await writeFileAtomic(historyPath, lines.length ? `${lines.join('\n')}\n` : '');
       
       return {
         success: true,
@@ -577,8 +670,7 @@ class ProjectPersistenceService {
   // Add to history
   async addToHistory(projectData) {
     try {
-      const history = await this.loadHistory();
-      
+      const historyPath = this.getDataFilePath(this.config.historyFile);
       const historyEntry = {
         id: this.generateHistoryId(),
         timestamp: new Date().toISOString(),
@@ -588,15 +680,15 @@ class ProjectPersistenceService {
         rfaNumber: projectData.rfaNumber,
         data: projectData
       };
-      
-      history.unshift(historyEntry);
-      
-      // Keep only last 1000 entries
-      if (history.length > 1000) {
-        history.splice(1000);
-      }
-      
-      await this.saveHistory(history);
+
+      await this.ensureHistoryMigrated();
+      await this.projectStore.runExclusive(async () => {
+        const stats = await fs.stat(historyPath).catch(() => null);
+        if (stats && stats.size > HISTORY_MAX_BYTES) {
+          await fs.move(historyPath, `${historyPath}.1`, { overwrite: true });
+        }
+        await fs.appendFile(historyPath, `${JSON.stringify(historyEntry)}\n`, 'utf8');
+      });
       
       return {
         success: true,
@@ -663,35 +755,33 @@ class ProjectPersistenceService {
       }
       
       // Save imported projects
-      const existingProjects = await this.loadProjects();
-      const mergedProjects = [...existingProjects];
-      
-      for (const project of validProjects) {
-        const existingIndex = mergedProjects.findIndex(p => 
-          p.rfaNumber === project.rfaNumber && 
-          p.projectContainer === project.projectContainer
-        );
+      const mergedProjects = await this.mutateProjects((mergedProjects) => {
+        for (const project of validProjects) {
+          const existingIndex = mergedProjects.findIndex(p => 
+            p.rfaNumber === project.rfaNumber && 
+            p.projectContainer === project.projectContainer
+          );
         
-        if (existingIndex !== -1) {
-          // Update existing
-          mergedProjects[existingIndex] = {
-            ...mergedProjects[existingIndex],
-            ...project,
-            lastModified: new Date().toISOString()
-          };
-        } else {
-          // Add new
-          mergedProjects.push({
-            ...project,
-            id: this.generateProjectId(),
-            createdAt: new Date().toISOString(),
-            lastModified: new Date().toISOString(),
-            version: 1
-          });
+          if (existingIndex !== -1) {
+            // Update existing
+            mergedProjects[existingIndex] = {
+              ...mergedProjects[existingIndex],
+              ...project,
+              lastModified: new Date().toISOString()
+            };
+          } else {
+            // Add new
+            mergedProjects.push({
+              ...project,
+              id: this.generateProjectId(),
+              createdAt: new Date().toISOString(),
+              lastModified: new Date().toISOString(),
+              version: 1
+            });
+          }
         }
-      }
-      
-      await this.saveProjects(mergedProjects);
+        return { projects: mergedProjects, result: mergedProjects };
+      });
       
       return {
         success: true,
@@ -763,32 +853,26 @@ class ProjectPersistenceService {
   // Backfill status history for an existing project
   async backfillProjectStatusHistory(projectId, statusDates) {
     try {
-      const projects = await this.loadProjects();
-      const projectIndex = projects.findIndex(p => p.id === projectId);
-      
-      if (projectIndex === -1) {
+      return await this.mutateProjects((projects) => {
+        const project = projects.find(p => p.id === projectId);
+
+        if (!project) {
+          return { result: { success: false, error: 'Project not found' } };
+        }
+
+        this.statusTrackingService.backfillStatusHistory(project, statusDates);
+        project.lastModified = new Date().toISOString();
+        project.version = (project.version || 0) + 1;
+
         return {
-          success: false,
-          error: 'Project not found'
+          projects,
+          result: {
+            success: true,
+            project,
+            message: 'Status history backfilled successfully'
+          }
         };
-      }
-      
-      // Backfill the status history
-      const project = projects[projectIndex];
-      this.statusTrackingService.backfillStatusHistory(project, statusDates);
-      
-      // Update lastModified
-      project.lastModified = new Date().toISOString();
-      project.version = (project.version || 0) + 1;
-      
-      // Save projects
-      await this.saveProjects(projects);
-      
-      return {
-        success: true,
-        project: project,
-        message: 'Status history backfilled successfully'
-      };
+      });
     } catch (error) {
       console.error('Error backfilling status history:', error);
       return {

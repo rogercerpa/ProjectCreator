@@ -21,19 +21,24 @@ class VersionCheckService {
     return this.currentVersion;
   }
 
-  /**
-   * Get previous version from stored data
-   */
-  async getPreviousVersion() {
+  async readVersionData() {
     try {
       if (await fs.pathExists(this.versionFile)) {
-        const versionData = await fs.readJson(this.versionFile);
-        return versionData.previousVersion || null;
+        return await fs.readJson(this.versionFile);
       }
     } catch (error) {
-      console.warn('Could not read previous version:', error);
+      console.warn('Could not read version file:', error);
     }
     return null;
+  }
+
+  /**
+   * Get the version that was running the last time the app started.
+   * version.json stores that as `currentVersion`; `previousVersion` is the one before it.
+   */
+  async getPreviousVersion() {
+    const versionData = await this.readVersionData();
+    return versionData?.currentVersion || null;
   }
 
   /**
@@ -61,11 +66,14 @@ class VersionCheckService {
    */
   async saveCurrentVersion() {
     try {
+      const stored = (await this.readVersionData()) || {};
+      const now = new Date().toISOString();
+      const versionChanged = stored.currentVersion !== this.currentVersion;
       const versionData = {
         currentVersion: this.currentVersion,
-        previousVersion: await this.getPreviousVersion(),
-        installDate: new Date().toISOString(),
-        upgradeDate: new Date().toISOString()
+        previousVersion: versionChanged ? stored.currentVersion || null : stored.previousVersion || null,
+        installDate: stored.installDate || now,
+        upgradeDate: versionChanged ? now : stored.upgradeDate || now
       };
 
       await fs.ensureDir(path.dirname(this.versionFile));

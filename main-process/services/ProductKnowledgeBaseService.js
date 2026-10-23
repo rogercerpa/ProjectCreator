@@ -8,7 +8,8 @@
 const fs = require('fs-extra');
 const path = require('path');
 const os = require('os');
-const XLSX = require('xlsx');
+const lazyRequire = require('./lazyRequire');
+const XLSX = lazyRequire('xlsx');
 
 const DEFAULT_KB_PATH = 'Z:\\DAS References\\ProjectCreatorV5\\ProductKnowledgeBase.xlsx';
 const LOCAL_FALLBACK_DIR = path.join(os.homedir(), '.project-creator');

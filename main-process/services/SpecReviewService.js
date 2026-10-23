@@ -397,6 +397,8 @@ class SpecReviewService {
 
   _normalizeText(rawText) {
     return String(rawText || '')
+      // Strips control characters that PDF/Word extraction leaves behind.
+      // eslint-disable-next-line no-control-regex
       .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
       .replace(/[\u2010\u2011\u2012\u2013\u2014\u2015\u2212\uFE58\uFE63\uFF0D]/g, '-')
       .replace(/[\u2018\u2019\u201A\u201B]/g, "'")

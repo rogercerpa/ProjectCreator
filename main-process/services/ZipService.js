@@ -1,4 +1,5 @@
-const archiver = require('archiver');
+const lazyRequire = require('./lazyRequire');
+const archiver = lazyRequire('archiver');
 const fs = require('fs-extra');
 const path = require('path');
 const { INVALID_FILENAME_CHARS } = require('./FileUtils');
@@ -63,70 +64,65 @@ class ZipService {
    * @param {Function} progressCallback - Progress callback
    */
   async createZipFile(sourcePath, outputPath, progressCallback) {
-    return new Promise(async (resolve, reject) => {
-      try {
-        // Get total file count for progress calculation
-        const totalFiles = await this.countFiles(sourcePath);
-        let processedFiles = 0;
+    // Get total file count for progress calculation
+    const totalFiles = await this.countFiles(sourcePath);
+    let processedFiles = 0;
 
-        // Create write stream
-        const output = fs.createWriteStream(outputPath);
-        const archive = archiver('zip', {
-          zlib: { level: 9 } // Maximum compression
+    // Create write stream
+    const output = fs.createWriteStream(outputPath);
+    const archive = archiver('zip', {
+      zlib: { level: 9 } // Maximum compression
+    });
+
+    const written = new Promise((resolve, reject) => {
+      archive.on('error', (err) => {
+        console.error('Archive error:', err);
+        reject(err);
+      });
+
+      output.on('error', (err) => {
+        console.error('Output stream error:', err);
+        reject(err);
+      });
+
+      output.on('close', () => {
+        console.log(`Archive created: ${archive.pointer()} total bytes`);
+        if (progressCallback) {
+          progressCallback({
+            phase: 'complete',
+            progress: 100,
+            message: 'Zip file created successfully'
+          });
+        }
+        resolve();
+      });
+    });
+
+    // Track progress
+    archive.on('entry', (entry) => {
+      processedFiles++;
+      const progress = Math.min(99, Math.round((processedFiles / Math.max(totalFiles, 1)) * 100));
+
+      if (progressCallback) {
+        progressCallback({
+          phase: 'zipping',
+          progress,
+          message: `Compressing files... (${processedFiles}/${totalFiles})`,
+          currentFile: entry.name
         });
-
-        // Handle errors
-        archive.on('error', (err) => {
-          console.error('Archive error:', err);
-          reject(err);
-        });
-
-        output.on('error', (err) => {
-          console.error('Output stream error:', err);
-          reject(err);
-        });
-
-        // Handle completion
-        output.on('close', () => {
-          console.log(`Archive created: ${archive.pointer()} total bytes`);
-          if (progressCallback) {
-            progressCallback({
-              phase: 'complete',
-              progress: 100,
-              message: 'Zip file created successfully'
-            });
-          }
-          resolve();
-        });
-
-        // Track progress
-        archive.on('entry', (entry) => {
-          processedFiles++;
-          const progress = Math.min(99, Math.round((processedFiles / Math.max(totalFiles, 1)) * 100));
-          
-          if (progressCallback) {
-            progressCallback({
-              phase: 'zipping',
-              progress,
-              message: `Compressing files... (${processedFiles}/${totalFiles})`,
-              currentFile: entry.name
-            });
-          }
-        });
-
-        // Pipe archive data to the file
-        archive.pipe(output);
-
-        // Add files to archive (excluding unwanted files)
-        await this.addFilesToArchive(archive, sourcePath);
-
-        // Finalize the archive
-        await archive.finalize();
-
-      } catch (error) {
-        reject(error);
       }
     });
+
+    // Pipe archive data to the file
+    archive.pipe(output);
+
+    const build = (async () => {
+      // Add files to archive (excluding unwanted files)
+      await this.addFilesToArchive(archive, sourcePath);
+      await archive.finalize();
+    })();
+
+    await Promise.all([written, build]);
   }
 
   /**

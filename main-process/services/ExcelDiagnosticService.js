@@ -1,5 +1,6 @@
 // ExcelDiagnosticService - Debug Excel file structure
-const XLSX = require('xlsx');
+const lazyRequire = require('./lazyRequire');
+const XLSX = lazyRequire('xlsx');
 
 class ExcelDiagnosticService {
   

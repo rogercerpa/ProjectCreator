@@ -2,7 +2,8 @@
 const fs = require('fs-extra');
 const path = require('path');
 const os = require('os');
-const XLSX = require('xlsx');
+const lazyRequire = require('./lazyRequire');
+const XLSX = lazyRequire('xlsx');
 
 class AgencyService {
   constructor() {
