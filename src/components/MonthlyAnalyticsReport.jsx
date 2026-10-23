@@ -19,6 +19,7 @@ import {
   getChartColor,
   truncateText,
 } from '../utils/reportHelpers';
+import { notify } from '../utils/feedback';
 
 // Format date range for display
 const formatDateRange = (startDate, endDate) => {
@@ -415,7 +416,7 @@ function MonthlyAnalyticsReport({ projects = [], onProjectUpdated, onViewProject
       );
     } catch (error) {
       console.error('Error exporting PDF:', error);
-      alert('Failed to export PDF. Please try again.');
+      notify('Failed to export PDF. Please try again.');
     } finally {
       setIsExporting(false);
       setExportType(null);
@@ -432,7 +433,7 @@ function MonthlyAnalyticsReport({ projects = [], onProjectUpdated, onViewProject
       await reportExportService.exportToExcel({ ...reportData, productivity }, reportSettings, projects);
     } catch (error) {
       console.error('Error exporting to Excel:', error);
-      alert('Failed to export to Excel. Please try again.');
+      notify('Failed to export to Excel. Please try again.');
     } finally {
       setIsExporting(false);
       setExportType(null);
@@ -449,7 +450,7 @@ function MonthlyAnalyticsReport({ projects = [], onProjectUpdated, onViewProject
       await reportExportService.exportToCSV({ ...reportData, productivity }, reportSettings, projects);
     } catch (error) {
       console.error('Error exporting to CSV:', error);
-      alert('Failed to export to CSV. Please try again.');
+      notify('Failed to export to CSV. Please try again.');
     } finally {
       setIsExporting(false);
       setExportType(null);

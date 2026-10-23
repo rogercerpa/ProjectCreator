@@ -1,11 +1,13 @@
-import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import NotificationToast from '../components/NotificationToast';
+import ConfirmDialog from '../components/shared/ConfirmDialog';
 import errorReportingService from '../services/ErrorReportingService';
+import { registerFeedbackHandlers } from '../utils/feedback';
 
 const ErrorNotificationContext = createContext(null);
 
 const MAX_STACKED_NOTIFICATIONS = 4;
-const TOAST_STACK_SPACING_PX = 88;
+const QUICK_WARNING_MS = 7000;
 
 function generateId() {
   return `notif-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -76,6 +78,27 @@ export function ErrorNotificationProvider({ children }) {
     });
   }, [pushNotification]);
 
+  // window.confirm replacement: requests queue up and resolve one at a time.
+  const [confirmQueue, setConfirmQueue] = useState([]);
+  const requestConfirm = useCallback((message, options = {}) => new Promise((resolve) => {
+    setConfirmQueue((prev) => [...prev, { ...options, message, resolve, id: generateId() }]);
+  }), []);
+  const resolveConfirm = useCallback((request, answer) => {
+    request.resolve(answer);
+    setConfirmQueue((prev) => prev.filter((pending) => pending.id !== request.id));
+  }, []);
+
+  useEffect(() => registerFeedbackHandlers({
+    notify: (message, type, options = {}) => {
+      if (type === 'error') return showError(message, { category: options.category || 'ui', ...options });
+      if (type === 'warning') {
+        return pushNotification({ type: 'warning', message, autoDismiss: true, durationMs: QUICK_WARNING_MS, ...options });
+      }
+      return type === 'success' ? showSuccess(message, options) : showInfo(message, options);
+    },
+    confirm: requestConfirm
+  }), [showError, showSuccess, showInfo, pushNotification, requestConfirm]);
+
   const setViewDetailsHandler = useCallback((handlerFn) => {
     viewDetailsHandlerRef.current = handlerFn || null;
   }, []);
@@ -98,16 +121,28 @@ export function ErrorNotificationProvider({ children }) {
   return (
     <ErrorNotificationContext.Provider value={value}>
       {children}
-      {notifications.map((notification, index) => (
-        <NotificationToast
-          key={notification.id}
-          notification={notification}
-          duration={notification.durationMs || 5000}
-          onClose={() => dismiss(notification.id)}
-          onViewDetails={notification.errorId ? handleViewDetails : undefined}
-          style={{ bottom: 30 + index * TOAST_STACK_SPACING_PX }}
+      <div
+        aria-live="polite"
+        className="pointer-events-none fixed bottom-5 right-5 z-[10000] flex w-[min(28rem,calc(100vw-2.5rem))] flex-col-reverse gap-3"
+      >
+        {notifications.map((notification) => (
+          <NotificationToast
+            key={notification.id}
+            inline
+            notification={notification}
+            duration={notification.durationMs || 5000}
+            onClose={() => dismiss(notification.id)}
+            onViewDetails={notification.errorId ? handleViewDetails : undefined}
+          />
+        ))}
+      </div>
+      {confirmQueue[0] && (
+        <ConfirmDialog
+          key={confirmQueue[0].id}
+          request={confirmQueue[0]}
+          onResolve={(answer) => resolveConfirm(confirmQueue[0], answer)}
         />
-      ))}
+      )}
     </ErrorNotificationContext.Provider>
   );
 }

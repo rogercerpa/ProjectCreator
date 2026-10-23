@@ -15,6 +15,10 @@ import AgileTab from './settings/AgileTab';
 import featureFlagService from '../services/FeatureFlagService';
 import { buildSetupChecklist } from '../utils/setupChecklist';
 import { publishClaimedExpertise } from '../services/MachineClaimService';
+import { notify, confirmAction } from '../utils/feedback';
+
+// SharePoint upload settings stay hidden until navigation/verification issues are fixed.
+const SHOW_SHAREPOINT_SECTION = false;
 
 // Access secure electron API through contextBridge
 const { electronAPI } = window;
@@ -563,13 +567,13 @@ function Settings({ initialTab = 'user-profile', initialErrorId = null, onLaunch
         setShowAgencyForm(false);
         setEditingAgency(null);
         
-        alert(editingAgency ? 'Agency updated successfully!' : 'Agency added successfully!');
+        notify(editingAgency ? 'Agency updated successfully!' : 'Agency added successfully!');
       } else {
-        alert('Failed to save agency: ' + (result?.error || 'Unknown error'));
+        notify('Failed to save agency: ' + (result?.error || 'Unknown error'));
       }
     } catch (error) {
       console.error('Error saving agency:', error);
-      alert('Error saving agency: ' + error.message);
+      notify('Error saving agency: ' + error.message);
     }
   };
 
@@ -608,19 +612,19 @@ function Settings({ initialTab = 'user-profile', initialErrorId = null, onLaunch
   };
 
   const handleDeleteAgency = async (agency) => {
-    if (window.confirm(`Are you sure you want to delete "${agency.agencyName}"? This action cannot be undone.`)) {
+    if (await confirmAction(`Are you sure you want to delete "${agency.agencyName}"? This action cannot be undone.`)) {
       try {
         const result = await window.electronAPI.agenciesDelete(agency.id);
         if (result && result.success) {
           await loadAgencies();
           await loadAgencyStats();
-          alert('Agency deleted successfully!');
+          notify('Agency deleted successfully!');
         } else {
-          alert('Failed to delete agency: ' + (result?.error || 'Unknown error'));
+          notify('Failed to delete agency: ' + (result?.error || 'Unknown error'));
         }
       } catch (error) {
         console.error('Error deleting agency:', error);
-        alert('Error deleting agency: ' + error.message);
+        notify('Error deleting agency: ' + error.message);
       }
     }
   };
@@ -973,13 +977,13 @@ function Settings({ initialTab = 'user-profile', initialErrorId = null, onLaunch
 
       // Show result message
       if (errors.length === 0) {
-        alert('All settings saved successfully!');
+        notify('All settings saved successfully!');
       } else {
-        alert('Settings saved with some errors:\n' + errors.join('\n'));
+        notify('Settings saved with some errors:\n' + errors.join('\n'));
       }
     } catch (error) {
       console.error('Failed to save settings:', error);
-      alert('Failed to save settings. Please try again.');
+      notify('Failed to save settings. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -1018,7 +1022,7 @@ function Settings({ initialTab = 'user-profile', initialErrorId = null, onLaunch
 
   const saveEdit = () => {
     if (!newValue.trim()) {
-      alert('Value cannot be empty');
+      notify('Value cannot be empty');
       return;
     }
 
@@ -1042,8 +1046,8 @@ function Settings({ initialTab = 'user-profile', initialErrorId = null, onLaunch
     cancelEditing();
   };
 
-  const deleteItem = (field, index) => {
-    if (confirm('Are you sure you want to delete this item?')) {
+  const deleteItem = async (field, index) => {
+    if (await confirmAction('Are you sure you want to delete this item?')) {
       setSettings(prev => {
         const newSettings = {
           ...prev,
@@ -1102,133 +1106,6 @@ function Settings({ initialTab = 'user-profile', initialErrorId = null, onLaunch
   // Get current category data
   const getCurrentCategory = () => {
     return formCategories.find(cat => cat.key === selectedCategory);
-  };
-
-  // Compact grid-based field editor for improved UX
-  const renderCompactFieldEditor = (field, items) => {
-    const filteredItems = getFilteredItems(items);
-    
-    return (
-      <div className="compact-field-editor">
-        <div className="field-items-grid">
-          {/* Add new item card */}
-          <div className="field-item-card add-new-card">
-            {editingField === field && editingIndex === -1 ? (
-              <div className="add-new-input">
-                <input
-                  type="text"
-                  value={newValue}
-                  onChange={(e) => setNewValue(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
-                  onBlur={() => {}}
-                  placeholder="Enter new value..."
-                  autoFocus
-                  className="compact-input"
-                />
-                <div className="inline-actions">
-                  <button className="btn-icon success" onClick={saveEdit} title="Save">✓</button>
-                  <button className="btn-icon cancel" onClick={cancelEditing} title="Cancel">✗</button>
-                </div>
-              </div>
-            ) : (
-              <button 
-                className="add-new-button"
-                onClick={() => startEditing(field)}
-                title="Add new item"
-              >
-                <span className="add-icon">+</span>
-                <span className="add-text">Add New</span>
-              </button>
-            )}
-          </div>
-
-          {/* Existing items */}
-          {filteredItems.map((item, index) => {
-            const originalIndex = items.indexOf(item);
-            return (
-              <div key={originalIndex} className="field-item-card">
-                {editingField === field && editingIndex === originalIndex ? (
-                  <div className="edit-input">
-                    <input
-                      type="text"
-                      value={newValue}
-                      onChange={(e) => setNewValue(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
-                      onBlur={() => {}}
-                      autoFocus
-                      className="compact-input"
-                    />
-                    <div className="inline-actions">
-                      <button className="btn-icon success" onClick={saveEdit} title="Save">✓</button>
-                      <button className="btn-icon cancel" onClick={cancelEditing} title="Cancel">✗</button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="item-text" title={item}>{item}</div>
-                    <div className="item-actions">
-                      {field === 'regionalTeams' && (
-                        <button 
-                          className={`btn-icon star ${settings.defaultRegionalTeam === item ? 'active' : ''}`}
-                          onClick={() => toggleDefaultRegionalTeam(item)}
-                          title={settings.defaultRegionalTeam === item ? 'Unset as default' : 'Set as default'}
-                        >
-                          {settings.defaultRegionalTeam === item ? '⭐' : '☆'}
-                        </button>
-                      )}
-                      <button 
-                        className="btn-icon edit" 
-                        onClick={() => startEditing(field, originalIndex)}
-                        title="Edit"
-                      >
-                        ✏️
-                      </button>
-                      <button 
-                        className="btn-icon delete" 
-                        onClick={() => deleteItem(field, originalIndex)}
-                        title="Delete"
-                      >
-                        🗑️
-                      </button>
-                      <div className="move-actions">
-                        <button 
-                          className="btn-icon move" 
-                          onClick={() => moveItem(field, originalIndex, -1)}
-                          disabled={originalIndex === 0}
-                          title="Move Up"
-                        >
-                          ↑
-                        </button>
-                        <button 
-                          className="btn-icon move" 
-                          onClick={() => moveItem(field, originalIndex, 1)}
-                          disabled={originalIndex === items.length - 1}
-                          title="Move Down"
-                        >
-                          ↓
-                        </button>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-            );
-          })}
-        </div>
-        
-        {filteredItems.length === 0 && searchTerm && (
-          <div className="no-results">
-            <p>No items found matching "{searchTerm}"</p>
-            <button 
-              className="btn btn-primary btn-sm"
-              onClick={() => setSearchTerm('')}
-            >
-              Clear Search
-            </button>
-          </div>
-        )}
-      </div>
-    );
   };
 
   // Pagination component for agencies
@@ -1866,7 +1743,7 @@ function Settings({ initialTab = 'user-profile', initialErrorId = null, onLaunch
 
             {/* SharePoint Integration Section - TEMPORARILY HIDDEN */}
             {/* TODO: Re-enable after fixing navigation and verification issues */}
-            {false && <div className="sharepoint-section">
+            {SHOW_SHAREPOINT_SECTION && <div className="sharepoint-section">
               <h2>SharePoint Integration</h2>
               <p className="section-description">Configure SharePoint upload settings for automated project deployment.</p>
               
@@ -1923,12 +1800,12 @@ function Settings({ initialTab = 'user-profile', initialErrorId = null, onLaunch
                           if (electronAPI && electronAPI.testSharePointAccess) {
                             const result = await electronAPI.testSharePointAccess(settings.sharePointSettings.sharePointUrl);
                             if (result.success) {
-                              alert(`✅ Access Test Successful!\n\nMethod: ${result.method}\nPath: ${result.path || 'Web API'}\n\n${result.message}`);
+                              notify(`✅ Access Test Successful!\n\nMethod: ${result.method}\nPath: ${result.path || 'Web API'}\n\n${result.message}`);
                             } else {
-                              alert(`❌ Access Test Failed!\n\n${result.error}\n\nPlease check if OneDrive is syncing your SharePoint library.`);
+                              notify(`❌ Access Test Failed!\n\n${result.error}\n\nPlease check if OneDrive is syncing your SharePoint library.`);
                             }
                           } else {
-                            alert('✅ Connection test will be available in production.\n\nThe app will automatically detect:\n- OneDrive sync folders\n- Web API access');
+                            notify('✅ Connection test will be available in production.\n\nThe app will automatically detect:\n- OneDrive sync folders\n- Web API access');
                           }
                         }}
                         title="Test SharePoint access"
@@ -2115,7 +1992,7 @@ function Settings({ initialTab = 'user-profile', initialErrorId = null, onLaunch
                                   }));
                                 }
                               } else {
-                                alert('No OneDrive sync folders detected. Please manually enter the path or sync your SharePoint library.');
+                                notify('No OneDrive sync folders detected. Please manually enter the path or sync your SharePoint library.');
                               }
                             }
                           }}
@@ -2139,7 +2016,7 @@ function Settings({ initialTab = 'user-profile', initialErrorId = null, onLaunch
                                 }));
 
                                 if (result.verification && result.verification.valid) {
-                                  alert(`✅ Folder selected successfully!\n\n${result.folderPath}`);
+                                  notify(`✅ Folder selected successfully!\n\n${result.folderPath}`);
                                 }
                               }
                             }
@@ -2155,9 +2032,9 @@ function Settings({ initialTab = 'user-profile', initialErrorId = null, onLaunch
                             if (electronAPI && electronAPI.testSyncFolder) {
                               const result = await electronAPI.testSyncFolder(settings.oneDriveSyncSettings.syncFolderPath);
                               if (result.success) {
-                                alert(`✅ Sync folder test successful!\n\n${result.message}`);
+                                notify(`✅ Sync folder test successful!\n\n${result.message}`);
                               } else {
-                                alert(`❌ Sync folder test failed!\n\n${result.error}\n\nPlease check the folder path and OneDrive sync status.`);
+                                notify(`❌ Sync folder test failed!\n\n${result.error}\n\nPlease check the folder path and OneDrive sync status.`);
                               }
                             }
                           }}
@@ -2344,111 +2221,6 @@ function Settings({ initialTab = 'user-profile', initialErrorId = null, onLaunch
             getFilteredItems={getFilteredItems}
             renderFieldEditor={renderFieldEditor}
           />
-        );
-
-      // Original code for reference (now replaced by FormSettingsTab component)
-      case 'project-form-old':
-        const currentCategory = getCurrentCategory();
-        const currentItems = settings[selectedCategory] || [];
-        
-        return (
-          <div className="flex gap-6 h-full">
-            {/* Sidebar with categories */}
-            <div className="w-64 flex-shrink-0 bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-base font-bold text-gray-900 dark:text-white">Categories</h3>
-                <div className="flex bg-gray-200 dark:bg-gray-700 rounded p-0.5">
-                  <button 
-                    className={`px-2 py-1 rounded text-xs transition-all ${viewMode === 'compact' ? 'bg-white dark:bg-gray-600 text-primary-600 dark:text-primary-400 shadow' : 'text-gray-600 dark:text-gray-400'}`}
-                    onClick={() => setViewMode('compact')}
-                    title="Compact View"
-                  >
-                    ⊞
-                  </button>
-                  <button 
-                    className={`px-2 py-1 rounded text-xs transition-all ${viewMode === 'detailed' ? 'bg-white dark:bg-gray-600 text-primary-600 dark:text-primary-400 shadow' : 'text-gray-600 dark:text-gray-400'}`}
-                    onClick={() => setViewMode('detailed')}
-                    title="Detailed View"
-                  >
-                    ☰
-                  </button>
-                </div>
-              </div>
-              
-              <div className="space-y-1">
-                {formCategories.map(category => (
-                  <button
-                    key={category.key}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-left ${
-                      selectedCategory === category.key 
-                        ? 'bg-primary-600 text-white shadow-lg' 
-                        : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                    onClick={() => {
-                      setSelectedCategory(category.key);
-                      setSearchTerm(''); // Clear search when switching categories
-                      cancelEditing(); // Cancel any active editing
-                    }}
-                  >
-                    <span className="text-xl">{category.icon}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm truncate">{category.label}</div>
-                      <div className={`text-xs ${selectedCategory === category.key ? 'text-white/80' : 'text-gray-500 dark:text-gray-400'}`}>
-                        {settings[category.key]?.length || 0} items
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Main content area */}
-            <div className="flex-1 flex flex-col min-w-0">
-              {/* Header with search and actions */}
-              <div className="mb-4 p-4 bg-gradient-to-r from-primary-50 to-blue-50 dark:from-primary-900/20 dark:to-blue-900/20 rounded-lg border border-primary-200 dark:border-primary-800">
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                      <span className="text-2xl">{currentCategory?.icon}</span>
-                      <span>{currentCategory?.label}</span>
-                    </h2>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{currentCategory?.description}</p>
-                  </div>
-                  
-                  <div className="px-3 py-1 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full text-xs font-bold">
-                    {getFilteredItems(currentItems).length} of {currentItems.length} items
-                  </div>
-                </div>
-                
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Search items..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full px-4 py-2 pr-10 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                  />
-                  {searchTerm && (
-                    <button 
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                      onClick={() => setSearchTerm('')}
-                      title="Clear search"
-                    >
-                      ✗
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Items display */}
-              <div className="flex-1 overflow-y-auto custom-scrollbar">
-                {viewMode === 'compact' ? 
-                  renderCompactFieldEditor(selectedCategory, currentItems) :
-                  renderFieldEditor(selectedCategory, currentCategory?.label, currentItems)
-                }
-              </div>
-            </div>
-          </div>
         );
 
       case 'agencies':
@@ -3494,15 +3266,15 @@ function Settings({ initialTab = 'user-profile', initialErrorId = null, onLaunch
                         if (window.electronAPI && window.electronAPI.workloadBackupCreate) {
                           const result = await window.electronAPI.workloadBackupCreate();
                           if (result.success) {
-                            alert('✅ Backup created successfully!\n\nPath: ' + result.backupPath);
+                            notify('✅ Backup created successfully!\n\nPath: ' + result.backupPath);
                           } else {
-                            alert('❌ Backup failed: ' + result.error);
+                            notify('❌ Backup failed: ' + result.error);
                           }
                         } else {
-                          alert('⚠️ Backup API not available. Make sure the app is fully loaded.');
+                          notify('⚠️ Backup API not available. Make sure the app is fully loaded.');
                         }
                       } catch (error) {
-                        alert('❌ Backup failed: ' + error.message);
+                        notify('❌ Backup failed: ' + error.message);
                       }
                     }}
                     className="btn-secondary"

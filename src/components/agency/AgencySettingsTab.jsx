@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { notify, confirmAction } from '../../utils/feedback';
 
 function AgencySettingsTab({ agency }) {
   const [customFields, setCustomFields] = useState([]);
@@ -47,9 +48,9 @@ function AgencySettingsTab({ agency }) {
     ));
   };
 
-  const handleDeleteField = (fieldId) => {
-    if (window.confirm('Are you sure you want to delete this custom field?')) {
-      setCustomFields(customFields.filter(field => field.id !== fieldId));
+  const handleDeleteField = async (fieldId) => {
+    if (await confirmAction('Are you sure you want to delete this custom field?')) {
+      setCustomFields(prev => prev.filter(field => field.id !== fieldId));
     }
   };
 
@@ -66,7 +67,7 @@ function AgencySettingsTab({ agency }) {
 
   const handleSave = async () => {
     if (!agency?.id) {
-      alert('Agency ID is required to save data.');
+      notify('Agency ID is required to save data.');
       return;
     }
 
@@ -88,13 +89,13 @@ function AgencySettingsTab({ agency }) {
       });
 
       if (result.success) {
-        alert('Settings saved successfully!');
+        notify('Settings saved successfully!');
       } else {
         throw new Error(result.error || 'Failed to save settings');
       }
     } catch (error) {
       console.error('Error saving settings:', error);
-      alert('Failed to save settings: ' + error.message);
+      notify('Failed to save settings: ' + error.message);
     }
   };
 
@@ -119,13 +120,13 @@ function AgencySettingsTab({ agency }) {
       const exportResult = await window.electronAPI.agenciesExportExcel(result.filePath);
 
       if (exportResult.success) {
-        alert(`Successfully exported ${exportResult.exportedCount || 0} agencies to:\n${result.filePath}`);
+        notify(`Successfully exported ${exportResult.exportedCount || 0} agencies to:\n${result.filePath}`);
       } else {
         throw new Error(exportResult.error || 'Failed to export to Excel');
       }
     } catch (error) {
       console.error('Error exporting to Excel:', error);
-      alert('Failed to export to Excel: ' + error.message);
+      notify('Failed to export to Excel: ' + error.message);
     } finally {
       setExporting(false);
     }

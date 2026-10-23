@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { notify, confirmAction } from '../../utils/feedback';
 
 const DEFAULT_TEMPLATE = `Hello {{repName}},
 
@@ -100,20 +101,24 @@ const EmailTemplateEditor = ({ isOpen, onClose, project = {} }) => {
     localStorage.setItem(STORAGE_KEY_SIGNATURE, signature);
     setHasChanges(false);
     // Show success message
-    alert('Email template and signature saved successfully!');
+    notify('Email template and signature saved successfully!');
   };
 
-  const handleReset = () => {
-    if (window.confirm('Are you sure you want to reset to the default template? This will discard your changes.')) {
+  const handleReset = async () => {
+    if (await confirmAction('Are you sure you want to reset to the default template? This will discard your changes.')) {
       setTemplate(DEFAULT_TEMPLATE);
       setSignature('');
       setHasChanges(true);
     }
   };
 
-  const handleClose = () => {
+  const handleClose = async () => {
     if (hasChanges) {
-      if (window.confirm('You have unsaved changes. Do you want to save before closing?')) {
+      if (await confirmAction('You have unsaved changes. Do you want to save before closing?', {
+        title: 'Unsaved changes',
+        confirmLabel: 'Save',
+        cancelLabel: "Don't Save"
+      })) {
         handleSave();
       }
     }

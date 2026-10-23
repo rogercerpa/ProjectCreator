@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useUploadContext, UPLOAD_TYPES, UPLOAD_STATUS } from '../contexts/UploadContext';
+import { confirmAction } from '../utils/feedback';
 
 /**
  * UploadStatusBar - Compact header status bar showing upload progress
@@ -219,9 +220,9 @@ const UploadStatusBar = () => {
                         {getPhaseDisplay(activeUpload)}
                       </span>
                       <button
-                        onClick={(e) => {
+                        onClick={async (e) => {
                           e.stopPropagation();
-                          if (window.confirm('Stop tracking this upload? Use this if it appears stuck. This closes the progress indicator here but does not guarantee the underlying file copy has stopped.')) {
+                          if (await confirmAction('Stop tracking this upload? Use this if it appears stuck. This closes the progress indicator here but does not guarantee the underlying file copy has stopped.')) {
                             clearStuckUpload(activeUpload.projectId);
                           }
                         }}

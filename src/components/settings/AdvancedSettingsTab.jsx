@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { notify, confirmAction } from '../../utils/feedback';
 
 // Access secure electron API through contextBridge
 const { electronAPI } = window;
@@ -296,7 +297,7 @@ const AdvancedSettingsTab = ({ settings, setSettings }) => {
 
   const handleCreateDasGeneral = async () => {
     const filePath = dasGeneral.filePath || COMPANY_DEFAULTS.dasGeneralFilePath;
-    if (!window.confirm(`Create a new DAS General file at:\n\n${filePath}\n\nOnly do this if the shared workbook is missing. Continue?`)) return;
+    if (!await confirmAction(`Create a new DAS General file at:\n\n${filePath}\n\nOnly do this if the shared workbook is missing. Continue?`)) return;
     if (electronAPI?.dasGeneralCreateFile) {
       const result = await electronAPI.dasGeneralCreateFile(filePath);
       setDasGeneralStatus(result.success
@@ -306,14 +307,14 @@ const AdvancedSettingsTab = ({ settings, setSettings }) => {
   };
 
   const handleRebuildCatalog = async () => {
-    if (!window.confirm('Rebuild the BOM catalog from all projects? This may take a moment.')) return;
+    if (!await confirmAction('Rebuild the BOM catalog from all projects? This may take a moment.')) return;
     try {
       const result = await electronAPI.bomRebuildCatalog();
-      window.alert(result.success
+      notify(result.success
         ? `Catalog rebuilt successfully.\n\nProcessed ${result.processedProjects} projects.`
         : `Failed to rebuild catalog: ${result.error}`);
     } catch (error) {
-      window.alert(`Error: ${error.message}`);
+      notify(`Error: ${error.message}`);
     }
   };
 

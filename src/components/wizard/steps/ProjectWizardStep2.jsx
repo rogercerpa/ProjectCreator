@@ -445,7 +445,7 @@ const ProjectWizardStep2 = ({
   const handleStartFresh = () => {
     if (onWizardReset) {
       onWizardReset();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      document.querySelector('.main-content')?.scrollTo({ top: 0, behavior: 'auto' });
     }
   };
 

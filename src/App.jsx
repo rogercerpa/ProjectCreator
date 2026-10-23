@@ -1,22 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { flushSync } from 'react-dom';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
-import ProjectForm from './components/ProjectForm';
-import ProjectWizard from './components/wizard/ProjectWizard';
-import ProjectManagement from './components/ProjectManagement';
-import ProjectList from './components/ProjectList';
-import AgencyDirectory from './components/AgencyDirectory';
-import AgencyDashboard from './components/AgencyDashboard';
-import WorkloadDashboard from './components/WorkloadDashboard';
-import AgileMonitorView from './components/agile/AgileMonitorView';
-import DraftRecoveryModal from './components/wizard/components/DraftRecoveryModal';
-import MigrationAssistant from './components/wizard/components/MigrationAssistant';
-import Settings from './components/Settings';
-import DASGeneralPage from './components/DASGeneralPage';
-import SpecReviewPage from './components/specreview/SpecReviewPage';
-import TrainingHubPage from './components/traininghub/TrainingHubPage';
 import WelcomeSnapshot from './components/WelcomeSnapshot';
+import ViewErrorBoundary from './components/shared/ViewErrorBoundary';
+import ViewLoadingFallback from './components/shared/ViewLoadingFallback';
 import logoUrl from '/assets/images/logo.png';
 // Use simple services that work in both main and renderer processes
 import featureFlagService from './services/FeatureFlagService';
@@ -26,11 +14,26 @@ import analyticsService from './services/SimpleAnalyticsService';
 import performanceMonitoringService from './services/SimplePerformanceMonitoringService';
 import triageCalculationService from './services/TriageCalculationService';
 import { getFullVersionInfo, getVersionDisplay } from './utils/version';
+import { createDraftClient } from './services/ProjectDraftClient';
+import { applyRequestedDateDefaults, getNewProjectDefaults } from './utils/wizardDefaults';
+import { notify, confirmAction } from './utils/feedback';
 
-// Import draft service for enhanced recovery
-const ProjectDraftService = window.electron ? 
-  window.electron.require('./src/services/ProjectDraftService') : 
-  null;
+// Each page is its own chunk so the first screen does not pay for charts, PDF
+// export, or the wizard until the user opens them.
+const ProjectForm = lazy(() => import('./components/ProjectForm'));
+const ProjectWizard = lazy(() => import('./components/wizard/ProjectWizard'));
+const ProjectManagement = lazy(() => import('./components/ProjectManagement'));
+const ProjectList = lazy(() => import('./components/ProjectList'));
+const AgencyDirectory = lazy(() => import('./components/AgencyDirectory'));
+const AgencyDashboard = lazy(() => import('./components/AgencyDashboard'));
+const WorkloadDashboard = lazy(() => import('./components/WorkloadDashboard'));
+const AgileMonitorView = lazy(() => import('./components/agile/AgileMonitorView'));
+const DraftRecoveryModal = lazy(() => import('./components/wizard/components/DraftRecoveryModal'));
+const MigrationAssistant = lazy(() => import('./components/wizard/components/MigrationAssistant'));
+const Settings = lazy(() => import('./components/Settings'));
+const DASGeneralPage = lazy(() => import('./components/DASGeneralPage'));
+const SpecReviewPage = lazy(() => import('./components/specreview/SpecReviewPage'));
+const TrainingHubPage = lazy(() => import('./components/traininghub/TrainingHubPage'));
 
 const UI_STORAGE_KEYS = {
   sidebarCollapsed: 'projectCreator.sidebarCollapsed'
@@ -144,7 +147,8 @@ const createDefaultFormData = () => ({
   qcHoursDate: '',
   rdMissReason: '',
   ecdMissReason: '',
-  sampleProject: false
+  sampleProject: false,
+  ...getNewProjectDefaults()
 });
 
 function App() {
@@ -163,7 +167,7 @@ function App() {
   
   // Draft recovery state
   const [showDraftRecovery, setShowDraftRecovery] = useState(false);
-  const [draftService] = useState(() => ProjectDraftService ? new ProjectDraftService() : null);
+  const [draftService] = useState(createDraftClient);
   const [hasDrafts, setHasDrafts] = useState(false);
   
   // Migration and feature flag state
@@ -256,9 +260,15 @@ function App() {
     const initializeApp = async () => {
       try {
         setIsLoading(true);
-        
-        // Initialize crash reporting and analytics
-        await initializeMonitoringServices();
+
+        // Independent startup work runs in parallel; only settings + projects gate the UI.
+        const monitoringReady = initializeMonitoringServices();
+        const settingsRequest = window.electronAPI?.settingsLoad
+          ? window.electronAPI.settingsLoad().catch((error) => ({ success: false, error }))
+          : Promise.resolve(null);
+        const projectsRequest = window.electronAPI?.projectsLoadAll
+          ? window.electronAPI.projectsLoadAll().catch((error) => ({ success: false, error: error?.message || String(error) }))
+          : Promise.resolve(null);
         
         // Check if this is the user's first visit
         const hasVisitedBefore = localStorage.getItem('app-visited') === 'true';
@@ -273,46 +283,34 @@ function App() {
         const savedPreference = localStorage.getItem('interface-preference');
         setUserInterfacePreference(savedPreference);
         
-        // Load application settings
-        try {
-          if (window.electronAPI?.settingsLoad) {
-            const settingsResult = await window.electronAPI.settingsLoad();
-            if (settingsResult?.success) {
-              setSettings(settingsResult.data);
-              triageCalculationService.updateSettings(settingsResult.data);
-              console.log('✅ Settings loaded successfully');
-            }
-          }
-        } catch (settingsError) {
-          console.warn('⚠️ Failed to load settings:', settingsError);
+        const [settingsResult, projectsResult] = await Promise.all([settingsRequest, projectsRequest]);
+
+        if (settingsResult?.success) {
+          setSettings(settingsResult.data);
+          triageCalculationService.updateSettings(settingsResult.data);
+        } else if (settingsResult) {
+          console.warn('⚠️ Failed to load settings:', settingsResult.error);
         }
-        
-        // CRITICAL FIX: Load existing projects from persistent storage
-        try {
-          const projectsResult = await window.electronAPI.projectsLoadAll();
-          if (projectsResult && projectsResult.success && Array.isArray(projectsResult.projects)) {
-            setProjects(projectsResult.projects);
-            console.log(`✅ Loaded ${projectsResult.projects.length} existing projects from storage`);
-            
-            // Auto-scan Ready for QC folder and update project statuses
-            await runReadyForQCScan('Auto-scanned Ready for QC');
-          } else {
-            console.warn('Failed to load projects:', projectsResult?.error || 'Unknown error');
-            setProjects([]); // Ensure projects is always an array
+
+        let projectsLoaded = false;
+        if (projectsResult?.success && Array.isArray(projectsResult.projects)) {
+          setProjects(projectsResult.projects);
+          projectsLoaded = true;
+        } else {
+          setProjects([]);
+          if (projectsResult) {
+            showErrorBanner(
+              'Your saved projects could not be loaded. Nothing has been overwritten. Restart the app, and if this keeps happening, send the error report from Settings.',
+              { category: 'storage', error: new Error(projectsResult.error || 'projects-load-all failed'), context: { operation: 'projectsLoadAll' } }
+            );
           }
-        } catch (projectLoadError) {
-          console.error('Error loading existing projects:', projectLoadError);
-          setProjects([]); // Ensure projects is always an array even on error
         }
 
         // Check for existing drafts
         if (draftService) {
-          try {
-            const allDrafts = await draftService.getAllDrafts();
-            setHasDrafts(allDrafts.length > 0);
-          } catch (error) {
-            console.warn('Error checking drafts:', error);
-          }
+          draftService.getAllDrafts()
+            .then((allDrafts) => setHasDrafts(Array.isArray(allDrafts) && allDrafts.length > 0))
+            .catch((error) => console.warn('Error checking drafts:', error));
         }
         
         // Determine if onboarding tutorial should be shown for new users only
@@ -358,6 +356,12 @@ function App() {
         }));
         
         setIsLoading(false);
+
+        // The Ready-for-QC folder lives on OneDrive/network storage; scan it after the UI is up.
+        if (projectsLoaded) {
+          runReadyForQCScan('Auto-scanned Ready for QC');
+        }
+        await monitoringReady;
       } catch (err) {
         console.error('Failed to initialize app:', err);
         
@@ -883,7 +887,7 @@ function App() {
   const handleProjectDelete = async (projectId, projectName) => {
     try {
       // Show confirmation dialog
-      const confirmed = window.confirm(
+      const confirmed = await confirmAction(
         `Are you sure you want to delete the project "${projectName}"?\n\nThis action cannot be undone.`
       );
       
@@ -916,12 +920,12 @@ function App() {
         
       } else {
         console.error('Failed to delete project:', deleteResult.error);
-        alert(`Failed to delete project: ${deleteResult.error}`);
+        notify(`Failed to delete project: ${deleteResult.error}`);
       }
       
     } catch (error) {
       console.error('Error deleting project:', error);
-      alert(`Error deleting project: ${error.message}`);
+      notify(`Error deleting project: ${error.message}`);
       
       // Track error in analytics and crash reporting
       analyticsService.trackError(error, { context: 'project_deletion', projectId });
@@ -1136,7 +1140,6 @@ function App() {
   };
 
   const renderMainContent = () => {
-    console.log('🎯 App: renderMainContent called with currentView =', currentView);
 
     // Generic guard: redirect to welcome if the view's feature flag is disabled
     const requiredFlag = viewFeatureFlags[currentView];
@@ -1223,10 +1226,6 @@ function App() {
             />
           );
         case 'project-management':
-          console.log('🎯 App: Rendering project-management view');
-          console.log('🎯 App: currentProject =', currentProject);
-          console.log('🎯 App: currentProject type =', typeof currentProject);
-          console.log('🎯 App: currentProject keys =', currentProject ? Object.keys(currentProject) : 'no project');
           return (
             <ProjectManagement
               project={currentProject}
@@ -1276,7 +1275,7 @@ function App() {
               onNavigateToWizard={openNewProjectWizard}
               onImportRfaData={(rfaData) => {
                 if (rfaData) {
-                  setFormData((prev) => ({
+                  setFormData((prev) => applyRequestedDateDefaults({
                     ...prev,
                     rfaNumber: rfaData.rfaNumber ?? prev.rfaNumber,
                     rfaType: rfaData.rfaType ?? prev.rfaType,
@@ -1292,7 +1291,7 @@ function App() {
                     ...(rfaData.submittedDate != null && { submittedDate: rfaData.submittedDate }),
                     ...(rfaData.notes != null && { rfaNotes: rfaData.notes }),
                     ...(rfaData.documents != null && { rfaDocuments: rfaData.documents })
-                  }));
+                  }, prev.requestedDate));
                 }
                 openNewProjectWizard();
               }}
@@ -1619,32 +1618,38 @@ function App() {
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={handleToggleSidebar}
         />
-        <main className="flex-1 overflow-y-auto bg-white p-4 shadow-lg custom-scrollbar dark:bg-gray-800">
-          {renderMainContent()}
+        <main className="main-content flex-1 overflow-y-auto bg-white p-4 shadow-lg custom-scrollbar dark:bg-gray-800">
+          <ViewErrorBoundary key={currentView} viewName={currentView} onGoHome={() => setCurrentView('welcome')}>
+            <Suspense fallback={<ViewLoadingFallback />}>
+              {renderMainContent()}
+            </Suspense>
+          </ViewErrorBoundary>
         </main>
       </div>
       
-      {/* Draft Recovery Modal */}
-      {showDraftRecovery && (
-        <DraftRecoveryModal
-          isOpen={showDraftRecovery}
-          onClose={() => setShowDraftRecovery(false)}
-          onResumeDraft={handleResumeDraft}
-          onDeleteDraft={handleDeleteDraft}
-          draftService={draftService}
-        />
-      )}
-      
-      {/* Migration Assistant */}
-      {showMigrationAssistant && (
-        <MigrationAssistant
-          isOpen={showMigrationAssistant}
-          onClose={() => setShowMigrationAssistant(false)}
-          onSelectInterface={handleInterfaceSelection}
-          currentInterface={currentView}
-          showComparison={true}
-        />
-      )}
+      <Suspense fallback={null}>
+        {/* Draft Recovery Modal */}
+        {showDraftRecovery && (
+          <DraftRecoveryModal
+            isOpen={showDraftRecovery}
+            onClose={() => setShowDraftRecovery(false)}
+            onResumeDraft={handleResumeDraft}
+            onDeleteDraft={handleDeleteDraft}
+            draftService={draftService}
+          />
+        )}
+        
+        {/* Migration Assistant */}
+        {showMigrationAssistant && (
+          <MigrationAssistant
+            isOpen={showMigrationAssistant}
+            onClose={() => setShowMigrationAssistant(false)}
+            onSelectInterface={handleInterfaceSelection}
+            currentInterface={currentView}
+            showComparison={true}
+          />
+        )}
+      </Suspense>
       
       {/* Update Notification - temporarily disabled */}
     </div>

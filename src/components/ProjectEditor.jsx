@@ -9,6 +9,7 @@ import {
   PROJECT_FILE_TYPE_OTHER,
   sanitizeProjectFileTypes
 } from '../constants/projectFileTypes';
+import { notify } from '../utils/feedback';
 
 /**
  * ProjectEditor - Edit mode for project information
@@ -50,9 +51,9 @@ const ProjectEditor = ({
   const handlePaidServicesEmail = () => {
     const result = openPaidServicesEmail(formData);
     if (result.success) {
-      window.alert('Outlook email drafted with paid services details.');
+      notify('Outlook email drafted with paid services details.');
     } else if (result.missingFields?.length) {
-      window.alert(`Add ${result.missingFields.join(', ')} to draft the email.`);
+      notify(`Add ${result.missingFields.join(', ')} to draft the email.`);
     }
   };
 
@@ -229,7 +230,7 @@ const ProjectEditor = ({
           ...prev,
           designBy: 'Design By is required when marking RFA Status as Completed'
         }));
-        alert('Please assign Design By before marking RFA Status as Completed.');
+        notify('Please assign Design By before marking RFA Status as Completed.');
         return;
       }
       if (!newFormData.projectNotes || newFormData.projectNotes.trim() === '') {
@@ -238,7 +239,7 @@ const ProjectEditor = ({
           projectNotes: 'Project Notes are required when marking a project as Completed' 
         }));
         // Prevent status change
-        alert('Please add Project Notes before marking the project as Completed.');
+        notify('Please add Project Notes before marking the project as Completed.');
         return;
       }
     }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import EmailTemplateCreator from './EmailTemplateCreator';
+import { notify, confirmAction } from '../utils/feedback';
 
 function EmailTemplateLibrary({ isOpen, onClose, onSelectTemplate }) {
   const [templates, setTemplates] = useState([]);
@@ -103,7 +104,7 @@ function EmailTemplateLibrary({ isOpen, onClose, onSelectTemplate }) {
   };
 
   const handleDeleteTemplate = async (template) => {
-    if (window.confirm(`Are you sure you want to delete the template "${template.name}"?`)) {
+    if (await confirmAction(`Are you sure you want to delete the template "${template.name}"?`)) {
       try {
         const result = await window.electronAPI.emailTemplatesDelete(template.id);
         if (result.success) {
@@ -113,11 +114,11 @@ function EmailTemplateLibrary({ isOpen, onClose, onSelectTemplate }) {
             setSelectedTemplate(null);
           }
         } else {
-          alert('Failed to delete template: ' + result.error);
+          notify('Failed to delete template: ' + result.error);
         }
       } catch (error) {
         console.error('Error deleting template:', error);
-        alert('Error deleting template. Please try again.');
+        notify('Error deleting template. Please try again.');
       }
     }
   };

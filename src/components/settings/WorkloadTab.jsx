@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useImperativeHandle, forwardRef, useRef } from 'react';
+import { notify } from '../../utils/feedback';
 
 const WorkloadTab = forwardRef(({ settings, setSettings }, ref) => {
   const [excelSettings, setExcelSettings] = useState({
@@ -454,15 +455,15 @@ const WorkloadTab = forwardRef(({ settings, setSettings }, ref) => {
                     if (window.electronAPI && window.electronAPI.workloadBackupCreate) {
                       const result = await window.electronAPI.workloadBackupCreate();
                       if (result.success) {
-                        alert('✅ Backup created successfully!\n\nPath: ' + result.backupPath);
+                        notify('✅ Backup created successfully!\n\nPath: ' + result.backupPath);
                       } else {
-                        alert('❌ Backup failed: ' + result.error);
+                        notify('❌ Backup failed: ' + result.error);
                       }
                     } else {
-                      alert('⚠️ Backup API not available. Make sure the app is fully loaded.');
+                      notify('⚠️ Backup API not available. Make sure the app is fully loaded.');
                     }
                   } catch (error) {
-                    alert('❌ Backup failed: ' + error.message);
+                    notify('❌ Backup failed: ' + error.message);
                   }
                 }}
                 className="px-6 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-medium rounded-lg shadow transition-all"

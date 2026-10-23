@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import agencyProjectService from '../../services/AgencyProjectService';
+import { notify } from '../../utils/feedback';
 
 function AgencyAnalyticsTab({ agency }) {
   const [statistics, setStatistics] = useState(null);
@@ -54,10 +55,10 @@ function AgencyAnalyticsTab({ agency }) {
       // Simulate export
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      alert(`${format.toUpperCase()} report export functionality will be implemented soon!`);
+      notify(`${format.toUpperCase()} report export functionality will be implemented soon!`);
     } catch (error) {
       console.error('Error exporting report:', error);
-      alert('Failed to export report');
+      notify('Failed to export report');
     } finally {
       setExporting(false);
     }

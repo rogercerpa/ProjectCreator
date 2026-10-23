@@ -87,8 +87,9 @@ const FinalIntegrationTest = () => {
       
       // Test ProjectDraftService
       try {
-        const ProjectDraftService = require('../../../services/ProjectDraftService');
-        const draftService = new ProjectDraftService();
+        const { createDraftClient } = require('../../../services/ProjectDraftClient');
+        const draftService = createDraftClient();
+        if (!draftService) throw new Error('Draft IPC bridge is not available');
         
         const testData = { projectName: 'Integration Test', rfaNumber: 'INT001', currentStep: 1 };
         const saveResult = await draftService.savePartialProject(testData, 1, { testMode: true });

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import EmailTemplateLibrary from './EmailTemplateLibrary';
+import { notify } from '../utils/feedback';
 
 function AgencySelectionModal({ isOpen, onClose, allAgencies = [] }) {
   const [selectedAgencies, setSelectedAgencies] = useState(new Set());
@@ -258,13 +259,13 @@ function AgencySelectionModal({ isOpen, onClose, allAgencies = [] }) {
 
     if (!selectedTemplate || emailPreview.length === 0) {
       console.log('ERROR: No template or no email previews');
-      alert('Please select a template first.');
+      notify('Please select a template first.');
       return;
     }
 
     if (selectedAgencies.size === 0) {
       console.log('ERROR: No agencies selected');
-      alert('Please select at least one agency.');
+      notify('Please select at least one agency.');
       return;
     }
 
@@ -304,14 +305,14 @@ function AgencySelectionModal({ isOpen, onClose, allAgencies = [] }) {
       
       if (result.success) {
         const modeText = emailMode === 'individual' ? 'individual' : 'group';
-        alert(`${result.summary.successful} ${modeText} email windows opened successfully!`);
+        notify(`${result.summary.successful} ${modeText} email windows opened successfully!`);
         onClose();
       } else {
-        alert('Failed to open email windows: ' + result.error);
+        notify('Failed to open email windows: ' + result.error);
       }
     } catch (error) {
       console.error('Error sending emails:', error);
-      alert('Error opening email windows. Please try again.');
+      notify('Error opening email windows. Please try again.');
     } finally {
       setProcessing(false);
     }

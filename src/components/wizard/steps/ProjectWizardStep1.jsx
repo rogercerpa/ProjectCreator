@@ -6,6 +6,7 @@ import dropdownOptionsService from '../../../services/DropdownOptionsService';
 import triageCalculationService from '../../../services/TriageCalculationService';
 import EditableProductTags from '../../EditableProductTags';
 import { parseAgileDate, getUserTimezone, formatDateTimeLocal } from '../../../utils/dateUtils';
+import { applyRequestedDateDefaults, getNewProjectDefaults } from '../../../utils/wizardDefaults';
 import { openPaidServicesEmail } from '../../../utils/emailTemplates';
 import DASPaidServicesSection from '../../shared/DASPaidServicesSection';
 import { ActualHoursFields, SampleProjectField, ScheduleOutcomeFields } from '../../shared/ProjectProductivityFields';
@@ -13,6 +14,7 @@ import {
   PROJECT_FILE_TYPE_OTHER,
   sanitizeProjectFileTypes
 } from '../../../constants/projectFileTypes';
+import { notify } from '../../../utils/feedback';
 
 const REP_EMAIL_REGEX = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
 const ZERO_WIDTH_REGEX = /[\u200B-\u200D\uFEFF]/g;
@@ -909,7 +911,11 @@ const ProjectWizardStep1 = ({
       processedValue = sanitizeTextValue(processedValue);
     }
     
-    const newFormData = { ...formData, [name]: processedValue };
+    let newFormData = { ...formData, [name]: processedValue };
+
+    if (name === 'requestedDate') {
+      newFormData = applyRequestedDateDefaults(newFormData, formData.requestedDate);
+    }
     
     if (name === 'dasRepEmail') {
       const manualEmails = processedValue
@@ -1080,7 +1086,8 @@ const ProjectWizardStep1 = ({
             baseTotal: 0,
             selfQC: 0,
             fluff: 0,
-            firstAvailable: false
+            firstAvailable: false,
+            ...getNewProjectDefaults()
           };
           
           onFormDataChange(cleanFormWithRegion);
@@ -1102,7 +1109,7 @@ const ProjectWizardStep1 = ({
       
       // Enhanced clipboard validation
       if (!clipboardText || clipboardText.trim().length === 0) {
-        alert('⚠️ Clipboard is empty. Please copy RFA information from Agile first.');
+        notify('⚠️ Clipboard is empty. Please copy RFA information from Agile first.');
         return;
       }
 
@@ -1130,7 +1137,7 @@ const ProjectWizardStep1 = ({
         setImportedFields(importedFieldNames);
         
         // Enhanced data merging with conflict detection
-        const updatedFormData = { ...formData };
+        let updatedFormData = { ...formData };
         const conflictFields = [];
         
         // Check for existing data conflicts
@@ -1141,6 +1148,7 @@ const ProjectWizardStep1 = ({
           }
           updatedFormData[fieldName] = sanitizedData[fieldName];
         });
+        updatedFormData = applyRequestedDateDefaults(updatedFormData, formData.requestedDate);
         
         onFormDataChange(updatedFormData);
         
@@ -1242,7 +1250,7 @@ const ProjectWizardStep1 = ({
         }
         
       } else {
-        alert(`❌ Could not parse RFA information from clipboard.\n\n` +
+        notify(`❌ Could not parse RFA information from clipboard.\n\n` +
               `Please ensure you've copied the complete RFA details from Agile.\n\n` +
               `💡 Tip: Copy from the RFA summary section that includes:\n` +
               `• Request for Assistance number\n` +
@@ -1263,7 +1271,7 @@ const ProjectWizardStep1 = ({
         errorMessage += 'An unexpected error occurred. Please try copying the RFA information again.';
       }
       
-      alert(errorMessage);
+      notify(errorMessage);
     } finally {
       const totalTime = performance.now() - startTime;
       console.log(`Total Agile import process completed in ${totalTime.toFixed(2)}ms`);

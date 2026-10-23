@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import errorReportingService from '../../services/ErrorReportingService';
+import { confirmAction } from '../../utils/feedback';
 
 const SEVERITY_STYLES = {
   error: 'bg-error-100 dark:bg-error-900/30 text-error-700 dark:text-error-300 border-error-300 dark:border-error-700',
@@ -120,7 +121,7 @@ function ErrorReportTab({ selectedErrorId = null }) {
   };
 
   const handleClearAll = async () => {
-    if (!window.confirm('Clear all recorded errors? This cannot be undone.')) {
+    if (!await confirmAction('Clear all recorded errors? This cannot be undone.')) {
       return;
     }
     const result = await errorReportingService.clearErrors();

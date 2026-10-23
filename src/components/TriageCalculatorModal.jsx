@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import dropdownOptionsService from '../services/DropdownOptionsService';
 import triageCalculationService from '../services/TriageCalculationService';
+import { notify, confirmAction } from '../utils/feedback';
 
 /**
  * TriageCalculatorModal - Standalone triage calculator modal
@@ -99,7 +100,7 @@ const TriageCalculatorModal = ({
       setHasChanges(true);
     } catch (error) {
       console.error('Triage calculation failed:', error);
-      alert('Failed to calculate triage. Please check your inputs and try again.');
+      notify('Failed to calculate triage. Please check your inputs and try again.');
     } finally {
       setIsCalculating(false);
     }
@@ -108,16 +109,16 @@ const TriageCalculatorModal = ({
   // Handle save
   const handleSave = () => {
     if (!triageResults) {
-      alert('Please calculate triage before saving.');
+      notify('Please calculate triage before saving.');
       return;
     }
     onSave(formData);
   };
 
   // Handle cancel
-  const handleCancel = () => {
+  const handleCancel = async () => {
     if (hasChanges) {
-      const confirmCancel = window.confirm(
+      const confirmCancel = await confirmAction(
         'You have unsaved changes. Are you sure you want to cancel?'
       );
       if (!confirmCancel) return;

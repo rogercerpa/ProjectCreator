@@ -1,4 +1,5 @@
 import React from 'react';
+import errorReportingService from '../../../services/ErrorReportingService';
 
 /**
  * Error Boundary specifically designed for wizard steps
@@ -32,16 +33,16 @@ class WizardErrorBoundary extends React.Component {
       errorInfo
     });
 
-    // Report error to error tracking service if available
-    if (window.electron && window.electron.ipcRenderer) {
-      window.electron.ipcRenderer.send('wizard-error', {
-        error: error.toString(),
-        errorInfo: errorInfo.componentStack,
-        timestamp: new Date().toISOString(),
+    errorReportingService.reportError({
+      category: 'wizard',
+      userMessage: 'The project wizard hit an unexpected error.',
+      error,
+      context: {
         step: this.props.step,
-        formData: this.props.formData ? Object.keys(this.props.formData) : null
-      });
-    }
+        componentStack: errorInfo?.componentStack,
+        formFields: this.props.formData ? Object.keys(this.props.formData) : null
+      }
+    });
   }
 
   handleRetry = () => {

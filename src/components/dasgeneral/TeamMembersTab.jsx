@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ROLE_CATEGORIES, canonicalRole, parseExpertise, roleLabel } from '../../services/TeamRosterService';
 import { otherMachinesForMember } from '../../services/MachineClaimService';
+import { notify, confirmAction } from '../../utils/feedback';
 
 function RoleSelect({ value, onChange, className }) {
   const known = canonicalRole(value);
@@ -44,11 +45,11 @@ function TeamMembersTab({ teamMembers = [], machineUsers = [], hostname = '', on
       const result = await onClaim(member);
       setSaveStatus(result?.success ? 'saved' : 'error');
       if (!result?.success && result?.error) {
-        window.alert(result.error);
+        notify(result.error);
       }
     } catch (error) {
       setSaveStatus('error');
-      window.alert(error.message || 'Could not claim this PC.');
+      notify(error.message || 'Could not claim this PC.');
     }
     setTimeout(() => setSaveStatus(null), 2000);
   };
@@ -78,7 +79,7 @@ function TeamMembersTab({ teamMembers = [], machineUsers = [], hostname = '', on
   // Handle saving edit
   const handleSaveEdit = async () => {
     if (!editForm.name?.trim()) {
-      alert('Name is required');
+      notify('Name is required');
       return;
     }
 
@@ -104,11 +105,11 @@ function TeamMembersTab({ teamMembers = [], machineUsers = [], hostname = '', on
   // Handle adding new member
   const handleAdd = async () => {
     if (!newMember.name?.trim()) {
-      alert('Name is required');
+      notify('Name is required');
       return;
     }
     if (!canonicalRole(newMember.role)) {
-      alert('Select a category: AE, SAE, Lead, Manager, or L&T AE.');
+      notify('Select a category: AE, SAE, Lead, Manager, or L&T AE.');
       return;
     }
 
@@ -136,7 +137,7 @@ function TeamMembersTab({ teamMembers = [], machineUsers = [], hostname = '', on
 
   // Handle deleting member
   const handleDelete = async (memberId) => {
-    if (!window.confirm('Are you sure you want to delete this team member?')) {
+    if (!await confirmAction('Are you sure you want to delete this team member?')) {
       return;
     }
 

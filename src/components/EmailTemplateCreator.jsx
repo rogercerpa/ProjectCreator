@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { notify, confirmAction } from '../utils/feedback';
 
 function EmailTemplateCreator({ 
   isOpen, 
@@ -123,7 +124,7 @@ function EmailTemplateCreator({
         const imageResult = await window.electronAPI.emailConvertImageToBase64(result);
         
         if (!imageResult.success) {
-          alert(`Failed to process image: ${imageResult.error}`);
+          notify(`Failed to process image: ${imageResult.error}`);
           return;
         }
         
@@ -132,7 +133,7 @@ function EmailTemplateCreator({
         // Check file size (warn if > 1MB)
         const sizeMB = (size / (1024 * 1024)).toFixed(2);
         if (size > 1024 * 1024) {
-          const proceed = window.confirm(
+          const proceed = await confirmAction(
             `This image is ${sizeMB}MB. Large images may cause email delivery issues. Continue?`
           );
           if (!proceed) {
@@ -167,12 +168,12 @@ function EmailTemplateCreator({
         // Show user notification for first image in this template
         const hadImagesBefore = template.content.includes('<img');
         if (!hadImagesBefore) {
-          alert(`Image added to template! Note: When sending emails, images will need to be attached manually in Outlook as mailto links don't support embedded images.`);
+          notify(`Image added to template! Note: When sending emails, images will need to be attached manually in Outlook as mailto links don't support embedded images.`);
         }
       }
     } catch (error) {
       console.error('Error uploading image:', error);
-      alert('Failed to upload image. Please try again.');
+      notify('Failed to upload image. Please try again.');
     } finally {
       setUploadingImage(false);
     }
@@ -253,9 +254,9 @@ function EmailTemplateCreator({
     }
   };
 
-  const handleCancel = () => {
+  const handleCancel = async () => {
     if (template.name || template.subject || template.content) {
-      if (window.confirm('You have unsaved changes. Are you sure you want to close?')) {
+      if (await confirmAction('You have unsaved changes. Are you sure you want to close?')) {
         onClose();
       }
     } else {

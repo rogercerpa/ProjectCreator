@@ -10,7 +10,9 @@ import React, { useEffect, useState } from 'react';
 
 const PERSISTENT_TYPES = ['error', 'warning'];
 
-const NotificationToast = ({ notification, onClose, onViewDetails, duration = 5000, style }) => {
+// `inline` toasts are laid out by a parent stack (ErrorNotificationProvider);
+// standalone toasts position themselves in the bottom-right corner.
+const NotificationToast = ({ notification, onClose, onViewDetails, duration = 5000, style, inline = false }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
 
@@ -101,19 +103,17 @@ const NotificationToast = ({ notification, onClose, onViewDetails, duration = 50
   return (
     <div
       className={`
-        fixed bottom-[30px] right-[30px] min-w-[320px] max-w-[500px]
-        bg-white dark:bg-gray-800 rounded-lg p-4 flex items-start gap-3 z-[10000]
+        ${inline ? 'pointer-events-auto w-full' : 'fixed bottom-5 right-5 z-[10000] w-[min(28rem,calc(100vw-2.5rem))]'}
+        bg-white dark:bg-gray-800 rounded-lg p-4 flex items-start gap-3
         shadow-lg border-l-4 ${getBorderColor()}
         transition-all duration-300 ease-out
         ${isVisible ? 'translate-x-0 opacity-100' : 'translate-x-[calc(100%+50px)] opacity-0'}
         ${isExiting ? 'translate-x-[calc(100%+50px)] opacity-0' : ''}
         ${canViewDetails ? 'cursor-pointer hover:shadow-xl' : ''}
-        md:bottom-5 md:right-5 md:left-5 md:min-w-0 md:max-w-none
-        sm:bottom-2.5 sm:right-2.5 sm:left-2.5 sm:p-3
       `}
       style={style}
       onClick={canViewDetails ? handleViewDetails : undefined}
-      role={canViewDetails ? 'button' : undefined}
+      role={notification.type === 'error' ? 'alert' : 'status'}
       tabIndex={canViewDetails ? 0 : undefined}
     >
       <div className="text-2xl leading-none flex-shrink-0 sm:text-xl">
@@ -121,7 +121,7 @@ const NotificationToast = ({ notification, onClose, onViewDetails, duration = 50
       </div>
       
       <div className="flex-1 flex flex-col gap-2">
-        <div className="text-sm font-medium text-gray-900 dark:text-gray-100 leading-relaxed sm:text-xs">
+        <div className="text-sm font-medium text-gray-900 dark:text-gray-100 leading-relaxed whitespace-pre-line break-words max-h-60 overflow-y-auto">
           {notification.message}
         </div>
 
@@ -151,6 +151,8 @@ const NotificationToast = ({ notification, onClose, onViewDetails, duration = 50
       </div>
 
       <button
+        type="button"
+        aria-label="Dismiss notification"
         className="w-6 h-6 border-none bg-transparent text-gray-600 dark:text-gray-400 text-2xl leading-none 
                    cursor-pointer p-0 flex-shrink-0 transition-all rounded hover:bg-gray-100 dark:hover:bg-gray-700
                    hover:text-gray-900 dark:hover:text-gray-100"

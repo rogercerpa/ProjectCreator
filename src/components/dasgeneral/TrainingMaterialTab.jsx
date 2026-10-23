@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { notify, confirmAction } from '../../utils/feedback';
 
 const { electronAPI } = window;
 
@@ -51,7 +52,7 @@ function TrainingMaterialTab({
   // Handle saving edit
   const handleSaveEdit = async () => {
     if (!editForm.product?.trim()) {
-      alert('Product is required');
+      notify('Product is required');
       return;
     }
 
@@ -103,7 +104,7 @@ function TrainingMaterialTab({
 
   // Handle deleting entry
   const handleDelete = async (itemId) => {
-    if (!window.confirm('Are you sure you want to delete this training material entry?')) {
+    if (!await confirmAction('Are you sure you want to delete this training material entry?')) {
       return;
     }
 
@@ -124,7 +125,7 @@ function TrainingMaterialTab({
   // Handle adding new product
   const handleAddProductSubmit = async () => {
     if (!newProductName.trim()) {
-      alert('Product name is required');
+      notify('Product name is required');
       return;
     }
 

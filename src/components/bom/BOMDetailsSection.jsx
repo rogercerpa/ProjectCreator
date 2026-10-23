@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import CollapsibleSection from '../shared/CollapsibleSection';
+import { confirmAction } from '../../utils/feedback';
 
 /**
  * BOMDetailsSection - Displays BOM (Bill of Materials) data for a project
@@ -188,7 +189,7 @@ const BOMDetailsSection = ({ project, onProjectUpdate, isExpanded: controlledExp
 
   // Handle BOM removal
   const handleRemoveBOM = async () => {
-    if (!window.confirm('Are you sure you want to remove the BOM data from this project?')) {
+    if (!await confirmAction('Are you sure you want to remove the BOM data from this project?')) {
       return;
     }
 

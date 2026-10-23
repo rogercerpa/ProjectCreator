@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import ProjectDetails from './ProjectDetails';
 import ProjectEditor from './ProjectEditor';
 import { useUploadContext, UPLOAD_TYPES } from '../contexts/UploadContext';
+import { confirmAction } from '../utils/feedback';
 
 // Import services (will be available through electronAPI in production)
 // const ZipService = require('../services/ZipService');
@@ -154,9 +155,9 @@ const ProjectManagement = ({
   };
 
   // Cancel editing and revert changes
-  const handleCancelEdit = () => {
+  const handleCancelEdit = async () => {
     if (hasUnsavedChanges) {
-      const confirmCancel = window.confirm(
+      const confirmCancel = await confirmAction(
         'You have unsaved changes. Are you sure you want to cancel?'
       );
       if (!confirmCancel) return;

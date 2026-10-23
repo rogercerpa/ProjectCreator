@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import AgencyTableView from './AgencyTableView';
 import AgencySelectionModal from './AgencySelectionModal';
 import EmailTemplateLibrary from './EmailTemplateLibrary';
+import { notify } from '../utils/feedback';
 
 function AgencyDirectory({ onAgencySelect }) {
   const [agencies, setAgencies] = useState([]);
@@ -247,7 +248,7 @@ function AgencyDirectory({ onAgencySelect }) {
   // Email utility functions
   const openOutlookWithEmails = async (emails, subject = '') => {
     if (!emails || emails.length === 0) {
-      alert('No email addresses found to send to.');
+      notify('No email addresses found to send to.');
       return;
     }
 
@@ -255,7 +256,7 @@ function AgencyDirectory({ onAgencySelect }) {
     const validEmails = emails.filter(email => email && email.includes('@'));
     
     if (validEmails.length === 0) {
-      alert('No valid email addresses found to send to.');
+      notify('No valid email addresses found to send to.');
       return;
     }
 
@@ -269,7 +270,7 @@ function AgencyDirectory({ onAgencySelect }) {
       await window.electronAPI.openExternal(mailtoUrl);
     } catch (error) {
       console.error('Error opening email client:', error);
-      alert('Failed to open email client. Please check your default email application.');
+      notify('Failed to open email client. Please check your default email application.');
     }
   };
 
@@ -286,7 +287,7 @@ function AgencyDirectory({ onAgencySelect }) {
   // Handle individual email
   const handleIndividualEmail = async (agency) => {
     if (!agency.contactEmail) {
-      alert('No email address available for this agency.');
+      notify('No email address available for this agency.');
       return;
     }
     

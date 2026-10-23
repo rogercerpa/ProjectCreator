@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { notify, confirmAction } from '../../utils/feedback';
 
 function AgencyTasksTab({ agency }) {
   const [tasks, setTasks] = useState([]);
@@ -28,7 +29,7 @@ function AgencyTasksTab({ agency }) {
   const handleAddTask = async () => {
     if (!newTask.title.trim()) return;
     if (!agency?.id) {
-      alert('Agency ID is required to save data.');
+      notify('Agency ID is required to save data.');
       return;
     }
 
@@ -52,7 +53,7 @@ function AgencyTasksTab({ agency }) {
       }
     } catch (error) {
       console.error('Error saving task:', error);
-      alert('Failed to save task: ' + error.message);
+      notify('Failed to save task: ' + error.message);
       setTasks(tasks);
       return;
     }
@@ -70,7 +71,7 @@ function AgencyTasksTab({ agency }) {
 
   const handleUpdateTaskStatus = async (taskId, newStatus) => {
     if (!agency?.id) {
-      alert('Agency ID is required to save data.');
+      notify('Agency ID is required to save data.');
       return;
     }
 
@@ -89,15 +90,15 @@ function AgencyTasksTab({ agency }) {
       }
     } catch (error) {
       console.error('Error updating task:', error);
-      alert('Failed to update task: ' + error.message);
+      notify('Failed to update task: ' + error.message);
       setTasks(tasks);
     }
   };
 
   const handleDeleteTask = async (taskId) => {
-    if (!window.confirm('Are you sure you want to delete this task?')) return;
+    if (!await confirmAction('Are you sure you want to delete this task?')) return;
     if (!agency?.id) {
-      alert('Agency ID is required to save data.');
+      notify('Agency ID is required to save data.');
       return;
     }
 
@@ -114,7 +115,7 @@ function AgencyTasksTab({ agency }) {
       }
     } catch (error) {
       console.error('Error deleting task:', error);
-      alert('Failed to delete task: ' + error.message);
+      notify('Failed to delete task: ' + error.message);
       setTasks(tasks);
     }
   };

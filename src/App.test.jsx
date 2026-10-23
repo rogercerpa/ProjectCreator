@@ -1,197 +1,134 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import App from './App';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { ErrorNotificationProvider } from './contexts/ErrorNotificationContext';
+import { UploadProvider } from './contexts/UploadContext';
+import { getVersionDisplay } from './utils/version';
 
-// Mock the electronAPI
-const mockElectronAPI = {
-  projectCreate: jest.fn(),
-  projectLoad: jest.fn(),
-  projectSave: jest.fn(),
-  projectDelete: jest.fn(),
-  projectSearch: jest.fn(),
-  projectStats: jest.fn(),
-  settingsLoad: jest.fn(),
-  settingsSave: jest.fn(),
-  onError: jest.fn(),
-  onNewProject: jest.fn(),
-  onOpenProject: jest.fn(),
-  removeAllListeners: jest.fn()
-};
-
-// Mock the ProjectDraftService
-jest.mock('./services/ProjectDraftService', () => {
-  return jest.fn().mockImplementation(() => ({
-    getAllDrafts: jest.fn().mockResolvedValue([])
-  }));
-});
-
-// Mock the FeatureFlagService
-jest.mock('./services/FeatureFlagService', () => ({
-  shouldShowMigrationAssistant: jest.fn().mockReturnValue(false),
-  isWizardForced: jest.fn().mockReturnValue(false),
-  isWizardEnabled: jest.fn().mockReturnValue(true),
-  isWizardDefault: jest.fn().mockReturnValue(true)
+jest.mock('./services/ProjectDraftClient', () => ({
+  createDraftClient: () => ({
+    getAllDrafts: () => Promise.resolve([])
+  })
 }));
 
+// The real service reads import.meta, which Jest's CommonJS transform cannot parse.
+// Plain functions, not jest.fn(): jest.config sets resetMocks.
+jest.mock('./services/FeatureFlagService', () => ({
+  __esModule: true,
+  default: {
+    isEnabled: () => false,
+    isAutoSaveEnabled: () => true,
+    isDraftRecoveryEnabled: () => true,
+    isWizardEnabled: () => true,
+    isWizardDefault: () => true,
+    isWizardForced: () => false,
+    shouldShowMigrationAssistant: () => false
+  }
+}));
+
+// App and its children call dozens of bridge methods. Event subscriptions (`onX`) return an
+// unsubscribe function; everything else resolves to a generic success payload unless overridden.
+const createElectronAPI = (overrides = {}) =>
+  new Proxy(overrides, {
+    get(target, prop) {
+      if (prop in target) return target[prop];
+      if (typeof prop !== 'string') return undefined;
+      if (/^on[A-Z]/.test(prop)) return jest.fn(() => () => {});
+      if (prop === 'removeAllListeners') return jest.fn();
+      return jest.fn().mockResolvedValue({ success: true, data: {}, projects: [] });
+    }
+  });
+
+const renderApp = () =>
+  render(
+    <ThemeProvider>
+      <ErrorNotificationProvider>
+        <UploadProvider>
+          <App />
+        </UploadProvider>
+      </ErrorNotificationProvider>
+    </ThemeProvider>
+  );
+
+const waitForWelcome = () => screen.findByText('Platform Capabilities', {}, { timeout: 5000 });
+
 describe('App Component', () => {
+  let originalElectronAPI;
+
   beforeEach(() => {
-    // Reset all mocks
-    jest.clearAllMocks();
-    
-    // Mock localStorage
-    Object.defineProperty(window, 'localStorage', {
-      value: {
-        getItem: jest.fn(() => null),
-        setItem: jest.fn(),
-        removeItem: jest.fn(),
-        clear: jest.fn(),
-      },
-      writable: true,
+    originalElectronAPI = window.electronAPI;
+    window.localStorage.setItem('app-visited', 'true');
+    window.localStorage.setItem('onboarding-completed', 'true');
+    window.electronAPI = createElectronAPI({
+      settingsLoad: jest.fn().mockResolvedValue({ success: true, data: {} }),
+      projectsLoadAll: jest.fn().mockResolvedValue({ success: true, projects: [] })
     });
-    
-    // Mock electronAPI
-    global.electronAPI = mockElectronAPI;
   });
 
-  test('renders loading screen initially', () => {
-    render(<App />);
-    expect(screen.getByText('Project Creator')).toBeInTheDocument();
+  afterEach(() => {
+    window.electronAPI = originalElectronAPI;
+    window.localStorage.clear();
+  });
+
+  test('renders the loading screen first', async () => {
+    renderApp();
     expect(screen.getByText('Loading modern application...')).toBeInTheDocument();
+    await waitForWelcome();
   });
 
-  test('renders welcome screen after loading', async () => {
-    render(<App />);
-    
-    // Wait for loading to complete
-    await waitFor(() => {
-      expect(screen.getByText('Welcome to Project Creator')).toBeInTheDocument();
-    }, { timeout: 3000 });
-    
-    expect(screen.getByText('Professional Project Management & Document Automation Tool')).toBeInTheDocument();
+  test('renders the welcome screen once settings and projects load', async () => {
+    renderApp();
+    await waitForWelcome();
+
+    expect(screen.getByRole('heading', { level: 1, name: /^Good (morning|afternoon|evening)/ })).toBeInTheDocument();
+    expect(window.electronAPI.settingsLoad).toHaveBeenCalled();
+    expect(window.electronAPI.projectsLoadAll).toHaveBeenCalled();
   });
 
-  test('displays version information', async () => {
-    render(<App />);
-    
-    await waitFor(() => {
-      expect(screen.getByText(/Version/)).toBeInTheDocument();
-    }, { timeout: 3000 });
-  });
-
-  test('shows feature highlights', async () => {
-    render(<App />);
-    
-    await waitFor(() => {
-      expect(screen.getByText('🚀 Key Features')).toBeInTheDocument();
-    }, { timeout: 3000 });
-    
-    expect(screen.getByText('Project Management')).toBeInTheDocument();
-    expect(screen.getByText('Triage Calculations')).toBeInTheDocument();
-    expect(screen.getByText('Document Automation')).toBeInTheDocument();
-  });
-
-  test('shows project types', async () => {
-    render(<App />);
-    
-    await waitFor(() => {
-      expect(screen.getByText('🎯 Supported Project Types')).toBeInTheDocument();
-    }, { timeout: 3000 });
-    
-    expect(screen.getByText('Reloc')).toBeInTheDocument();
-    expect(screen.getByText('Photometrics')).toBeInTheDocument();
-    expect(screen.getByText('Standard Controls')).toBeInTheDocument();
-  });
-
-  test('shows quick action buttons', async () => {
-    render(<App />);
-    
-    await waitFor(() => {
-      expect(screen.getByText('🚀 Get Started')).toBeInTheDocument();
-    }, { timeout: 3000 });
-    
-    // Check for main action buttons
-    const buttons = screen.getAllByRole('button');
-    expect(buttons.length).toBeGreaterThan(0);
-  });
-
-  test('handles view changes correctly', async () => {
-    render(<App />);
-    
-    await waitFor(() => {
-      expect(screen.getByText('Welcome to Project Creator')).toBeInTheDocument();
-    }, { timeout: 3000 });
-    
-    // Test navigation to settings
-    const settingsButton = screen.getByText('⚙️ Application Settings');
-    fireEvent.click(settingsButton);
-    
-    // Should navigate to settings view
-    await waitFor(() => {
-      expect(screen.getByText('Settings')).toBeInTheDocument();
-    });
-  });
-
-  test('handles project creation', async () => {
-    render(<App />);
-    
-    await waitFor(() => {
-      expect(screen.getByText('Welcome to Project Creator')).toBeInTheDocument();
-    }, { timeout: 3000 });
-    
-    // Mock successful project creation
-    mockElectronAPI.projectCreate.mockResolvedValue({
+  test('greets the user by first name from settings', async () => {
+    window.electronAPI.settingsLoad.mockResolvedValue({
       success: true,
-      project: { id: '1', projectName: 'Test Project' }
+      data: { workloadSettings: { userName: 'Jordan Smith' } }
     });
-    
-    // Test project creation flow
-    const createButton = screen.getByText(/Start Project/);
-    fireEvent.click(createButton);
-    
-    // Should navigate to project creation
-    await waitFor(() => {
-      expect(screen.getByText('Project Wizard')).toBeInTheDocument();
-    });
+    renderApp();
+    await waitForWelcome();
+
+    expect(screen.getByRole('heading', { level: 1, name: /, Jordan$/ })).toBeInTheDocument();
   });
 
-  test('handles errors gracefully', async () => {
-    // Mock console.error to avoid noise in tests
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    
-    render(<App />);
-    
-    // Simulate an error
-    const errorEvent = new Error('Test error');
-    fireEvent.error(window, errorEvent);
-    
-    await waitFor(() => {
-      expect(screen.getByText('Welcome to Project Creator')).toBeInTheDocument();
-    }, { timeout: 3000 });
-    
-    consoleSpy.mockRestore();
+  test('shows the app version', async () => {
+    renderApp();
+    await waitForWelcome();
+
+    expect(screen.getAllByText(getVersionDisplay()).length).toBeGreaterThan(0);
   });
 
-  test('displays welcome screen', async () => {
-    render(<App />);
-    
-    await waitFor(() => {
-      expect(screen.getByText('Welcome to Project Creator')).toBeInTheDocument();
-    }, { timeout: 3000 });
-    
-    expect(screen.getByText('Professional Project Management & Document Automation Tool')).toBeInTheDocument();
-    expect(screen.getByText('🚀 Key Features')).toBeInTheDocument();
-    expect(screen.getByText('🎯 Supported Project Types')).toBeInTheDocument();
+  test('shows feature highlights and quick actions', async () => {
+    renderApp();
+    await waitForWelcome();
+
+    expect(screen.getByRole('heading', { name: 'Triage Calculations' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'New Project' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'All Projects' })).toBeInTheDocument();
   });
 
-  test('shows pro tips and help information', async () => {
-    render(<App />);
-    
-    await waitFor(() => {
-      expect(screen.getByText(/Pro Tip:/)).toBeInTheDocument();
-    }, { timeout: 3000 });
-    
-    expect(screen.getByText(/Need Help\?/)).toBeInTheDocument();
+  test('navigates away from the welcome screen from a quick action', async () => {
+    renderApp();
+    await waitForWelcome();
+
+    fireEvent.click(screen.getByRole('heading', { name: 'Settings' }).closest('button'));
+
+    await waitFor(() => expect(screen.queryByText('Platform Capabilities')).not.toBeInTheDocument());
+  });
+
+  test('warns instead of silently showing an empty list when projects fail to load', async () => {
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+    window.electronAPI.projectsLoadAll.mockResolvedValue({ success: false, error: 'DATA_FILE_CORRUPT' });
+    renderApp();
+    await waitForWelcome();
+
+    expect(await screen.findByText(/saved projects could not be loaded/i)).toBeInTheDocument();
+    console.error.mockRestore();
   });
 });
-

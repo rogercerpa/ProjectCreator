@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import CollapsibleSection from '../shared/CollapsibleSection';
+import { notify, confirmAction } from '../../utils/feedback';
 
 function AgencyPlaybookTab({ agency }) {
   // Section expansion states
@@ -172,7 +173,7 @@ function AgencyPlaybookTab({ agency }) {
       });
     } catch (error) {
       console.error('Export failed:', error);
-      alert('Failed to export document: ' + error.message);
+      notify('Failed to export document: ' + error.message);
     } finally {
       setExporting(false);
     }
@@ -220,7 +221,7 @@ function AgencyPlaybookTab({ agency }) {
   const handleAddNote = async () => {
     if (!newNote.trim()) return;
     if (!agency?.id) {
-      alert('Agency ID is required to save data.');
+      notify('Agency ID is required to save data.');
       return;
     }
 
@@ -239,7 +240,7 @@ function AgencyPlaybookTab({ agency }) {
       if (!result.success) throw new Error(result.error || 'Failed to save note');
     } catch (error) {
       console.error('Error saving note:', error);
-      alert('Failed to save note: ' + error.message);
+      notify('Failed to save note: ' + error.message);
       setNotes(notes);
       return;
     }
@@ -256,7 +257,7 @@ function AgencyPlaybookTab({ agency }) {
   const handleSaveNoteEdit = async () => {
     if (!editingNoteContent.trim()) return;
     if (!agency?.id) {
-      alert('Agency ID is required to save data.');
+      notify('Agency ID is required to save data.');
       return;
     }
 
@@ -272,7 +273,7 @@ function AgencyPlaybookTab({ agency }) {
       if (!result.success) throw new Error(result.error || 'Failed to update note');
     } catch (error) {
       console.error('Error updating note:', error);
-      alert('Failed to update note: ' + error.message);
+      notify('Failed to update note: ' + error.message);
       loadAllData();
       return;
     }
@@ -282,9 +283,9 @@ function AgencyPlaybookTab({ agency }) {
   };
 
   const handleDeleteNote = async (noteId) => {
-    if (!window.confirm('Are you sure you want to delete this note?')) return;
+    if (!await confirmAction('Are you sure you want to delete this note?')) return;
     if (!agency?.id) {
-      alert('Agency ID is required to save data.');
+      notify('Agency ID is required to save data.');
       return;
     }
 
@@ -296,7 +297,7 @@ function AgencyPlaybookTab({ agency }) {
       if (!result.success) throw new Error(result.error || 'Failed to delete note');
     } catch (error) {
       console.error('Error deleting note:', error);
-      alert('Failed to delete note: ' + error.message);
+      notify('Failed to delete note: ' + error.message);
       loadAllData();
     }
   };
@@ -304,7 +305,7 @@ function AgencyPlaybookTab({ agency }) {
   const handleAddCommunication = async () => {
     if (!newCommunication.summary.trim()) return;
     if (!agency?.id) {
-      alert('Agency ID is required to save data.');
+      notify('Agency ID is required to save data.');
       return;
     }
 
@@ -323,7 +324,7 @@ function AgencyPlaybookTab({ agency }) {
       if (!result.success) throw new Error(result.error || 'Failed to save communication');
     } catch (error) {
       console.error('Error saving communication:', error);
-      alert('Failed to save communication: ' + error.message);
+      notify('Failed to save communication: ' + error.message);
       setCommunicationHistory(communicationHistory);
       return;
     }
@@ -350,7 +351,7 @@ function AgencyPlaybookTab({ agency }) {
   const handleSaveCommunicationEdit = async () => {
     if (!editingCommData.summary?.trim()) return;
     if (!agency?.id) {
-      alert('Agency ID is required to save data.');
+      notify('Agency ID is required to save data.');
       return;
     }
 
@@ -366,7 +367,7 @@ function AgencyPlaybookTab({ agency }) {
       if (!result.success) throw new Error(result.error || 'Failed to update communication');
     } catch (error) {
       console.error('Error updating communication:', error);
-      alert('Failed to update communication: ' + error.message);
+      notify('Failed to update communication: ' + error.message);
       loadAllData();
       return;
     }
@@ -376,9 +377,9 @@ function AgencyPlaybookTab({ agency }) {
   };
 
   const handleDeleteCommunication = async (commId) => {
-    if (!window.confirm('Are you sure you want to delete this communication entry?')) return;
+    if (!await confirmAction('Are you sure you want to delete this communication entry?')) return;
     if (!agency?.id) {
-      alert('Agency ID is required to save data.');
+      notify('Agency ID is required to save data.');
       return;
     }
 
@@ -390,7 +391,7 @@ function AgencyPlaybookTab({ agency }) {
       if (!result.success) throw new Error(result.error || 'Failed to delete communication');
     } catch (error) {
       console.error('Error deleting communication:', error);
-      alert('Failed to delete communication: ' + error.message);
+      notify('Failed to delete communication: ' + error.message);
       loadAllData();
     }
   };
@@ -403,7 +404,7 @@ function AgencyPlaybookTab({ agency }) {
 
   const handleSaveDesignField = async () => {
     if (!agency?.id) {
-      alert('Agency ID is required to save data.');
+      notify('Agency ID is required to save data.');
       return;
     }
 
@@ -419,7 +420,7 @@ function AgencyPlaybookTab({ agency }) {
       if (!result.success) throw new Error(result.error || 'Failed to save design requirements');
     } catch (error) {
       console.error('Error saving design requirements:', error);
-      alert('Failed to save: ' + error.message);
+      notify('Failed to save: ' + error.message);
       loadAllData();
     } finally {
       setSaving(false);
@@ -437,7 +438,7 @@ function AgencyPlaybookTab({ agency }) {
   const handleAddProduct = async () => {
     if (!newProduct.name.trim()) return;
     if (!agency?.id) {
-      alert('Agency ID is required to save data.');
+      notify('Agency ID is required to save data.');
       return;
     }
 
@@ -455,7 +456,7 @@ function AgencyPlaybookTab({ agency }) {
       if (!result.success) throw new Error(result.error || 'Failed to save product');
     } catch (error) {
       console.error('Error saving product:', error);
-      alert('Failed to save product: ' + error.message);
+      notify('Failed to save product: ' + error.message);
       setProductFocus(productFocus);
       return;
     }
@@ -465,9 +466,9 @@ function AgencyPlaybookTab({ agency }) {
   };
 
   const handleDeleteProduct = async (productId) => {
-    if (!window.confirm('Are you sure you want to remove this product?')) return;
+    if (!await confirmAction('Are you sure you want to remove this product?')) return;
     if (!agency?.id) {
-      alert('Agency ID is required to save data.');
+      notify('Agency ID is required to save data.');
       return;
     }
 
@@ -479,7 +480,7 @@ function AgencyPlaybookTab({ agency }) {
       if (!result.success) throw new Error(result.error || 'Failed to delete product');
     } catch (error) {
       console.error('Error deleting product:', error);
-      alert('Failed to delete product: ' + error.message);
+      notify('Failed to delete product: ' + error.message);
       setProductFocus(productFocus);
     }
   };
@@ -488,7 +489,7 @@ function AgencyPlaybookTab({ agency }) {
   const handleAddTrainingNeed = async () => {
     if (!newTrainingNeed.topic.trim()) return;
     if (!agency?.id) {
-      alert('Agency ID is required to save data.');
+      notify('Agency ID is required to save data.');
       return;
     }
 
@@ -507,7 +508,7 @@ function AgencyPlaybookTab({ agency }) {
       if (!result.success) throw new Error(result.error || 'Failed to save training need');
     } catch (error) {
       console.error('Error saving training need:', error);
-      alert('Failed to save training need: ' + error.message);
+      notify('Failed to save training need: ' + error.message);
       setTrainingNeeds(trainingNeeds);
       return;
     }
@@ -524,7 +525,7 @@ function AgencyPlaybookTab({ agency }) {
   const handleAddSession = async () => {
     if (!newSession.topic.trim() || !newSession.date) return;
     if (!agency?.id) {
-      alert('Agency ID is required to save data.');
+      notify('Agency ID is required to save data.');
       return;
     }
 
@@ -547,7 +548,7 @@ function AgencyPlaybookTab({ agency }) {
       if (!result.success) throw new Error(result.error || 'Failed to save training session');
     } catch (error) {
       console.error('Error saving training session:', error);
-      alert('Failed to save training session: ' + error.message);
+      notify('Failed to save training session: ' + error.message);
       setUpcomingSessions(upcomingSessions);
       return;
     }
@@ -571,7 +572,7 @@ function AgencyPlaybookTab({ agency }) {
   const handleSaveSessionEdit = async () => {
     if (!editingSessionData.topic?.trim() || !editingSessionData.date) return;
     if (!agency?.id) {
-      alert('Agency ID is required to save data.');
+      notify('Agency ID is required to save data.');
       return;
     }
 
@@ -595,7 +596,7 @@ function AgencyPlaybookTab({ agency }) {
       if (!result.success) throw new Error(result.error || 'Failed to update session');
     } catch (error) {
       console.error('Error updating session:', error);
-      alert('Failed to update session: ' + error.message);
+      notify('Failed to update session: ' + error.message);
       loadAllData();
       return;
     }
@@ -605,9 +606,9 @@ function AgencyPlaybookTab({ agency }) {
   };
 
   const handleDeleteSession = async (sessionId) => {
-    if (!window.confirm('Are you sure you want to delete this training session?')) return;
+    if (!await confirmAction('Are you sure you want to delete this training session?')) return;
     if (!agency?.id) {
-      alert('Agency ID is required to save data.');
+      notify('Agency ID is required to save data.');
       return;
     }
 
@@ -623,14 +624,14 @@ function AgencyPlaybookTab({ agency }) {
       if (!result.success) throw new Error(result.error || 'Failed to delete session');
     } catch (error) {
       console.error('Error deleting session:', error);
-      alert('Failed to delete session: ' + error.message);
+      notify('Failed to delete session: ' + error.message);
       loadAllData();
     }
   };
 
   const handleCompleteTraining = async (trainingId) => {
     if (!agency?.id) {
-      alert('Agency ID is required to save data.');
+      notify('Agency ID is required to save data.');
       return;
     }
 
@@ -658,7 +659,7 @@ function AgencyPlaybookTab({ agency }) {
       if (!result.success) throw new Error(result.error || 'Failed to update training');
     } catch (error) {
       console.error('Error updating training:', error);
-      alert('Failed to update training: ' + error.message);
+      notify('Failed to update training: ' + error.message);
       setTrainingHistory(trainingHistory);
       setTrainingNeeds(trainingNeeds);
     }
@@ -672,7 +673,7 @@ function AgencyPlaybookTab({ agency }) {
 
   const handleSaveStrategyField = async () => {
     if (!agency?.id) {
-      alert('Agency ID is required to save data.');
+      notify('Agency ID is required to save data.');
       return;
     }
 
@@ -688,7 +689,7 @@ function AgencyPlaybookTab({ agency }) {
       if (!result.success) throw new Error(result.error || 'Failed to save market strategy');
     } catch (error) {
       console.error('Error saving market strategy:', error);
-      alert('Failed to save: ' + error.message);
+      notify('Failed to save: ' + error.message);
       loadAllData();
     } finally {
       setSaving(false);

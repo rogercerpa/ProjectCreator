@@ -3,6 +3,7 @@ import dropdownOptionsService from '../services/DropdownOptionsService';
 import triageCalculationService from '../services/TriageCalculationService';
 import EditableProductTags from './EditableProductTags';
 import { ActualHoursFields, SampleProjectField, ScheduleOutcomeFields } from './shared/ProjectProductivityFields';
+import { notify } from '../utils/feedback';
 
 function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProjectCreated, onProjectUpdated }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -199,13 +200,13 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
       
       if (parsedData) {
         onFormDataChange({ ...formData, ...parsedData });
-        alert('RFA information pasted successfully!');
+        notify('RFA information pasted successfully!');
       } else {
-        alert('Could not parse RFA information from clipboard. Please check the format.');
+        notify('Could not parse RFA information from clipboard. Please check the format.');
       }
     } catch (error) {
       console.error('Error pasting RFA info:', error);
-      alert('Failed to read from clipboard. Please try copying the RFA information again.');
+      notify('Failed to read from clipboard. Please try copying the RFA information again.');
     } finally {
       setIsPasting(false);
     }
@@ -558,7 +559,7 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
 
     } catch (error) {
       console.error('Error saving project:', error);
-      alert('Failed to save project. Please try again.');
+      notify('Failed to save project. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -566,19 +567,19 @@ function ProjectForm({ project, formData, onFormDataChange, onFormReset, onProje
 
   const handleExportDASBoard = async () => {
     try {
-      alert('DAS Board export functionality will be implemented in the next phase.');
+      notify('DAS Board export functionality will be implemented in the next phase.');
     } catch (error) {
       console.error('Error exporting to DAS Board:', error);
-      alert('Failed to export to DAS Board.');
+      notify('Failed to export to DAS Board.');
     }
   };
 
   const handleExportAgile = async () => {
     try {
-      alert('Agile export functionality will be implemented in the next phase.');
+      notify('Agile export functionality will be implemented in the next phase.');
     } catch (error) {
       console.error('Error exporting to Agile:', error);
-      alert('Failed to export to Agile.');
+      notify('Failed to export to Agile.');
     }
   };
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { confirmAction } from '../../../utils/feedback';
 
 /**
  * DraftRecoveryModal - Enhanced draft recovery system
@@ -55,7 +56,7 @@ const DraftRecoveryModal = ({
   };
 
   const handleDeleteDraft = async (draftId) => {
-    if (window.confirm('Are you sure you want to delete this draft? This action cannot be undone.')) {
+    if (await confirmAction('Are you sure you want to delete this draft? This action cannot be undone.')) {
       try {
         await draftService.deleteDraft(draftId);
         await loadDrafts();

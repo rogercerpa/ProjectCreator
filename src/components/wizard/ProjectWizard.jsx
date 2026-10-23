@@ -13,18 +13,18 @@ import DuplicateProjectDetectionClient from '../../services/DuplicateProjectDete
 import performanceMonitoringService from '../../services/SimplePerformanceMonitoringService';
 import { useErrorNotification } from '../../contexts/ErrorNotificationContext';
 import { nextSampleIdentity } from '../../services/SampleProjectService';
+import { applyRequestedDateDefaults, getNewProjectDefaults } from '../../utils/wizardDefaults';
 
-// Lazy load draft service to prevent blocking initial render
-let ProjectDraftService = null;
-const getProjectDraftService = () => {
-  if (ProjectDraftService === null && window.electron) {
-    try {
-      ProjectDraftService = window.electron.require('./src/services/ProjectDraftService');
-    } catch (err) {
-      console.warn('Failed to load ProjectDraftService:', err);
-    }
-  }
-  return ProjectDraftService;
+import { createDraftClient } from '../../services/ProjectDraftClient';
+
+// The app scrolls inside <main className="main-content">, not the window.
+const scrollWizardToTop = () => {
+  const scroll = () => {
+    document.querySelector('.main-content')?.scrollTo({ top: 0, behavior: 'auto' });
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  };
+  requestAnimationFrame(scroll);
+  setTimeout(scroll, 150);
 };
 
 /**
@@ -225,27 +225,7 @@ const ProjectWizard = ({
   // Smart assignment state
   const [selectedAssignee, setSelectedAssignee] = useState(null);
   
-  // Draft service state - lazy initialization to prevent blocking initial render
-  const [draftService, setDraftService] = useState(null);
-  const draftServiceInitialized = useRef(false);
-  
-  // Initialize draft service lazily after first render
-  useEffect(() => {
-    if (!draftServiceInitialized.current) {
-      draftServiceInitialized.current = true;
-      // Defer initialization to next tick to not block render
-      setTimeout(() => {
-        const DraftServiceClass = getProjectDraftService();
-        if (DraftServiceClass) {
-          try {
-            setDraftService(new DraftServiceClass());
-          } catch (err) {
-            console.warn('Failed to initialize ProjectDraftService:', err);
-          }
-        }
-      }, 0);
-    }
-  }, []);
+  const [draftService] = useState(createDraftClient);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [lastDraftSave, setLastDraftSave] = useState(null);
   const [currentDraftId, setCurrentDraftId] = useState(null);
@@ -714,7 +694,7 @@ const ProjectWizard = ({
 
   // Auto-scroll to top when step changes
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    scrollWizardToTop();
   }, [wizard.currentStep]);
 
   // Handle step navigation with enhanced error handling
@@ -1516,7 +1496,8 @@ const ProjectWizard = ({
         designBy = settingsResult?.data?.workloadSettings?.userName || '';
       }
       const identity = nextSampleIdentity(existingProjects);
-      const sampleProject = {
+      const sampleProject = applyRequestedDateDefaults({
+        ...getNewProjectDefaults(),
         projectName: identity.projectName,
         rfaNumber: identity.rfaNumber,
         projectContainer: identity.projectContainer,
@@ -1528,7 +1509,7 @@ const ProjectWizard = ({
         status: 'active',
         sourceType: 'sample',
         projectNotes: `${identity.projectName} was created in the app only. No folder or files were created.`
-      };
+      });
       const saveResult = await window.electronAPI.projectSave(sampleProject);
       if (!saveResult?.success || !saveResult.project) {
         throw new Error(saveResult?.error || 'Could not save the sample project.');
@@ -1674,7 +1655,7 @@ const ProjectWizard = ({
               <button
                 onClick={() => {
                   wizard.previousStep();
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                  scrollWizardToTop();
                 }}
                 disabled={isLoading}
                 className="btn-secondary"
@@ -1687,7 +1668,7 @@ const ProjectWizard = ({
               onClick={() => {
                 // Reset wizard to Step 1 and clear form data instead of navigating away
                 resetWizardState();
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+                scrollWizardToTop();
               }}
               disabled={isLoading}
               className="px-4 py-2 text-sm font-medium border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1722,7 +1703,7 @@ const ProjectWizard = ({
                     onClick={() => {
                       if (isAccessible) {
                         wizard.goToStep(stepNumber);
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                        scrollWizardToTop();
                       }
                     }}
                   >

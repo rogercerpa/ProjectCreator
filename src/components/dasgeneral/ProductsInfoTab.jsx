@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { notify } from '../../utils/feedback';
 
 const { electronAPI } = window;
 
@@ -66,7 +67,7 @@ function ProductsInfoTab({
   // Handle saving edit
   const handleSaveEdit = async () => {
     if (!editForm.product?.trim()) {
-      alert('Product is required');
+      notify('Product is required');
       return;
     }
 
@@ -103,7 +104,7 @@ function ProductsInfoTab({
   // Handle adding new product
   const handleAddProductSubmit = async () => {
     if (!newProductName.trim()) {
-      alert('Product name is required');
+      notify('Product name is required');
       return;
     }
 
