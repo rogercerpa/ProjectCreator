@@ -15,7 +15,7 @@ set "APP_NAME=Project Creator"
 for /f "tokens=2 delims=: " %%i in ('findstr "version" package.json') do set "VERSION=%%i"
 set "VERSION=%VERSION: =%"
 set "VERSION=%VERSION:,=%"
-set "BUILD_DIR=dist"
+set "BUILD_DIR=release"
 set "CERT_DIR=certificates"
 
 REM Parse command line arguments

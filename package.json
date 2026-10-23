@@ -1,6 +1,6 @@
 {
   "name": "project-creator",
-  "version": "5.0.295",
+  "version": "5.0.296",
   "description": "Project Creator - Modern Electron application for creating and managing projects",
   "main": "main.js",
   "homepage": "./",
@@ -123,7 +123,7 @@
     ],
     "electronDist": "node_modules/electron/dist",
     "directories": {
-      "output": "dist"
+      "output": "release"
     },
     "files": [
       "main.js",
