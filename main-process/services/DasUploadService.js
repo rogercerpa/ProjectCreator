@@ -169,6 +169,49 @@ class DasUploadService {
   }
 
   /**
+   * List every Downloads folder for this project, newest first. Includes the
+   * timestamped copies Download Folder creates when the plain folder already exists
+   * (e.g. PROJECT_26-12345_2026-10-23T15-02-11-123Z).
+   * @param {Object} project - Project data
+   * @returns {Promise<Array<{name: string, path: string, modifiedMs: number}>>}
+   */
+  async findDownloadsCopies(project) {
+    const variants = this.getProjectFolderNameVariants(project).map(v => v.toLowerCase());
+    const timestampSuffix = /^_\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z$/;
+    const matches = [];
+
+    let entries = [];
+    try {
+      entries = await fs.readdir(this.downloadsPath, { withFileTypes: true });
+    } catch (error) {
+      console.warn(`[DasUpload] Could not read Downloads folder: ${error.message}`);
+      return matches;
+    }
+
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      const lowerName = entry.name.toLowerCase();
+      const isMatch = variants.some(variant =>
+        lowerName === variant ||
+        (lowerName.startsWith(variant) && timestampSuffix.test(entry.name.slice(variant.length)))
+      );
+      if (!isMatch) continue;
+
+      const folderPath = path.join(this.downloadsPath, entry.name);
+      try {
+        const stats = await fs.stat(folderPath);
+        // Extracted folders can carry file dates from the zip; creation time reflects when it was downloaded.
+        matches.push({ name: entry.name, path: folderPath, modifiedMs: stats.birthtimeMs || stats.mtimeMs });
+      } catch (error) {
+        console.warn(`[DasUpload] Could not read ${folderPath}: ${error.message}`);
+      }
+    }
+
+    matches.sort((a, b) => b.modifiedMs - a.modifiedMs);
+    return matches;
+  }
+
+  /**
    * Find the project folder in Downloads
    * @param {Object} project - Project data
    * @returns {Promise<Object>} Result with found path or error
@@ -176,20 +219,20 @@ class DasUploadService {
   async findSourceFolder(project) {
     try {
       const variants = this.getProjectFolderNameVariants(project);
-      
-      for (const folderName of variants) {
-        const folderPath = path.join(this.downloadsPath, folderName);
-        if (await fs.pathExists(folderPath)) {
-          const stats = await fs.stat(folderPath);
-          if (stats.isDirectory()) {
-            console.log(`[DasUpload] Found source folder: ${folderPath}`);
-            return {
-              success: true,
-              path: folderPath,
-              folderName: folderName
-            };
-          }
+      const matches = await this.findDownloadsCopies(project);
+
+      if (matches.length > 0) {
+        const newest = matches[0];
+        console.log(`[DasUpload] Found source folder: ${newest.path}`);
+        if (matches.length > 1) {
+          console.log(`[DasUpload] Other Downloads copies of this project: ${matches.slice(1).map(m => m.name).join(', ')}`);
         }
+        return {
+          success: true,
+          path: newest.path,
+          folderName: newest.name,
+          otherCopies: matches.slice(1).map(m => m.path)
+        };
       }
       
       return {
@@ -335,33 +378,83 @@ class DasUploadService {
   }
 
   /**
-   * Move a folder to the Recycle Bin (safer than permanent delete)
+   * Check that every file under sourcePath exists under copyPath with the same size.
+   * @param {string} sourcePath - Original folder
+   * @param {string} copyPath - Copied folder
+   * @returns {Promise<boolean>} True when the copy is complete
+   */
+  async isCopyComplete(sourcePath, copyPath) {
+    try {
+      const items = await fs.readdir(sourcePath, { withFileTypes: true });
+      for (const item of items) {
+        const srcItem = path.join(sourcePath, item.name);
+        const copyItem = path.join(copyPath, item.name);
+        if (item.isDirectory()) {
+          if (!await this.isCopyComplete(srcItem, copyItem)) return false;
+        } else {
+          if (!await fs.pathExists(copyItem)) return false;
+          const [srcStats, copyStats] = await Promise.all([fs.stat(srcItem), fs.stat(copyItem)]);
+          if (srcStats.size !== copyStats.size) return false;
+        }
+      }
+      return true;
+    } catch (error) {
+      console.warn(`[DasUpload] Could not verify copy of ${sourcePath}: ${error.message}`);
+      return false;
+    }
+  }
+
+  /**
+   * Move a folder to the Recycle Bin (safer than permanent delete).
+   * Retries once, since Windows often holds files briefly right after a copy
+   * (Explorer previews, antivirus, OneDrive sync). If both attempts fail and
+   * verifiedCopyPath holds a complete copy, the folder is deleted instead.
    * @param {string} folderPath - Path to folder to move to trash
+   * @param {Object} [options]
+   * @param {string} [options.verifiedCopyPath] - Full copy of folderPath on DAS
    * @returns {Promise<Object>} Result with success status
    */
-  async moveToTrash(folderPath) {
-    try {
-      if (!await fs.pathExists(folderPath)) {
-        console.log(`[DasUpload] Folder not found for cleanup: ${folderPath}`);
-        return { success: true, message: 'Folder already removed' };
-      }
-      
-      console.log(`[DasUpload] Moving folder to Recycle Bin: ${folderPath}`);
-      await shell.trashItem(folderPath);
-      console.log(`[DasUpload] Successfully moved to Recycle Bin: ${folderPath}`);
-      
-      return {
-        success: true,
-        message: `Moved to Recycle Bin: ${folderPath}`
-      };
-    } catch (error) {
-      console.error(`[DasUpload] Error moving to Recycle Bin:`, error);
-      // Don't fail the overall operation if cleanup fails
-      return {
-        success: false,
-        error: `Could not move to Recycle Bin: ${error.message}`
-      };
+  async moveToTrash(folderPath, { verifiedCopyPath = null } = {}) {
+    if (!await fs.pathExists(folderPath)) {
+      console.log(`[DasUpload] Folder not found for cleanup: ${folderPath}`);
+      return { success: true, method: 'already-removed', message: 'Folder already removed' };
     }
+
+    let lastError = null;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        console.log(`[DasUpload] Moving folder to Recycle Bin (attempt ${attempt}): ${folderPath}`);
+        await shell.trashItem(folderPath);
+        if (!await fs.pathExists(folderPath)) {
+          console.log(`[DasUpload] Successfully moved to Recycle Bin: ${folderPath}`);
+          return { success: true, method: 'recycle-bin', message: `Moved to Recycle Bin: ${folderPath}` };
+        }
+        lastError = new Error('Folder is still in Downloads after moving it to the Recycle Bin');
+      } catch (error) {
+        lastError = error;
+      }
+      console.warn(`[DasUpload] Recycle Bin attempt ${attempt} failed: ${lastError.message}`);
+      if (attempt === 1) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+    }
+
+    if (verifiedCopyPath && await this.isCopyComplete(folderPath, verifiedCopyPath)) {
+      try {
+        console.log(`[DasUpload] Copy on DAS verified, deleting Downloads folder: ${folderPath}`);
+        await fs.remove(folderPath);
+        return { success: true, method: 'deleted', message: `Deleted from Downloads: ${folderPath}` };
+      } catch (error) {
+        lastError = error;
+        console.error(`[DasUpload] Delete after verified copy failed: ${error.message}`);
+      }
+    }
+
+    // Don't fail the overall operation if cleanup fails
+    return {
+      success: false,
+      error: `Could not remove ${path.basename(folderPath)} from Downloads: ${lastError?.message || 'unknown error'}`
+    };
   }
 
   /**
@@ -504,19 +597,33 @@ class DasUploadService {
           });
         }
         
-        const cleanupResult = await this.moveToTrash(sourcePath);
-        uploadResult.cleanedUp = cleanupResult.success;
-        if (cleanupResult.success) {
-          console.log(`[DasUpload] Cleaned up source folder: ${sourcePath}`);
+        // Only a full new-project copy can be checked file by file against the source.
+        const fullCopyPath = !uploadResult.isRevision && !uploadResult.wasMerged ? uploadResult.uploadedPath : null;
+        const cleanupResult = await this.moveToTrash(sourcePath, { verifiedCopyPath: fullCopyPath });
+        const cleanupErrors = cleanupResult.success ? [] : [cleanupResult.error];
+
+        // Older downloads of the same project (plain or timestamped) are stale copies.
+        for (const copyPath of sourceResult.otherCopies || []) {
+          const copyResult = await this.moveToTrash(copyPath);
+          if (!copyResult.success) cleanupErrors.push(copyResult.error);
+        }
+
+        uploadResult.cleanedUp = cleanupErrors.length === 0;
+        uploadResult.cleanupMethod = cleanupResult.method || null;
+        if (uploadResult.cleanedUp) {
+          console.log(`[DasUpload] Cleaned up Downloads copies of ${sourceResult.folderName}`);
         } else {
-          console.warn(`[DasUpload] Cleanup warning: ${cleanupResult.error}`);
+          uploadResult.cleanupError = cleanupErrors.join(' ');
+          console.warn(`[DasUpload] Cleanup warning: ${uploadResult.cleanupError}`);
         }
         
         if (progressCallback) {
           progressCallback({
             phase: 'complete',
             progress: 100,
-            message: uploadResult.cleanedUp ? 'Upload complete! Downloads folder cleaned up.' : 'Upload complete!'
+            message: uploadResult.cleanedUp
+              ? 'Upload complete! Downloads folder cleaned up.'
+              : 'Upload complete, but the Downloads folder could not be removed.'
           });
         }
       }
@@ -616,9 +723,9 @@ class DasUploadService {
       
       if (progressCallback) {
         progressCallback({
-          phase: 'complete',
-          progress: 100,
-          message: 'Upload complete (merged with existing folder)!'
+          phase: 'copied',
+          progress: 96,
+          message: 'Copied to DAS (merged with existing folder)'
         });
       }
       
@@ -656,9 +763,9 @@ class DasUploadService {
     
     if (progressCallback) {
       progressCallback({
-        phase: 'complete',
-        progress: 100,
-        message: 'Upload complete!'
+        phase: 'copied',
+        progress: 96,
+        message: 'Copied to DAS'
       });
     }
     
@@ -754,9 +861,9 @@ class DasUploadService {
     
     if (progressCallback) {
       progressCallback({
-        phase: 'complete',
-        progress: 100,
-        message: 'Revision upload complete!'
+        phase: 'copied',
+        progress: 96,
+        message: 'Revision copied to DAS'
       });
     }
     

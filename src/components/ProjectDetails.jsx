@@ -532,13 +532,16 @@ const ProjectDetails = ({ project, onEdit, onProjectUpdate }) => {
       }
 
       if (result.success) {
-        showToast(`✓ ${result.message}`, 'success');
-        completeUpload({ success: true, message: result.message });
-
-        // If the upload step auto-imported a BOM (project had none), surface it
+        // Only one toast shows at a time, so combine upload, BOM, and cleanup results.
+        let toastMessage = `✓ ${result.message}`;
         if (result.bomImported) {
-          showToast(`📦 BOM imported: ${result.bomStats?.totalDevices || 0} devices`, 'success');
+          toastMessage += ` • 📦 BOM imported: ${result.bomStats?.totalDevices || 0} devices`;
         }
+        if (result.cleanedUp === false) {
+          toastMessage += ` • The project folder is still in Downloads. ${result.cleanupError || ''} Close any open files from it and delete it manually.`;
+        }
+        showToast(toastMessage, result.cleanedUp === false ? 'warning' : 'success');
+        completeUpload({ success: true, message: result.message });
         
         // Update project with new upload status
         if (result.updatedProject && onProjectUpdate) {
